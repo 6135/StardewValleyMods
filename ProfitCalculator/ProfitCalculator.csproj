@@ -8,7 +8,6 @@
 	  <EnableHarmony>true</EnableHarmony>
 	  <GamePath>$(STARDEW_GAME_DIR)</GamePath>
 	  <GenerateDocumentationFile>true</GenerateDocumentationFile>
-	  <DefineConstants Condition="Exists('DynamicGameAssets.dll') ">$(DefineConstants);DLLEXISTS</DefineConstants>
   </PropertyGroup>
 
   <ItemGroup>
