@@ -4,7 +4,7 @@ This is my collection of asorted SDV Mods.
 
 Mods included in this repository:
 
-| Name                                                                        | Version | Working Version | Main         | Documentation                                                                                                           | Notes                        |
+| Name                                                                        | Version | Working Version | Main         | Docs                                                                                                           | Notes                        |
 |-----------------------------------------------------------------------------|---------|-----------------|--------------|-------------------------------------------------------------------------------------------------------------------------|------------------------------|
 | [Profit Calculator](https://www.nexusmods.com/stardewvalley/mods/19931)     | 1.0.4   | 1.5*            | Yes          | [Docs](https://github.com/6135/StardewValleyMods/blob/master/ProfitCalculator/README.md)                                |                              |
 | [Profit Calculator DGA](https://www.nexusmods.com/stardewvalley/mods/19931) | 1.0.4   | 1.5*            | Addon for PC | [Docs](https://github.com/6135/StardewValleyMods/blob/master/ProfitCalculatorDGA/README.md)                             | Not Needed in 1.6 and above  |
