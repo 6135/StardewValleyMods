@@ -1,0 +1,18 @@
+﻿{
+  "Name": "Sweet Mines",
+  "Author": "ModAuthor",
+  "Version": "1.0.0",
+  "Description": "Adds sweets to the mine. Which you can gather to eat or make something special out of them",
+  "UniqueID": "6135.SweetMines",
+  "MinimumApiVersion": "3.4.0",
+  "UpdateKeys": [ "Nexus:" ],
+  "Dependencies": [
+    {
+      "UniqueID": "mistyspring.ItemExtensions",
+      "IsRequired": true
+    }
+  ],
+  "ContentPackFor": {
+    "UniqueID": "Pathoschild.ContentPatcher"
+  }
+}

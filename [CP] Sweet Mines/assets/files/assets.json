@@ -1,0 +1,16 @@
+{
+  "Changes": [
+    { //Pumpkin Pie
+      "LogName": "Add resource image",
+      "Action": "Load",
+      "Target": "Mods/{{ModId}}/PumpkinPie",
+      "FromFile": "assets/pumpkinPie.png"
+    },
+    { //Pink Cake
+      "LogName": "Add resource image",
+      "Action": "Load",
+      "Target": "Mods/{{ModId}}/pinkCake",
+      "FromFile": "assets/pinkCake.png"
+    }
+  ]
+}
