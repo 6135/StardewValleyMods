@@ -1,3 +1,22 @@
 {
+  "coal.N": "Carvão",
+  "coal.D": "Esta rocha é rica em carvão",
 
+  "coal.ice.N": "Carvão Congelado",
+  "coal.ice.D": "Esta rocha congelada é rica em carvão",
+
+  "coal.lava.N": "Carvão em Lava",
+  "coal.lava.D": "Esta rocha vermelha em brasa é rica em carvão",
+
+  "coal.pure.N": "Carvão Puro",
+  "coal.pure.D": "Isto aparenta ser carvão puro",
+
+  "stone.prismatic.N": "Rocha Prismática",
+  "stone.prismatic.D": "Esta rocha brilha como poeira estelar",
+
+  "stone.obsidian.N": "Obsidiana",
+  "stone.obsidian.D": "Uma rocha vulcânica vítrea. Pode conter uma surpresa brilhante no seu interior",
+
+  "stone.mudstone.N": "Lamito",
+  "stone.mudstone.D": "Rocha sedimentar com uma matriz lamacenta"
 }
