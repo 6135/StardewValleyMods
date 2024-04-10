@@ -6,21 +6,21 @@
       "Target": "Mods/mistyspring.ItemExtensions/Resources",
       "Entries": {
         //**********Begin Pies**********
-        "6135.SweetMinesPumpkinPie": {
-          "Name": "6135.SweetMinesPumpkinPie",
-          "DisplayName": "[LocalizedText Strings\\Objects:Stone_Name]",
-          "Description": "This pie looks delicious! Smells like pumpkin",
+        "{{ModID}}_PumpkinPie": {
+          "Name": "{{ModID}}_PumpkinPie",
+          "DisplayName": "{{i18n: pumpkin.pie.N}}",
+          "Description": "{{i18n: pumpkin.pie.D}}",
           "Texture": "Mods/{{ModId}}/pumpkinPie",
           "SpriteIndex": 0,
           "Width": 1,
           "Height": 1,
           "Health": 4,
-          "ItemDropped": "(O)382",
+          "ItemDropped": "{{ModID}}_PumpkinPieSlice",
           "MinDrops": 1,
           "MaxDrops": 1,
           "ExtraItems": [
             {
-              "ItemId": "(O)382",
+              "ItemId": "{{ModID}}_PumpkinPieSlice",
               "Chance": 1,
               "MinStack": 1,
               "MaxStack": 2,
@@ -58,21 +58,21 @@
         },
         //**********End Pies**********
         //**********Begin Cakes**********
-        "6135.SweetMinesPinkCake": {
-          "Name": "6135.SweetMinesPinkCake",
-          "DisplayName": "[LocalizedText Strings\\Objects:Stone_Name]",
-          "Description": "This cake looks delicious!",
+        "{{ModID}}_PinkCake": {
+          "Name": "{{ModID}}_PinkCake",
+          "DisplayName": "{{i18n: pink.cake.N}}",
+          "Description": "{{i18n: pink.cake.D}}",
           "Texture": "Mods/{{ModId}}/pinkCake",
           "SpriteIndex": 0,
           "Width": 1,
           "Height": 1,
           "Health": 4,
-          "ItemDropped": "(O)382",
+          "ItemDropped": "{{ModID}}_PinkCakeObj",
           "MinDrops": 1,
           "MaxDrops": 1,
           "ExtraItems": [
             {
-              "ItemId": "(O)382",
+              "ItemId": "{{ModID}}_PinkCakeObj",
               "Chance": 1,
               "MinStack": 1,
               "MaxStack": 2,
@@ -110,7 +110,7 @@
         }
         //**********End Cakes**********
       }
-    },
+    }
 
   ]
 }

@@ -1,0 +1,20 @@
+{
+  "Name": "Various Coal Nodes + Estras - Chinese",
+  "Author": "6135",
+  "Version": "1.0.0",
+  "Description": "Chinese Translation",
+  "UniqueID": "6135.VariousCoalOresExtras.zh",
+  "MinimumApiVersion": "3.4.0",
+  "Dependencies": [
+    {
+      "UniqueID": "mistyspring.ItemExtensions",
+      "IsRequired": true
+    },
+    {
+      "UniqueID": "6135.VariousCoalOresExtras"
+    }
+  ],
+  "ContentPackFor": {
+    "UniqueID": "Pathoschild.ContentPatcher"
+  }
+}

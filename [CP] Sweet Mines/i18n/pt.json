@@ -1,0 +1,22 @@
+{
+  /* Configuration for the mod NOT WORKING*/
+  "config.pies": "Tartes",
+  "config.cakes": "Bolos",
+  "config.cookies": "Bolachas",
+  "config.other.sweets": "Doces",
+  /*Config Pie descriptions NOT WORKING*/
+  "config.pies.pumpkin.pie.D01": " Quantas das pedras devem tornar-se tartes de abóbora nas minas nos níveis 0 a 999. 0.00 significa sem tartes, 1.00 significa que todas as pedras transformam-se em tartes.",
+  /*Config cake descriptions NOT WORKING*/
+  "config.cakes.pink.cake.D01": " Quantas das pedras devem tornar-se bolos cor-de-rosa nas minas nos níveis 0 a 999. 0.00 significa sem bolos, 1.00 significa que todas as pedras transformam-se em bolos.",
+
+  /* Pie Names & Descriptions */
+  "pumpkin.pie.N": "Tarte de Abóbora",
+  "pumpkin.pie.slice.N": "Fatia de Tarte de Abóbora",
+  "pumpkin.pie.D": "Uma deliciosa tarte de abóbora.",
+  "pumpkin.pie.slice.D": "Uma fatia de uma tarte de abóbora deliciosa",
+  /* Cake Names & Descriptions */
+  "pink.cake.N": "Bolo Cor-de-Rosa",
+  "pink.cake.slice.N": "Fatia de Bolo Cor-de-Rosa",
+  "pink.cake.D": "Um bolo cor-de-rosa delicioso.",
+  "pink.cake.slice.D": "Uma fatia de um bolo cor-de-rosa delicioso."
+}

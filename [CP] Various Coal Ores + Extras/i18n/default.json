@@ -1,0 +1,22 @@
+{
+  "coal.N": "Coal",
+  "coal.D": "This stone is rich in coal",
+
+  "coal.ice.N": "Ice Coal",
+  "coal.ice.D": "This frozen stone is rich in coal",
+
+  "coal.lava.N": "Lava Coal",
+  "coal.lava.D": "This red hot stone is rich in coal",
+
+  "coal.pure.N": "Pure Coal",
+  "coal.pure.D": "This looks like pure coal",
+
+  "stone.prismatic.N": "Prismatic Stone",
+  "stone.prismatic.D": "This stone shines like stardust.",
+
+  "stone.obsidian.N": "Obsidian",
+  "stone.obsidian.D": "A glassy volcanic rock. It may hold a shiny Surprise inside.",
+
+  "stone.mudstone.N": "Mudstone",
+  "stone.mudstone.D": "Sedimentary rock with a muddy matrix."
+}

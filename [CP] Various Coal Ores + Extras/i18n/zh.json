@@ -1,0 +1,22 @@
+{
+  "coal.N": "普通煤",
+  "coal.D": "This stone is rich in coal",
+
+  "coal.ice.N": "冰煤",
+  "coal.ice.D": "This frozen stone is rich in coal",
+
+  "coal.lava.N": "熔岩煤",
+  "coal.lava.D": "This red hot stone is rich in coal",
+
+  "coal.pure.N": "纯煤",
+  "coal.pure.D": "This looks like pure coal",
+
+  "stone.prismatic.N": "五彩矿石",
+  "stone.prismatic.D": "This stone shines like stardust.",
+
+  "stone.obsidian.N": "黑曜石",
+  "stone.obsidian.D": "A glassy volcanic rock. It may hold a shiny Surprise inside.",
+
+  "stone.mudstone.N": "泥岩",
+  "stone.mudstone.D": "Sedimentary rock with a muddy matrix."
+}

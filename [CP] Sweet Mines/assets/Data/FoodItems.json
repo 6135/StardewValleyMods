@@ -1,0 +1,122 @@
+{
+  "Changes": [
+    {
+      "LogName": "Add resource",
+      "Action": "EditData",
+      "Target": "Data/Objects",
+      "Entries": {
+        //**********Begin Pies**********
+        "{{ModID}}_PumpkinPieObj": {
+          "Name": "{{ModID}}_PumpkinPieObj",
+          "DisplayName": "{{i18n: pumpkin.pie.N}}",
+          "Description": "{{i18n: pumpkin.pie.D}}",
+          "Type": "Cooking",
+          "Category": -7,
+          "Price": 350,
+          "Texture": "Mods/{{ModId}}/pumpkinPie",
+          "SpriteIndex": 0,
+          "Edibility": 40,
+          "IsDrink": false,
+          "Buffs": [
+            {
+              "Id": "Food",
+              "BuffId": null,
+              "IconTexture": null,
+              "IconSpriteIndex": 0,
+              "Duration": 600,
+              "IsDebuff": false,
+              "GlowColor": null,
+              "CustomAttributes": {
+                "FarmingLevel": 2.0,
+                "FishingLevel": 0.0,
+                "MiningLevel": 0.0,
+                "LuckLevel": 1.0,
+                "ForagingLevel": 0.0,
+                "MaxStamina": 0.0,
+                "MagneticRadius": 0.0,
+                "Speed": 1.0,
+                "Defense": 1.0,
+                "Attack": 0.0
+              }
+            }
+          ]
+        },
+        //**********Pie Slices**********
+        "{{ModID}}_PumpkinPieSlice": {
+          "Name": "{{ModID}}_PumpkinPieSlice",
+          "DisplayName": "{{i18n: pumpkin.pie.slice.N}}",
+          "Description": "{{i18n: pumpkin.pie.slice.D}}",
+          "Type": "Cooking",
+          "Category": -7,
+          "Price": 15,
+          "Texture": "Mods/{{ModId}}/pumpkinPieSlice",
+          "SpriteIndex": 0,
+          "Edibility": 7,
+          "IsDrink": false,
+          "Buffs": [
+            {
+              "Id": "Food",
+              "BuffId": null,
+              "IconTexture": null,
+              "IconSpriteIndex": 0,
+              "Duration": 600,
+              "IsDebuff": false,
+              "GlowColor": null,
+              "CustomAttributes": {
+                "FarmingLevel": 1.0,
+                "FishingLevel": 0.0,
+                "MiningLevel": 0.0,
+                "LuckLevel": 0.0,
+                "ForagingLevel": 0.0,
+                "MaxStamina": 0.0,
+                "MagneticRadius": 0.0,
+                "Speed": 1.0,
+                "Defense": 0.0,
+                "Attack": 0.0
+              }
+            }
+          ]
+        },
+        //**********End Pies**********
+        //**********Begin Cakes**********
+        "{{ModID}}_PinkCakeObj": {
+          "Name": "{{ModID}}_PinkCakeObj",
+          "DisplayName": "{{i18n: pink.cake.N}}",
+          "Description": "{{i18n: pink.cake.D}}",
+          "Type": "Cooking",
+          "Category": -7,
+          "Price": 350,
+          "Texture": "Mods/{{ModId}}/pinkCake",
+          "SpriteIndex": 0,
+          "Edibility": 40,
+          "IsDrink": false,
+          "Buffs": [
+            {
+              "Id": "Food",
+              "BuffId": null,
+              "IconTexture": null,
+              "IconSpriteIndex": 0,
+              "Duration": 600,
+              "IsDebuff": false,
+              "GlowColor": null,
+              "CustomAttributes": {
+                "FarmingLevel": 0.0,
+                "FishingLevel": 0.0,
+                "MiningLevel": 0.0,
+                "LuckLevel": 1.0,
+                "ForagingLevel": 0.0,
+                "MaxStamina": 0.0,
+                "MagneticRadius": 0.0,
+                "Speed": 3.0,
+                "Defense": 0.0,
+                "Attack": 0.0
+              }
+            }
+          ]
+        }
+        //**********End Cakes**********
+      }
+    },
+
+  ]
+}

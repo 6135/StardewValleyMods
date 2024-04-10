@@ -1,0 +1,22 @@
+{
+  /* Configuration for the mod */
+  "config.pies": "Pies",
+  "config.cakes": "Cakes",
+  "config.cookies": "Cookies",
+  "config.other.sweets": "Sweets",
+  /*Config Pie descriptions */
+  "config.pies.pumpkin.pie.D01": "How many of the stones should become pumpkin pies on mine leves 0 to 999. 0.00 means no pies, 1.00 means all stones are pies.",
+  /*Config cake descriptions */
+  "config.cakes.pink.cake.D01": "How many of the stones should become pink cakes on mine leves 0 to 999. 0.00 means no cakes, 1.00 means all stones are cakes.",
+
+  /* Pie Names & Descriptions */
+  "pumpkin.pie.N": "Pumpkin Pie",
+  "pumpkin.pie.slice.N": "Pumpkin pie slice",
+  "pumpkin.pie.D": "A delicious pumpkin pie.",
+  "pumpkin.pie.slice.D": "A slice of pumpkin pie.",
+  /* Cake Names & Descriptions */
+  "pink.cake.N": "Pink Cake",
+  "pink.cake.slice.N": "Pink cake slice",
+  "pink.cake.D": "A delicious pink cake.",
+  "pink.cake.slice.D": "A delicious slice of pink cake."
+}

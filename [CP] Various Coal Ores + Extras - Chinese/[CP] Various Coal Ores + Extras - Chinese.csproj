@@ -1,15 +1,16 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <AssemblyName>_CP__Sweet_Mines</AssemblyName>
-    <RootNamespace>_CP__Sweet_Mines</RootNamespace>
+    <AssemblyName>_CP__Various_Coal_Ores___Extras___Chinese</AssemblyName>
+    <RootNamespace>_CP__Various_Coal_Ores___Extras___Chinese</RootNamespace>
     <Version>1.0.0</Version>
-    <TargetFramework>net6</TargetFramework>
+    <TargetFramework>net452</TargetFramework>
     <Platforms>x86</Platforms>
     <PlatformTarget>x86</PlatformTarget>
     <EnableHarmony>true</EnableHarmony>
     <IgnoreModFilePatterns>\.dll$, \.pdb$</IgnoreModFilePatterns>
-	<GamePath>$(STARDEW_GAME_DIR)</GamePath>
+	  <GamePath>$(STARDEW_GAME_DIR)</GamePath>
+
   </PropertyGroup>
 
   <ItemGroup>
@@ -22,11 +23,4 @@
     </None>
   </ItemGroup>
 
-	<ItemGroup>
-		<None Include="i18n" />
-	</ItemGroup>
-	<ItemGroup>
-		<Folder Include="assets\" />
-	</ItemGroup>
-	
 </Project>
