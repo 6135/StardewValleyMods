@@ -11,7 +11,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "[CP] Various Coal Ores + Ex
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "[CP] Pizza Nodes", "[CP] Pizza Nodes\[CP] Pizza Nodes.csproj", "{8DE474D2-AE31-445F-A0F7-C9883F7BD396}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "[CP] Sweet Mines", "[CP] Sweet Mines\[CP] Sweet Mines.csproj", "{34074A22-39A4-410F-BA00-37E26E9B7461}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "[CP] Sweet Mines", "[CP] Sweet Mines\[CP] Sweet Mines.csproj", "{34074A22-39A4-410F-BA00-37E26E9B7461}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

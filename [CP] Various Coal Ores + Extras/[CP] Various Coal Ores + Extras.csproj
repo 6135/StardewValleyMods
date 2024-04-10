@@ -20,6 +20,9 @@
     <None Update="content.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
+    <None Update="TranslatedContents\zh\[CP] Various Coal Ores + Extras\content.json">
+      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
 
 </Project>
