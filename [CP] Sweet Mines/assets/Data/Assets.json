@@ -17,6 +17,12 @@
       "Action": "Load",
       "Target": "Mods/{{ModId}}/pinkCake",
       "FromFile": "assets/resources/pinkCake.png"
+    },
+    { //Pink Cake slice
+      "LogName": "Add resource image",
+      "Action": "Load",
+      "Target": "Mods/{{ModId}}/pinkCakeSlice",
+      "FromFile": "assets/resources/pinkCakeSlice.png"
     }
   ]
 }
