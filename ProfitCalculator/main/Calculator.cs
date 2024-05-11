@@ -7,7 +7,7 @@ using static ProfitCalculator.Utils;
 namespace ProfitCalculator.main
 {
     /// <summary>
-    /// Class used to calculate the profits for crops. Contains all the settings for the calculator and the functions used to calculate the profits. Also contains the list of crops and the crop parsers. <see cref="TotalCropProfit(Crop)"/> and <see cref="TotalCropProfitPerDay(Crop)"/>, <see cref="TotalFertilizerCost(Crop)"/>, <see cref="TotalFertilzerCostPerDay(Crop)"/>, <see cref="TotalSeedsCost(Crop)"/>, <see cref="TotalSeedsCostPerDay(Crop)"/> are the main functions used to calculate the profits. <see cref="RetrieveCropsAsOrderderList"/> and <see cref="RetrieveCropInfos"/> are the main functions used to retrieve the list of crops and crop infos.
+    /// Class used to calculate the profits for crops. Contains all the settings for the calculator and the functions used to calculate the profits. Also contains the list of crops and the crop parsers. <see cref="TotalCropProfit(CropDataExpanded)"/> and <see cref="TotalCropProfitPerDay(CropDataExpanded)"/>, <see cref="TotalFertilizerCost(CropDataExpanded)"/>, <see cref="TotalFertilzerCostPerDay(CropDataExpanded)"/>, <see cref="TotalSeedsCost(CropDataExpanded)"/>, <see cref="TotalSeedsCostPerDay(CropDataExpanded)"/> are the main functions used to calculate the profits. <see cref="RetrieveCropsAsOrderderList"/> and <see cref="RetrieveCropInfos"/> are the main functions used to retrieve the list of crops and crop infos.
     /// </summary>
     public class Calculator
     {
@@ -16,7 +16,7 @@ namespace ProfitCalculator.main
         /// <summary>
         /// List of all crops in the game
         /// </summary>
-        private Dictionary<string, Crop> crops;
+        private Dictionary<string, CropDataExpanded> crops;
 
         /// <summary>
         /// Day of the season
@@ -34,9 +34,9 @@ namespace ProfitCalculator.main
         private uint MinDay { get; set; }
 
         /// <summary>
-        /// Season of the year selected
+        /// UtilsSeason of the year selected
         /// </summary>
-        private Season Season { get; set; }
+        private UtilsSeason Season { get; set; }
 
         /// <summary>
         /// Type of produce selected
@@ -88,7 +88,7 @@ namespace ProfitCalculator.main
         /// </summary>
         public Calculator()
         {
-            crops = new Dictionary<string, Crop>();
+            crops = new Dictionary<string, CropDataExpanded>();
         }
 
         /// <summary>
@@ -105,7 +105,7 @@ namespace ProfitCalculator.main
         /// <param name="maxMoney"> <see cref="MaxMoney"/></param>
         /// <param name="useBaseStats"> <see cref="UseBaseStats"/></param>
         /// <param name="crossSeason"> <see cref="CrossSeason"/></param>
-        public void SetSettings(uint day, uint maxDay, uint minDay, Season season, ProduceType produceType, FertilizerQuality fertilizerQuality, bool payForSeeds, bool payForFertilizer, uint maxMoney, bool useBaseStats, bool crossSeason = true)
+        public void SetSettings(uint day, uint maxDay, uint minDay, UtilsSeason season, ProduceType produceType, FertilizerQuality fertilizerQuality, bool payForSeeds, bool payForFertilizer, uint maxMoney, bool useBaseStats, bool crossSeason = true)
         {
             Day = day;
             MaxDay = maxDay;
@@ -140,20 +140,20 @@ namespace ProfitCalculator.main
         /// Retrieves the list of crops as an ordered list by profit.
         /// </summary>
         /// <returns> List of crops ordered by profit </returns>
-        public List<Crop> RetrieveCropsAsOrderderList()
+        public List<CropDataExpanded> RetrieveCropsAsOrderderList()
         {
             // sort crops by profit
             // return list
-            List<Crop> cropList = new();
-            foreach (KeyValuePair<string, Crop> crop in crops)
+            List<CropDataExpanded> cropList = new();
+            foreach (KeyValuePair<string, CropDataExpanded> crop in crops)
             {
                 cropList.Add(crop.Value);
             }
             cropList.Sort((x, y) => y.Price.CompareTo(x.Price));
 #pragma warning disable
-            /*foreach (Crop crop in cropList)
+            /*foreach (CropDataExpanded crop in cropList)
             {
-                Monitor.Log($"OC: {crop.Name} Id: {crop.Id} Seed: {crop.Seeds[0].ParentSheetIndex} ValueWithStats: {crop.Price * this.GetAverageValueForCropAfterModifiers()} #Harvests: {crop.TotalHarvestsWithRemainingDays(Season, FertilizerQuality, (int)Day)} TotalProfit: {TotalCropProfit(crop)} " +
+                Monitor.Log($"OC: {crop.DisplayName} Id: {crop.Id} Seed: {crop.Seeds[0].ParentSheetIndex} ValueWithStats: {crop.Price * this.GetAverageValueForCropAfterModifiers()} #Harvests: {crop.TotalHarvestsWithRemainingDays(UtilsSeason, FertilizerQuality, (int)Day)} TotalProfit: {TotalCropProfit(crop)} " +
                     $"ppd: {TotalCropProfitPerDay(crop)} " +
                     $"tfn: {TotalFertilizerNeeded(crop)} " +
                     $"tfnpd: {TotalFertilzerCostPerDay(crop)} " +
@@ -172,7 +172,7 @@ namespace ProfitCalculator.main
         public List<CropInfo> RetrieveCropInfos()
         {
             List<CropInfo> cropInfos = new();
-            foreach (Crop crop in crops.Values)
+            foreach (CropDataExpanded crop in crops.Values)
             {
                 CropInfo ci = RetrieveCropInfo(crop);
                 if (ci.TotalHarvests >= 1)
@@ -188,9 +188,9 @@ namespace ProfitCalculator.main
         /// <summary>
         /// Retrieves the <see cref="CropInfo"/> for a specific crop. Uses information obtained by calling internal functions to calculate the values and build the object.
         /// </summary>
-        /// <param name="crop"> Crop to retrieve <see cref="CropInfo"/> for </param>
+        /// <param name="crop"> CropDataExpanded to retrieve <see cref="CropInfo"/> for </param>
         /// <returns> <see cref="CropInfo"/> for the crop </returns>
-        private CropInfo RetrieveCropInfo(Crop crop)
+        private CropInfo RetrieveCropInfo(CropDataExpanded crop)
         {
             double totalProfit = TotalCropProfit(crop);
             double profitPerDay = TotalCropProfitPerDay(crop);
@@ -207,7 +207,7 @@ namespace ProfitCalculator.main
             int growingDays = Math.Max(crop.Days - daysToRemove, 1);
 
             int growthTime = growingDays;
-            int regrowthTime = crop.Regrow;
+            int regrowthTime = crop.RegrowDays;
             int productCount = crop.MinHarvests;
             double chanceOfExtraProduct = crop.AverageExtraCropsFromRandomness();
             double chanceOfNormalQuality = GetCropBaseQualityChance();
@@ -221,8 +221,8 @@ namespace ProfitCalculator.main
         /// Adds a crop to the list of crops.
         /// </summary>
         /// <param name="id"> Id of the crop </param>
-        /// <param name="crop"> Crop to add </param>
-        public void AddCrop(string id, Crop crop)
+        /// <param name="crop"> CropDataExpanded to add </param>
+        public void AddCrop(string id, CropDataExpanded crop)
         {
             //check if already exists
             if (!crops.ContainsKey(id))
@@ -241,16 +241,16 @@ namespace ProfitCalculator.main
         #region Crop Profit Calculations
 
         /// <summary>
-        /// Calculates the total profit for a crop. See <see cref="GetAverageValueForCropAfterModifiers"/>, <see cref="Crop.AverageExtraCropsFromRandomness"/>, <see cref="Crop.TotalHarvestsWithRemainingDays"/> for more information.
+        /// Calculates the total profit for a crop. See <see cref="GetAverageValueForCropAfterModifiers"/>, <see cref="CropDataExpanded.AverageExtraCropsFromRandomness"/>, <see cref="CropDataExpanded.TotalHarvestsWithRemainingDays"/> for more information.
         /// </summary>
-        /// <param name="crop"> Crop to calculate profit for </param>
+        /// <param name="crop"> CropDataExpanded to calculate profit for </param>
         /// <returns> Total profit for the crop </returns>
-        private double TotalCropProfit(Crop crop)
+        private double TotalCropProfit(CropDataExpanded crop)
         {
             double totalProfitFromFirstProduce;
             double totalProfitFromRemainingProduce;
 
-            if (!crop.affectByQuality)
+            if (!crop.AffectByQuality)
             {
                 totalProfitFromFirstProduce = 0;
                 totalProfitFromRemainingProduce = crop.Price;
@@ -277,9 +277,9 @@ namespace ProfitCalculator.main
         /// <summary>
         /// Calculates the total profit per day for a crop. See <see cref="TotalCropProfit"/> for more information. Simply devides the total profit by the total available days for the crop.
         /// </summary>
-        /// <param name="crop"> Crop to calculate profit per day for </param>
+        /// <param name="crop"> CropDataExpanded to calculate profit per day for </param>
         /// <returns> Total profit per day for the crop </returns>
-        private double TotalCropProfitPerDay(Crop crop)
+        private double TotalCropProfitPerDay(CropDataExpanded crop)
         {
             double totalProfit = TotalCropProfit(crop);
             if (totalProfit == 0)
@@ -293,11 +293,11 @@ namespace ProfitCalculator.main
         /// <summary>
         /// Total fertilizer needed for a crop. If planted in greenhouse or if the crop only grows in one season, then only 1 fertilizer is needed. Otherwise, the total number of days the crop is available is divided by 28 and rounded up to get the total number of fertilizer needed.
         /// </summary>
-        /// <param name="crop"> Crop to calculate fertilizer needed for </param>
+        /// <param name="crop"> CropDataExpanded to calculate fertilizer needed for </param>
         /// <returns> Total fertilizer needed for the crop </returns>
-        private int TotalFertilizerNeeded(Crop crop)
+        private int TotalFertilizerNeeded(CropDataExpanded crop)
         {
-            if (Season == Season.Greenhouse || crop.Seasons.Length == 1)
+            if (Season == UtilsSeason.Greenhouse || crop.CropData.Seasons.Count == 1)
                 return 1;
             else
             {
@@ -308,9 +308,9 @@ namespace ProfitCalculator.main
         /// <summary>
         /// Total fertilizer cost for a crop. See <see cref="TotalFertilizerNeeded"/> and <see cref="Utils.FertilizerPrices(FertilizerQuality)"/> for more information.
         /// </summary>
-        /// <param name="crop"> Crop to calculate fertilizer cost for </param>
+        /// <param name="crop"> CropDataExpanded to calculate fertilizer cost for </param>
         /// <returns> Total fertilizer cost for the crop </returns>
-        private int TotalFertilizerCost(Crop crop)
+        private int TotalFertilizerCost(CropDataExpanded crop)
         {
             if (!PayForFertilizer)
             {
@@ -324,9 +324,9 @@ namespace ProfitCalculator.main
         /// <summary>
         /// Total fertilizer cost per day for a crop. See <see cref="TotalFertilizerCost"/> for more information. Simply devides the total fertilizer cost by the total available days for the crop.
         /// </summary>
-        /// <param name="crop"> Crop to calculate fertilizer cost per day for </param>
+        /// <param name="crop"> CropDataExpanded to calculate fertilizer cost per day for </param>
         /// <returns> Total fertilizer cost per day for the crop </returns>
-        private double TotalFertilzerCostPerDay(Crop crop)
+        private double TotalFertilzerCostPerDay(CropDataExpanded crop)
         {
             int fertCost = TotalFertilizerCost(crop);
             if (fertCost == 0)
@@ -340,26 +340,26 @@ namespace ProfitCalculator.main
         /// <summary>
         /// Total seeds needed for a crop. If the crop regrows, then only 1 seed is needed. Otherwise, the total number of harvests is calculated and multiplied by the number of seeds needed per harvest.
         /// </summary>
-        /// <param name="crop"> Crop to calculate seeds needed for </param>
+        /// <param name="crop"> CropDataExpanded to calculate seeds needed for </param>
         /// <returns> Total seeds needed for the crop </returns>
-        private int TotalSeedsNeeded(Crop crop)
+        private int TotalSeedsNeeded(CropDataExpanded crop)
         {
-            if (crop.Regrow > 0 && crop.TotalAvailableDays(Season, (int)Day) > 0)
+            if (crop.RegrowDays > 0 && crop.TotalAvailableDays(Season, (int)Day) > 0)
                 return 1;
             else return crop.TotalHarvestsWithRemainingDays(Season, FertilizerQuality, (int)Day);
         }
 
         /// <summary>
-        /// Total seeds cost for a crop. See <see cref="TotalSeedsNeeded"/> and <see cref="Crop.GetSeedPrice"/> for more information.
+        /// Total seeds cost for a crop. See <see cref="TotalSeedsNeeded"/> and <see cref="CropDataExpanded.GetSeedPrice"/> for more information.
         /// </summary>
-        /// <param name="crop"> Crop to calculate seeds cost for </param>
+        /// <param name="crop"> CropDataExpanded to calculate seeds cost for </param>
         /// <returns> Total seeds cost for the crop </returns>
-        private int TotalSeedsCost(Crop crop)
+        private int TotalSeedsCost(CropDataExpanded crop)
         {
             if (!PayForSeeds)
                 return 0;
             int seedsNeeded = TotalSeedsNeeded(crop);
-            int seedCost = crop.GetSeedPrice();
+            int seedCost = crop.SeedPrice;
 
             return seedsNeeded * seedCost;
         }
@@ -369,7 +369,7 @@ namespace ProfitCalculator.main
         /// </summary>
         /// <param name="crop"></param>
         /// <returns></returns>
-        private double TotalSeedsCostPerDay(Crop crop)
+        private double TotalSeedsCostPerDay(CropDataExpanded crop)
         {
             int seedCost = TotalSeedsCost(crop);
             if (seedCost == 0)

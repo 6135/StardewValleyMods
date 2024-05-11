@@ -29,9 +29,9 @@ namespace ProfitCalculator.ui
         /// <param name="w"> The width of the box</param>
         /// <param name="h"> The height of the box</param>
         /// <param name="crop"> The cropInfo to display. <see cref="CropInfo"/> </param>
-        public CropBox(int x, int y, int w, int h, CropInfo crop) : base(x, y, w, h, () => crop.Crop.Name, () => crop.Crop.Name, () => crop.Crop.Name)
+        public CropBox(int x, int y, int w, int h, CropInfo crop) : base(x, y, w, h, () => crop.Crop.DisplayName, () => crop.Crop.DisplayName, () => crop.Crop.DisplayName)
         {
-            this.mainText = crop.Crop.Name;
+            this.mainText = crop.Crop.DisplayName;
             if (this.mainText.Length < 1)
             {
                 this.mainText = "PlaceHolder";

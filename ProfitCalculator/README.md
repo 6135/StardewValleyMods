@@ -72,18 +72,12 @@ If you want to add a crop that is not in the game, you can do so by adding a `cr
 
 ### TODO:
 
-- [X] Add support for Vanilla crops.
 - [X] Take Fertilizer into account.
 - [X] Take Quality into account.
-- [X] Add support for JA crops.
-- [X] Add support for DGA crops.
 - [ ] Add proper scaling support for options menu.
-- [ ] Obtain Seed prices from stores and from DGA to get more accurate seed prices.
+- [ ] Obtain Seed prices from stores
 - [ ] Add support to multi-drop crops.
 - [ ] Add support for fruit trees.
 - [ ] Add options to disable cross season crops.
-- [ ] Automatically get accurate price for modded crop seeds. Currently it uses the base price it finds and not the actual shop price.
 - [ ] Add Support for different types of output. (i.e. Jelly, Wine, Juice, etc.)
 - [ ] Possibly add easer ways to add manual crops and seed prices maybe through a config menu or command.
-- [ ] Take into account farming level buffs.
-- [ ] Make API to allow other mods to add crops or Providers.

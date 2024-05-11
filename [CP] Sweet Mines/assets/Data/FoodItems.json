@@ -113,7 +113,7 @@
               }
             }
           ]
-        }
+        },
         //**********Cakes Slices**********
         "{{ModID}}_PinkCakeSlice": {
           "Name": "{{ModID}}_PinkCakeSlice",

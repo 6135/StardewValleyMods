@@ -1,7 +1,6 @@
 ﻿using System;
 using System.IO;
 using GenericModConfigMenu;
-using JsonAssets;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using ProfitCalculator.menus;
@@ -12,7 +11,7 @@ using StardewModdingAPI.Utilities;
 using StardewValley;
 using StardewValley.Monsters;
 using ProfitCalculator.main;
-using Crop = ProfitCalculator.main.Crop;
+using CropDataExpanded = ProfitCalculator.main.CropDataExpanded;
 
 #nullable enable
 
@@ -25,7 +24,7 @@ namespace ProfitCalculator
         private ProfitCalculatorMainMenu? mainMenu;
 
         /// <summary>The mod's calculator functions.</summary>
-        public static Calculator? Calculator;
+        public static Calculator Calculator { get; private set; }
 
         private IModHelper? helper;
         private IGenericModConfigMenuApi? configMenu;
@@ -59,10 +58,7 @@ namespace ProfitCalculator
         }
 
         /// <inheritdoc/>
-        public override object GetApi()
-        {
-            return API;
-        }
+        public override object GetApi() => API;
 
         /*********
         ** Private methods
@@ -76,6 +72,7 @@ namespace ProfitCalculator
             {
                 Monitor.Log($"Generic Mod Config Menu not found", LogLevel.Debug);
             }
+
             Utils.Initialize(helper, Monitor);
         }
 
@@ -95,8 +92,12 @@ namespace ProfitCalculator
             // add keybinding setting
             configMenu.AddKeybind(
                 mod: this.ModManifest,
-                getValue: () => this.Config.HotKey,
-                setValue: value => this.Config.HotKey = value,
+                getValue: () => this.Config?.HotKey ?? SButton.F8,
+                setValue: value =>
+                {
+                    if (this.Config != null)
+                        this.Config.HotKey = value;
+                },
                 name: () => (this.Helper.Translation.Get("open") + " " + this.Helper.Translation.Get("app-name")).ToString(),
                 tooltip: () => this.Helper.Translation.Get("hot-key-tooltip")
             );
@@ -105,8 +106,12 @@ namespace ProfitCalculator
                 mod: this.ModManifest,
                 name: () => this.Helper.Translation.Get("tooltip-delay"),
                 tooltip: () => this.Helper.Translation.Get("tooltip-delay-desc"),
-                getValue: () => this.Config.ToolTipDelay,
-                setValue: value => this.Config.ToolTipDelay = value,
+                getValue: () => this.Config?.ToolTipDelay ?? 30,
+                setValue: value =>
+                {
+                    if (this.Config != null)
+                        this.Config.ToolTipDelay = value;
+                },
                 min: 0,
                 max: 1000
             );
@@ -115,7 +120,7 @@ namespace ProfitCalculator
         [EventPriority(EventPriority.Low - 9999)]
         private void OnSaveLoadedParseCrops(object? sender, SaveLoadedEventArgs? e)
         {
-            ICropParser cropParser = new VanillaCropParser();
+            CropBuilder cropParser = new();
             foreach (var crop in cropParser.BuildCrops())
             {
                 AddCrop(crop.Key, crop.Value);
@@ -134,7 +139,7 @@ namespace ProfitCalculator
         private void OnButtonPressed(object? sender, ButtonPressedEventArgs? e)
         {
             // ignore if player hasn't loaded a save yet
-            if (!Context.IsWorldReady)
+            if (!Context.IsWorldReady || e == null)
                 return;
 
             //check if button pressed is button in config
@@ -169,8 +174,8 @@ namespace ProfitCalculator
         /// Adds a crop to the Profit Calculator.
         /// </summary>
         /// <param name="id"> The id of the crop. Must be unique.</param>
-        /// <param name="crop"> The crop to add. <see cref="Crop"/> </param>
-        public void AddCrop(string id, Crop crop)
+        /// <param name="crop"> The crop to add. <see cref="CropDataExpanded"/> </param>
+        public void AddCrop(string id, CropDataExpanded crop)
         {
             Calculator?.AddCrop(id, crop);
         }

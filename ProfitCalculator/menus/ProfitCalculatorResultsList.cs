@@ -384,10 +384,6 @@ namespace ProfitCalculator.menus
         public override void update(GameTime time)
         {
             base.update(time);
-            Vector2 defaultPosition = new(
-                (Game1.viewport.Width * Game1.options.zoomLevel * (1 / Game1.options.uiScale)) / 2 - (widthOnScreen / 2),
-                (Game1.viewport.Height * Game1.options.zoomLevel * (1 / Game1.options.uiScale)) / 2 - (heightOnScreen / 2)
-            );
             //update all the options and labels and buttons
             foreach (BaseOption option in Options)
             {

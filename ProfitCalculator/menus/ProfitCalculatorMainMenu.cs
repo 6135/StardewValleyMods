@@ -28,7 +28,7 @@ namespace ProfitCalculator.menus
         public uint MinDay { get; set; } = 1;
 
         /// <summary> The season for planting. </summary>
-        public Season Season { get; set; } = Utils.Season.Spring;
+        public UtilsSeason Season { get; set; } = UtilsSeason.Spring;
 
         /// <summary>
         /// Sets the season for planting.
@@ -36,7 +36,7 @@ namespace ProfitCalculator.menus
         /// <param name="season"> The season to set. String, case insensetive</param>
         public void SetSeason(string season)
         {
-            Season = (Season)Season.Parse(typeof(Season), season, false);
+            Season = (UtilsSeason)Enum.Parse(typeof(UtilsSeason), season, false);
         }
 
         /// <summary> The type of produce to calculate with, for now only raw works. </summary>
@@ -102,7 +102,7 @@ namespace ProfitCalculator.menus
             //Day int
 
             this.SetUpDayOptionPositions();
-            //Season dropdown
+            //UtilsSeason dropdown
             this.SetUpSeasonOptionPositions();
             //Produce Type dropdown
             this.SetUpProduceTypeOptionPositions();
@@ -193,11 +193,11 @@ namespace ProfitCalculator.menus
                 this.yPositionOnScreen + spaceToClearTopBorder + Game1.tileSize + Game1.tileSize / 4,
                 name: () => "season",
                 label: () => Helper.Translation.Get("season"),
-                choices: () => Utils.Season.GetNames(typeof(Utils.Season)),
-                labels: () => Utils.GetAllTranslatedSeasons(),
+                choices: () => Enum.GetNames(typeof(UtilsSeason)),
+                labels: () => GetAllTranslatedSeasons(),
                 valueGetter: this.Season.ToString,
                 valueSetter:
-                    (string value) => this.Season = (Season)Utils.Season.Parse(typeof(Season), value, true)
+                    (string value) => this.Season = (Utils.UtilsSeason)Enum.Parse(typeof(Utils.UtilsSeason), value, true)
             )
             {
                 MaxValuesAtOnce = Enum.GetValues(typeof(Season)).Length//size of enum
@@ -562,9 +562,9 @@ namespace ProfitCalculator.menus
             //set all the options to default values
             //get day from game
             Day = (uint)Game1.dayOfMonth;
-            Season = (Season)Season.Parse(typeof(Season), Game1.currentSeason, true);
-            ProduceType = Utils.ProduceType.Raw;
-            FertilizerQuality = Utils.FertilizerQuality.None;
+            Season = (UtilsSeason)Enum.Parse(typeof(UtilsSeason), Game1.currentSeason, true);
+            ProduceType = ProduceType.Raw;
+            FertilizerQuality = FertilizerQuality.None;
             PayForSeeds = true;
             PayForFertilizer = false;
             MaxMoney = (uint)Game1.player.team.money.Value;

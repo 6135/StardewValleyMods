@@ -9,7 +9,7 @@ namespace ProfitCalculator.main
     public class CropInfo
     {
         ///<summary> The crop. </summary>
-        public readonly Crop Crop;
+        public readonly CropDataExpanded Crop;
 
         /// <summary> The total profit. </summary>
         public readonly double TotalProfit;
@@ -83,7 +83,7 @@ namespace ProfitCalculator.main
         /// <param name="chanceOfSilverQuality"> The chance of silver quality. </param>
         /// <param name="chanceOfGoldQuality"> The chance of gold quality. </param>
         /// <param name="chanceOfIridiumQuality"> The chance of iridium quality. </param>
-        public CropInfo(Crop crop, double totalProfit, double profitPerDay, double totalSeedLoss, double seedLossPerDay, double totalFertilizerLoss, double fertilizerLossPerDay, Utils.ProduceType produceType, int duration, int totalHarvests, int growthTime, int regrowthTime, int productCount, double chanceOfExtraProduct, double chanceOfNormalQuality, double chanceOfSilverQuality, double chanceOfGoldQuality, double chanceOfIridiumQuality)
+        public CropInfo(CropDataExpanded crop, double totalProfit, double profitPerDay, double totalSeedLoss, double seedLossPerDay, double totalFertilizerLoss, double fertilizerLossPerDay, Utils.ProduceType produceType, int duration, int totalHarvests, int growthTime, int regrowthTime, int productCount, double chanceOfExtraProduct, double chanceOfNormalQuality, double chanceOfSilverQuality, double chanceOfGoldQuality, double chanceOfIridiumQuality)
         {
             Crop = crop;
             TotalProfit = totalProfit - totalSeedLoss - totalFertilizerLoss;
@@ -114,7 +114,7 @@ namespace ProfitCalculator.main
         public override string ToString()
         { //return object in json format
             return "{" +
-                $"\"Crop\": {Crop.Name}," +
+                $"\"CropDataExpanded\": {Crop.Item.Name}," +
                 $"\"TotalProfit\": {TotalProfit}," +
                 $"\"ProfitPerDay\": {ProfitPerDay}," +
                 $"\"TotalSeedLoss\": {TotalSeedLoss}," +
@@ -143,7 +143,7 @@ namespace ProfitCalculator.main
         public override bool Equals(object obj)
         {
             return obj is CropInfo cropInfo &&
-                   EqualityComparer<Crop>.Default.Equals(Crop, cropInfo.Crop) &&
+                   EqualityComparer<CropDataExpanded>.Default.Equals(Crop, cropInfo.Crop) &&
                    TotalProfit == cropInfo.TotalProfit &&
                    ProfitPerDay == cropInfo.ProfitPerDay &&
                    TotalSeedLoss == cropInfo.TotalSeedLoss &&

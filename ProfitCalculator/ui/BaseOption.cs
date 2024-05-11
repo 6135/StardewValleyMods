@@ -65,7 +65,7 @@ namespace ProfitCalculator.ui
         /// <summary>The tooltip text shown when the cursor hovers on the field, or <c>null</c> to disable the tooltip.</summary>
         public Func<string> Tooltip { get; }
 
-        /// <summary>The Name to show in the form.</summary>
+        /// <summary>The DisplayName to show in the form.</summary>
         public Func<string> Name { get; set; }
 
         /// <summary>The Label to show in the form.</summary>

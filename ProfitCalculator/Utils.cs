@@ -1,5 +1,4 @@
-﻿using JsonAssets;
-using Microsoft.Xna.Framework.Graphics;
+﻿using Microsoft.Xna.Framework.Graphics;
 using StardewModdingAPI;
 using StardewValley.Locations;
 using System;
@@ -26,21 +25,14 @@ namespace ProfitCalculator
         public static IMonitor? Monitor { get; set; }
 
         /// <summary>
-        /// The Json Assets API. Declared here to prevend the need to pass it to every class that needs it.
-        /// </summary>
-        public static IApi? JApi { get; set; }
-
-        /// <summary>
         /// Sets the mod's helper, monitor, and APIs static variables. This method should be called by the mod's entry point.
         /// </summary>
         /// <param name="_helper"> The mod's helper.</param>
         /// <param name="_monitor"> The mod's monitor.</param>
-        /// <param name="jApi"> The Json Assets API.</param>
-        public static void Initialize(IModHelper _helper, IMonitor _monitor, IApi? jApi = null)
+        public static void Initialize(IModHelper? _helper, IMonitor? _monitor)
         {
             Helper = _helper;
             Monitor = _monitor;
-            JApi = jApi;
         }
 
         /// <summary>
@@ -48,23 +40,23 @@ namespace ProfitCalculator
         /// </summary>
         /// <param name="season"> The season to get the days of.</param>
         /// <returns> The number of days in the season.</returns>
-        public static int GetSeasonDays(Season season)
+        public static int GetSeasonDays(UtilsSeason season)
         {
             return season switch
             {
-                Season.Spring => 28,
-                Season.Summer => 28,
-                Season.Fall => 28,
-                Season.Winter => 28,
-                Season.Greenhouse => 112,
+                UtilsSeason.Spring => 28,
+                UtilsSeason.Summer => 28,
+                UtilsSeason.Fall => 28,
+                UtilsSeason.Winter => 28,
+                UtilsSeason.Greenhouse => 112,
                 _ => 0,
             };
         }
 
         /// <summary>
-        /// Season enum.
+        /// UtilsSeason enum.
         /// </summary>
-        public enum Season
+        public enum UtilsSeason
         {
             /// <summary> Spring season. </summary>
             Spring = 0,
@@ -137,7 +129,7 @@ namespace ProfitCalculator
         /// </summary>
         /// <param name="season"> The season to get the translated name of.</param>
         /// <returns> The translated name of the season.</returns>
-        public static string GetTranslatedSeason(Season season)
+        public static string GetTranslatedSeason(UtilsSeason season)
         {
             return GetTranslatedName(season.ToString());
         }
@@ -168,7 +160,7 @@ namespace ProfitCalculator
         /// <returns> Array of all translated season names.</returns>
         public static string[] GetAllTranslatedSeasons()
         {
-            string[] names = Enum.GetNames(typeof(Season));
+            string[] names = Enum.GetNames(typeof(UtilsSeason));
             string[] translatedNames = new string[names.Length];
             foreach (string name in names)
             {

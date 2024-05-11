@@ -1,9 +1,10 @@
 ﻿using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using StardewValley;
+using StardewValley.GameData.Crops;
 using System;
 using static ProfitCalculator.Utils;
-using Crop = ProfitCalculator.main.Crop;
+using CropDataExpanded = ProfitCalculator.main.CropDataExpanded;
 
 #nullable enable
 
@@ -17,40 +18,13 @@ namespace ProfitCalculator
         /// <summary>
         /// Adds a crop to the Profit Calculator.
         /// </summary>
-        /// <param name="id"> The id of the crop. Must be unique.</param>
-        /// <param name="item"> The item to use for the crop. <see cref="Item"/> </param>
-        /// <param name="name"> The name of the crop.</param>
-        /// <param name="sprite"> The sprite of the crop. Tuple with source ret</param>
-        /// <param name="isTrellisCrop"> Whether the crop is a trellis crop.</param>
-        /// <param name="isGiantCrop"> Whether the crop is a giant crop.</param>
-        /// <param name="giantSprite"> The sprite of the giant crop. Tuple with source ret</param>
-        /// <param name="seeds"> The seeds of the crop. <see cref="Item"/> </param>
-        /// <param name="phases"> The phases of the crop.</param>
-        /// <param name="regrow"> The regrow of the crop.</param>
-        /// <param name="isPaddyCrop"> Whether the crop is a paddy crop.</param>
-        /// <param name="seasons"> The seasons of the crop.</param>
-        /// <param name="harvestChanceValues"> The harvest chance values of the crop.</param>
-        /// <param name="affectByQuality"> Whether the crop is affected by quality.</param>
-        /// <param name="affectByFertilizer"> Whether the crop is affected by fertilizer.</param>
-        /// <param name="seedPrice"> The price of the seeds.</param>
         void AddCrop
             (
-                string id,
+                CropData cropData,
                 Item item,
-                string name,
-                Tuple<Texture2D, Rectangle>? sprite,
-                bool isTrellisCrop,
-                bool isGiantCrop,
-                Tuple<Texture2D, Rectangle>? giantSprite,
-                Item[] seeds,
-                int[] phases,
-                int regrow,
-                bool isPaddyCrop,
-                string[] seasons,
-                double[] harvestChanceValues,
+                Item seeds,
                 bool affectByQuality = true,
-                bool affectByFertilizer = true,
-                int? seedPrice = null
+                bool affectByFertilizer = true
             );
     }
 
@@ -72,32 +46,22 @@ namespace ProfitCalculator
 
         /// <inheritdoc/>
         public void AddCrop(
-                string id,
+                CropData cropData,
                 Item item,
-                string name,
-                Tuple<Texture2D, Rectangle>? sprite,
-                bool isTrellisCrop,
-                bool isGiantCrop,
-                Tuple<Texture2D, Rectangle>? giantSprite,
-                Item[] seeds,
-                int[] phases,
-                int regrow,
-                bool isPaddyCrop,
-                string[] seasons,
-                double[] harvestChanceValues,
+                Item seeds,
                 bool affectByQuality = true,
-                bool affectByFertilizer = true,
-                int? seedPrice = null
+                bool affectByFertilizer = true
             )
         {
-            //convert string[] to Season[]
-            Season[] seasonsEnum = new Season[seasons.Length];
-            for (int i = 0; i < seasons.Length; i++)
+            //convert string[] to UtilsSeason[]
+            UtilsSeason[] seasonsEnum = new UtilsSeason[cropData.Seasons.Count];
+
+            for (int i = 0; i < cropData.Seasons.Count; i++)
             {
-                seasonsEnum[i] = (Season)Enum.Parse(typeof(Season), seasons[i], true);
+                seasonsEnum[i] = (UtilsSeason)Enum.Parse(typeof(UtilsSeason), cropData.Seasons[i].ToString(), true);
             }
-            Crop crop = new(id, item, name, sprite, isTrellisCrop, isGiantCrop, giantSprite, seeds, phases, regrow, isPaddyCrop, seasonsEnum, harvestChanceValues, affectByQuality, affectByFertilizer, seedPrice);
-            Mod.AddCrop(id, crop);
+            CropDataExpanded crop = new(cropData, item, seeds, -1, affectByQuality, affectByFertilizer);
+            Mod.AddCrop(cropData.HarvestItemId, crop);
         }
     }
 }
