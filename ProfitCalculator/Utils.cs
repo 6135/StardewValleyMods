@@ -1,4 +1,5 @@
 ﻿using Microsoft.Xna.Framework.Graphics;
+using ProfitCalculator.main;
 using StardewModdingAPI;
 using StardewValley.Locations;
 using System;
@@ -24,6 +25,8 @@ namespace ProfitCalculator
         /// </summary>
         public static IMonitor? Monitor { get; set; }
 
+        public static ShopAcessor? ShopAcessor { get; set; }
+
         /// <summary>
         /// Sets the mod's helper, monitor, and APIs static variables. This method should be called by the mod's entry point.
         /// </summary>
@@ -34,6 +37,8 @@ namespace ProfitCalculator
             Helper = _helper;
             Monitor = _monitor;
         }
+
+        public static UtilsSeason GetSelectedSeason() => ModEntry.Calculator?.GetSeason() ?? UtilsSeason.Spring;
 
         /// <summary>
         /// Gets the days of a season. Unused.
@@ -51,6 +56,11 @@ namespace ProfitCalculator
                 UtilsSeason.Greenhouse => 112,
                 _ => 0,
             };
+        }
+
+        public static void BuildAccessors()
+        {
+            ShopAcessor = new();
         }
 
         /// <summary>

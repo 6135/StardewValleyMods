@@ -21,17 +21,6 @@ namespace ProfitCalculator.main
     /// </summary>
     internal class CropBuilder
     {
-        private readonly Dictionary<string, int>? seedPriceOverrides;
-
-        /// <summary>
-        /// Constructor for the VanillaCropParser class.
-        /// </summary>
-        ///
-        public CropBuilder()
-        {
-            seedPriceOverrides = Helper?.ModContent.Load<Dictionary<string, int>>(Path.Combine("assets", "SeedPrices.json"));
-        }
-
         /// <inheritdoc/>
         /// <summary>
         /// Builds a dictionary of crops from the game files. Accesses the crops from the game files (@"Data\Crops) and parses them into a dictionary.
@@ -64,8 +53,7 @@ namespace ProfitCalculator.main
         {
             Item seed = new SObject(id, 1);
             Item item = new SObject(cropData.HarvestItemId == "23" ? id : cropData.HarvestItemId, 1);
-            int seedPrice = seedPriceOverrides?.ContainsKey(seed.itemId.Value) == true ? seedPriceOverrides[seed.itemId.Value] : -1;
-            return new(cropData, item, seed, seedPrice);
+            return new(cropData, item, seed);
         }
     }
 }

@@ -38,6 +38,8 @@ namespace ProfitCalculator.main
         /// </summary>
         private UtilsSeason Season { get; set; }
 
+        public UtilsSeason GetSeason() => Season;
+
         /// <summary>
         /// Type of produce selected
         /// TODO: Implement this.

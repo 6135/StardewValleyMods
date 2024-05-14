@@ -42,20 +42,16 @@ namespace ProfitCalculator.main
         /// <param name="_cropData">Crop's full Data</param>
         /// <param name="_item" >Harvested Item</param>
         /// <param name="_seed" >Seed Item</param>
-        /// <param name="_seedPrice" >Seed Price Override</param>
         /// <param name="_affectedByFertilizer" >Whether the crop is affected by fertilizer or not</param>
         /// <param name="_affectedByQuality" >Whether the crop is affected by fertilizer quality or not</param>
-        public CropDataExpanded(CropData _cropData, Item _item, Item _seed, int _seedPrice = -1, bool _affectedByQuality = true, bool _affectedByFertilizer = true)
+        public CropDataExpanded(CropData _cropData, Item _item, Item _seed, bool _affectedByQuality = true, bool _affectedByFertilizer = true)
         {
             CropData = _cropData;
             Seed = _seed;
             Item = _item;
             AffectByQuality = _affectedByQuality;
             AffectByFertilizer = _affectedByFertilizer;
-            if (_seedPrice == -1)
-                SeedPrice = (new SObject(Seed.QualifiedItemId, 1)).salePrice();
-            else
-                SeedPrice = _seedPrice;
+            SeedPrice = Utils.ShopAcessor?.GetCheapestSeedPrice(_seed.QualifiedItemId) ?? 0;
 
             Texture2D spriteSheet = ItemRegistry.GetData(Item.QualifiedItemId).GetTexture();
 

@@ -29,15 +29,11 @@ namespace ProfitCalculator
         private IModHelper? helper;
         private IGenericModConfigMenuApi? configMenu;
 
-        /// <summary>The mod's API.</summary>
-        public static ModApi API { get; private set; }
-
         /// <summary>The mod entry point, called after the mod is first loaded.</summary>
         /// <param name="helper">Provides simplified APIs for writing mods.</param>
         public override void Entry(IModHelper helper)
         {
             Calculator = new();
-            API = new ModApi(this);
             Monitor.Log($"Helpers initialized", LogLevel.Debug);
             this.helper = helper;
 
@@ -56,9 +52,6 @@ namespace ProfitCalculator
             helper.Events.GameLoop.SaveLoaded += OnSaveGameLoaded;
             helper.Events.Input.MouseWheelScrolled += this.OnMouseWheelScrolled;
         }
-
-        /// <inheritdoc/>
-        public override object GetApi() => API;
 
         /*********
         ** Private methods
@@ -120,6 +113,7 @@ namespace ProfitCalculator
         [EventPriority(EventPriority.Low - 9999)]
         private void OnSaveLoadedParseCrops(object? sender, SaveLoadedEventArgs? e)
         {
+            Utils.BuildAccessors();
             CropBuilder cropParser = new();
             foreach (var crop in cropParser.BuildCrops())
             {
@@ -175,7 +169,7 @@ namespace ProfitCalculator
         /// </summary>
         /// <param name="id"> The id of the crop. Must be unique.</param>
         /// <param name="crop"> The crop to add. <see cref="CropDataExpanded"/> </param>
-        public void AddCrop(string id, CropDataExpanded crop)
+        public static void AddCrop(string id, CropDataExpanded crop)
         {
             Calculator?.AddCrop(id, crop);
         }
