@@ -25,7 +25,7 @@ namespace ProfitCalculator
         /// </summary>
         public static IMonitor? Monitor { get; set; }
 
-        public static ShopAcessor? ShopAcessor { get; set; }
+        public static ShopAccessor? ShopAcessor { get; set; }
 
         /// <summary>
         /// Sets the mod's helper, monitor, and APIs static variables. This method should be called by the mod's entry point.

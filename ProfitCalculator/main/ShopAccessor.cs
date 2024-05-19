@@ -15,12 +15,12 @@ using SObject = StardewValley.Object;
 
 namespace ProfitCalculator.main
 {
-    public class ShopAcessor
+    public class ShopAccessor
     {
         private readonly Cache<Dictionary<string, int>> seedPriceCache;
         private readonly Cache<Dictionary<string, Dictionary<ISalable, ItemStockInformation>>> shopStock;
 
-        public ShopAcessor()
+        public ShopAccessor()
         {
             //Helper?.ModContent.Load<Dictionary<string, int>>(Path.Combine("assets", "SeedPrices.json"))
             seedPriceCache = new(
@@ -121,6 +121,12 @@ namespace ProfitCalculator.main
             return stock;
         }
 
+        public void InvalidateCaches()
+        {
+            seedPriceCache.InvalidateCache();
+            shopStock.InvalidateCache();
+        }
+
         public int GetCheapestSeedPrice(string cropId)
         {
             string unqualifiedId = cropId.TrimStart()[3..];
@@ -128,6 +134,7 @@ namespace ProfitCalculator.main
             {
                 return seedPriceCache.GetCache()[unqualifiedId];
             }
+
             var chace = shopStock.GetCache();
             return chace
                 .SelectMany(shop => shop.Value)
@@ -145,8 +152,8 @@ namespace ProfitCalculator.main
             {
                 return seedPriceCache.GetCache()[unqualifiedId];
             }
-            var chace = shopStock.GetCache();
-            return chace
+            var cache = shopStock.GetCache();
+            return cache
                 .SelectMany(shop => shop.Value)
                 .Where(item => item.Key.QualifiedItemId == cropId)
                 .Select(item => item.Value.Price)

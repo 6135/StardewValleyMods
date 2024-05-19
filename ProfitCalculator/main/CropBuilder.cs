@@ -49,7 +49,7 @@ namespace ProfitCalculator.main
         /// <param name="cropData"> The data of the crop. </param>
         /// <param name="id"> The id of the crop. </param>
         /// <returns> The crop that was built. </returns>
-        private CropDataExpanded? BuildCrop(CropData cropData, string id)
+        private static CropDataExpanded? BuildCrop(CropData cropData, string id)
         {
             Item seed = new SObject(id, 1);
             Item item = new SObject(cropData.HarvestItemId == "23" ? id : cropData.HarvestItemId, 1);

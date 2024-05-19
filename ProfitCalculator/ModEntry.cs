@@ -51,11 +51,18 @@ namespace ProfitCalculator
             helper.Events.GameLoop.SaveLoaded += OnSaveLoadedParseCrops;
             helper.Events.GameLoop.SaveLoaded += OnSaveGameLoaded;
             helper.Events.Input.MouseWheelScrolled += this.OnMouseWheelScrolled;
+            helper.Events.GameLoop.DayStarted += OnDayStartedResetCache;
         }
 
         /*********
         ** Private methods
         *********/
+
+        [EventPriority(EventPriority.Low - 9999)]
+        private void OnDayStartedResetCache(object? sender, DayStartedEventArgs? e)
+        {
+            Utils.ShopAcessor?.InvalidateCaches();
+        }
 
         private void OnGameLaunchedAPIs(object? sender, GameLaunchedEventArgs? e)
         {

@@ -34,7 +34,13 @@ namespace ProfitCalculator.main
         public readonly bool AffectByFertilizer;
 
         /// <value>Property <c>Price</c> represents the price of the crop. Without Shop Modifiers </value>
-        public readonly int SeedPrice;
+        public int SeedPrice
+        {
+            get
+            {
+                return Utils.ShopAcessor?.GetCheapestSeedPrice(Seed.QualifiedItemId) ?? 0;
+            }
+        }
 
         /// <summary>
         /// Constructor for <c>CropDataExpanded</c> class. It's used to create a new instance of the class.
@@ -51,9 +57,17 @@ namespace ProfitCalculator.main
             Item = _item;
             AffectByQuality = _affectedByQuality;
             AffectByFertilizer = _affectedByFertilizer;
-            SeedPrice = Utils.ShopAcessor?.GetCheapestSeedPrice(_seed.QualifiedItemId) ?? 0;
 
-            Texture2D spriteSheet = ItemRegistry.GetData(Item.QualifiedItemId).GetTexture();
+            Texture2D spriteSheet;
+            try
+            {
+                spriteSheet = ItemRegistry.GetData(Item.itemId.Value).GetTexture();
+            }
+            catch (Exception e)
+            {
+                Monitor?.Log($"Error loading sprite for {Item.DisplayName}: {e.Message}", LogLevel.Error);
+                spriteSheet = Game1.objectSpriteSheet;
+            }
 
             Sprite = new(
                 spriteSheet,
