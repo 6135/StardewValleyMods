@@ -52,6 +52,7 @@ namespace ProfitCalculator.main
         public void RebuildCache()
         {
             cache = this.buildCache();
+            isCacheValid = true;
         }
 
         /// <summary>

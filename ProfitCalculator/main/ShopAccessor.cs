@@ -127,6 +127,12 @@ namespace ProfitCalculator.main
             shopStock.InvalidateCache();
         }
 
+        public void ForceRebuildCache()
+        {
+            seedPriceCache.RebuildCache();
+            shopStock.RebuildCache();
+        }
+
         public int GetCheapestSeedPrice(string cropId)
         {
             string unqualifiedId = cropId.TrimStart()[3..];

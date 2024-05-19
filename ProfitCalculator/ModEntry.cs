@@ -61,7 +61,7 @@ namespace ProfitCalculator
         [EventPriority(EventPriority.Low - 9999)]
         private void OnDayStartedResetCache(object? sender, DayStartedEventArgs? e)
         {
-            Utils.ShopAcessor?.InvalidateCaches();
+            Utils.ShopAcessor?.ForceRebuildCache();
         }
 
         private void OnGameLaunchedAPIs(object? sender, GameLaunchedEventArgs? e)
