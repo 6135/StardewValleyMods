@@ -1,19 +1,7 @@
-﻿using HarmonyLib;
-using StardewModdingAPI;
-using StardewValley;
-using StardewValley.GameData.Shops;
-using StardewValley.Internal;
-using StardewValley.Menus;
-using System;
+﻿using StardewValley;
 using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using static ProfitCalculator.Utils;
-using SObject = StardewValley.Object;
 
-namespace ProfitCalculator.main
+namespace ProfitCalculator.main.accessors
 {
     public class MachineAccessor
     {

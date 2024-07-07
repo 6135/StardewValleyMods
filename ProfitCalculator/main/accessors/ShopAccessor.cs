@@ -1,19 +1,13 @@
-﻿using HarmonyLib;
-using StardewModdingAPI;
+﻿using StardewModdingAPI;
 using StardewValley;
 using StardewValley.GameData.Shops;
 using StardewValley.Internal;
-using StardewValley.Menus;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using static ProfitCalculator.Utils;
-using SObject = StardewValley.Object;
 
-namespace ProfitCalculator.main
+namespace ProfitCalculator.main.accessors
 {
     public class ShopAccessor
     {
@@ -22,6 +16,7 @@ namespace ProfitCalculator.main
 
         public ShopAccessor()
         {
+            var Helper = Container.Instance.GetInstance<IModHelper>();
             //Helper?.ModContent.Load<Dictionary<string, int>>(Path.Combine("assets", "SeedPrices.json"))
             seedPriceCache = new(
                     () => Helper?.ModContent.Load<Dictionary<string, int>>(Path.Combine("assets", "SeedPrices.json"))
@@ -43,15 +38,16 @@ namespace ProfitCalculator.main
 
         public static Dictionary<ISalable, ItemStockInformation> GetShopStock(string shopId, ShopData shop)
         {
-            Dictionary<ISalable, ItemStockInformation> stock = new Dictionary<ISalable, ItemStockInformation>();
+            var Monitor = Container.Instance.GetInstance<IMonitor>();
+            Dictionary<ISalable, ItemStockInformation> stock = new();
             List<ShopItemData> items = shop.Items;
             if (items != null && items.Count > 0)
             {
                 Random shopRandom = Utility.CreateDaySaveRandom();
-                HashSet<string> stockedItemIds = new HashSet<string>();
-                ItemQueryContext itemQueryContext = new ItemQueryContext(Game1.currentLocation, Game1.player, shopRandom);
+                HashSet<string> stockedItemIds = new();
+                ItemQueryContext itemQueryContext = new(Game1.currentLocation, Game1.player, shopRandom);
 
-                HashSet<string> syncKeys = new HashSet<string>();
+                HashSet<string> syncKeys = new();
                 foreach (ShopItemData itemData in shop.Items)
                 {
                     if (!syncKeys.Add(itemData.Id))
@@ -72,7 +68,7 @@ namespace ProfitCalculator.main
                         int availableStock = shopItem.OverrideShopAvailableStock ?? itemData.AvailableStock;
                         LimitedStockMode availableStockLimit = itemData.AvailableStockLimit;
                         string tradeItemId = shopItem.OverrideTradeItemId ?? itemData.TradeItemId;
-                        int? tradeItemAmount = ((shopItem.OverrideTradeItemAmount > 0) ? shopItem.OverrideTradeItemAmount : new int?(itemData.TradeItemAmount));
+                        int? tradeItemAmount = shopItem.OverrideTradeItemAmount > 0 ? shopItem.OverrideTradeItemAmount : new int?(itemData.TradeItemAmount);
                         if (tradeItemId == null || tradeItemAmount < 0)
                         {
                             tradeItemId = null;

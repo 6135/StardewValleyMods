@@ -1,7 +1,7 @@
 ﻿using StardewModdingAPI;
 using System;
 
-namespace GenericModConfigMenu
+namespace ProfitCalculator.apis
 {
     /// <summary>The API which lets other mods add a config ui through Generic Mod Config Menu.</summary>
     public interface IGenericModConfigMenuApi

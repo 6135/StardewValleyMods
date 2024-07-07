@@ -3,7 +3,7 @@ using StardewValley;
 using System;
 using System.Linq;
 
-namespace ProfitCalculator.ui
+namespace ProfitCalculator.main.ui
 {
     /// <summary>
     /// Option for uints in the options menu. Extends TextOption to allow for easy input of uints.
@@ -20,7 +20,7 @@ namespace ProfitCalculator.ui
         protected readonly bool EnableClamping;
 
         /// <summary> Whether the option is Valid. </summary>
-        public bool IsValid => int.TryParse(this.ValueGetter(), out _);
+        public bool IsValid => int.TryParse(ValueGetter(), out _);
 
         /// <summary>
         /// Creates a new uint option.
@@ -46,9 +46,9 @@ namespace ProfitCalculator.ui
             bool enableClamping = true
         ) : base(x, y, name, label, () => valueGetter().ToString(), valueSetter)
         {
-            this.Max = max;
-            this.Min = min;
-            this.EnableClamping = enableClamping;
+            Max = max;
+            Min = min;
+            EnableClamping = enableClamping;
         }
 
         /// <inheritdoc />
@@ -60,7 +60,7 @@ namespace ProfitCalculator.ui
             for (int i = 0; i < str.Length; ++i)
             {
                 char c = str[i];
-                if (!char.IsDigit(c) && !(c == '-' && this.ValueGetter() == "" && i == 0))
+                if (!char.IsDigit(c) && !(c == '-' && ValueGetter() == "" && i == 0))
                 {
                     valid = false;
                     break;
@@ -69,34 +69,34 @@ namespace ProfitCalculator.ui
             if (!valid)
                 return;
             //if the parsed string equals to utin 0 then set to 0, this should allow for easy clearing of the uintbox by typing 0 and being able to type a new number after that
-            if (uint.Parse(this.ValueGetter() + str) == 0)
+            if (uint.Parse(ValueGetter() + str) == 0)
             {
-                this.ValueSetter("0");
+                ValueSetter("0");
                 return;
             }
             //if clamping is enabled then clamp the value to the min and max
-            if (this.EnableClamping)
+            if (EnableClamping)
             {
-                uint val = Math.Clamp(uint.Parse(this.ValueGetter() + str), this.Min(), this.Max());
-                this.ValueSetter(val.ToString());
+                uint val = Math.Clamp(uint.Parse(ValueGetter() + str), Min(), Max());
+                ValueSetter(val.ToString());
             }
             else
             {
-                this.ValueSetter(this.ValueGetter() + str);
+                ValueSetter(ValueGetter() + str);
             }
         }
 
         /// <inheritdoc />
         public override void RecieveCommandInput(char command)
         {
-            if (command == '\b' && this.ValueGetter().Length > 0)
+            if (command == '\b' && ValueGetter().Length > 0)
             {
                 Game1.playSound("tinyWhip");
                 //if length is 1 then set to 0 or if multiple 0s then set to 0, else remove last char
-                if (this.ValueGetter().Length == 1 || this.ValueGetter().All(c => c == '0'))
-                    this.ValueSetter("0");
+                if (ValueGetter().Length == 1 || ValueGetter().All(c => c == '0'))
+                    ValueSetter("0");
                 else
-                    this.ValueSetter(this.ValueGetter()[..^1]);
+                    ValueSetter(ValueGetter()[..^1]);
             }
         }
 
@@ -105,13 +105,13 @@ namespace ProfitCalculator.ui
         {
             if (key == Keys.Up)
             {
-                uint val = Math.Clamp(uint.Parse(this.ValueGetter()) + 1, this.Min(), this.Max());
-                this.ValueSetter(val.ToString());
+                uint val = Math.Clamp(uint.Parse(ValueGetter()) + 1, Min(), Max());
+                ValueSetter(val.ToString());
             }
             else if (key == Keys.Down)
             {
-                uint val = Math.Clamp(uint.Parse(this.ValueGetter()) - 1, this.Min(), this.Max());
-                this.ValueSetter(val.ToString());
+                uint val = Math.Clamp(uint.Parse(ValueGetter()) - 1, Min(), Max());
+                ValueSetter(val.ToString());
             }
         }
 
@@ -119,12 +119,12 @@ namespace ProfitCalculator.ui
         public override void BeforeReceiveLeftClick(int x, int y)
         {
             base.BeforeReceiveLeftClick(x, y);
-            if (!this.Selected && this.EnableClamping)
-                this.ValueSetter(
+            if (!Selected && EnableClamping)
+                ValueSetter(
                     Math.Clamp(
-                        uint.Parse(this.ValueGetter()),
-                        this.Min(),
-                        this.Max()
+                        uint.Parse(ValueGetter()),
+                        Min(),
+                        Max()
                     ).ToString()
                 );
         }

@@ -1,10 +1,7 @@
-﻿using Microsoft.Xna.Framework.Graphics;
-using ProfitCalculator.main;
-using StardewModdingAPI;
-using StardewValley.Locations;
+﻿using StardewModdingAPI;
+using StardewValley;
 using System;
-using System.Collections.Generic;
-using System.IO;
+using SObject = StardewValley.Object;
 
 #nullable enable
 
@@ -16,35 +13,10 @@ namespace ProfitCalculator
     public class Utils
     {
         /// <summary>
-        /// The mod's helper. Declared here to prevend the need to pass it to every class that needs it.
+        /// Gets the days of a Season. Unused.
         /// </summary>
-        public static IModHelper? Helper { get; set; }
-
-        /// <summary>
-        /// The mod's monitor. Declared here to prevend the need to pass it to every class that needs it.
-        /// </summary>
-        public static IMonitor? Monitor { get; set; }
-
-        public static ShopAccessor? ShopAcessor { get; set; }
-
-        /// <summary>
-        /// Sets the mod's helper, monitor, and APIs static variables. This method should be called by the mod's entry point.
-        /// </summary>
-        /// <param name="_helper"> The mod's helper.</param>
-        /// <param name="_monitor"> The mod's monitor.</param>
-        public static void Initialize(IModHelper? _helper, IMonitor? _monitor)
-        {
-            Helper = _helper;
-            Monitor = _monitor;
-        }
-
-        public static UtilsSeason GetSelectedSeason() => ModEntry.Calculator?.GetSeason() ?? UtilsSeason.Spring;
-
-        /// <summary>
-        /// Gets the days of a season. Unused.
-        /// </summary>
-        /// <param name="season"> The season to get the days of.</param>
-        /// <returns> The number of days in the season.</returns>
+        /// <param name="season"> The Season to get the days of.</param>
+        /// <returns> The number of days in the Season.</returns>
         public static int GetSeasonDays(UtilsSeason season)
         {
             return season switch
@@ -58,29 +30,24 @@ namespace ProfitCalculator
             };
         }
 
-        public static void BuildAccessors()
-        {
-            ShopAcessor = new();
-        }
-
         /// <summary>
         /// UtilsSeason enum.
         /// </summary>
         public enum UtilsSeason
         {
-            /// <summary> Spring season. </summary>
+            /// <summary> Spring Season. </summary>
             Spring = 0,
 
-            /// <summary> Summer season. </summary>
+            /// <summary> Summer Season. </summary>
             Summer = 1,
 
-            /// <summary> Fall season. </summary>
+            /// <summary> Fall Season. </summary>
             Fall = 2,
 
-            /// <summary> Winter season. </summary>
+            /// <summary> Winter Season. </summary>
             Winter = 3,
 
-            /// <summary> Greenhouse season. </summary>
+            /// <summary> Greenhouse Season. </summary>
             Greenhouse = 4
         }
 
@@ -126,19 +93,20 @@ namespace ProfitCalculator
             HyperSpeedGro = -3
         }
 
-        //get season translated names
+        //get Season translated names
         private static string GetTranslatedName(string str)
         {
             //convert string to lowercase
             str = str.ToLower();
+            var Helper = Container.Instance.GetInstance<IModHelper>();
             return Helper?.Translation.Get(str) ?? "Error";
         }
 
         /// <summary>
-        /// Get translated season name.
+        /// Get translated Season name.
         /// </summary>
-        /// <param name="season"> The season to get the translated name of.</param>
-        /// <returns> The translated name of the season.</returns>
+        /// <param name="season"> The Season to get the translated name of.</param>
+        /// <returns> The translated name of the Season.</returns>
         public static string GetTranslatedSeason(UtilsSeason season)
         {
             return GetTranslatedName(season.ToString());
@@ -165,9 +133,9 @@ namespace ProfitCalculator
         }
 
         /// <summary>
-        /// Get translated season name. All seasons.
+        /// Get translated Season name. All seasons.
         /// </summary>
-        /// <returns> Array of all translated season names.</returns>
+        /// <returns> Array of all translated Season names.</returns>
         public static string[] GetAllTranslatedSeasons()
         {
             string[] names = Enum.GetNames(typeof(UtilsSeason));
@@ -226,6 +194,25 @@ namespace ProfitCalculator
                 FertilizerQuality.DeluxeSpeedGro => 150,
                 FertilizerQuality.HyperSpeedGro => 200,
                 _ => 0,
+            };
+        }
+
+        public static int PriceFromObjectID(string id)
+        {
+            var obj = new SObject(id, 1);
+            return obj.Price;
+        }
+
+        public static Season SeasonFromUtilsSeason(UtilsSeason season)
+        {
+            return season switch
+            {
+                UtilsSeason.Spring => Season.Spring,
+                UtilsSeason.Summer => Season.Summer,
+                UtilsSeason.Fall => Season.Fall,
+                UtilsSeason.Winter => Season.Winter,
+                UtilsSeason.Greenhouse => throw new NotSupportedException("Season from StardewValley.Season enum doesn't contain Greenhouse"),
+                _ => Season.Spring
             };
         }
     }

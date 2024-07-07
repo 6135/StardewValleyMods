@@ -1,39 +1,35 @@
-﻿using Microsoft.Xna.Framework;
-using Microsoft.Xna.Framework.Graphics;
-using StardewModdingAPI;
+﻿using StardewModdingAPI;
 using StardewValley;
 using StardewValley.GameData.Crops;
-using StardewValley.Locations;
-using StardewValley.Menus;
-using System;
 using System.Collections.Generic;
-using System.IO;
-using System.Linq;
 using static ProfitCalculator.Utils;
 using SObject = StardewValley.Object;
+using PlantData = ProfitCalculator.main.CropData;
+using ProfitCalculator.main.models;
 
 #nullable enable
 
-namespace ProfitCalculator.main
+namespace ProfitCalculator.main.builders
 {
     /// <summary>
     /// Parses the vanilla crops from the game files. Also parses crops from the ManualCrops.json file.
     /// </summary>
-    internal class CropBuilder
+    internal class CropBuilder : IDataBuilder
     {
         /// <inheritdoc/>
         /// <summary>
         /// Builds a dictionary of crops from the game files. Accesses the crops from the game files (@"Data\Crops) and parses them into a dictionary.
         /// </summary>
         /// <returns> A dictionary of crops. </returns>
-        public virtual Dictionary<string, CropDataExpanded> BuildCrops()
+        public virtual Dictionary<string, IPlantData> BuildCrops()
         {
-            Dictionary<string, CropData> loadedCrops = DataLoader.Crops(Game1.content);
-            Dictionary<string, CropDataExpanded> crops = new();
+            Dictionary<string, StardewValley.GameData.Crops.CropData> loadedCrops = DataLoader.Crops(Game1.content);
+            Dictionary<string, IPlantData> crops = new();
+            var Monitor = Container.Instance.GetInstance<IMonitor>();
             Monitor?.Log($"Crops loaded: {loadedCrops.Count}", LogLevel.Debug);
             foreach (var crop in loadedCrops)
             {
-                CropDataExpanded? cropData = BuildCrop(crop.Value, crop.Key);
+                IPlantData? cropData = BuildCrop(crop.Value, crop.Key);
                 if (cropData != null)
                 {
                     crops.TryAdd(crop.Key, cropData);
@@ -49,11 +45,11 @@ namespace ProfitCalculator.main
         /// <param name="cropData"> The data of the crop. </param>
         /// <param name="id"> The id of the crop. </param>
         /// <returns> The crop that was built. </returns>
-        private static CropDataExpanded? BuildCrop(CropData cropData, string id)
+        private static IPlantData? BuildCrop(StardewValley.GameData.Crops.CropData cropData, string id)
         {
             Item seed = new SObject(id, 1);
             Item item = new SObject(cropData.HarvestItemId == "23" ? id : cropData.HarvestItemId, 1);
-            return new(cropData, item, seed);
+            return new CropData(cropData, item, seed);
         }
     }
 }

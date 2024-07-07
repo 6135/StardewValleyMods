@@ -1,14 +1,12 @@
 ﻿using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
-using ProfitCalculator.main;
-using ProfitCalculator.ui;
 using StardewValley;
 using StardewValley.Menus;
 using System;
 using System.Collections.Generic;
 
-namespace ProfitCalculator.menus
+namespace ProfitCalculator.main.ui.menus
 {
     /// <summary>
     /// A menu that displays the results of the profit calculator.
@@ -49,9 +47,9 @@ namespace ProfitCalculator.menus
             {
                 OptionSlots.Add(
                     new(
-                        this.xPositionOnScreen + spaceToClearSideBorder + borderWidth + 10,
-                        this.yPositionOnScreen + (spaceToClearTopBorder + 5) + (Game1.tileSize / 2) - Game1.tileSize / 4 + ((Game1.tileSize + Game1.tileSize / 2) * i),
-                        widthOnScreen - ((spaceToClearSideBorder + borderWidth + 10) * 2),
+                        xPositionOnScreen + spaceToClearSideBorder + borderWidth + 10,
+                        yPositionOnScreen + spaceToClearTopBorder + 5 + Game1.tileSize / 2 - Game1.tileSize / 4 + (Game1.tileSize + Game1.tileSize / 2) * i,
+                        widthOnScreen - (spaceToClearSideBorder + borderWidth + 10) * 2,
                         Game1.tileSize + Game1.tileSize / 2
                    )
                 );
@@ -74,26 +72,26 @@ namespace ProfitCalculator.menus
                 IsResultsListOpen = false;
             };
 
-            this.xPositionOnScreen = (int)GetAppropriateMenuPosition().X;
-            this.yPositionOnScreen = (int)GetAppropriateMenuPosition().Y;
+            xPositionOnScreen = (int)GetAppropriateMenuPosition().X;
+            yPositionOnScreen = (int)GetAppropriateMenuPosition().Y;
 
             int scrollbar_x = xPositionOnScreen + width;
-            this.upArrow = new ClickableTextureComponent(
+            upArrow = new ClickableTextureComponent(
                 new Rectangle(scrollbar_x, yPositionOnScreen + Game1.tileSize + Game1.tileSize / 3, 44, 48),
                 Game1.mouseCursors,
                 new Rectangle(421, 459, 11, 12),
                 4f);
-            this.downArrow = new ClickableTextureComponent(
+            downArrow = new ClickableTextureComponent(
                 new Rectangle(scrollbar_x, yPositionOnScreen + height - 64, 44, 48),
                 Game1.mouseCursors,
                 new Rectangle(421, 472, 11, 12),
                 4f);
-            this.scrollBarBounds = default;
-            this.scrollBarBounds.X = this.upArrow.bounds.X + 12;
-            this.scrollBarBounds.Width = 24;
-            this.scrollBarBounds.Y = this.upArrow.bounds.Y + this.upArrow.bounds.Height + 4;
-            this.scrollBarBounds.Height = this.downArrow.bounds.Y - 4 - this.scrollBarBounds.Y;
-            this.scrollBar = new ClickableTextureComponent(new Rectangle(this.scrollBarBounds.X, this.scrollBarBounds.Y, 24, 40), Game1.mouseCursors, new Rectangle(435, 463, 6, 10), 4f);
+            scrollBarBounds = default;
+            scrollBarBounds.X = upArrow.bounds.X + 12;
+            scrollBarBounds.Width = 24;
+            scrollBarBounds.Y = upArrow.bounds.Y + upArrow.bounds.Height + 4;
+            scrollBarBounds.Height = downArrow.bounds.Y - 4 - scrollBarBounds.Y;
+            scrollBar = new ClickableTextureComponent(new Rectangle(scrollBarBounds.X, scrollBarBounds.Y, 24, 40), Game1.mouseCursors, new Rectangle(435, 463, 6, 10), 4f);
         }
 
         #region Draw Methods
@@ -127,23 +125,23 @@ namespace ProfitCalculator.menus
                 Options[currentItemIndex + i].Draw(b);
             }
 
-            this.upArrow.draw(b, Color.White, 0.6f);
-            this.downArrow.draw(b, Color.White, 0.6f);
+            upArrow.draw(b, Color.White, 0.6f);
+            downArrow.draw(b, Color.White, 0.6f);
 
-            IClickableMenu.drawTextureBox(
+            drawTextureBox(
                 b,
                 Game1.mouseCursors,
                 new Rectangle(403, 383, 6, 6),
-                this.scrollBarBounds.X,
-                this.scrollBarBounds.Y,
-                this.scrollBarBounds.Width,
-                this.scrollBarBounds.Height,
+                scrollBarBounds.X,
+                scrollBarBounds.Y,
+                scrollBarBounds.Width,
+                scrollBarBounds.Height,
                 Color.White,
                 4f,
                 drawShadow: false,
                 draw_layer: 0.6f
                 );
-            this.scrollBar.draw(
+            scrollBar.draw(
                 b,
                 Color.White,
                 0.65f
@@ -164,22 +162,22 @@ namespace ProfitCalculator.menus
 
         private void SetScrollBarToCurrentIndex()
         {
-            if (this.Options.Count > 0)
+            if (Options.Count > 0)
             {
                 //devide the height of the scroll bar by the number of options minus the displayed options, then multiply by the current index to get the position of the scroll bar without going out of bounds. //804 is max y for bar
-                int numberOfSteps = Math.Max(1, this.Options.Count - maxOptions);
-                double sizeOfStep = Math.Floor((this.scrollBarBounds.Height - (scrollBar.bounds.Height / 2.0)) / numberOfSteps);
-                double barPosition = this.scrollBarBounds.Y + (sizeOfStep * this.currentItemIndex);
-                this.scrollBar.bounds.Y =
+                int numberOfSteps = Math.Max(1, Options.Count - maxOptions);
+                double sizeOfStep = Math.Floor((scrollBarBounds.Height - scrollBar.bounds.Height / 2.0) / numberOfSteps);
+                double barPosition = scrollBarBounds.Y + sizeOfStep * currentItemIndex;
+                scrollBar.bounds.Y =
                     (int)Math.Floor(barPosition);
-                if (this.currentItemIndex == this.Options.Count - maxOptions)
+                if (currentItemIndex == Options.Count - maxOptions)
                 {
-                    this.scrollBar.bounds.Y = this.downArrow.bounds.Y - this.scrollBar.bounds.Height - 7;
+                    scrollBar.bounds.Y = downArrow.bounds.Y - scrollBar.bounds.Height - 7;
                 }
             }
             else
             {
-                this.scrollBar.bounds.Y = this.scrollBarBounds.Y;
+                scrollBar.bounds.Y = scrollBarBounds.Y;
             }
         }
 
@@ -190,19 +188,19 @@ namespace ProfitCalculator.menus
         public override void receiveScrollWheelAction(int direction)
         {
             base.receiveScrollWheelAction(direction);
-            if (direction > 0 && this.currentItemIndex > 0)
+            if (direction > 0 && currentItemIndex > 0)
             {
-                this.ArrowPressed(-1);
+                ArrowPressed(-1);
                 Game1.playSound("shiny4");
             }
-            else if (direction < 0 && this.currentItemIndex < Math.Max(0, this.Options.Count - maxOptions))
+            else if (direction < 0 && currentItemIndex < Math.Max(0, Options.Count - maxOptions))
             {
                 ArrowPressed();
                 Game1.playSound("shiny4");
             }
             if (Game1.options.SnappyMenus)
             {
-                this.snapCursorToCurrentSnappedComponent();
+                snapCursorToCurrentSnappedComponent();
             }
         }
 
@@ -243,15 +241,15 @@ namespace ProfitCalculator.menus
         /// <param name="y"> The y position of the mouse. </param>
         public override void performHoverAction(int x, int y)
         {
-            for (int i = 0; i < this.OptionSlots.Count; i++)
+            for (int i = 0; i < OptionSlots.Count; i++)
             {
-                if (this.currentItemIndex >= 0 && this.currentItemIndex + i < this.Options.Count && this.Options[this.currentItemIndex + i].ClickableComponent.bounds.Contains(x - this.OptionSlots[i].X, y - this.OptionSlots[i].Y))
+                if (currentItemIndex >= 0 && currentItemIndex + i < Options.Count && Options[currentItemIndex + i].ClickableComponent.bounds.Contains(x - OptionSlots[i].X, y - OptionSlots[i].Y))
                 {
                     Game1.SetFreeCursorDrag();
                     break;
                 }
             }
-            if (this.scrollBarBounds.Contains(x, y))
+            if (scrollBarBounds.Contains(x, y))
             {
                 Game1.SetFreeCursorDrag();
             }
@@ -261,17 +259,17 @@ namespace ProfitCalculator.menus
             }
 
             //if hover over any of the optionSlots, print to log "HoveringOver it"
-            int maxIndex = Math.Min(this.OptionSlots.Count, Options.Count);
+            int maxIndex = Math.Min(OptionSlots.Count, Options.Count);
             for (int i = 0; i < maxIndex; i++)
             {
                 BaseOption option = (CropBox)Options[currentItemIndex + i];
                 option.PerformHoverAction(x, y);
             }
 
-            this.upArrow.tryHover(x, y);
-            this.downArrow.tryHover(x, y);
-            this.scrollBar.tryHover(x, y);
-            _ = this.scrolling;
+            upArrow.tryHover(x, y);
+            downArrow.tryHover(x, y);
+            scrollBar.tryHover(x, y);
+            _ = scrolling;
         }
 
         /// <summary>
@@ -280,16 +278,16 @@ namespace ProfitCalculator.menus
         /// <param name="y"> The y position of the mouse. </param>
         public virtual void SetScrollFromY(int y)
         {
-            int y2 = this.scrollBar.bounds.Y;
-            float percentage = (float)(y - this.scrollBarBounds.Y) / (float)this.scrollBarBounds.Height;
+            int y2 = scrollBar.bounds.Y;
+            float percentage = (y - scrollBarBounds.Y) / (float)scrollBarBounds.Height;
             float currentItemIndexFloat =
                 Utility.Lerp(
                     t: Utility.Clamp(percentage, 0f, 1f),
                     a: 0f,
-                    b: this.Options.Count - maxOptions);
-            this.currentItemIndex = (int)Math.Round(currentItemIndexFloat);
-            this.SetScrollBarToCurrentIndex();
-            if (y2 != this.scrollBar.bounds.Y)
+                    b: Options.Count - maxOptions);
+            currentItemIndex = (int)Math.Round(currentItemIndexFloat);
+            SetScrollBarToCurrentIndex();
+            if (y2 != scrollBar.bounds.Y)
             {
                 Game1.playSound("shiny4");
             }
@@ -305,9 +303,9 @@ namespace ProfitCalculator.menus
             if (!GameMenu.forcePreventClose)
             {
                 base.leftClickHeld(x, y);
-                if (this.scrolling)
+                if (scrolling)
                 {
-                    this.SetScrollFromY(y);
+                    SetScrollFromY(y);
                 }
             }
         }
@@ -322,7 +320,7 @@ namespace ProfitCalculator.menus
             if (!GameMenu.forcePreventClose)
             {
                 base.releaseLeftClick(x, y);
-                this.scrolling = false;
+                scrolling = false;
             }
         }
 
@@ -338,25 +336,25 @@ namespace ProfitCalculator.menus
             {
                 return;
             }
-            if (this.downArrow.containsPoint(x, y) && this.currentItemIndex < Math.Max(0, this.Options.Count - maxOptions))
+            if (downArrow.containsPoint(x, y) && currentItemIndex < Math.Max(0, Options.Count - maxOptions))
             {
-                this.ArrowPressed(1);
+                ArrowPressed(1);
                 Game1.playSound("shwip");
             }
-            else if (this.upArrow.containsPoint(x, y) && this.currentItemIndex > 0)
+            else if (upArrow.containsPoint(x, y) && currentItemIndex > 0)
             {
-                this.ArrowPressed(-1);
+                ArrowPressed(-1);
                 Game1.playSound("shwip");
             }
-            else if (this.scrollBar.containsPoint(x, y))
+            else if (scrollBar.containsPoint(x, y))
             {
-                this.scrolling = true;
+                scrolling = true;
             }
-            else if (!this.downArrow.containsPoint(x, y) && x > base.xPositionOnScreen + base.width && x < base.xPositionOnScreen + base.width + 128 && y > base.yPositionOnScreen && y < base.yPositionOnScreen + base.height)
+            else if (!downArrow.containsPoint(x, y) && x > xPositionOnScreen + width && x < xPositionOnScreen + width + 128 && y > yPositionOnScreen && y < yPositionOnScreen + height)
             {
-                this.scrolling = true;
-                this.leftClickHeld(x, y);
-                this.releaseLeftClick(x, y);
+                scrolling = true;
+                leftClickHeld(x, y);
+                releaseLeftClick(x, y);
             }
         }
 
@@ -368,14 +366,14 @@ namespace ProfitCalculator.menus
         {
             if (direction == 1)
             {
-                this.downArrow.scale = this.downArrow.baseScale;
+                downArrow.scale = downArrow.baseScale;
             }
             else
             {
-                this.upArrow.scale = this.upArrow.baseScale;
+                upArrow.scale = upArrow.baseScale;
             }
-            this.currentItemIndex += direction;
-            this.SetScrollBarToCurrentIndex();
+            currentItemIndex += direction;
+            SetScrollBarToCurrentIndex();
         }
 
         /// <summary>
@@ -398,8 +396,8 @@ namespace ProfitCalculator.menus
         public static Vector2 GetAppropriateMenuPosition()
         {
             Vector2 defaultPosition = new(
-                (Game1.viewport.Width * Game1.options.zoomLevel * (1 / Game1.options.uiScale)) / 2 - (widthOnScreen / 2),
-                (Game1.viewport.Height * Game1.options.zoomLevel * (1 / Game1.options.uiScale)) / 2 - (heightOnScreen / 2)
+                Game1.viewport.Width * Game1.options.zoomLevel * (1 / Game1.options.uiScale) / 2 - widthOnScreen / 2,
+                Game1.viewport.Height * Game1.options.zoomLevel * (1 / Game1.options.uiScale) / 2 - heightOnScreen / 2
             );
 
             //Force the viewport into a position that it should fit into on the screen???
@@ -422,38 +420,38 @@ namespace ProfitCalculator.menus
         {
             base.gameWindowSizeChanged(oldBounds, newBounds);
 
-            this.xPositionOnScreen = (int)GetAppropriateMenuPosition().X;
-            this.yPositionOnScreen = (int)GetAppropriateMenuPosition().Y;
+            xPositionOnScreen = (int)GetAppropriateMenuPosition().X;
+            yPositionOnScreen = (int)GetAppropriateMenuPosition().Y;
             OptionSlots.Clear();
             for (int i = 0; i < maxOptions; i++)
             {
                 OptionSlots.Add(
                     new(
-                        this.xPositionOnScreen + spaceToClearSideBorder + borderWidth + 10,
-                        this.yPositionOnScreen + (spaceToClearTopBorder + 5) + (Game1.tileSize / 2) - Game1.tileSize / 4 + ((Game1.tileSize + Game1.tileSize / 2) * i),
-                        widthOnScreen - ((spaceToClearSideBorder + borderWidth + 10) * 2),
+                        xPositionOnScreen + spaceToClearSideBorder + borderWidth + 10,
+                        yPositionOnScreen + spaceToClearTopBorder + 5 + Game1.tileSize / 2 - Game1.tileSize / 4 + (Game1.tileSize + Game1.tileSize / 2) * i,
+                        widthOnScreen - (spaceToClearSideBorder + borderWidth + 10) * 2,
                         Game1.tileSize + Game1.tileSize / 2
                    )
                 );
             }
 
             int scrollbar_x = xPositionOnScreen + width;
-            this.upArrow = new ClickableTextureComponent(
+            upArrow = new ClickableTextureComponent(
                 new Rectangle(scrollbar_x, yPositionOnScreen + Game1.tileSize + Game1.tileSize / 3, 44, 48),
                 Game1.mouseCursors,
                 new Rectangle(421, 459, 11, 12),
                 4f);
-            this.downArrow = new ClickableTextureComponent(
+            downArrow = new ClickableTextureComponent(
                 new Rectangle(scrollbar_x, yPositionOnScreen + height - 64, 44, 48),
                 Game1.mouseCursors,
                 new Rectangle(421, 472, 11, 12),
                 4f);
-            this.scrollBarBounds = default;
-            this.scrollBarBounds.X = this.upArrow.bounds.X + 12;
-            this.scrollBarBounds.Width = 24;
-            this.scrollBarBounds.Y = this.upArrow.bounds.Y + this.upArrow.bounds.Height + 4;
-            this.scrollBarBounds.Height = this.downArrow.bounds.Y - 4 - this.scrollBarBounds.Y;
-            this.scrollBar = new ClickableTextureComponent(new Rectangle(this.scrollBarBounds.X, this.scrollBarBounds.Y, 24, 40), Game1.mouseCursors, new Rectangle(435, 463, 6, 10), 4f);
+            scrollBarBounds = default;
+            scrollBarBounds.X = upArrow.bounds.X + 12;
+            scrollBarBounds.Width = 24;
+            scrollBarBounds.Y = upArrow.bounds.Y + upArrow.bounds.Height + 4;
+            scrollBarBounds.Height = downArrow.bounds.Y - 4 - scrollBarBounds.Y;
+            scrollBar = new ClickableTextureComponent(new Rectangle(scrollBarBounds.X, scrollBarBounds.Y, 24, 40), Game1.mouseCursors, new Rectangle(435, 463, 6, 10), 4f);
         }
 
         #endregion Event Handling

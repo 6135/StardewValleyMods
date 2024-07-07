@@ -4,7 +4,7 @@ using StardewValley;
 using StardewValley.Menus;
 using System;
 
-namespace ProfitCalculator.ui
+namespace ProfitCalculator.main.ui
 {
     /// <summary>
     /// Draws a checkbox option in the options menu setting true or false to a value
@@ -59,9 +59,9 @@ namespace ProfitCalculator.ui
         public override void Draw(SpriteBatch b)
         {
             b.Draw(
-                this.Texture,
-                this.Position,
-                this.ValueGetter() ? this.CheckedTextureRect : this.UncheckedTextureRect,
+                Texture,
+                Position,
+                ValueGetter() ? CheckedTextureRect : UncheckedTextureRect,
                 Color.White,
                 0,
                 Vector2.Zero,
@@ -77,8 +77,8 @@ namespace ProfitCalculator.ui
         /// </summary>
         public override void ExecuteClick()
         {
-            this.ValueSetter(!this.ValueGetter());
-            Game1.playSound(this.ClickedSound);
+            ValueSetter(!ValueGetter());
+            Game1.playSound(ClickedSound);
         }
 
         /// <summary>

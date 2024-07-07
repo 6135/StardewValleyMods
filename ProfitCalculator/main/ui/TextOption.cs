@@ -5,7 +5,7 @@ using StardewValley;
 using StardewValley.Menus;
 using System;
 
-namespace ProfitCalculator.ui
+namespace ProfitCalculator.main.ui
 {
     /// <summary>
     /// Base class for all writing based options in the options menu.
@@ -27,14 +27,14 @@ namespace ProfitCalculator.ui
         /// </summary>
         public bool Selected
         {
-            get => this.SelectedImpl;
+            get => SelectedImpl;
             set
             {
-                if (this.SelectedImpl == value)
+                if (SelectedImpl == value)
                     return;
 
-                this.SelectedImpl = value;
-                if (this.SelectedImpl)
+                SelectedImpl = value;
+                if (SelectedImpl)
                     Game1.keyboardDispatcher.Subscriber = this;
                 else
                 {
@@ -62,9 +62,9 @@ namespace ProfitCalculator.ui
             Action<string> valueSetter
          ) : base(x, y, 192, 48, name, label, label)
         {
-            this.SetTexture(Game1.content.Load<Texture2D>("LooseSprites\\textBox"));
-            this.ValueGetter = valueGetter;
-            this.ValueSetter = valueSetter;
+            SetTexture(Game1.content.Load<Texture2D>("LooseSprites\\textBox"));
+            ValueGetter = valueGetter;
+            ValueSetter = valueSetter;
         }
 
         /// <summary>
@@ -73,7 +73,7 @@ namespace ProfitCalculator.ui
         /// <param name="tex"> The texture to set. </param>
         public void SetTexture(Texture2D tex)
         {
-            this.Tex = tex;
+            Tex = tex;
             ClickableComponent.bounds.Width = tex.Width;
             ClickableComponent.bounds.Height = tex.Height;
         }
@@ -82,8 +82,8 @@ namespace ProfitCalculator.ui
         public override void Draw(SpriteBatch b)
         {
             b.Draw(
-                this.Tex,
-                this.Position,
+                Tex,
+                Position,
                 null,
                 Color.White,
                 0f,
@@ -94,18 +94,18 @@ namespace ProfitCalculator.ui
                 );
 
             // Copied from game code - caret and https://github.com/spacechase0/StardewValleyMods/blob/develop/SpaceShared/ui/Element.cs#L91
-            string text = this.ValueGetter();
+            string text = ValueGetter();
             Vector2 vector2;
             float writeBarOffset = 26f;
-            for (vector2 = this.Font.MeasureString(text); vector2.X > (float)this.Tex.Width - writeBarOffset; vector2 = this.Font.MeasureString(text))
+            for (vector2 = Font.MeasureString(text); vector2.X > Tex.Width - writeBarOffset; vector2 = Font.MeasureString(text))
                 text = text[1..];
 
-            if (DateTime.UtcNow.Millisecond % 1000 >= 500 && this.Selected)
+            if (DateTime.UtcNow.Millisecond % 1000 >= 500 && Selected)
                 b.Draw(
                     Game1.staminaRect,
                     new Rectangle(
-                        (int)this.Position.X + 16 + (int)vector2.X + 2,
-                        (int)this.Position.Y + 8,
+                        (int)Position.X + 16 + (int)vector2.X + 2,
+                        (int)Position.Y + 8,
                         4,
                         32
                     ),
@@ -117,7 +117,7 @@ namespace ProfitCalculator.ui
                     0.3f
                 );
 
-            b.DrawString(this.Font, text, this.Position + new Vector2(16, 12), Game1.textColor, 0, Vector2.Zero, 1f, SpriteEffects.None, 0.35f);
+            b.DrawString(Font, text, Position + new Vector2(16, 12), Game1.textColor, 0, Vector2.Zero, 1f, SpriteEffects.None, 0.35f);
         }
 
         /// <summary>
@@ -126,7 +126,7 @@ namespace ProfitCalculator.ui
         /// <param name="inputChar"> The character to add. </param>
         public void RecieveTextInput(char inputChar)
         {
-            this.ReceiveInput(inputChar.ToString());
+            ReceiveInput(inputChar.ToString());
 
             // Copied from game code
             switch (inputChar)
@@ -166,7 +166,7 @@ namespace ProfitCalculator.ui
         /// <param name="text"> The text to add. </param>
         public virtual void RecieveTextInput(string text)
         {
-            this.ReceiveInput(text);
+            ReceiveInput(text);
         }
 
         /// <summary>
@@ -175,10 +175,10 @@ namespace ProfitCalculator.ui
         /// <param name="command"> The command to recieve. </param>
         public virtual void RecieveCommandInput(char command)
         {
-            if (command == '\b' && this.ValueGetter().Length > 0)
+            if (command == '\b' && ValueGetter().Length > 0)
             {
                 Game1.playSound("tinyWhip");
-                this.ValueSetter(this.ValueGetter()[..^1]);
+                ValueSetter(ValueGetter()[..^1]);
             }
         }
 
@@ -197,7 +197,7 @@ namespace ProfitCalculator.ui
         protected virtual void ReceiveInput(string str)
         {
             //this.String += str; to value setter and getter
-            this.ValueSetter(this.ValueGetter() + str);
+            ValueSetter(ValueGetter() + str);
         }
 
         /// <summary>
@@ -207,9 +207,9 @@ namespace ProfitCalculator.ui
         /// <param name="y"></param>
         public override void BeforeReceiveLeftClick(int x, int y)
         {
-            if (this.Selected && !this.ClickableComponent.containsPoint(x, y))
+            if (Selected && !ClickableComponent.containsPoint(x, y))
             {
-                this.Selected = false;
+                Selected = false;
             }
         }
 
@@ -219,7 +219,7 @@ namespace ProfitCalculator.ui
         public override void ExecuteClick()
         {
             base.ExecuteClick();
-            this.Selected = true;
+            Selected = true;
         }
 
         /// <summary>

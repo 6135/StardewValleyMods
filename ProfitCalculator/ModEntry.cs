@@ -1,17 +1,17 @@
-﻿using System;
-using System.IO;
-using GenericModConfigMenu;
-using Microsoft.Xna.Framework;
-using Microsoft.Xna.Framework.Graphics;
-using ProfitCalculator.menus;
-using ProfitCalculator.ui;
+﻿using ProfitCalculator.apis;
+using ProfitCalculator.main;
+using ProfitCalculator.main.accessors;
+using ProfitCalculator.main.builders;
+using ProfitCalculator.main.models;
+using ProfitCalculator.main.ui;
+using ProfitCalculator.main.ui.menus;
 using StardewModdingAPI;
 using StardewModdingAPI.Events;
-using StardewModdingAPI.Utilities;
 using StardewValley;
-using StardewValley.Monsters;
-using ProfitCalculator.main;
-using CropDataExpanded = ProfitCalculator.main.CropDataExpanded;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using CropData = ProfitCalculator.main.CropData;
 
 #nullable enable
 
@@ -23,22 +23,16 @@ namespace ProfitCalculator
         private ModConfig? Config;
         private ProfitCalculatorMainMenu? mainMenu;
 
-        /// <summary>The mod's calculator functions.</summary>
-        public static Calculator Calculator { get; private set; }
-
-        private IModHelper? helper;
-        private IGenericModConfigMenuApi? configMenu;
-
         /// <summary>The mod entry point, called after the mod is first loaded.</summary>
         /// <param name="helper">Provides simplified APIs for writing mods.</param>
         public override void Entry(IModHelper helper)
         {
-            Calculator = new();
-            Monitor.Log($"Helpers initialized", LogLevel.Debug);
-            this.helper = helper;
+            Container.Instance.RegisterInstance<Calculator>();
+            Container.Instance.RegisterInstance(helper);
+            Container.Instance.RegisterInstance(this.Monitor);
 
             //read config
-            Config = Helper.ReadConfig<ModConfig>();
+            Config = helper.ReadConfig<ModConfig>();
             if (Config is null || Helper is null)
             {
                 return;
@@ -48,7 +42,6 @@ namespace ProfitCalculator
             helper.Events.Input.ButtonPressed += OnButtonPressed;
             helper.Events.GameLoop.GameLaunched += OnGameLaunchedAPIs;
             helper.Events.GameLoop.GameLaunched += OnGameLaunchedAddGenericModConfigMenu;
-            helper.Events.GameLoop.SaveLoaded += OnSaveLoadedParseCrops;
             helper.Events.GameLoop.SaveLoaded += OnSaveGameLoaded;
             helper.Events.Input.MouseWheelScrolled += this.OnMouseWheelScrolled;
             helper.Events.GameLoop.DayStarted += OnDayStartedResetCache;
@@ -61,25 +54,24 @@ namespace ProfitCalculator
         [EventPriority(EventPriority.Low - 9999)]
         private void OnDayStartedResetCache(object? sender, DayStartedEventArgs? e)
         {
-            Utils.ShopAcessor?.ForceRebuildCache();
+            Container.Instance.GetInstance<ShopAccessor>()?.ForceRebuildCache();
         }
 
         private void OnGameLaunchedAPIs(object? sender, GameLaunchedEventArgs? e)
         {
-            configMenu = this.Helper.ModRegistry.GetApi<IGenericModConfigMenuApi>("spacechase0.GenericModConfigMenu");
+            var configMenu = this.Helper.ModRegistry.GetApi<IGenericModConfigMenuApi>("spacechase0.GenericModConfigMenu");
 
             if (configMenu is null)
             {
                 Monitor.Log($"Generic Mod Config Menu not found", LogLevel.Debug);
             }
-
-            Utils.Initialize(helper, Monitor);
+            Container.Instance.RegisterInstance(configMenu);
         }
 
         private void OnGameLaunchedAddGenericModConfigMenu(object? sender, GameLaunchedEventArgs? e)
         {
             //register config menu if generic mod config menu is installed
-
+            var configMenu = Container.Instance.GetInstance<IGenericModConfigMenuApi>();
             if (configMenu is null)
                 return;
             // register mod
@@ -118,20 +110,48 @@ namespace ProfitCalculator
         }
 
         [EventPriority(EventPriority.Low - 9999)]
-        private void OnSaveLoadedParseCrops(object? sender, SaveLoadedEventArgs? e)
-        {
-            Utils.BuildAccessors();
-            CropBuilder cropParser = new();
-            foreach (var crop in cropParser.BuildCrops())
-            {
-                AddCrop(crop.Key, crop.Value);
-            }
-        }
-
         private void OnSaveGameLoaded(object? sender, SaveLoadedEventArgs? e)
         {
+            Container.Instance.RegisterInstance<ShopAccessor>();
+            Container.Instance.RegisterInstance<MachineAccessor>();
+            var CustomBushAPI = Helper.ModRegistry.GetApi<ICustomBushApi>("furyx639.CustomBush");
+            if (CustomBushAPI != null)
+            {
+                Container.Instance.RegisterInstance(CustomBushAPI);
+            }
+
             if (Context.IsWorldReady)
+            {
                 mainMenu = new ProfitCalculatorMainMenu();
+            }
+            var Calculator = Container.Instance.GetInstance<Calculator>();
+            if (Calculator is null)
+            {
+                Monitor.Log("Calculator is null", LogLevel.Error);
+                return;
+            }
+            List<IDataBuilder> builder = new()
+            {
+                new CropBuilder(),
+                new FruitTreeBuilder(),
+            };
+            if (CustomBushAPI != null)
+            {
+                builder.Add(new CustomBushBuilder());
+            }
+            //linq for each builder, call build crops and add to calculator
+            builder.ForEach(b =>
+            {
+                try
+                {
+                    b.BuildCrops().ToList().ForEach(c => Calculator.AddCrop(c.Key, c.Value));
+                }
+                catch (NotImplementedException e)
+                {
+                    Monitor.Log($"Error building crops: {e.Message}", LogLevel.Error);
+                }
+            }
+            );
         }
 
         /// <summary>Raised after the player presses a button on the keyboard, controller, or mouse.</summary>
@@ -175,9 +195,10 @@ namespace ProfitCalculator
         /// Adds a crop to the Profit Calculator.
         /// </summary>
         /// <param name="id"> The id of the crop. Must be unique.</param>
-        /// <param name="crop"> The crop to add. <see cref="CropDataExpanded"/> </param>
-        public static void AddCrop(string id, CropDataExpanded crop)
+        /// <param name="crop"> The crop to add. <see cref="CropData"/> </param>
+        public static void AddCrop(string id, CropData crop)
         {
+            var Calculator = Container.Instance.GetInstance<Calculator>();
             Calculator?.AddCrop(id, crop);
         }
     }

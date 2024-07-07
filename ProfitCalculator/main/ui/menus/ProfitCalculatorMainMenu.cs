@@ -1,8 +1,6 @@
 ﻿using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
-using ProfitCalculator.main;
-using ProfitCalculator.ui;
 using StardewModdingAPI;
 using StardewValley;
 using StardewValley.Menus;
@@ -11,7 +9,7 @@ using System.Collections.Generic;
 using System.IO;
 using static ProfitCalculator.Utils;
 
-namespace ProfitCalculator.menus
+namespace ProfitCalculator.main.ui.menus
 {
     /// <summary>
     /// The main menu for the profit calculator. This menu is opened by pressing the "F8" key by default. It is used to set the settings for the profit calculator. It is also used to open the results menu. This menu is the parent menu for the <see cref="ProfitCalculatorResultsList"/> menu.
@@ -21,29 +19,29 @@ namespace ProfitCalculator.menus
         /// <summary> The day for planting. </summary>
         public uint Day { get; set; } = 1;
 
-        /// <summary> The ammount of days a season can have. </summary>
+        /// <summary> The ammount of days a Season can have. </summary>
         public uint MaxDay { get; set; } = 28;
 
-        /// <summary> The minimum day a season can have. </summary>
+        /// <summary> The minimum day a Season can have. </summary>
         public uint MinDay { get; set; } = 1;
 
-        /// <summary> The season for planting. </summary>
+        /// <summary> The Season for planting. </summary>
         public UtilsSeason Season { get; set; } = UtilsSeason.Spring;
 
         /// <summary>
-        /// Sets the season for planting.
+        /// Sets the Season for planting.
         /// </summary>
-        /// <param name="season"> The season to set. String, case insensetive</param>
+        /// <param name="season"> The Season to set. String, case insensetive</param>
         public void SetSeason(string season)
         {
             Season = (UtilsSeason)Enum.Parse(typeof(UtilsSeason), season, false);
         }
 
         /// <summary> The type of produce to calculate with, for now only raw works. </summary>
-        public ProduceType ProduceType { get; set; } = Utils.ProduceType.Raw;
+        public ProduceType ProduceType { get; set; } = ProduceType.Raw;
 
         /// <summary> The quality of fertilizer to use. </summary>
-        public FertilizerQuality FertilizerQuality { get; set; } = Utils.FertilizerQuality.None;
+        public FertilizerQuality FertilizerQuality { get; set; } = FertilizerQuality.None;
 
         /// <summary>
         /// Whether the play wants to check which plants he can purchase with available cash.
@@ -73,6 +71,8 @@ namespace ProfitCalculator.menus
         /// <summary> Whether the profit calculator is open or not.  </summary>
         public bool IsProfitCalculatorOpen { get; set; } = false;
 
+        private readonly IModHelper Helper = Container.Instance.GetInstance<IModHelper>();
+
         /// <summary>
         /// Constructor for the ProfitCalculatorMainMenu class.
         /// </summary>
@@ -88,42 +88,42 @@ namespace ProfitCalculator.menus
                 IsProfitCalculatorOpen = false;
             };
 
-            this.xPositionOnScreen = (int)GetAppropriateMenuPosition().X;
-            this.yPositionOnScreen = (int)GetAppropriateMenuPosition().Y;
-            this.Reset();
+            xPositionOnScreen = (int)GetAppropriateMenuPosition().X;
+            yPositionOnScreen = (int)GetAppropriateMenuPosition().Y;
+            Reset();
         }
 
         #region Menu Button Setups
 
         private void SetUpPositions()
         {
-            this.SetUpButtonPositions();
+            SetUpButtonPositions();
             //option order:
             //Day int
 
-            this.SetUpDayOptionPositions();
+            SetUpDayOptionPositions();
             //UtilsSeason dropdown
-            this.SetUpSeasonOptionPositions();
+            SetUpSeasonOptionPositions();
             //Produce Type dropdown
-            this.SetUpProduceTypeOptionPositions();
+            SetUpProduceTypeOptionPositions();
             //Fertilizer Quality dropdown
-            this.SetUpFertilizerQualityPositions();
+            SetUpFertilizerQualityPositions();
             //Pay for Seeds checkbox
-            this.SetUpSeedsOptionPositions();
+            SetUpSeedsOptionPositions();
             //Pay for Fertilizer checkbox
-            this.SetUpFertilizerOptionPositions();
+            SetUpFertilizerOptionPositions();
             //Max Money int
-            this.SetUpMoneyOptionPositions();
+            SetUpMoneyOptionPositions();
             //Use Base Stats checkbox
-            this.SetUpBaseStatsOptionPositions();
+            SetUpBaseStatsOptionPositions();
         }
 
         private void SetUpButtonPositions()
         {
             calculateButton = new ClickableComponent(
                 new Rectangle(
-                    this.xPositionOnScreen + spaceToClearSideBorder + borderWidth,
-                    this.yPositionOnScreen + borderWidth * 2 + spaceToClearTopBorder + Game1.tileSize * 7,
+                    xPositionOnScreen + spaceToClearSideBorder + borderWidth,
+                    yPositionOnScreen + borderWidth * 2 + spaceToClearTopBorder + Game1.tileSize * 7,
                     Game1.tileSize * 2,
                     Game1.tileSize
                 ),
@@ -133,8 +133,8 @@ namespace ProfitCalculator.menus
 
             resetButton = new ClickableComponent(
                 new Rectangle(
-                    this.xPositionOnScreen + spaceToClearSideBorder + borderWidth + Game1.tileSize * 2 + Game1.tileSize / 4,
-                    this.yPositionOnScreen + borderWidth * 2 + spaceToClearTopBorder + Game1.tileSize * 7,
+                    xPositionOnScreen + spaceToClearSideBorder + borderWidth + Game1.tileSize * 2 + Game1.tileSize / 4,
+                    yPositionOnScreen + borderWidth * 2 + spaceToClearTopBorder + Game1.tileSize * 7,
                     Game1.tileSize * 2,
                     Game1.tileSize
                 ),
@@ -148,8 +148,8 @@ namespace ProfitCalculator.menus
             Labels.Add(
                 new ClickableComponent(
                     new Rectangle(
-                        this.xPositionOnScreen + spaceToClearSideBorder + borderWidth,
-                        this.yPositionOnScreen + spaceToClearTopBorder,
+                        xPositionOnScreen + spaceToClearSideBorder + borderWidth,
+                        yPositionOnScreen + spaceToClearTopBorder,
                         Game1.tileSize * 2,
                         Game1.tileSize
                     ),
@@ -159,14 +159,14 @@ namespace ProfitCalculator.menus
             );
             UIntOption dayOption =
                new(
-                   this.xPositionOnScreen + spaceToClearSideBorder + borderWidth + Game1.tileSize * 5 - Game1.tileSize / 8,
-                   this.yPositionOnScreen + spaceToClearTopBorder + Game1.tileSize / 4,
+                   xPositionOnScreen + spaceToClearSideBorder + borderWidth + Game1.tileSize * 5 - Game1.tileSize / 8,
+                   yPositionOnScreen + spaceToClearTopBorder + Game1.tileSize / 4,
                    () => "day",
                    () => Helper.Translation.Get("day"),
-                   valueGetter: () => this.Day,
-                   max: () => this.MaxDay,
-                   min: () => this.MinDay,
-                   valueSetter: (string value) => this.Day = uint.Parse(value),
+                   valueGetter: () => Day,
+                   max: () => MaxDay,
+                   min: () => MinDay,
+                   valueSetter: (value) => Day = uint.Parse(value),
                    enableClamping: true
                );
             dayOption.SetTexture(Helper.ModContent.Load<Texture2D>(Path.Combine("assets", "text_box_small.png")));
@@ -178,26 +178,26 @@ namespace ProfitCalculator.menus
             Labels.Add(
                 new ClickableComponent(
                     new Rectangle(
-                        this.xPositionOnScreen + spaceToClearSideBorder + borderWidth,
-                        this.yPositionOnScreen + spaceToClearTopBorder + Game1.tileSize,
+                        xPositionOnScreen + spaceToClearSideBorder + borderWidth,
+                        yPositionOnScreen + spaceToClearTopBorder + Game1.tileSize,
                         Game1.tileSize * 2,
                         Game1.tileSize
                     ),
-                    "season",
-                    Helper.Translation.Get("season") + ": "
+                    "Season",
+                    Helper.Translation.Get("Season") + ": "
                 )
             );
 
             DropdownOption seasonOption = new(
-                this.xPositionOnScreen + spaceToClearSideBorder + borderWidth + Game1.tileSize * 5,
-                this.yPositionOnScreen + spaceToClearTopBorder + Game1.tileSize + Game1.tileSize / 4,
-                name: () => "season",
-                label: () => Helper.Translation.Get("season"),
+                xPositionOnScreen + spaceToClearSideBorder + borderWidth + Game1.tileSize * 5,
+                yPositionOnScreen + spaceToClearTopBorder + Game1.tileSize + Game1.tileSize / 4,
+                name: () => "Season",
+                label: () => Helper.Translation.Get("Season"),
                 choices: () => Enum.GetNames(typeof(UtilsSeason)),
                 labels: () => GetAllTranslatedSeasons(),
-                valueGetter: this.Season.ToString,
+                valueGetter: Season.ToString,
                 valueSetter:
-                    (string value) => this.Season = (Utils.UtilsSeason)Enum.Parse(typeof(Utils.UtilsSeason), value, true)
+                    (value) => Season = (UtilsSeason)Enum.Parse(typeof(UtilsSeason), value, true)
             )
             {
                 MaxValuesAtOnce = Enum.GetValues(typeof(Season)).Length//size of enum
@@ -211,8 +211,8 @@ namespace ProfitCalculator.menus
             Labels.Add(
                 new ClickableComponent(
                     new Rectangle(
-                        this.xPositionOnScreen + spaceToClearSideBorder + borderWidth,
-                        this.yPositionOnScreen + spaceToClearTopBorder + Game1.tileSize * 2,
+                        xPositionOnScreen + spaceToClearSideBorder + borderWidth,
+                        yPositionOnScreen + spaceToClearTopBorder + Game1.tileSize * 2,
                         Game1.tileSize * 2,
                         Game1.tileSize
                     ),
@@ -222,14 +222,14 @@ namespace ProfitCalculator.menus
             );
 
             DropdownOption produceTypeOption = new(
-                this.xPositionOnScreen + spaceToClearSideBorder + borderWidth + Game1.tileSize * 5,
-                this.yPositionOnScreen + spaceToClearTopBorder + Game1.tileSize * 2 + Game1.tileSize / 4,
+                xPositionOnScreen + spaceToClearSideBorder + borderWidth + Game1.tileSize * 5,
+                yPositionOnScreen + spaceToClearTopBorder + Game1.tileSize * 2 + Game1.tileSize / 4,
                 name: () => "produceType",
                 label: () => Helper.Translation.Get("produce-type"),
-                choices: () => Utils.ProduceType.GetNames(typeof(Utils.ProduceType)),
-                labels: () => Utils.GetAllTranslatedProduceTypes(),
-                valueGetter: this.ProduceType.ToString,
-                valueSetter: (string value) => this.ProduceType = (ProduceType)Utils.ProduceType.Parse(typeof(ProduceType), value, true)
+                choices: () => Enum.GetNames(typeof(ProduceType)),
+                labels: () => GetAllTranslatedProduceTypes(),
+                valueGetter: ProduceType.ToString,
+                valueSetter: (value) => ProduceType = (ProduceType)Enum.Parse(typeof(ProduceType), value, true)
             )
             {
                 MaxValuesAtOnce = Enum.GetValues(typeof(ProduceType)).Length//size of enum
@@ -242,8 +242,8 @@ namespace ProfitCalculator.menus
             Labels.Add(
                 new ClickableComponent(
                     new Rectangle(
-                        this.xPositionOnScreen + spaceToClearSideBorder + borderWidth,
-                        this.yPositionOnScreen + spaceToClearTopBorder + Game1.tileSize * 3,
+                        xPositionOnScreen + spaceToClearSideBorder + borderWidth,
+                        yPositionOnScreen + spaceToClearTopBorder + Game1.tileSize * 3,
                         Game1.tileSize * 2,
                         Game1.tileSize
                     ),
@@ -252,14 +252,14 @@ namespace ProfitCalculator.menus
                 )
             );
             DropdownOption fertilizerQualityOption = new(
-                this.xPositionOnScreen + spaceToClearSideBorder + borderWidth + Game1.tileSize * 5,
-                this.yPositionOnScreen + spaceToClearTopBorder + Game1.tileSize * 3 + Game1.tileSize / 4,
+                xPositionOnScreen + spaceToClearSideBorder + borderWidth + Game1.tileSize * 5,
+                yPositionOnScreen + spaceToClearTopBorder + Game1.tileSize * 3 + Game1.tileSize / 4,
                 name: () => "fertilizerQuality",
                 label: () => Helper.Translation.Get("fertilizer-quality"),
-                choices: () => Utils.FertilizerQuality.GetNames(typeof(Utils.FertilizerQuality)),
-                labels: () => Utils.GetAllTranslatedFertilizerQualities(),
-                valueGetter: this.FertilizerQuality.ToString,
-                valueSetter: (string value) => this.FertilizerQuality = (FertilizerQuality)Utils.FertilizerQuality.Parse(typeof(FertilizerQuality), value, true)
+                choices: () => Enum.GetNames(typeof(FertilizerQuality)),
+                labels: () => GetAllTranslatedFertilizerQualities(),
+                valueGetter: FertilizerQuality.ToString,
+                valueSetter: (value) => FertilizerQuality = (FertilizerQuality)Enum.Parse(typeof(FertilizerQuality), value, true)
             )
             {
                 MaxValuesAtOnce = Enum.GetValues(typeof(FertilizerQuality)).Length//size of enum
@@ -272,8 +272,8 @@ namespace ProfitCalculator.menus
             Labels.Add(
                 new ClickableComponent(
                     new Rectangle(
-                        this.xPositionOnScreen + spaceToClearSideBorder + borderWidth,
-                        this.yPositionOnScreen + spaceToClearTopBorder + Game1.tileSize * 4,
+                        xPositionOnScreen + spaceToClearSideBorder + borderWidth,
+                        yPositionOnScreen + spaceToClearTopBorder + Game1.tileSize * 4,
                         Game1.tileSize * 2,
                         Game1.tileSize
                     ),
@@ -283,12 +283,12 @@ namespace ProfitCalculator.menus
             );
 
             CheckboxOption payForSeeds = new(
-                    this.xPositionOnScreen + spaceToClearSideBorder + borderWidth + Game1.tileSize * 5,
-                    this.yPositionOnScreen + spaceToClearTopBorder + Game1.tileSize * 4 + Game1.tileSize / 4,
+                    xPositionOnScreen + spaceToClearSideBorder + borderWidth + Game1.tileSize * 5,
+                    yPositionOnScreen + spaceToClearTopBorder + Game1.tileSize * 4 + Game1.tileSize / 4,
                     () => "payForSeeds",
                     () => Helper.Translation.Get("pay-for-seeds"),
-                    () => this.PayForSeeds,
-                    (bool value) => this.PayForSeeds = value
+                    () => PayForSeeds,
+                    (value) => PayForSeeds = value
 
                 );
             Options.Add(payForSeeds);
@@ -299,8 +299,8 @@ namespace ProfitCalculator.menus
             Labels.Add(
                 new ClickableComponent(
                     new Rectangle(
-                        this.xPositionOnScreen + spaceToClearSideBorder + borderWidth,
-                        this.yPositionOnScreen + spaceToClearTopBorder + Game1.tileSize * 5,
+                        xPositionOnScreen + spaceToClearSideBorder + borderWidth,
+                        yPositionOnScreen + spaceToClearTopBorder + Game1.tileSize * 5,
                         Game1.tileSize * 2,
                         Game1.tileSize
                     ),
@@ -309,12 +309,12 @@ namespace ProfitCalculator.menus
                 )
             );
             CheckboxOption payForFertilizer = new(
-                this.xPositionOnScreen + spaceToClearSideBorder + borderWidth + Game1.tileSize * 5,
-                this.yPositionOnScreen + spaceToClearTopBorder + Game1.tileSize * 5 + Game1.tileSize / 4,
+                xPositionOnScreen + spaceToClearSideBorder + borderWidth + Game1.tileSize * 5,
+                yPositionOnScreen + spaceToClearTopBorder + Game1.tileSize * 5 + Game1.tileSize / 4,
                 () => "payForFertilizer",
                 () => Helper.Translation.Get("pay-for-fertilizer"),
-                () => this.PayForFertilizer,
-                (bool value) => this.PayForFertilizer = value
+                () => PayForFertilizer,
+                (value) => PayForFertilizer = value
             );
             Options.Add(payForFertilizer);
         }
@@ -324,8 +324,8 @@ namespace ProfitCalculator.menus
             Labels.Add(
                 new ClickableComponent(
                     new Rectangle(
-                        this.xPositionOnScreen + spaceToClearSideBorder + borderWidth,
-                        this.yPositionOnScreen + spaceToClearTopBorder + Game1.tileSize * 6,
+                        xPositionOnScreen + spaceToClearSideBorder + borderWidth,
+                        yPositionOnScreen + spaceToClearTopBorder + Game1.tileSize * 6,
                         Game1.tileSize * 2,
                         Game1.tileSize
                     ),
@@ -335,14 +335,14 @@ namespace ProfitCalculator.menus
         );
             UIntOption maxMoneyOption =
                 new(
-                   this.xPositionOnScreen + spaceToClearSideBorder + borderWidth + Game1.tileSize * 5 - Game1.tileSize / 8,
-                   this.yPositionOnScreen + spaceToClearTopBorder + Game1.tileSize * 6 + Game1.tileSize / 4,
+                   xPositionOnScreen + spaceToClearSideBorder + borderWidth + Game1.tileSize * 5 - Game1.tileSize / 8,
+                   yPositionOnScreen + spaceToClearTopBorder + Game1.tileSize * 6 + Game1.tileSize / 4,
                    () => "maxMoney",
                    () => Helper.Translation.Get("max-money"),
-                   valueGetter: () => this.MaxMoney,
+                   valueGetter: () => MaxMoney,
                    max: () => 99999999,
                    min: () => 0,
-                   valueSetter: (string value) => this.MaxMoney = uint.Parse(value),
+                   valueSetter: (value) => MaxMoney = uint.Parse(value),
                    enableClamping: true
                 );
             Options.Add(maxMoneyOption);
@@ -353,8 +353,8 @@ namespace ProfitCalculator.menus
             Labels.Add(
                 new ClickableComponent(
                     new Rectangle(
-                        this.xPositionOnScreen + spaceToClearSideBorder + borderWidth,
-                        this.yPositionOnScreen + spaceToClearTopBorder + Game1.tileSize * 7,
+                        xPositionOnScreen + spaceToClearSideBorder + borderWidth,
+                        yPositionOnScreen + spaceToClearTopBorder + Game1.tileSize * 7,
                         Game1.tileSize * 2,
                         Game1.tileSize
                     ),
@@ -363,12 +363,12 @@ namespace ProfitCalculator.menus
                 )
             );
             CheckboxOption useBaseStatsOptions = new(
-                this.xPositionOnScreen + spaceToClearSideBorder + borderWidth + Game1.tileSize * 5,
-                this.yPositionOnScreen + spaceToClearTopBorder + Game1.tileSize * 7 + Game1.tileSize / 4,
+                xPositionOnScreen + spaceToClearSideBorder + borderWidth + Game1.tileSize * 5,
+                yPositionOnScreen + spaceToClearTopBorder + Game1.tileSize * 7 + Game1.tileSize / 4,
                 () => "useBaseStats",
                 () => Helper.Translation.Get("base-stats"),
-                () => this.UseBaseStats,
-                (bool value) => this.UseBaseStats = value
+                () => UseBaseStats,
+                (value) => UseBaseStats = value
             );
             Options.Add(useBaseStatsOptions);
         }
@@ -391,12 +391,12 @@ namespace ProfitCalculator.menus
             Game1.drawDialogueBox(xPositionOnScreen, yPositionOnScreen, widthOnScreen, heightOnScreen, speaker: false, drawOnlyBox: true);
 
             // Draw Labels and Options and buttons
-            this.DrawActions(b);
-            this.DrawLabels(b);
+            DrawActions(b);
+            DrawLabels(b);
             //print active sort mode from b (private field called _sortMode)
             b.End();
             b.Begin(SpriteSortMode.FrontToBack, BlendState.AlphaBlend, SamplerState.PointClamp);
-            this.DrawOptions(b);
+            DrawOptions(b);
             b.End();
             b.Begin(SpriteSortMode.Deferred, BlendState.AlphaBlend, SamplerState.PointClamp);
 
@@ -407,7 +407,7 @@ namespace ProfitCalculator.menus
         private void DrawActions(SpriteBatch b)
         {
             // Draw the calculate button.
-            IClickableMenu.drawTextureBox
+            drawTextureBox
             (
                 b,
                 Game1.mouseCursors,
@@ -416,7 +416,7 @@ namespace ProfitCalculator.menus
                 calculateButton.bounds.Y,
                 calculateButton.bounds.Width,
                 calculateButton.bounds.Height,
-                (calculateButton.scale != 1.0001f) ? Color.Wheat : Color.White,
+                calculateButton.scale != 1.0001f ? Color.Wheat : Color.White,
                 4f,
                 false
             );
@@ -427,17 +427,17 @@ namespace ProfitCalculator.menus
                 new Vector2
                 (
                     (float)calculateButton.bounds.X
-                        + (calculateButton.bounds.Width / 2)
-                        - (Game1.smallFont.MeasureString(calculateButton.label).X / 2),
+                        + calculateButton.bounds.Width / 2
+                        - Game1.smallFont.MeasureString(calculateButton.label).X / 2,
                     (float)calculateButton.bounds.Y
-                        + (calculateButton.bounds.Height / 2)
-                        - (Game1.smallFont.MeasureString(calculateButton.name).Y / 2)
+                        + calculateButton.bounds.Height / 2
+                        - Game1.smallFont.MeasureString(calculateButton.name).Y / 2
                 ),
                 Game1.textColor
             );
 
             // Draw the reset button.
-            IClickableMenu.drawTextureBox
+            drawTextureBox
             (
                 b,
                 Game1.mouseCursors,
@@ -446,7 +446,7 @@ namespace ProfitCalculator.menus
                 resetButton.bounds.Y,
                 resetButton.bounds.Width,
                 resetButton.bounds.Height,
-                (resetButton.scale != 1.0001f) ? Color.Wheat : Color.White,
+                resetButton.scale != 1.0001f ? Color.Wheat : Color.White,
                 4f,
                 false
             );
@@ -457,11 +457,11 @@ namespace ProfitCalculator.menus
                 new Vector2
                 (
                     (float)resetButton.bounds.X
-                        + (resetButton.bounds.Width / 2)
-                        - (Game1.smallFont.MeasureString(resetButton.label).X / 2),
+                        + resetButton.bounds.Width / 2
+                        - Game1.smallFont.MeasureString(resetButton.label).X / 2,
                     (float)resetButton.bounds.Y
-                        + (resetButton.bounds.Height / 2)
-                        - (Game1.smallFont.MeasureString(resetButton.name).Y / 2)
+                        + resetButton.bounds.Height / 2
+                        - Game1.smallFont.MeasureString(resetButton.name).Y / 2
                 ),
                 Game1.textColor
             );
@@ -475,8 +475,8 @@ namespace ProfitCalculator.menus
                     Game1.dialogueFont,
                     label.label,
                     new Vector2(
-                        (float)label.bounds.X,
-                        (float)label.bounds.Y + (label.bounds.Height / 2) - (Game1.smallFont.MeasureString(label.name).Y / 2)
+                        label.bounds.X,
+                        (float)label.bounds.Y + label.bounds.Height / 2 - Game1.smallFont.MeasureString(label.name).Y / 2
                     ),
                     Game1.textColor
                 );
@@ -534,13 +534,13 @@ namespace ProfitCalculator.menus
         {
             if (calculateButton.containsPoint(x, y))
             {
-                this.DoCalculation();
+                DoCalculation();
                 if (playSound) Game1.playSound("select");
                 return;
             }
             if (resetButton.containsPoint(x, y))
             {
-                this.Reset();
+                Reset();
                 if (playSound) Game1.playSound("dialogueCharacterClose");
                 return;
             }
@@ -548,10 +548,10 @@ namespace ProfitCalculator.menus
             foreach (BaseOption option in Options)
             {
                 if (!stopSpreadingClick)
-                    option.ReceiveLeftClick(x, y, () => this.stopSpreadingClick = !this.stopSpreadingClick);
+                    option.ReceiveLeftClick(x, y, () => stopSpreadingClick = !stopSpreadingClick);
                 else
                 {
-                    this.stopSpreadingClick = !this.stopSpreadingClick;
+                    stopSpreadingClick = !stopSpreadingClick;
                     return;
                 }
             }
@@ -569,7 +569,7 @@ namespace ProfitCalculator.menus
             PayForFertilizer = false;
             MaxMoney = (uint)Game1.player.team.money.Value;
             UseBaseStats = false;
-            this.UpdateMenu();
+            UpdateMenu();
         }
 
         /// <summary>
@@ -579,7 +579,7 @@ namespace ProfitCalculator.menus
         {
             Labels.Clear();
             Options.Clear();
-            this.SetUpPositions();
+            SetUpPositions();
         }
 
         /// <summary>
@@ -589,8 +589,8 @@ namespace ProfitCalculator.menus
         public override void update(GameTime time)
         {
             base.update(time);
-            this.xPositionOnScreen = (int)GetAppropriateMenuPosition().X;
-            this.yPositionOnScreen = (int)GetAppropriateMenuPosition().Y;
+            xPositionOnScreen = (int)GetAppropriateMenuPosition().X;
+            yPositionOnScreen = (int)GetAppropriateMenuPosition().Y;
             //update all the options and labels and buttons
             foreach (BaseOption option in Options)
             {
@@ -605,8 +605,8 @@ namespace ProfitCalculator.menus
         public static Vector2 GetAppropriateMenuPosition()
         {
             Vector2 defaultPosition = new(
-                (Game1.viewport.Width * Game1.options.zoomLevel * (1 / Game1.options.uiScale)) / 2 - (widthOnScreen / 2),
-                (Game1.viewport.Height * Game1.options.zoomLevel * (1 / Game1.options.uiScale)) / 2 - (heightOnScreen / 2)
+                Game1.viewport.Width * Game1.options.zoomLevel * (1 / Game1.options.uiScale) / 2 - widthOnScreen / 2,
+                Game1.viewport.Height * Game1.options.zoomLevel * (1 / Game1.options.uiScale) / 2 - heightOnScreen / 2
             );
             //Force the viewport into a position that it should fit into on the screen???
             if (defaultPosition.X + widthOnScreen > Game1.viewport.Width)
@@ -627,10 +627,10 @@ namespace ProfitCalculator.menus
         public override void gameWindowSizeChanged(Rectangle oldBounds, Rectangle newBounds)
         {
             base.gameWindowSizeChanged(oldBounds, newBounds);
-            this.xPositionOnScreen = (int)GetAppropriateMenuPosition().X;
-            this.yPositionOnScreen = (int)GetAppropriateMenuPosition().Y;
+            xPositionOnScreen = (int)GetAppropriateMenuPosition().X;
+            yPositionOnScreen = (int)GetAppropriateMenuPosition().Y;
 
-            this.UpdateMenu();
+            UpdateMenu();
             _childMenu?.gameWindowSizeChanged(oldBounds, newBounds);
         }
 
@@ -638,13 +638,13 @@ namespace ProfitCalculator.menus
 
         private void DoCalculation()
         {
-            ModEntry.Calculator.SetSettings(Day, MaxDay, MinDay, Season, ProduceType, FertilizerQuality, PayForSeeds, PayForFertilizer, MaxMoney, UseBaseStats);
+            Container.Instance.GetInstance<Calculator>()?.SetSettings(Day, MaxDay, MinDay, Season, ProduceType, FertilizerQuality, PayForSeeds, PayForFertilizer, MaxMoney, UseBaseStats);
 
-            Monitor.Log("Doing Calculation", LogLevel.Debug);
-            List<CropInfo> cropList = ModEntry.Calculator.RetrieveCropInfos();
+            Container.Instance.GetInstance<IMonitor>()?.Log("Doing Calculation", LogLevel.Debug);
+            List<CropInfo> cropList = Container.Instance.GetInstance<Calculator>()?.RetrieveCropInfos();
 
             ProfitCalculatorResultsList profitCalculatorResultsList = new(cropList);
-            this.SetChildMenu(profitCalculatorResultsList);
+            SetChildMenu(profitCalculatorResultsList);
         }
     }
 }

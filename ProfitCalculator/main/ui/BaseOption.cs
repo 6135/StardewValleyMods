@@ -1,16 +1,22 @@
 ﻿using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
+using StardewModdingAPI;
 using StardewValley;
 using StardewValley.Menus;
 using System;
 
-namespace ProfitCalculator.ui
+namespace ProfitCalculator.main.ui
 {
     /// <summary>
     ///  Base class for all options in the options menu. This might be usefull for other mods. Might clean this up later and make it a seperate mod or framework.
     /// </summary>
     public abstract class BaseOption
     {
+        /// <summary>
+        /// The helper for the mod
+        /// </summary>
+        protected readonly IModHelper Helper = Container.Instance.GetInstance<IModHelper>();
+
         /// <summary> The sound to play when the option is clicked, or <c>null</c> to play no sound. </summary>
         public virtual string ClickedSound => null;
 
@@ -98,8 +104,8 @@ namespace ProfitCalculator.ui
                     label()
                 );
             Tooltip = tooltip;
-            this.Name = name;
-            this.Label = label;
+            Name = name;
+            Label = label;
         }
 
         /// <summary>
@@ -123,10 +129,10 @@ namespace ProfitCalculator.ui
         /// <param name="stopSpread"> The action to stop the spread of the left click to Children or sibling components</param>
         public virtual void ReceiveLeftClick(int x, int y, Action stopSpread)
         {
-            this.BeforeReceiveLeftClick(x, y);
+            BeforeReceiveLeftClick(x, y);
             //check if x and y are within the bounds of the checkbox
             if (ClickableComponent.containsPoint(x, y))
-                this.ExecuteClick();
+                ExecuteClick();
         }
 
         /// <summary>
@@ -135,8 +141,8 @@ namespace ProfitCalculator.ui
         public virtual void ExecuteClick()
         {
             Clicked = true;
-            if (this.ClickedSound != null)
-                Game1.playSound(this.ClickedSound);
+            if (ClickedSound != null)
+                Game1.playSound(ClickedSound);
         }
 
         /// <summary>

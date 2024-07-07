@@ -15,7 +15,7 @@
           "Price": 350,
           "Texture": "Mods/{{ModId}}/pumpkinPie",
           "SpriteIndex": 0,
-          "Edibility": 40,
+          "Edibility": 100,
           "IsDrink": false,
           "Buffs": [
             {
@@ -51,7 +51,7 @@
           "Price": 15,
           "Texture": "Mods/{{ModId}}/pumpkinPieSlice",
           "SpriteIndex": 0,
-          "Edibility": 7,
+          "Edibility": 24,
           "IsDrink": false,
           "Buffs": [
             {
@@ -88,7 +88,7 @@
           "Price": 350,
           "Texture": "Mods/{{ModId}}/pinkCake",
           "SpriteIndex": 0,
-          "Edibility": 40,
+          "Edibility": 100,
           "IsDrink": false,
           "Buffs": [
             {
@@ -124,7 +124,7 @@
           "Price": 15,
           "Texture": "Mods/{{ModId}}/pinkCakeSlice",
           "SpriteIndex": 0,
-          "Edibility": 7,
+          "Edibility": 24,
           "IsDrink": false,
           "Buffs": [
             {
@@ -152,7 +152,7 @@
         }
         //**********End Cakes**********
       }
-    },
+    }
 
   ]
 }

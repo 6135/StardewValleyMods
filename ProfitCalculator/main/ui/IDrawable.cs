@@ -1,6 +1,6 @@
 ﻿using Microsoft.Xna.Framework.Graphics;
 
-namespace ProfitCalculator.ui
+namespace ProfitCalculator.main.ui
 {
     /// <summary>
     /// An object that can be drawn to the screen. With update and reset methods.

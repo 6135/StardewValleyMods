@@ -1,11 +1,10 @@
 ﻿using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
-using ProfitCalculator.main;
 using StardewValley;
 using StardewValley.Menus;
 using System;
 
-namespace ProfitCalculator.ui
+namespace ProfitCalculator.main.ui
 {
     /// <summary>
     /// A box that displays a crop and its information
@@ -31,10 +30,10 @@ namespace ProfitCalculator.ui
         /// <param name="crop"> The cropInfo to display. <see cref="CropInfo"/> </param>
         public CropBox(int x, int y, int w, int h, CropInfo crop) : base(x, y, w, h, () => crop.Crop.DisplayName, () => crop.Crop.DisplayName, () => crop.Crop.DisplayName)
         {
-            this.mainText = crop.Crop.DisplayName;
-            if (this.mainText.Length < 1)
+            mainText = crop.Crop.DisplayName;
+            if (mainText.Length < 1)
             {
-                this.mainText = "PlaceHolder";
+                mainText = "PlaceHolder";
             }
             cropInfo = crop;
             cropHoverBox = new CropHoverBox(cropInfo);
@@ -56,10 +55,10 @@ namespace ProfitCalculator.ui
                 b,
                 Game1.menuTexture,
                 new(0, 256, 60, 60),
-                (int)this.Position.X,// - 16,
-                (int)this.Position.Y,// - 8 - 4,
-                this.ClickableComponent.bounds.Width,// + 32,
-                this.ClickableComponent.bounds.Height,// + 16 + 8,
+                (int)Position.X,// - 16,
+                (int)Position.Y,// - 8 - 4,
+                ClickableComponent.bounds.Width,// + 32,
+                ClickableComponent.bounds.Height,// + 16 + 8,
                 Color.White,
                 1.2f,
                 false,
@@ -72,8 +71,8 @@ namespace ProfitCalculator.ui
             b.Draw(
                 cropInfo.Crop.Sprite.Item1,
                 new Rectangle(
-                    (int)this.Position.X + (3 * Game1.tileSize) / 8,
-                    (int)this.Position.Y + (this.ClickableComponent.bounds.Height / 2) - (Game1.tileSize / 2) + 6,
+                    (int)Position.X + 3 * Game1.tileSize / 8,
+                    (int)Position.Y + ClickableComponent.bounds.Height / 2 - Game1.tileSize / 2 + 6,
                     spriteDisplaySize,
                     spriteDisplaySize
                 ),
@@ -89,25 +88,25 @@ namespace ProfitCalculator.ui
             //But if string size is too big, draw, reduce font size, and draw again
             float fontSizeModifier = 1.3f;
 
-            float fontSize = (Font.MeasureString(this.mainText).X * fontSizeModifier);
+            float fontSize = Font.MeasureString(mainText).X * fontSizeModifier;
 
-            float rightSideTextMaxSize = Font.MeasureString(cropInfo.ProfitPerDay.ToString("0.00")).X + Font.MeasureString($" {Utils.Helper.Translation.Get("g")}/{Utils.Helper.Translation.Get("day")}").X;
+            float rightSideTextMaxSize = Font.MeasureString(cropInfo.ProfitPerDay.ToString("0.00")).X + Font.MeasureString($" {Helper.Translation.Get("g")}/{Helper.Translation.Get("day")}").X;
             rightSideTextMaxSize *= 1.8f;
 
-            float boxWidth = (this.ClickableComponent.bounds.Width) - ((3 * Game1.tileSize) / 8) - rightSideTextMaxSize;
+            float boxWidth = ClickableComponent.bounds.Width - 3 * Game1.tileSize / 8 - rightSideTextMaxSize;
 
             while (fontSize > boxWidth)
             {
                 fontSizeModifier -= 0.005f;
-                fontSize = (Font.MeasureString(this.mainText).X * fontSizeModifier);
+                fontSize = Font.MeasureString(mainText).X * fontSizeModifier;
             }
 
             b.DrawString(
                 Font,
-                this.mainText,
+                mainText,
                 new Vector2(
-                    this.Position.X + (3 * Game1.tileSize) / 2,
-                    this.Position.Y + (this.ClickableComponent.bounds.Height / 2) - (Font.MeasureString(this.mainText).Y / 2)
+                    Position.X + 3 * Game1.tileSize / 2,
+                    Position.Y + ClickableComponent.bounds.Height / 2 - Font.MeasureString(mainText).Y / 2
                 ),
                 Color.Black,
                 0f,
@@ -118,7 +117,7 @@ namespace ProfitCalculator.ui
             );
 
             string price = Math.Round(cropInfo.TotalProfit).ToString();
-            string g = $" {Utils.Helper.Translation.Get("g")}";
+            string g = $" {Helper.Translation.Get("g")}";
             Color color;
             if (cropInfo.TotalProfit < 0)
             {
@@ -132,8 +131,8 @@ namespace ProfitCalculator.ui
                 Font,
                 price,
                 new Vector2(
-                    this.Position.X + (69 * (Game1.tileSize / 8)) - Font.MeasureString(price).X - Font.MeasureString(g).X,
-                    this.Position.Y + (this.ClickableComponent.bounds.Height / 2) + 3 - (Font.MeasureString(price).Y)
+                    Position.X + 69 * (Game1.tileSize / 8) - Font.MeasureString(price).X - Font.MeasureString(g).X,
+                    Position.Y + ClickableComponent.bounds.Height / 2 + 3 - Font.MeasureString(price).Y
                 ),
                 color,
                 0f,
@@ -146,8 +145,8 @@ namespace ProfitCalculator.ui
                 Font,
                 g,
                 new Vector2(
-                    this.Position.X + (69 * (Game1.tileSize / 8)) - Font.MeasureString(g).X,
-                    this.Position.Y + (this.ClickableComponent.bounds.Height / 2) + 3 - (Font.MeasureString(g).Y)
+                    Position.X + 69 * (Game1.tileSize / 8) - Font.MeasureString(g).X,
+                    Position.Y + ClickableComponent.bounds.Height / 2 + 3 - Font.MeasureString(g).Y
                 ),
                 Color.Black,
                 0f,
@@ -157,14 +156,14 @@ namespace ProfitCalculator.ui
                 0.6f
             );
             //further left, draw the price per day of the crop in the box, rounded to the nearest two decimal places, with G/Day at the end
-            string pricePerDay = (cropInfo.ProfitPerDay).ToString("0.00");
-            string ppd = $" {Utils.Helper.Translation.Get("g")}/{Utils.Helper.Translation.Get("day")}";
+            string pricePerDay = cropInfo.ProfitPerDay.ToString("0.00");
+            string ppd = $" {Helper.Translation.Get("g")}/{Helper.Translation.Get("day")}";
             b.DrawString(
                 Font,
                 pricePerDay,
                 new Vector2(
-                    this.Position.X + (69 * (Game1.tileSize / 8)) - Font.MeasureString(pricePerDay).X - Font.MeasureString(ppd).X,
-                    this.Position.Y + (this.ClickableComponent.bounds.Height / 2) + 3
+                    Position.X + 69 * (Game1.tileSize / 8) - Font.MeasureString(pricePerDay).X - Font.MeasureString(ppd).X,
+                    Position.Y + ClickableComponent.bounds.Height / 2 + 3
                 ),
                 color,
                 0f,
@@ -177,8 +176,8 @@ namespace ProfitCalculator.ui
                 Font,
                 ppd,
                 new Vector2(
-                    this.Position.X + (69 * (Game1.tileSize / 8)) - Font.MeasureString(ppd).X,
-                    this.Position.Y + (this.ClickableComponent.bounds.Height / 2) + 3
+                    Position.X + 69 * (Game1.tileSize / 8) - Font.MeasureString(ppd).X,
+                    Position.Y + ClickableComponent.bounds.Height / 2 + 3
                 ),
                 Color.Black,
                 0f,
@@ -202,7 +201,7 @@ namespace ProfitCalculator.ui
         public override void PerformHoverAction(int x, int y)
         {
             base.PerformHoverAction(x, y);
-            if (this.ClickableComponent.containsPoint(x, y))
+            if (ClickableComponent.containsPoint(x, y))
             {
                 cropHoverBox.Update();
                 cropHoverBox.Open(true);

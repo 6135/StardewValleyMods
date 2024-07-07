@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using ProfitCalculator.main.models;
 
 namespace ProfitCalculator.main
 {
@@ -9,7 +10,7 @@ namespace ProfitCalculator.main
     public class CropInfo
     {
         ///<summary> The crop. </summary>
-        public readonly CropDataExpanded Crop;
+        public readonly IPlantData Crop;
 
         /// <summary> The total profit. </summary>
         public readonly double TotalProfit;
@@ -83,7 +84,7 @@ namespace ProfitCalculator.main
         /// <param name="chanceOfSilverQuality"> The chance of silver quality. </param>
         /// <param name="chanceOfGoldQuality"> The chance of gold quality. </param>
         /// <param name="chanceOfIridiumQuality"> The chance of iridium quality. </param>
-        public CropInfo(CropDataExpanded crop, double totalProfit, double profitPerDay, double totalSeedLoss, double seedLossPerDay, double totalFertilizerLoss, double fertilizerLossPerDay, Utils.ProduceType produceType, int duration, int totalHarvests, int growthTime, int regrowthTime, int productCount, double chanceOfExtraProduct, double chanceOfNormalQuality, double chanceOfSilverQuality, double chanceOfGoldQuality, double chanceOfIridiumQuality)
+        public CropInfo(IPlantData crop, double totalProfit, double profitPerDay, double totalSeedLoss, double seedLossPerDay, double totalFertilizerLoss, double fertilizerLossPerDay, Utils.ProduceType produceType, int duration, int totalHarvests, int growthTime, int regrowthTime, int productCount, double chanceOfExtraProduct, double chanceOfNormalQuality, double chanceOfSilverQuality, double chanceOfGoldQuality, double chanceOfIridiumQuality)
         {
             Crop = crop;
             TotalProfit = totalProfit - totalSeedLoss - totalFertilizerLoss;
@@ -143,7 +144,7 @@ namespace ProfitCalculator.main
         public override bool Equals(object obj)
         {
             return obj is CropInfo cropInfo &&
-                   EqualityComparer<CropDataExpanded>.Default.Equals(Crop, cropInfo.Crop) &&
+                   EqualityComparer<IPlantData>.Default.Equals(Crop, cropInfo.Crop) &&
                    TotalProfit == cropInfo.TotalProfit &&
                    ProfitPerDay == cropInfo.ProfitPerDay &&
                    TotalSeedLoss == cropInfo.TotalSeedLoss &&

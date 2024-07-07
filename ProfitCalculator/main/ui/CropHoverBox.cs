@@ -1,11 +1,11 @@
 ﻿using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
-using ProfitCalculator.main;
+using StardewModdingAPI;
 using StardewValley;
 using StardewValley.Menus;
 using System;
 
-namespace ProfitCalculator.ui
+namespace ProfitCalculator.main.ui
 {
     /// <summary>
     ///   Hover details for each crop in the profit calculator.
@@ -22,6 +22,7 @@ namespace ProfitCalculator.ui
         private Rectangle drawBox;
         private readonly CropInfo cropInfo;
         private readonly SpriteFont font;
+        protected readonly IModHelper Helper = Container.Instance.GetInstance<IModHelper>();
 
         /// <summary>
         /// Creates a new CropHoverBox.
@@ -37,9 +38,9 @@ namespace ProfitCalculator.ui
             y = 0;
             drawBox = new(x, y, windowWidth, windowHeight);
             this.cropInfo = cropInfo;
-            ModConfig config = Utils.Helper.ReadConfig<ModConfig>();
-            this.hoverDelay = config?.ToolTipDelay ?? 30;
-            this.hoverDelayDefault = config?.ToolTipDelay ?? 30;
+            ModConfig config = Helper.ReadConfig<ModConfig>();
+            hoverDelay = config?.ToolTipDelay ?? 30;
+            hoverDelayDefault = config?.ToolTipDelay ?? 30;
         }
 
         /// <inheritdoc/>
@@ -63,9 +64,9 @@ namespace ProfitCalculator.ui
             if (isOpen && hoverDelay <= 0)
             {
                 //Top Panel
-                this.DrawMainBox(b);
+                DrawMainBox(b);
                 //Bottom Panel
-                this.DrawSecondaryBox(b);
+                DrawSecondaryBox(b);
             }
             else if (isOpen) hoverDelay--;
         }
@@ -84,14 +85,14 @@ namespace ProfitCalculator.ui
                 1f,
                 draw_layer: 0.7f
             );
-            Vector3 currentTextPosition = new(drawBox.X, drawBox.Y, drawBox.X + drawBox.Width - (Game1.tileSize / 4));
+            Vector3 currentTextPosition = new(drawBox.X, drawBox.Y, drawBox.X + drawBox.Width - Game1.tileSize / 4);
 
             #region Crop Value
 
             //Total profit: Total Profit
             //Total Profit Per Day: P/D
-            string totalProfit = $"{Utils.Helper.Translation.Get("total-p")}:";
-            string totalProfitValue = $"{Math.Round(cropInfo.TotalProfit)} {Utils.Helper.Translation.Get("g")}";
+            string totalProfit = $"{Helper.Translation.Get("total-p")}:";
+            string totalProfitValue = $"{Math.Round(cropInfo.TotalProfit)} {Helper.Translation.Get("g")}";
 
             currentTextPosition.X += (float)Game1.tileSize / 4;
             currentTextPosition.Y += (float)Game1.tileSize / 4;
@@ -122,8 +123,8 @@ namespace ProfitCalculator.ui
                 0.75f
             );
 
-            string pricePerDay = $"{Utils.Helper.Translation.Get("total-p-day")}:";
-            string pricePerDayValue = $"{cropInfo.ProfitPerDay:0.00} {Utils.Helper.Translation.Get("g")}/{Utils.Helper.Translation.Get("day")}";
+            string pricePerDay = $"{Helper.Translation.Get("total-p-day")}:";
+            string pricePerDayValue = $"{cropInfo.ProfitPerDay:0.00} {Helper.Translation.Get("g")}/{Helper.Translation.Get("day")}";
 
             currentTextPosition.Y += font.MeasureString(totalProfit).Y;
             b.DrawString(
@@ -158,8 +159,8 @@ namespace ProfitCalculator.ui
 
             #region Seed Loss
 
-            string totalSeedLoss = $"{Utils.Helper.Translation.Get("total-s-loss")}:";
-            string totalSeedLossValue = $"{Math.Round(cropInfo.TotalSeedLoss)} {Utils.Helper.Translation.Get("g")}";
+            string totalSeedLoss = $"{Helper.Translation.Get("total-s-loss")}:";
+            string totalSeedLossValue = $"{Math.Round(cropInfo.TotalSeedLoss)} {Helper.Translation.Get("g")}";
 
             currentTextPosition.Y += font.MeasureString(pricePerDay).Y + 16;
             b.DrawString(
@@ -190,8 +191,8 @@ namespace ProfitCalculator.ui
                 0.75f
             );
 
-            string seedLossPerDay = $"{Utils.Helper.Translation.Get("total-s-loss-day")}:";
-            string seedLossPerDayValue = $"{cropInfo.SeedLossPerDay:0.00} {Utils.Helper.Translation.Get("g")}/{Utils.Helper.Translation.Get("day")}";
+            string seedLossPerDay = $"{Helper.Translation.Get("total-s-loss-day")}:";
+            string seedLossPerDayValue = $"{cropInfo.SeedLossPerDay:0.00} {Helper.Translation.Get("g")}/{Helper.Translation.Get("day")}";
 
             currentTextPosition.Y += font.MeasureString(totalSeedLoss).Y;
             b.DrawString(
@@ -226,8 +227,8 @@ namespace ProfitCalculator.ui
 
             #region Crop details
 
-            string grow = $"{Utils.Helper.Translation.Get("grow-time")}:";
-            string growValue = $"{cropInfo.GrowthTime} {Utils.Helper.Translation.Get("days")}";
+            string grow = $"{Helper.Translation.Get("grow-time")}:";
+            string growValue = $"{cropInfo.GrowthTime} {Helper.Translation.Get("days")}";
             currentTextPosition.Y += font.MeasureString(seedLossPerDay).Y + 16;
             b.DrawString(
                 font,
@@ -257,9 +258,9 @@ namespace ProfitCalculator.ui
                 0.75f
             );
 
-            string reGrow = $"{Utils.Helper.Translation.Get("regrow-time")}:";
-            string reGrowValue = $"{cropInfo.RegrowthTime} {Utils.Helper.Translation.Get("days")}";
-            if (cropInfo.RegrowthTime <= 0) reGrowValue = Utils.Helper.Translation.Get("no");
+            string reGrow = $"{Helper.Translation.Get("regrow-time")}:";
+            string reGrowValue = $"{cropInfo.RegrowthTime} {Helper.Translation.Get("days")}";
+            if (cropInfo.RegrowthTime <= 0) reGrowValue = Helper.Translation.Get("no");
             currentTextPosition.Y += font.MeasureString(seedLossPerDay).Y;
             b.DrawString(
                 font,
@@ -289,7 +290,7 @@ namespace ProfitCalculator.ui
                 0.75f
             );
 
-            string harvests = $"{Utils.Helper.Translation.Get("harvest-count")}:";
+            string harvests = $"{Helper.Translation.Get("harvest-count")}:";
             string harvestsValue = $"#{cropInfo.TotalHarvests}";
             currentTextPosition.Y += font.MeasureString(seedLossPerDay).Y;
             b.DrawString(
@@ -330,9 +331,9 @@ namespace ProfitCalculator.ui
                 Game1.menuTexture,
                 new Rectangle(0, 256, 60, 60),
                 drawBox.X,
-                drawBox.Y + (windowHeight / 2) - (Game1.tileSize / 4),
+                drawBox.Y + windowHeight / 2 - Game1.tileSize / 4,
                 windowWidth,
-                windowHeight - (windowHeight / 2),
+                windowHeight - windowHeight / 2,
                 Color.White,
                 1f,
                 draw_layer: 0.71f
@@ -340,14 +341,14 @@ namespace ProfitCalculator.ui
 
             Vector3 currentTextPosition = new(
                 drawBox.X,
-                drawBox.Y + +(windowHeight / 2) - (Game1.tileSize / 4),
-                drawBox.X + drawBox.Width - (Game1.tileSize / 4));
+                drawBox.Y + +(windowHeight / 2) - Game1.tileSize / 4,
+                drawBox.X + drawBox.Width - Game1.tileSize / 4);
 
             #region Crop Value
 
             //Total profit: Total Profit
             //Total Profit Per Day: P/D
-            string minHarvest = $"{Utils.Helper.Translation.Get("min-harvests")}:";
+            string minHarvest = $"{Helper.Translation.Get("min-harvests")}:";
             string minHarvestValue = $"#{cropInfo.Crop.MinHarvests}";
             currentTextPosition.X += (float)Game1.tileSize / 4;
             currentTextPosition.Y += (float)Game1.tileSize / 4;
@@ -379,7 +380,7 @@ namespace ProfitCalculator.ui
                 0.75f
             );
 
-            string maxHarvest = $"{Utils.Helper.Translation.Get("max-harvests")}:";
+            string maxHarvest = $"{Helper.Translation.Get("max-harvests")}:";
             string maxHarvestValue = $"#{cropInfo.Crop.MaxHarvests}";
 
             currentTextPosition.Y += font.MeasureString(maxHarvest).Y;
@@ -414,7 +415,7 @@ namespace ProfitCalculator.ui
 
             if (cropInfo.Crop.MaxHarvestIncreasePerFarmingLevel != 0)
             {
-                string maxHarvestIncLevl = $"{Utils.Helper.Translation.Get("max-harvests-level")}:";
+                string maxHarvestIncLevl = $"{Helper.Translation.Get("max-harvests-level")}:";
                 string maxHarvestIncLevlValue = $"#{cropInfo.Crop.MaxHarvestIncreasePerFarmingLevel}";
 
                 currentTextPosition.Y += font.MeasureString(maxHarvestIncLevl).Y;
@@ -449,7 +450,7 @@ namespace ProfitCalculator.ui
             }
             if (cropInfo.Crop.ChanceForExtraCrops != 0)
             {
-                string extraChance = $"{Utils.Helper.Translation.Get("extra-harvest-chance")}:";
+                string extraChance = $"{Helper.Translation.Get("extra-harvest-chance")}:";
                 string extraChanceValue = $"{cropInfo.Crop.ChanceForExtraCrops * 100}%";
 
                 currentTextPosition.Y += font.MeasureString(extraChance).Y;
@@ -489,8 +490,8 @@ namespace ProfitCalculator.ui
 
             currentTextPosition.Y += 8;
 
-            string chanceOf = $"{Utils.Helper.Translation.Get("value-normal")}:";
-            string chanceOfValue = $"{(cropInfo.ChanceOfNormalQuality * 100):0.00}%";
+            string chanceOf = $"{Helper.Translation.Get("value-normal")}:";
+            string chanceOfValue = $"{cropInfo.ChanceOfNormalQuality * 100:0.00}%";
             if (cropInfo.ChanceOfNormalQuality != 0)
             {
                 currentTextPosition.Y += font.MeasureString(chanceOf).Y;
@@ -523,8 +524,8 @@ namespace ProfitCalculator.ui
                     0.75f
                 );
             }
-            chanceOf = $"{Utils.Helper.Translation.Get("value-silver")}:";
-            chanceOfValue = $"{(cropInfo.ChanceOfSilverQuality * 100):0.00}%";
+            chanceOf = $"{Helper.Translation.Get("value-silver")}:";
+            chanceOfValue = $"{cropInfo.ChanceOfSilverQuality * 100:0.00}%";
 
             currentTextPosition.Y += font.MeasureString(chanceOf).Y;
 
@@ -555,8 +556,8 @@ namespace ProfitCalculator.ui
                 SpriteEffects.None,
                 0.75f
             );
-            chanceOf = $"{Utils.Helper.Translation.Get("value-gold")}:";
-            chanceOfValue = $"{(cropInfo.ChanceOfGoldQuality * 100):0.00}%";
+            chanceOf = $"{Helper.Translation.Get("value-gold")}:";
+            chanceOfValue = $"{cropInfo.ChanceOfGoldQuality * 100:0.00}%";
 
             currentTextPosition.Y += font.MeasureString(chanceOf).Y;
 
@@ -587,8 +588,8 @@ namespace ProfitCalculator.ui
                 SpriteEffects.None,
                 0.75f
             );
-            chanceOf = $"{Utils.Helper.Translation.Get("value-iridium")}:";
-            chanceOfValue = $"{(cropInfo.ChanceOfIridiumQuality * 100):0.0}%";
+            chanceOf = $"{Helper.Translation.Get("value-iridium")}:";
+            chanceOfValue = $"{cropInfo.ChanceOfIridiumQuality * 100:0.0}%";
 
             if (cropInfo.ChanceOfIridiumQuality != 0)
             {
