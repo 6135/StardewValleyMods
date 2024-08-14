@@ -1,5 +1,7 @@
 # 6135's Stardew Valley Mods Repository
 
+[![CodeFactor](https://www.codefactor.io/repository/github/6135/stardewvalleymods/badge)](https://www.codefactor.io/repository/github/6135/stardewvalleymods)
+
 This is my collection of asorted SDV Mods.
 
 Mods included in this repository:
