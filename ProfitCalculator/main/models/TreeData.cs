@@ -21,6 +21,9 @@ namespace ProfitCalculator.main
     public class TreeData : IPlantData
     {
         /// <inheritdoc/>
+
+        public DropInformations DropInformations { get; set; }
+        /// <inheritdoc/>
         public Item Seed { get; set; }
 
         /// <inheritdoc/>
