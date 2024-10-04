@@ -21,6 +21,8 @@ namespace ProfitCalculator.main
     public class CropData : IPlantData
     {
         /// <inheritdoc/>
+        public DropInformations DropInformation { get; set; }
+        /// <inheritdoc/>
         public Item Seed { get; set; }
 
         /// <inheritdoc/>

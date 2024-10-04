@@ -21,6 +21,11 @@ namespace ProfitCalculator.main.models
         /// <value> Property <c>Item></c> represents the harvested item</value>
         public Item Item { get; set; }
 
+        /// <value>Property <c>dropInformation</c> represents the drop information of the Plant data.</value>
+        public DropInformations DropInformation { get; set; }
+
+        /// <value>Property <c></c> represents the Seed of the crop.</value>
+
         /// <value>Property <c>affectByQuality</c> represents whether the crop is affected by fertilizer quality or not. Some crops like Tea aren't affected by this. </value>
         public bool AffectByQuality { get; set; }
 
@@ -65,9 +70,6 @@ namespace ProfitCalculator.main.models
         /// <value>Property <c>Sprite</c> represents the crop's sprite. It's unused as of now.</value>
 
         public Tuple<Texture2D, Rectangle> Sprite { get; set; }
-
-        /// <value>Property <c>IsPaddyCrop</c> if the crop is a paddy crop.</value>
-        public bool IsPaddyCrop { get; set; }
 
         /// <value>Property <c>Seasons</c> available seasons.</value>
         public List<Season> Seasons { get; set; }
