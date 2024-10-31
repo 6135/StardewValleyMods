@@ -2,7 +2,7 @@
   "Name": "Adjustable_Fertilizer",
   "Author": "ModAuthor",
   "Version": "1.0.0",
-  "Description": "Mod Template ",
+  "Description": "Mod Template",
   "UniqueID": "ModAuthor.SMAPIMod",
   "MinimumApiVersion": "2.11",
   "UpdateKeys": [ "Nexus:" ],
