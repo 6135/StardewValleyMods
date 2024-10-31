@@ -8,6 +8,7 @@ namespace ProfitCalculator.main
     public class Cache<T>
     {
         private T cache;
+        private int AnalysisId;
         private bool isCacheValid;
         private Func<T> buildCache;
 
