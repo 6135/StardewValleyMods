@@ -19,7 +19,7 @@ namespace ProfitCalculator.main
     /// <summary>
     /// Class <c>CropDataExpanded</c> models a crop from the game storing all relevant information about it.
     /// </summary>
-    public class BushData : IPlantData
+    public class CustomBushData : IPlantData
     {
         /// <inheritdoc/>
         public DropInformations DropInformation { get; set; }
@@ -111,7 +111,7 @@ namespace ProfitCalculator.main
         /// <param name="_cropData">Crop's full Data</param>
         /// <param name="_drops">List of fruits</param>
         /// <param name="_seed" >Seed Item</param>
-        public BushData(ICustomBush _cropData, List<ICustomBushDrop> _drops, Item _seed)
+        public CustomBushData(ICustomBush _cropData, List<ICustomBushDrop> _drops, Item _seed)
         {
             Days = _cropData.AgeToProduce;
             DaysToBeginProducing = _cropData.DayToBeginProducing;

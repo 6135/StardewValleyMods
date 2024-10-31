@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 
 namespace ProfitCalculator.main.builders
 {
+    //TODO: Implement the CustomBushBuilder class using the IDataBuilder interface and custom bush api
     internal class CustomBushBuilder : IDataBuilder
     {
         public Dictionary<string, IPlantData> BuildCrops()

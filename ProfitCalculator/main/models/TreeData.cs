@@ -33,7 +33,6 @@ namespace ProfitCalculator.main
             get => throw new NotSupportedException("Not applicable to type tree");
             set => throw new NotSupportedException("Not applicable to type tree");
         }
-
         public List<FruitTreeFruitData> Fruits { get; set; }
 
         /// <inheritdoc/>
