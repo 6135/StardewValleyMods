@@ -1,4 +1,4 @@
-﻿using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using StardewValley;
 using StardewValley.Menus;
@@ -71,8 +71,8 @@ namespace ProfitCalculator.main.ui
             b.Draw(
                 cropInfo.Crop.Sprite.Item1,
                 new Rectangle(
-                    (int)Position.X + 3 * Game1.tileSize / 8,
-                    (int)Position.Y + ClickableComponent.bounds.Height / 2 - Game1.tileSize / 2 + 6,
+                    (int)Position.X + (3 * Game1.tileSize / 8),
+                    (int)Position.Y + (ClickableComponent.bounds.Height / 2) - (Game1.tileSize / 2) + 6,
                     spriteDisplaySize,
                     spriteDisplaySize
                 ),
@@ -93,7 +93,7 @@ namespace ProfitCalculator.main.ui
             float rightSideTextMaxSize = Font.MeasureString(cropInfo.ProfitPerDay.ToString("0.00")).X + Font.MeasureString($" {Helper.Translation.Get("g")}/{Helper.Translation.Get("day")}").X;
             rightSideTextMaxSize *= 1.8f;
 
-            float boxWidth = ClickableComponent.bounds.Width - 3 * Game1.tileSize / 8 - rightSideTextMaxSize;
+            float boxWidth = ClickableComponent.bounds.Width - (3 * Game1.tileSize / 8) - rightSideTextMaxSize;
 
             while (fontSize > boxWidth)
             {
@@ -105,8 +105,8 @@ namespace ProfitCalculator.main.ui
                 Font,
                 mainText,
                 new Vector2(
-                    Position.X + 3 * Game1.tileSize / 2,
-                    Position.Y + ClickableComponent.bounds.Height / 2 - Font.MeasureString(mainText).Y / 2
+                    Position.X + (3 * Game1.tileSize / 2),
+                    Position.Y + (ClickableComponent.bounds.Height / 2) - (Font.MeasureString(mainText).Y / 2)
                 ),
                 Color.Black,
                 0f,
@@ -131,8 +131,8 @@ namespace ProfitCalculator.main.ui
                 Font,
                 price,
                 new Vector2(
-                    Position.X + 69 * (Game1.tileSize / 8) - Font.MeasureString(price).X - Font.MeasureString(g).X,
-                    Position.Y + ClickableComponent.bounds.Height / 2 + 3 - Font.MeasureString(price).Y
+                    Position.X + (69 * (Game1.tileSize / 8)) - Font.MeasureString(price).X - Font.MeasureString(g).X,
+                    Position.Y + (ClickableComponent.bounds.Height / 2) + 3 - Font.MeasureString(price).Y
                 ),
                 color,
                 0f,
@@ -145,8 +145,8 @@ namespace ProfitCalculator.main.ui
                 Font,
                 g,
                 new Vector2(
-                    Position.X + 69 * (Game1.tileSize / 8) - Font.MeasureString(g).X,
-                    Position.Y + ClickableComponent.bounds.Height / 2 + 3 - Font.MeasureString(g).Y
+                    Position.X + (69 * (Game1.tileSize / 8)) - Font.MeasureString(g).X,
+                    Position.Y + (ClickableComponent.bounds.Height / 2) + 3 - Font.MeasureString(g).Y
                 ),
                 Color.Black,
                 0f,
@@ -162,8 +162,8 @@ namespace ProfitCalculator.main.ui
                 Font,
                 pricePerDay,
                 new Vector2(
-                    Position.X + 69 * (Game1.tileSize / 8) - Font.MeasureString(pricePerDay).X - Font.MeasureString(ppd).X,
-                    Position.Y + ClickableComponent.bounds.Height / 2 + 3
+                    Position.X + (69 * (Game1.tileSize / 8)) - Font.MeasureString(pricePerDay).X - Font.MeasureString(ppd).X,
+                    Position.Y + (ClickableComponent.bounds.Height / 2) + 3
                 ),
                 color,
                 0f,
@@ -176,8 +176,8 @@ namespace ProfitCalculator.main.ui
                 Font,
                 ppd,
                 new Vector2(
-                    Position.X + 69 * (Game1.tileSize / 8) - Font.MeasureString(ppd).X,
-                    Position.Y + ClickableComponent.bounds.Height / 2 + 3
+                    Position.X + (69 * (Game1.tileSize / 8)) - Font.MeasureString(ppd).X,
+                    Position.Y + (ClickableComponent.bounds.Height / 2) + 3
                 ),
                 Color.Black,
                 0f,

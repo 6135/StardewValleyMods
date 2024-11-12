@@ -1,4 +1,4 @@
-﻿using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using StardewModdingAPI;
@@ -122,8 +122,8 @@ namespace ProfitCalculator.main.ui
                 {
                     //print all checked values
 
-                    if ((Mouse.GetState().LeftButton == ButtonState.Pressed && Game1.oldMouseState.LeftButton == ButtonState.Released ||
-                         Game1.input.GetGamePadState().Buttons.A == ButtonState.Pressed && Game1.oldPadState.Buttons.A == ButtonState.Released)
+                    if (((Mouse.GetState().LeftButton == ButtonState.Pressed && Game1.oldMouseState.LeftButton == ButtonState.Released) ||
+                         (Game1.input.GetGamePadState().Buttons.A == ButtonState.Pressed && Game1.oldPadState.Buttons.A == ButtonState.Released))
                         && !justClicked)
                     {
                         Game1.playSound("drumkit6");
@@ -132,8 +132,8 @@ namespace ProfitCalculator.main.ui
                 }
                 else
                 {
-                    if ((Game1.input.GetMouseState().LeftButton == ButtonState.Pressed && Game1.oldMouseState.LeftButton == ButtonState.Released ||
-                         Game1.input.GetGamePadState().Buttons.A == ButtonState.Pressed && Game1.oldPadState.Buttons.A == ButtonState.Released)
+                    if (((Game1.input.GetMouseState().LeftButton == ButtonState.Pressed && Game1.oldMouseState.LeftButton == ButtonState.Released) ||
+                         (Game1.input.GetGamePadState().Buttons.A == ButtonState.Pressed && Game1.oldPadState.Buttons.A == ButtonState.Released))
                         && !justClicked)
                     {
                         Game1.playSound("drumkit6");
@@ -167,7 +167,7 @@ namespace ProfitCalculator.main.ui
         public void ReceiveScrollWheelAction(int direction)
         {
             if (Dropped)
-                ActivePosition = Math.Min(Math.Max(ActivePosition - direction / 120, 0), Choices.Length - MaxValuesAtOnce);
+                ActivePosition = Math.Min(Math.Max(ActivePosition - (direction / 120), 0), Choices.Length - MaxValuesAtOnce);
             else
                 ActiveDropdown = null;
         }
@@ -234,7 +234,7 @@ namespace ProfitCalculator.main.ui
                         b.Draw(
                             Game1.staminaRect,
                             new Rectangle((int)Position.X + 4,
-                            drawY + (i - ActivePosition) * DropDownBoxHeight,
+                            drawY + ((i - ActivePosition) * DropDownBoxHeight),
                             DropDownBoxWidth - 48 - 8, DropDownBoxHeight),
                             null,
                             Color.Wheat,
@@ -246,7 +246,7 @@ namespace ProfitCalculator.main.ui
                     b.DrawString(
                         Game1.smallFont,
                         Labels[i],
-                        new Vector2(Position.X + 4, drawY + (i - ActivePosition) * DropDownBoxHeight + 8),
+                        new Vector2(Position.X + 4, drawY + ((i - ActivePosition) * DropDownBoxHeight) + 8),
                         Game1.textColor,
                         0,
                         Vector2.Zero,

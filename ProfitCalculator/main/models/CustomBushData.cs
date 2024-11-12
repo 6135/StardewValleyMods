@@ -1,4 +1,4 @@
-﻿using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using ProfitCalculator.apis;
 using ProfitCalculator.main.accessors;
@@ -26,7 +26,6 @@ namespace ProfitCalculator.main.models
         public Item Seed { get; set; }
 
         /// <inheritdoc/>
-
         public Item Item
         {
             get => throw new NotSupportedException("Not applicable to type tree");
@@ -39,38 +38,28 @@ namespace ProfitCalculator.main.models
         public List<ICustomBushDrop> Drops { get; set; }
 
         /// <inheritdoc/>
-
         public bool AffectByQuality { get; set; }
         /// <inheritdoc/>
-
         public bool AffectByFertilizer { get; set; }
         /// <inheritdoc/>
-
         public int Days { get; set; }
 
         /// <ingeritdoc/>
         public int DaysToBeginProducing { get; set; }
 
         /// <inheritdoc/>
-
         public int RegrowDays { get; set; }
         /// <inheritdoc/>
-
         public int MinHarvests { get; set; }
         /// <inheritdoc/>
-
         public int MaxHarvests { get; set; }
         /// <inheritdoc/>
-
         public float MaxHarvestIncreasePerFarmingLevel { get; set; }
         /// <inheritdoc/>
-
         public double ChanceForExtraCrops { get; set; }
         /// <inheritdoc/>
-
         public string DisplayName { get; set; }
         /// <inheritdoc/>
-
         public Tuple<Texture2D, Rectangle> Sprite { get; set; }
 
         /// <inheritdoc/>
@@ -89,7 +78,6 @@ namespace ProfitCalculator.main.models
         }
 
         /// <inheritdoc/>
-
         public int Price(UtilsSeason season)
         {
             if (season == UtilsSeason.Greenhouse)
@@ -291,7 +279,7 @@ namespace ProfitCalculator.main.models
             }
             if (currentSeason == UtilsSeason.Greenhouse)
             {
-                return availableDays + 3 * (28 - daysToBeginProducing);
+                return availableDays + (3 * (28 - daysToBeginProducing));
             }
             for (int i = 1; i < Seasons.Count; i++)
             {

@@ -1,4 +1,4 @@
-﻿using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using StardewModdingAPI;
 using StardewValley;
@@ -44,7 +44,6 @@ namespace ProfitCalculator.main.ui
         }
 
         /// <inheritdoc/>
-
         public void Dispose()
         {
             Dispose(true);
@@ -58,7 +57,6 @@ namespace ProfitCalculator.main.ui
         }
 
         /// <inheritdoc/>
-
         public void Draw(SpriteBatch b)
         {
             if (isOpen && hoverDelay <= 0)
@@ -85,7 +83,7 @@ namespace ProfitCalculator.main.ui
                 1f,
                 draw_layer: 0.7f
             );
-            Vector3 currentTextPosition = new(drawBox.X, drawBox.Y, drawBox.X + drawBox.Width - Game1.tileSize / 4);
+            Vector3 currentTextPosition = new(drawBox.X, drawBox.Y, drawBox.X + drawBox.Width - (Game1.tileSize / 4));
 
             #region Crop Value
 
@@ -331,9 +329,9 @@ namespace ProfitCalculator.main.ui
                 Game1.menuTexture,
                 new Rectangle(0, 256, 60, 60),
                 drawBox.X,
-                drawBox.Y + windowHeight / 2 - Game1.tileSize / 4,
+                drawBox.Y + (windowHeight / 2) - (Game1.tileSize / 4),
                 windowWidth,
-                windowHeight - windowHeight / 2,
+                windowHeight - (windowHeight / 2),
                 Color.White,
                 1f,
                 draw_layer: 0.71f
@@ -341,8 +339,8 @@ namespace ProfitCalculator.main.ui
 
             Vector3 currentTextPosition = new(
                 drawBox.X,
-                drawBox.Y + +(windowHeight / 2) - Game1.tileSize / 4,
-                drawBox.X + drawBox.Width - Game1.tileSize / 4);
+                drawBox.Y + +(windowHeight / 2) - (Game1.tileSize / 4),
+                drawBox.X + drawBox.Width - (Game1.tileSize / 4));
 
             #region Crop Value
 
@@ -628,14 +626,12 @@ namespace ProfitCalculator.main.ui
         }
 
         /// <inheritdoc/>
-
         public void Reset()
         {
             throw new NotImplementedException();
         }
 
         /// <inheritdoc/>
-
         public void Update()
         {
             //x and y set to near the mouse
@@ -657,9 +653,9 @@ namespace ProfitCalculator.main.ui
 
             //if the box is off the screen, move it back on
             if (x < safeArea.Left)
-                x = safeArea.Left + Game1.tileSize / 4;
+                x = safeArea.Left + (Game1.tileSize / 4);
             if (y < safeArea.Top)
-                y = safeArea.Top + Game1.tileSize / 4;
+                y = safeArea.Top + (Game1.tileSize / 4);
 
             drawBox = new(
                 x,
@@ -670,7 +666,6 @@ namespace ProfitCalculator.main.ui
         }
 
         /// <inheritdoc/>
-
         public void GameWindowSizeChanged()
         {
         }
