@@ -1,4 +1,4 @@
-﻿using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using StardewValley;
@@ -13,8 +13,8 @@ namespace ProfitCalculator.main.ui.menus
     /// </summary>
     public class ProfitCalculatorResultsList : IClickableMenu
     {
-        private static readonly int widthOnScreen = 632 + borderWidth * 2;
-        private static readonly int heightOnScreen = 600 + borderWidth * 2 + Game1.tileSize;
+        private static readonly int widthOnScreen = 632 + (borderWidth * 2);
+        private static readonly int heightOnScreen = 600 + (borderWidth * 2) + Game1.tileSize;
 
         private readonly List<BaseOption> Options = new();
         private readonly List<Vector4> OptionSlots = new();
@@ -48,9 +48,9 @@ namespace ProfitCalculator.main.ui.menus
                 OptionSlots.Add(
                     new(
                         xPositionOnScreen + spaceToClearSideBorder + borderWidth + 10,
-                        yPositionOnScreen + spaceToClearTopBorder + 5 + Game1.tileSize / 2 - Game1.tileSize / 4 + (Game1.tileSize + Game1.tileSize / 2) * i,
-                        widthOnScreen - (spaceToClearSideBorder + borderWidth + 10) * 2,
-                        Game1.tileSize + Game1.tileSize / 2
+                        yPositionOnScreen + spaceToClearTopBorder + 5 + (Game1.tileSize / 2) - (Game1.tileSize / 4) + ((Game1.tileSize + (Game1.tileSize / 2)) * i),
+                        widthOnScreen - ((spaceToClearSideBorder + borderWidth + 10) * 2),
+                        Game1.tileSize + (Game1.tileSize / 2)
                    )
                 );
             }
@@ -77,7 +77,7 @@ namespace ProfitCalculator.main.ui.menus
 
             int scrollbar_x = xPositionOnScreen + width;
             upArrow = new ClickableTextureComponent(
-                new Rectangle(scrollbar_x, yPositionOnScreen + Game1.tileSize + Game1.tileSize / 3, 44, 48),
+                new Rectangle(scrollbar_x, yPositionOnScreen + Game1.tileSize + (Game1.tileSize / 3), 44, 48),
                 Game1.mouseCursors,
                 new Rectangle(421, 459, 11, 12),
                 4f);
@@ -98,7 +98,6 @@ namespace ProfitCalculator.main.ui.menus
 
         /// <inheritdoc/>
         public override void draw(SpriteBatch b)
-
         {
             //draw bottom up
 
@@ -153,7 +152,7 @@ namespace ProfitCalculator.main.ui.menus
             if (shouldDrawCloseButton())
                 base.draw(b);
             if (!Game1.options.hardwareCursor)
-                b.Draw(Game1.mouseCursors, new Vector2(Game1.getMouseX(), Game1.getMouseY()), Game1.getSourceRectForStandardTileSheet(Game1.mouseCursors, Game1.options.gamepadControls ? 44 : 0, 16, 16), Color.White, 0f, Vector2.Zero, 4f + Game1.dialogueButtonScale / 150f, SpriteEffects.None, 1f);
+                b.Draw(Game1.mouseCursors, new Vector2(Game1.getMouseX(), Game1.getMouseY()), Game1.getSourceRectForStandardTileSheet(Game1.mouseCursors, Game1.options.gamepadControls ? 44 : 0, 16, 16), Color.White, 0f, Vector2.Zero, 4f + (Game1.dialogueButtonScale / 150f), SpriteEffects.None, 1f);
         }
 
         #endregion Draw Methods
@@ -167,9 +166,9 @@ namespace ProfitCalculator.main.ui.menus
                 //devide the height of the scroll bar by the number of options minus the displayed options, then multiply by the current index to get the position of the scroll bar without going out of bounds. //804 is max y for bar
                 int numberOfSteps = Math.Max(1, Options.Count - maxOptions);
                 double sizeOfStep = Math.Floor(
-                    (scrollBarBounds.Height - scrollBar.bounds.Height / 2.0) / numberOfSteps
+                    (scrollBarBounds.Height - (scrollBar.bounds.Height / 2.0)) / numberOfSteps
                     );
-                double barPosition = scrollBarBounds.Y + sizeOfStep * currentItemIndex;
+                double barPosition = scrollBarBounds.Y + (sizeOfStep * currentItemIndex);
                 scrollBar.bounds.Y =
                     (int)Math.Floor(barPosition);
                 if (currentItemIndex == Options.Count - maxOptions)
@@ -398,8 +397,8 @@ namespace ProfitCalculator.main.ui.menus
         public static Vector2 GetAppropriateMenuPosition()
         {
             Vector2 defaultPosition = new(
-                Game1.viewport.Width * Game1.options.zoomLevel * (1 / Game1.options.uiScale) / 2 - widthOnScreen / 2,
-                Game1.viewport.Height * Game1.options.zoomLevel * (1 / Game1.options.uiScale) / 2 - heightOnScreen / 2
+                (Game1.viewport.Width * Game1.options.zoomLevel * (1 / Game1.options.uiScale) / 2) - (widthOnScreen / 2),
+                (Game1.viewport.Height * Game1.options.zoomLevel * (1 / Game1.options.uiScale) / 2) - (heightOnScreen / 2)
             );
 
             //Force the viewport into a position that it should fit into on the screen???
@@ -430,16 +429,16 @@ namespace ProfitCalculator.main.ui.menus
                 OptionSlots.Add(
                     new(
                         xPositionOnScreen + spaceToClearSideBorder + borderWidth + 10,
-                        yPositionOnScreen + spaceToClearTopBorder + 5 + Game1.tileSize / 2 - Game1.tileSize / 4 + (Game1.tileSize + Game1.tileSize / 2) * i,
-                        widthOnScreen - (spaceToClearSideBorder + borderWidth + 10) * 2,
-                        Game1.tileSize + Game1.tileSize / 2
+                        yPositionOnScreen + spaceToClearTopBorder + 5 + (Game1.tileSize / 2) - (Game1.tileSize / 4) + ((Game1.tileSize + (Game1.tileSize / 2)) * i),
+                        widthOnScreen - ((spaceToClearSideBorder + borderWidth + 10) * 2),
+                        Game1.tileSize + (Game1.tileSize / 2)
                    )
                 );
             }
 
             int scrollbar_x = xPositionOnScreen + width;
             upArrow = new ClickableTextureComponent(
-                new Rectangle(scrollbar_x, yPositionOnScreen + Game1.tileSize + Game1.tileSize / 3, 44, 48),
+                new Rectangle(scrollbar_x, yPositionOnScreen + Game1.tileSize + (Game1.tileSize / 3), 44, 48),
                 Game1.mouseCursors,
                 new Rectangle(421, 459, 11, 12),
                 4f);
