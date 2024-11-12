@@ -1,4 +1,4 @@
-﻿using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using StardewModdingAPI;
@@ -122,8 +122,8 @@ namespace ProfitCalculator.ui
                 {
                     //print all checked values
 
-                    if ((Mouse.GetState().LeftButton == ButtonState.Pressed && Game1.oldMouseState.LeftButton == ButtonState.Released ||
-                         Game1.input.GetGamePadState().Buttons.A == ButtonState.Pressed && Game1.oldPadState.Buttons.A == ButtonState.Released)
+                    if (((Mouse.GetState().LeftButton == ButtonState.Pressed && Game1.oldMouseState.LeftButton == ButtonState.Released) ||
+                         (Game1.input.GetGamePadState().Buttons.A == ButtonState.Pressed && Game1.oldPadState.Buttons.A == ButtonState.Released))
                         && !justClicked)
                     {
                         Game1.playSound("drumkit6");
@@ -132,8 +132,8 @@ namespace ProfitCalculator.ui
                 }
                 else
                 {
-                    if ((Game1.input.GetMouseState().LeftButton == ButtonState.Pressed && Game1.oldMouseState.LeftButton == ButtonState.Released ||
-                         Game1.input.GetGamePadState().Buttons.A == ButtonState.Pressed && Game1.oldPadState.Buttons.A == ButtonState.Released)
+                    if (((Game1.input.GetMouseState().LeftButton == ButtonState.Pressed && Game1.oldMouseState.LeftButton == ButtonState.Released) ||
+                         (Game1.input.GetGamePadState().Buttons.A == ButtonState.Pressed && Game1.oldPadState.Buttons.A == ButtonState.Released))
                         && !justClicked)
                     {
                         Game1.playSound("drumkit6");
@@ -234,7 +234,7 @@ namespace ProfitCalculator.ui
                         b.Draw(
                             Game1.staminaRect,
                             new Rectangle((int)this.Position.X + 4,
-                            drawY + (i - this.ActivePosition) * this.DropDownBoxHeight,
+                            drawY + ((i - this.ActivePosition) * this.DropDownBoxHeight),
                             this.DropDownBoxWidth - 48 - 8, this.DropDownBoxHeight),
                             null,
                             Color.Wheat,
@@ -246,7 +246,7 @@ namespace ProfitCalculator.ui
                     b.DrawString(
                         Game1.smallFont,
                         this.Labels[i],
-                        new Vector2(this.Position.X + 4, drawY + (i - this.ActivePosition) * this.DropDownBoxHeight + 8),
+                        new Vector2(this.Position.X + 4, drawY + ((i - this.ActivePosition) * this.DropDownBoxHeight) + 8),
                         Game1.textColor,
                         0,
                         Vector2.Zero,

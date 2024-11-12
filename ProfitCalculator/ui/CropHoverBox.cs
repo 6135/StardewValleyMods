@@ -1,4 +1,4 @@
-﻿using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using ProfitCalculator.main;
 using StardewValley;
@@ -43,7 +43,6 @@ namespace ProfitCalculator.ui
         }
 
         /// <inheritdoc/>
-
         public void Dispose()
         {
             Dispose(true);
@@ -57,7 +56,6 @@ namespace ProfitCalculator.ui
         }
 
         /// <inheritdoc/>
-
         public void Draw(SpriteBatch b)
         {
             if (isOpen && hoverDelay <= 0)
@@ -627,14 +625,12 @@ namespace ProfitCalculator.ui
         }
 
         /// <inheritdoc/>
-
         public void Reset()
         {
             throw new NotImplementedException();
         }
 
         /// <inheritdoc/>
-
         public void Update()
         {
             //x and y set to near the mouse
@@ -656,9 +652,9 @@ namespace ProfitCalculator.ui
 
             //if the box is off the screen, move it back on
             if (x < safeArea.Left)
-                x = safeArea.Left + Game1.tileSize / 4;
+                x = safeArea.Left + (Game1.tileSize / 4);
             if (y < safeArea.Top)
-                y = safeArea.Top + Game1.tileSize / 4;
+                y = safeArea.Top + (Game1.tileSize / 4);
 
             drawBox = new(
                 x,
@@ -669,7 +665,6 @@ namespace ProfitCalculator.ui
         }
 
         /// <inheritdoc/>
-
         public void GameWindowSizeChanged()
         {
         }
