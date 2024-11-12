@@ -1,4 +1,4 @@
-﻿using ProfitCalculator.main;
+using ProfitCalculator.main;
 using StardewModdingAPI;
 using StardewValley;
 using System;
@@ -200,7 +200,6 @@ namespace ProfitCalculator
         }
 
         public static int PriceFromObjectID(string id)
-
         {
             var obj = new SObject(id, 1);
             return obj.Price;

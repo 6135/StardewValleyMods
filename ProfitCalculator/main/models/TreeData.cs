@@ -1,4 +1,4 @@
-﻿using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using ProfitCalculator.main.accessors;
 using StardewModdingAPI;
@@ -19,41 +19,30 @@ namespace ProfitCalculator.main.models
     public class TreeData : IPlantData
     {
         /// <inheritdoc/>
-
         public DropInformation DropInformation { get; set; }
 
         /// <inheritdoc/>
         public Item Seed { get; set; }
 
         /// <inheritdoc/>
-
         public bool AffectByQuality { get; set; }
         /// <inheritdoc/>
-
         public bool AffectByFertilizer { get; set; }
         /// <inheritdoc/>
-
         public int Days { get; set; }
         /// <inheritdoc/>
-
         public int RegrowDays { get; set; }
         /// <inheritdoc/>
-
         public int MinHarvests { get; set; }
         /// <inheritdoc/>
-
         public int MaxHarvests { get; set; }
         /// <inheritdoc/>
-
         public float MaxHarvestIncreasePerFarmingLevel { get; set; }
         /// <inheritdoc/>
-
         public double ChanceForExtraCrops { get; set; }
         /// <inheritdoc/>
-
         public string DisplayName { get; set; }
         /// <inheritdoc/>
-
         public Tuple<Texture2D, Rectangle> Sprite { get; set; }
 
         /// <inheritdoc/>
@@ -206,7 +195,7 @@ namespace ProfitCalculator.main.models
                 //if the crop regrows, then the total harvest times are 1 for the first harvest and then the number of times it can regrow in the remaining days. We always need to subtract one to account for the day lost in the planting day.
                 if (daysToRegrow > 0)
                 {
-                    totalHarvestTimes = (int)(1 + (totalAvailableDays - growingDays) / (double)daysToRegrow);
+                    totalHarvestTimes = (int)(1 + ((totalAvailableDays - growingDays) / (double)daysToRegrow));
                 }
                 else
                     totalHarvestTimes = totalAvailableDays / growingDays;
