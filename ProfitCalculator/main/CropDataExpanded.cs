@@ -1,4 +1,4 @@
-﻿using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using StardewModdingAPI;
 using StardewValley;
@@ -85,29 +85,21 @@ namespace ProfitCalculator.main
         public int Price => Item.sellToStorePrice();
 
         /// <value>Property <c>Days</c> represents the crop's total days to grow excluding <see cref="RegrowDays"/>.</value>
-
         public int Days => CropData.DaysInPhase.Sum();
 
         /// <value>Property <c>RegrowDays</c> represents the crop's regrow time.</value>
-
         public int RegrowDays => CropData.RegrowDays;
         /// <value>Property <c>MinHarvests</c> represents the crop's minimum drops.</value>
-
         public int MinHarvests => CropData.HarvestMinStack;
         /// <value>Property <c>MaxHarvests</c> represents the crop's maximum drops.</value>
-
         public int MaxHarvests => CropData.HarvestMaxStack;
         /// <value>Property <c>MaxHarvestIncreasePerFarmingLevel</c> represents the crop's maximum drops increase per farming level.</value>
-
         public float MaxHarvestIncreasePerFarmingLevel => CropData.HarvestMaxIncreasePerFarmingLevel;
         /// <value>Property <c>ChanceForExtraCrops</c> represents the crop's chance for extra crops.</value>
-
         public double ChanceForExtraCrops => CropData.ExtraHarvestChance;
         /// <value>Property <c>DisplayName</c> represents the crop's name.</value>
-
         public string DisplayName => Item.DisplayName;
         /// <value>Property <c>Sprite</c> represents the crop's sprite. It's unused as of now.</value>
-
         public Tuple<Texture2D, Rectangle> Sprite { get; set; }
 
         /// <summary>

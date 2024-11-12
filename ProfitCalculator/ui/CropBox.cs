@@ -1,4 +1,4 @@
-﻿using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using ProfitCalculator.main;
 using StardewValley;
@@ -72,7 +72,7 @@ namespace ProfitCalculator.ui
             b.Draw(
                 cropInfo.Crop.Sprite.Item1,
                 new Rectangle(
-                    (int)this.Position.X + (3 * Game1.tileSize) / 8,
+                    (int)this.Position.X + ((3 * Game1.tileSize) / 8),
                     (int)this.Position.Y + (this.ClickableComponent.bounds.Height / 2) - (Game1.tileSize / 2) + 6,
                     spriteDisplaySize,
                     spriteDisplaySize
@@ -106,7 +106,7 @@ namespace ProfitCalculator.ui
                 Font,
                 this.mainText,
                 new Vector2(
-                    this.Position.X + (3 * Game1.tileSize) / 2,
+                    this.Position.X + ((3 * Game1.tileSize) / 2),
                     this.Position.Y + (this.ClickableComponent.bounds.Height / 2) - (Font.MeasureString(this.mainText).Y / 2)
                 ),
                 Color.Black,
