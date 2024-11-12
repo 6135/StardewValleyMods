@@ -4,7 +4,6 @@ using ProfitCalculator.apis;
 using ProfitCalculator.main.accessors;
 using StardewModdingAPI;
 using StardewValley;
-using StardewValley.GameData.FruitTrees;
 using System;
 using System.Collections.Generic;
 using System.Linq;

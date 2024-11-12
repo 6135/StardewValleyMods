@@ -166,7 +166,9 @@ namespace ProfitCalculator.main.ui.menus
             {
                 //devide the height of the scroll bar by the number of options minus the displayed options, then multiply by the current index to get the position of the scroll bar without going out of bounds. //804 is max y for bar
                 int numberOfSteps = Math.Max(1, Options.Count - maxOptions);
-                double sizeOfStep = Math.Floor((scrollBarBounds.Height - scrollBar.bounds.Height / 2.0) / numberOfSteps);
+                double sizeOfStep = Math.Floor(
+                    (scrollBarBounds.Height - scrollBar.bounds.Height / 2.0) / numberOfSteps
+                    );
                 double barPosition = scrollBarBounds.Y + sizeOfStep * currentItemIndex;
                 scrollBar.bounds.Y =
                     (int)Math.Floor(barPosition);

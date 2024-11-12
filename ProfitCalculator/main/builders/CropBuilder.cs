@@ -1,10 +1,9 @@
-﻿using StardewModdingAPI;
+﻿using ProfitCalculator.main.models;
+using StardewModdingAPI;
 using StardewValley;
-using StardewValley.GameData.Crops;
 using System.Collections.Generic;
-using SObject = StardewValley.Object;
-using ProfitCalculator.main.models;
 using CropData = ProfitCalculator.main.models.CropData;
+using SObject = StardewValley.Object;
 
 #nullable enable
 

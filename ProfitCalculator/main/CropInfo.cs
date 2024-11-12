@@ -1,6 +1,6 @@
-﻿using System;
+﻿using ProfitCalculator.main.models;
+using System;
 using System.Collections.Generic;
-using ProfitCalculator.main.models;
 
 namespace ProfitCalculator.main
 {

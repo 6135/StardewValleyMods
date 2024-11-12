@@ -1,7 +1,6 @@
 ﻿using StardewValley;
 using System.Collections.Generic;
 using System.Linq;
-using System.Runtime.Serialization.Formatters;
 using static ProfitCalculator.Utils;
 
 #nullable enable
