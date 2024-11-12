@@ -6,6 +6,9 @@ using SObject = StardewValley.Object;
 
 namespace ProfitCalculator.main.builders
 {
+    /// <summary>
+    /// The FruitTreeBuilder class is responsible for building a dictionary of fruit tree crops.
+    /// </summary>
     public class FruitTreeBuilder : IDataBuilder
     {
         /// <inheritdoc/>
@@ -20,10 +23,40 @@ namespace ProfitCalculator.main.builders
             return trees;
         }
 
+        /// <summary>
+        /// Builds a TreeData object from the given FruitTreeData and id.
+        /// </summary>
+        /// <param name="cropData">The FruitTreeData object.</param>
+        /// <param name="id">The id of the crop.</param>
+        /// <returns>The TreeData object.</returns>
         private static TreeData BuildCrop(FruitTreeData cropData, string id)
         {
             Item seed = new SObject(id, 1);
-            return new TreeData(cropData, seed);
+            DropInformation dropInformation = new();
+            foreach (var drop in cropData.Fruit)
+            {
+                string unQualifiedId = drop.ItemId;
+                //remove everything between the first '(' and first ')'
+                int firstParenthesis = unQualifiedId.IndexOf('(');
+                int lastParenthesis = unQualifiedId.IndexOf(')');
+                if (firstParenthesis != -1 && lastParenthesis != -1)
+                {
+                    unQualifiedId = unQualifiedId.Remove(firstParenthesis, lastParenthesis - firstParenthesis + 1);
+                }
+
+                dropInformation.Drops.Add(
+                    new DropInformation.Drop(
+                        new SObject(
+                            unQualifiedId,
+                            1
+                            ),
+                        1,
+                        drop.Chance,
+                        drop.Season
+                        )
+                    );
+            }
+            return new TreeData(cropData, seed, dropInformation);
         }
     }
 }

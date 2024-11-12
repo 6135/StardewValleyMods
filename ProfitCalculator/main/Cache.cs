@@ -8,16 +8,15 @@ namespace ProfitCalculator.main
     public class Cache<T>
     {
         private T cache;
-        private int AnalysisId;
         private bool isCacheValid;
         private Func<T> buildCache;
 
         /// <summary>
-        ///
+        /// Initializes a new instance of the Cache class.
         /// </summary>
         public Cache(Func<T> buildCache)
         {
-            this.buildCache = buildCache;
+            this.buildCache = buildCache ?? throw new ArgumentNullException(nameof(buildCache));
             isCacheValid = true;
             cache = this.buildCache();
         }
@@ -25,7 +24,7 @@ namespace ProfitCalculator.main
         /// <summary>
         /// Gets the cache. If the cache is invalid, it will be rebuilt.
         /// </summary>
-        /// <returns></returns>
+        /// <returns>The cached value.</returns>
         public T GetCache()
         {
             if (!isCacheValid)
@@ -48,14 +47,14 @@ namespace ProfitCalculator.main
         /// </summary>
         public void RebuildCache()
         {
-            cache = this.buildCache();
+            cache = buildCache();
             isCacheValid = true;
         }
 
         /// <summary>
         /// Checks if the cache is valid.
         /// </summary>
-        /// <returns></returns>
+        /// <returns>True if the cache is valid; otherwise, false.</returns>
         public bool IsCacheValid()
         {
             return isCacheValid;
@@ -64,10 +63,10 @@ namespace ProfitCalculator.main
         /// <summary>
         /// Sets the build cache function.
         /// </summary>
-        /// <param name="buildCache"></param>
+        /// <param name="buildCache">The function to build the cache.</param>
         public void SetBuildCache(Func<T> buildCache)
         {
-            this.buildCache = buildCache;
+            this.buildCache = buildCache ?? throw new ArgumentNullException(nameof(buildCache));
         }
 
         /// <summary>

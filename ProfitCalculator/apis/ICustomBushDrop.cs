@@ -3,6 +3,8 @@ namespace ProfitCalculator.apis;
 using StardewValley;
 using StardewValley.GameData;
 
+#nullable enable
+
 /// <summary>Model used for drops from custom bushes.</summary>
 public interface ICustomBushDrop : ISpawnItemData
 {

@@ -115,7 +115,7 @@ namespace ProfitCalculator.main
         public override string ToString()
         { //return object in json format
             return "{" +
-                $"\"CropDataExpanded\": {Crop.Item.Name}," +
+                $"\"CropDataExpanded\": {Crop.DropInformation}," +
                 $"\"TotalProfit\": {TotalProfit}," +
                 $"\"ProfitPerDay\": {ProfitPerDay}," +
                 $"\"TotalSeedLoss\": {TotalSeedLoss}," +
@@ -143,25 +143,26 @@ namespace ProfitCalculator.main
         /// <returns> <c>true</c> if the specified <see cref="CropInfo"/> is equal to the current <see cref="CropInfo"/>; otherwise, <c>false</c>. </returns>
         public override bool Equals(object obj)
         {
+            const double Tolerance = 0.0001;
             return obj is CropInfo cropInfo &&
                    EqualityComparer<IPlantData>.Default.Equals(Crop, cropInfo.Crop) &&
-                   TotalProfit == cropInfo.TotalProfit &&
-                   ProfitPerDay == cropInfo.ProfitPerDay &&
-                   TotalSeedLoss == cropInfo.TotalSeedLoss &&
-                   SeedLossPerDay == cropInfo.SeedLossPerDay &&
-                   TotalFertilizerLoss == cropInfo.TotalFertilizerLoss &&
-                   FertilizerLossPerDay == cropInfo.FertilizerLossPerDay &&
+                   Math.Abs(TotalProfit - cropInfo.TotalProfit) < Tolerance &&
+                   Math.Abs(ProfitPerDay - cropInfo.ProfitPerDay) < Tolerance &&
+                   Math.Abs(TotalSeedLoss - cropInfo.TotalSeedLoss) < Tolerance &&
+                   Math.Abs(SeedLossPerDay - cropInfo.SeedLossPerDay) < Tolerance &&
+                   Math.Abs(TotalFertilizerLoss - cropInfo.TotalFertilizerLoss) < Tolerance &&
+                   Math.Abs(FertilizerLossPerDay - cropInfo.FertilizerLossPerDay) < Tolerance &&
                    ProduceType == cropInfo.ProduceType &&
                    Duration == cropInfo.Duration &&
                    TotalHarvests == cropInfo.TotalHarvests &&
                    GrowthTime == cropInfo.GrowthTime &&
                    RegrowthTime == cropInfo.RegrowthTime &&
                    ProductCount == cropInfo.ProductCount &&
-                   ChanceOfExtraProduct == cropInfo.ChanceOfExtraProduct &&
-                   ChanceOfNormalQuality == cropInfo.ChanceOfNormalQuality &&
-                   ChanceOfSilverQuality == cropInfo.ChanceOfSilverQuality &&
-                   ChanceOfGoldQuality == cropInfo.ChanceOfGoldQuality &&
-                   ChanceOfIridiumQuality == cropInfo.ChanceOfIridiumQuality;
+                   Math.Abs(ChanceOfExtraProduct - cropInfo.ChanceOfExtraProduct) < Tolerance &&
+                   Math.Abs(ChanceOfNormalQuality - cropInfo.ChanceOfNormalQuality) < Tolerance &&
+                   Math.Abs(ChanceOfSilverQuality - cropInfo.ChanceOfSilverQuality) < Tolerance &&
+                   Math.Abs(ChanceOfGoldQuality - cropInfo.ChanceOfGoldQuality) < Tolerance &&
+                   Math.Abs(ChanceOfIridiumQuality - cropInfo.ChanceOfIridiumQuality) < Tolerance;
         }
 
         /// <summary>

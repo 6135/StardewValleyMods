@@ -16,10 +16,12 @@ namespace ProfitCalculator.main.accessors
 
         public void InvalidateCaches()
         {
+            //TODO
         }
 
         public int GetCheapestSeedPrice(string cropId)
         {
+            //TODO
             return 0;
         }
 

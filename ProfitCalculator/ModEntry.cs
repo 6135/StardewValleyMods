@@ -11,7 +11,7 @@ using StardewValley;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using CropData = ProfitCalculator.main.CropData;
+using CropData = ProfitCalculator.main.models.CropData;
 
 #nullable enable
 
@@ -132,7 +132,7 @@ namespace ProfitCalculator
             }
             List<IDataBuilder> builder = new()
             {
-                new CropBuilder(),
+                //new CropBuilder(),
                 new FruitTreeBuilder(),
             };
             if (CustomBushAPI != null)

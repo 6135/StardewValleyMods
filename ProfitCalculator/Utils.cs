@@ -1,9 +1,11 @@
-﻿using StardewModdingAPI;
+﻿using ProfitCalculator.main;
+using StardewModdingAPI;
 using StardewValley;
 using System;
 using SObject = StardewValley.Object;
 
 #nullable enable
+#pragma warning disable CS1591 // Missing XML comment for publicly visible type or member
 
 namespace ProfitCalculator
 {
@@ -198,6 +200,7 @@ namespace ProfitCalculator
         }
 
         public static int PriceFromObjectID(string id)
+
         {
             var obj = new SObject(id, 1);
             return obj.Price;
@@ -217,3 +220,5 @@ namespace ProfitCalculator
         }
     }
 }
+
+#pragma warning restore CS1591 // Missing XML comment for publicly visible type or member

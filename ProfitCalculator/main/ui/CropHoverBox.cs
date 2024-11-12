@@ -22,7 +22,7 @@ namespace ProfitCalculator.main.ui
         private Rectangle drawBox;
         private readonly CropInfo cropInfo;
         private readonly SpriteFont font;
-        protected readonly IModHelper Helper = Container.Instance.GetInstance<IModHelper>();
+        private readonly IModHelper Helper = Container.Instance.GetInstance<IModHelper>();
 
         /// <summary>
         /// Creates a new CropHoverBox.

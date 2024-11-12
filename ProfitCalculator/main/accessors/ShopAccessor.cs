@@ -9,26 +9,41 @@ using System.Linq;
 
 namespace ProfitCalculator.main.accessors
 {
+    /// <summary>
+    /// The ShopAccessor class provides methods to access and manage shop data, including seed prices and shop stock information.
+    /// It uses caching to improve performance by storing frequently accessed data.
+    /// </summary>
     public class ShopAccessor
     {
+        // Cache for storing seed prices
         private readonly Cache<Dictionary<string, int>> seedPriceCache;
+
+        // Cache for storing shop stock information
         private readonly Cache<Dictionary<string, Dictionary<ISalable, ItemStockInformation>>> shopStock;
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="ShopAccessor"/> class.
+        /// </summary>
         public ShopAccessor()
         {
             var Helper = Container.Instance.GetInstance<IModHelper>();
-            //Helper?.ModContent.Load<Dictionary<string, int>>(Path.Combine("assets", "SeedPrices.json"))
+            // Initialize seed price cache with data from SeedPrices.json
             seedPriceCache = new(
                     () => Helper?.ModContent.Load<Dictionary<string, int>>(Path.Combine("assets", "SeedPrices.json"))
                 );
+            // Initialize shop stock cache
             shopStock = new(BuildCache);
         }
 
+        /// <summary>
+        /// Builds the cache for shop stock information.
+        /// </summary>
+        /// <returns>A dictionary containing shop stock information.</returns>
         private Dictionary<string, Dictionary<ISalable, ItemStockInformation>> BuildCache()
         {
             Dictionary<string, ShopData> shopData = DataLoader.Shops(Game1.content);
             Dictionary<string, Dictionary<ISalable, ItemStockInformation>> cache = new();
-            //for each shop get shop stock
+            // For each shop, get shop stock
             foreach (var shop in shopData.Where(x => x.Value.Currency == 0))
             {
                 cache.Add(shop.Key, GetShopStock(shop.Key, shop.Value));
@@ -36,6 +51,12 @@ namespace ProfitCalculator.main.accessors
             return cache;
         }
 
+        /// <summary>
+        /// Gets the stock information for a specific shop.
+        /// </summary>
+        /// <param name="shopId">The ID of the shop.</param>
+        /// <param name="shop">The shop data.</param>
+        /// <returns>A dictionary containing the stock information for the shop.</returns>
         public static Dictionary<ISalable, ItemStockInformation> GetShopStock(string shopId, ShopData shop)
         {
             var Monitor = Container.Instance.GetInstance<IMonitor>();
@@ -117,18 +138,29 @@ namespace ProfitCalculator.main.accessors
             return stock;
         }
 
+        /// <summary>
+        /// Invalidates the caches for seed prices and shop stock.
+        /// </summary>
         public void InvalidateCaches()
         {
             seedPriceCache.InvalidateCache();
             shopStock.InvalidateCache();
         }
 
+        /// <summary>
+        /// Forces a rebuild of the caches for seed prices and shop stock.
+        /// </summary>
         public void ForceRebuildCache()
         {
             seedPriceCache.RebuildCache();
             shopStock.RebuildCache();
         }
 
+        /// <summary>
+        /// Gets the cheapest seed price for a given crop ID.
+        /// </summary>
+        /// <param name="cropId">The ID of the crop.</param>
+        /// <returns>The cheapest seed price.</returns>
         public int GetCheapestSeedPrice(string cropId)
         {
             string unqualifiedId = cropId.TrimStart()[3..];
@@ -147,6 +179,11 @@ namespace ProfitCalculator.main.accessors
                 .Min();
         }
 
+        /// <summary>
+        /// Gets the most expensive seed price for a given crop ID.
+        /// </summary>
+        /// <param name="cropId">The ID of the crop.</param>
+        /// <returns>The most expensive seed price.</returns>
         public int GetExpensiveSeedPrice(string cropId)
         {
             string unqualifiedId = cropId.TrimStart()[3..];
@@ -164,6 +201,12 @@ namespace ProfitCalculator.main.accessors
                 .Max();
         }
 
+        /// <summary>
+        /// Gets the price of a specific crop in a specific shop.
+        /// </summary>
+        /// <param name="cropId">The ID of the crop.</param>
+        /// <param name="shopID">The ID of the shop.</param>
+        /// <returns>The price of the crop in the specified shop.</returns>
         public int GetSpecificShopPrice(string cropId, string shopID)
         {
             return shopStock.GetCache()

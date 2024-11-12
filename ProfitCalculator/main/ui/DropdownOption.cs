@@ -40,7 +40,7 @@ namespace ProfitCalculator.main.ui
         public int DropDownBoxWidth => Math.Max(300, Math.Min(300, RequestWidth));
 
         /// <summary> The height of the dropdown box. </summary>
-        public int DropDownBoxHeight => 44;
+        public static int DropDownBoxHeight => 44;
 
         /// <summary> The name of the option. </summary>
         public new string Label => Labels[ActiveChoice];

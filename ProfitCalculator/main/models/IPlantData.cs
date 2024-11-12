@@ -18,11 +18,8 @@ namespace ProfitCalculator.main.models
         /// <value>Property <c>Seed</c> represents the Seed of the crop.</value>
         public Item Seed { get; }
 
-        /// <value> Property <c>Item></c> represents the harvested item</value>
-        public Item Item { get; set; }
-
         /// <value>Property <c>dropInformation</c> represents the drop information of the Plant data.</value>
-        public DropInformations DropInformation { get; set; }
+        public DropInformation DropInformation { get; set; }
 
         /// <value>Property <c></c> represents the Seed of the crop.</value>
 
@@ -37,10 +34,6 @@ namespace ProfitCalculator.main.models
         {
             get; set;
         }
-
-        // get price by calling Item.SellToStorePrice()
-        /// <value>Property <c>Price</c> represents the price of the crop. With Shop Modifiers </value>
-        public int Price(UtilsSeason season);
 
         /// <value>Property <c>Days</c> represents the crop's total days to grow excluding <see cref="RegrowDays"/>.</value>
         public int Days { get; set; }
@@ -137,56 +130,48 @@ namespace ProfitCalculator.main.models
         /// <summary>
         /// Calculates the total profit for a crop. See <see cref="GetAverageValueForCropAfterModifiers"/>, <see cref="IPlantData.AverageExtraCropsFromRandomness"/>, <see cref="IPlantData.TotalHarvestsWithRemainingDays"/> for more information.
         /// </summary>
-        /// <param name="crop"> CropDataExpanded to calculate profit for </param>
         /// <returns> Total profit for the crop </returns>
         public double TotalCropProfit();
 
         /// <summary>
         /// Calculates the total profit per day for a crop. See <see cref="TotalCropProfit"/> for more information. Simply devides the total profit by the total available days for the crop.
         /// </summary>
-        /// <param name="crop"> CropDataExpanded to calculate profit per day for </param>
         /// <returns> Total profit per day for the crop </returns>
         public double TotalCropProfitPerDay();
 
         /// <summary>
         /// Total fertilizer needed for a crop. If planted in greenhouse or if the crop only grows in one Season, then only 1 fertilizer is needed. Otherwise, the total number of days the crop is available is divided by 28 and rounded up to get the total number of fertilizer needed.
         /// </summary>
-        /// <param name="crop"> CropDataExpanded to calculate fertilizer needed for </param>
         /// <returns> Total fertilizer needed for the crop </returns>
         public int TotalFertilizerNeeded();
 
         /// <summary>
         /// Total fertilizer cost for a crop. See <see cref="TotalFertilizerNeeded"/> and <see cref="Utils.FertilizerPrices(FertilizerQuality)"/> for more information.
         /// </summary>
-        /// <param name="crop"> CropDataExpanded to calculate fertilizer cost for </param>
         /// <returns> Total fertilizer cost for the crop </returns>
         public int TotalFertilizerCost();
 
         /// <summary>
         /// Total fertilizer cost per day for a crop. See <see cref="TotalFertilizerCost"/> for more information. Simply devides the total fertilizer cost by the total available days for the crop.
         /// </summary>
-        /// <param name="crop"> CropDataExpanded to calculate fertilizer cost per day for </param>
         /// <returns> Total fertilizer cost per day for the crop </returns>
         public double TotalFertilzerCostPerDay();
 
         /// <summary>
         /// Total seeds needed for a crop. If the crop regrows, then only 1 seed is needed. Otherwise, the total number of harvests is calculated and multiplied by the number of seeds needed per harvest.
         /// </summary>
-        /// <param name="crop"> CropDataExpanded to calculate seeds needed for </param>
         /// <returns> Total seeds needed for the crop </returns>
         public int TotalSeedsNeeded();
 
         /// <summary>
-        /// Total seeds cost for a crop. See <see cref="TotalSeedsNeeded"/> and <see cref="IPlantData.GetSeedPrice"/> for more information.
+        /// Total seeds cost for a crop. See <see cref="TotalSeedsNeeded"/>
         /// </summary>
-        /// <param name="crop"> CropDataExpanded to calculate seeds cost for </param>
         /// <returns> Total seeds cost for the crop </returns>
         public int TotalSeedsCost();
 
         /// <summary>
         /// Total seeds cost per day for a crop. See <see cref="TotalSeedsCost"/> for more information. Simply devides the total seeds cost by the total available days for the crop.
         /// </summary>
-        /// <param name="crop"></param>
         /// <returns></returns>
         public double TotalSeedsCostPerDay();
 
@@ -195,7 +180,7 @@ namespace ProfitCalculator.main.models
         #region Crop Modifer Value Calculations
 
         /// <summary>
-        /// Prints the average crop value modifier for current farming level and fertilizer type. Used for debugging. Uses <see cref="GetCropGoldQualityChance"/>, <see cref="GetCropSilverQualityChance"/>, <see cref="GetCropIridiumQualityChance"/>, <see cref="GetCropBaseQualityChance"/>. <see cref="GetCropBaseQualityChance"/> and <see cref="PriceMultipliers"/> to calculate the average value modifier for the crop.
+        /// Prints the average crop value modifier for current farming level and fertilizer type. Used for debugging. Uses <see cref="GetCropGoldQualityChance"/>, <see cref="GetCropSilverQualityChance"/>, <see cref="GetCropIridiumQualityChance"/>, <see cref="GetCropBaseQualityChance"/>. <see cref="GetCropBaseQualityChance"/> and PriceMultipliers to calculate the average value modifier for the crop.
         /// </summary>
         /// <returns> Average crop value modifier for current farming level and fertilizer type </returns>
         public double GetAverageValueMultiplierForCrop();

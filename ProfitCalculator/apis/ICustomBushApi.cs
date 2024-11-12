@@ -3,6 +3,8 @@
 using StardewValley.TerrainFeatures;
 using System.Collections.Generic;
 
+#nullable enable
+
 /// <summary>Mod API for custom bushes.</summary>
 public interface ICustomBushApi
 {

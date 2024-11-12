@@ -2,7 +2,6 @@
 using Microsoft.Xna.Framework.Graphics;
 using ProfitCalculator.apis;
 using ProfitCalculator.main.accessors;
-using ProfitCalculator.main.models;
 using StardewModdingAPI;
 using StardewValley;
 using StardewValley.GameData.FruitTrees;
@@ -14,7 +13,7 @@ using SObject = StardewValley.Object;
 
 #nullable enable
 
-namespace ProfitCalculator.main
+namespace ProfitCalculator.main.models
 {
     /// <summary>
     /// Class <c>CropDataExpanded</c> models a crop from the game storing all relevant information about it.
@@ -22,7 +21,7 @@ namespace ProfitCalculator.main
     public class CustomBushData : IPlantData
     {
         /// <inheritdoc/>
-        public DropInformations DropInformation { get; set; }
+        public DropInformation DropInformation { get; set; }
 
         /// <inheritdoc/>
         public Item Seed { get; set; }
@@ -50,6 +49,7 @@ namespace ProfitCalculator.main
 
         public int Days { get; set; }
 
+        /// <ingeritdoc/>
         public int DaysToBeginProducing { get; set; }
 
         /// <inheritdoc/>
@@ -128,7 +128,7 @@ namespace ProfitCalculator.main
             Seed = Item = _seed;
             AffectByQuality = false;
             AffectByFertilizer = false;
-
+            DropInformation = new();
             Texture2D spriteSheet;
             try
             {
@@ -195,7 +195,7 @@ namespace ProfitCalculator.main
         /// </summary>
         /// <param name="currentSeason"></param>
         /// <returns> Whether the crop is available for the current Season or not.</returns>
-        public bool IsAvailableForCurrentSeason(Utils.UtilsSeason currentSeason)
+        public bool IsAvailableForCurrentSeason(UtilsSeason currentSeason)
         {
             //match UtilsSeason with the crop's seasons from StardewValley, case insensitive
             int seasonNum = (int)currentSeason;
@@ -231,9 +231,9 @@ namespace ProfitCalculator.main
                 //add the number of days in the current Season
                 totalAvailableDays += TotalAvailableDaysInCurrentSeason(day);
             }
-            if (currentSeason == Utils.UtilsSeason.Greenhouse)
+            if (currentSeason == UtilsSeason.Greenhouse)
             {
-                totalAvailableDays = (28 * 4);
+                totalAvailableDays = 28 * 4;
             }
             return totalAvailableDays;
         }
@@ -255,12 +255,12 @@ namespace ProfitCalculator.main
         /// <param name="fertilizerQuality"> Quality of the used Fertilizer of type FertilizerQuality <see cref="FertilizerQuality"/></param>
         /// <param name="day"> Current day as int, can be from 0 to 1</param>
         /// <returns> Total number of harvests for the crop for the available time. <c>int</c></returns>
-        public int TotalHarvestsWithRemainingDays(Utils.UtilsSeason currentSeason, FertilizerQuality fertilizerQuality, int day)
+        public int TotalHarvestsWithRemainingDays(UtilsSeason currentSeason, FertilizerQuality fertilizerQuality, int day)
         {
             int totalHarvestTimes = 0;
             int daysToRegrow = RegrowDays;
             int availableDays = AvailableGrowingDays(currentSeason, day);
-            if (IsAvailableForCurrentSeason(currentSeason) || currentSeason == Utils.UtilsSeason.Greenhouse)
+            if (IsAvailableForCurrentSeason(currentSeason) || currentSeason == UtilsSeason.Greenhouse)
             {
                 //number of harvests are the number of available days divided by the number of days to grow the crop
                 totalHarvestTimes = availableDays / daysToRegrow;
@@ -292,7 +292,7 @@ namespace ProfitCalculator.main
             }
             if (currentSeason == UtilsSeason.Greenhouse)
             {
-                return (availableDays + 3 * (28 - daysToBeginProducing));
+                return availableDays + 3 * (28 - daysToBeginProducing);
             }
             for (int i = 1; i < Seasons.Count; i++)
             {
@@ -317,7 +317,7 @@ namespace ProfitCalculator.main
                 {
                     max_harvest_increase = (int)(Game1.player.FarmingLevel / MaxHarvestIncreasePerFarmingLevel);
                 }
-                totalCrops = (double)(MinHarvests + MaxHarvests + max_harvest_increase) / 2.0;
+                totalCrops = (MinHarvests + MaxHarvests + max_harvest_increase) / 2.0;
             }
             return (int)totalCrops;
         }
@@ -341,11 +341,11 @@ namespace ProfitCalculator.main
         public double TotalCropProfit()
         {
             UtilsSeason season = Container.Instance.GetInstance<Calculator>()?.Season ?? UtilsSeason.Spring;
-            Utils.FertilizerQuality fertilizerQuality = Container.Instance.GetInstance<Calculator>()?.FertilizerQuality ?? Utils.FertilizerQuality.None;
+            FertilizerQuality fertilizerQuality = Container.Instance.GetInstance<Calculator>()?.FertilizerQuality ?? FertilizerQuality.None;
             uint day = Container.Instance.GetInstance<Calculator>()?.Day ?? 0;
 
             double totalProfitFromFirstProduce = Price(season);
-            double result = (totalProfitFromFirstProduce) * TotalHarvestsWithRemainingDays(season, fertilizerQuality, (int)day);
+            double result = totalProfitFromFirstProduce * TotalHarvestsWithRemainingDays(season, fertilizerQuality, (int)day);
 
             return result;
         }
@@ -381,7 +381,7 @@ namespace ProfitCalculator.main
         public int TotalFertilizerCost()
         {
             bool payForFertilizer = Container.Instance.GetInstance<Calculator>()?.PayForFertilizer ?? false;
-            Utils.FertilizerQuality fertilizerQuality = Container.Instance.GetInstance<Calculator>()?.FertilizerQuality ?? Utils.FertilizerQuality.None;
+            FertilizerQuality fertilizerQuality = Container.Instance.GetInstance<Calculator>()?.FertilizerQuality ?? FertilizerQuality.None;
             if (!payForFertilizer)
             {
                 return 0;
@@ -401,7 +401,7 @@ namespace ProfitCalculator.main
             {
                 return 0;
             }
-            double totalFertilizerCostPerDay = (double)fertCost / (double)TotalAvailableDays(season, (int)day);
+            double totalFertilizerCostPerDay = fertCost / (double)TotalAvailableDays(season, (int)day);
             return totalFertilizerCostPerDay;
         }
 
@@ -410,7 +410,7 @@ namespace ProfitCalculator.main
         {
             UtilsSeason season = Container.Instance.GetInstance<Calculator>()?.Season ?? UtilsSeason.Spring;
             uint day = Container.Instance.GetInstance<Calculator>()?.Day ?? 0;
-            Utils.FertilizerQuality fertilizerQuality = Container.Instance.GetInstance<Calculator>()?.FertilizerQuality ?? Utils.FertilizerQuality.None;
+            FertilizerQuality fertilizerQuality = Container.Instance.GetInstance<Calculator>()?.FertilizerQuality ?? FertilizerQuality.None;
             if (RegrowDays > 0 && TotalAvailableDays(season, (int)day) > 0)
                 return 1;
             else return TotalHarvestsWithRemainingDays(season, fertilizerQuality, (int)day);
@@ -438,7 +438,7 @@ namespace ProfitCalculator.main
             {
                 return 0;
             }
-            double totalSeedsCostPerDay = (double)seedCost / (double)TotalAvailableDays(season, (int)day);
+            double totalSeedsCostPerDay = seedCost / (double)TotalAvailableDays(season, (int)day);
             return totalSeedsCostPerDay;
         }
 
@@ -469,7 +469,7 @@ namespace ProfitCalculator.main
         public double GetAverageValueForCropAfterModifiers()
         {
             bool UseBaseStats = Container.Instance.GetInstance<Calculator>()?.UseBaseStats ?? false;
-            double averageValue = this.GetAverageValueMultiplierForCrop();
+            double averageValue = GetAverageValueMultiplierForCrop();
             if (!UseBaseStats && Game1.player.professions.Contains(Farmer.tiller))
             {
                 averageValue *= 1.1f;

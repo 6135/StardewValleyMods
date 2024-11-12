@@ -39,6 +39,10 @@ namespace ProfitCalculator.main
         /// </summary>
         public UtilsSeason Season { get; set; }
 
+        /// <summary>
+        /// Get the current season
+        /// </summary>
+        /// <returns></returns>
         public UtilsSeason GetSeason() => Season;
 
         //UtislSeason to Season
@@ -79,8 +83,14 @@ namespace ProfitCalculator.main
         /// </summary>
         public bool CrossSeason { get; set; }
 
+        /// <summary>
+        /// Price multipliers for the different qualities of crops
+        /// </summary>
         public double[] PriceMultipliers { get; set; } = new double[4] { 1.0, 1.25, 1.5, 2.0 };
 
+        /// <summary>
+        /// Farming level of the player
+        /// </summary>
         public int FarmingLevel { get; set; }
 
         #endregion properties
@@ -151,7 +161,7 @@ namespace ProfitCalculator.main
             {
                 cropList.Add(crop.Value);
             }
-            cropList.Sort((x, y) => y.Price(Season).CompareTo(x.Price(Season)));
+            cropList.Sort((x, y) => y.DropInformation.AveragePrice(Season).CompareTo(x.DropInformation.AveragePrice(Season)));
             return cropList;
         }
 
@@ -168,7 +178,7 @@ namespace ProfitCalculator.main
                 if (ci.TotalHarvests >= 1)
                     if (!PayForSeeds)
                         cropInfos.Add(ci);
-                    else if (PayForSeeds && ci.TotalSeedLoss <= MaxMoney)
+                    else if (ci.TotalSeedLoss <= MaxMoney)
                         cropInfos.Add(ci);
             }
             cropInfos.Sort((x, y) => y.ProfitPerDay.CompareTo(x.ProfitPerDay));
@@ -204,6 +214,7 @@ namespace ProfitCalculator.main
             double chanceOfSilverQuality = crop.GetCropSilverQualityChance();
             double chanceOfGoldQuality = crop.GetCropGoldQualityChance();
             double chanceOfIridiumQuality = crop.GetCropIridiumQualityChance();
+
             return new CropInfo(crop, totalProfit, profitPerDay, totalSeedLoss, seedLossPerDay, totalFertilizerLoss, fertilizerLossPerDay, produceType, duration, totalHarvests, growthTime, regrowthTime, productCount, chanceOfExtraProduct, chanceOfNormalQuality, chanceOfSilverQuality, chanceOfGoldQuality, chanceOfIridiumQuality);
         }
 

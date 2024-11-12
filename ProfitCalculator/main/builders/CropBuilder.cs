@@ -2,10 +2,9 @@
 using StardewValley;
 using StardewValley.GameData.Crops;
 using System.Collections.Generic;
-using static ProfitCalculator.Utils;
 using SObject = StardewValley.Object;
-using PlantData = ProfitCalculator.main.CropData;
 using ProfitCalculator.main.models;
+using CropData = ProfitCalculator.main.models.CropData;
 
 #nullable enable
 
@@ -49,7 +48,8 @@ namespace ProfitCalculator.main.builders
         {
             Item seed = new SObject(id, 1);
             Item item = new SObject(cropData.HarvestItemId == "23" ? id : cropData.HarvestItemId, 1);
-            return new CropData(cropData, item, seed);
+            DropInformation dropInformation = new(id, new List<Item> { item }, new List<int> { 1 }, new List<double> { 1 });
+            return new CropData(cropData, seed, dropInformation);
         }
     }
 }
