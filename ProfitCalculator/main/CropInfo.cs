@@ -143,26 +143,39 @@ namespace ProfitCalculator.main
         /// <returns> <c>true</c> if the specified <see cref="CropInfo"/> is equal to the current <see cref="CropInfo"/>; otherwise, <c>false</c>. </returns>
         public override bool Equals(object obj)
         {
-            const double Tolerance = 0.0001;
-            return obj is CropInfo cropInfo &&
-                   EqualityComparer<IPlantData>.Default.Equals(Crop, cropInfo.Crop) &&
-                   Math.Abs(TotalProfit - cropInfo.TotalProfit) < Tolerance &&
-                   Math.Abs(ProfitPerDay - cropInfo.ProfitPerDay) < Tolerance &&
-                   Math.Abs(TotalSeedLoss - cropInfo.TotalSeedLoss) < Tolerance &&
-                   Math.Abs(SeedLossPerDay - cropInfo.SeedLossPerDay) < Tolerance &&
-                   Math.Abs(TotalFertilizerLoss - cropInfo.TotalFertilizerLoss) < Tolerance &&
-                   Math.Abs(FertilizerLossPerDay - cropInfo.FertilizerLossPerDay) < Tolerance &&
+            if (obj is not CropInfo cropInfo)
+                return false;
+
+            static bool AreDoublesEqual(double a, double b, double tolerance) => Math.Abs(a - b) < tolerance;
+
+            var doubleProperties = new (double, double)[]
+            {
+                (TotalProfit, cropInfo.TotalProfit),
+                (ProfitPerDay, cropInfo.ProfitPerDay),
+                (TotalSeedLoss, cropInfo.TotalSeedLoss),
+                (SeedLossPerDay, cropInfo.SeedLossPerDay),
+                (TotalFertilizerLoss, cropInfo.TotalFertilizerLoss),
+                (FertilizerLossPerDay, cropInfo.FertilizerLossPerDay),
+                (ChanceOfExtraProduct, cropInfo.ChanceOfExtraProduct),
+                (ChanceOfNormalQuality, cropInfo.ChanceOfNormalQuality),
+                (ChanceOfSilverQuality, cropInfo.ChanceOfSilverQuality),
+                (ChanceOfGoldQuality, cropInfo.ChanceOfGoldQuality),
+                (ChanceOfIridiumQuality, cropInfo.ChanceOfIridiumQuality)
+            };
+
+            foreach (var (prop, cropProp) in doubleProperties)
+            {
+                if (!AreDoublesEqual(prop, cropProp, 0.0001))
+                    return false;
+            }
+
+            return EqualityComparer<IPlantData>.Default.Equals(Crop, cropInfo.Crop) &&
                    ProduceType == cropInfo.ProduceType &&
                    Duration == cropInfo.Duration &&
                    TotalHarvests == cropInfo.TotalHarvests &&
                    GrowthTime == cropInfo.GrowthTime &&
                    RegrowthTime == cropInfo.RegrowthTime &&
-                   ProductCount == cropInfo.ProductCount &&
-                   Math.Abs(ChanceOfExtraProduct - cropInfo.ChanceOfExtraProduct) < Tolerance &&
-                   Math.Abs(ChanceOfNormalQuality - cropInfo.ChanceOfNormalQuality) < Tolerance &&
-                   Math.Abs(ChanceOfSilverQuality - cropInfo.ChanceOfSilverQuality) < Tolerance &&
-                   Math.Abs(ChanceOfGoldQuality - cropInfo.ChanceOfGoldQuality) < Tolerance &&
-                   Math.Abs(ChanceOfIridiumQuality - cropInfo.ChanceOfIridiumQuality) < Tolerance;
+                   ProductCount == cropInfo.ProductCount;
         }
 
         /// <summary>
