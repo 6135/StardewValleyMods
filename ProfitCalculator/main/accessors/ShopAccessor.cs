@@ -15,6 +15,8 @@ namespace ProfitCalculator.main.accessors
     /// </summary>
     public class ShopAccessor
     {
+        private static readonly string sourcePhrase = "ShopAccessor";
+
         // Cache for storing seed prices
         private readonly Cache<Dictionary<string, int>> seedPriceCache;
 
@@ -66,7 +68,7 @@ namespace ProfitCalculator.main.accessors
             {
                 Random shopRandom = Utility.CreateDaySaveRandom();
                 HashSet<string> stockedItemIds = new();
-                ItemQueryContext itemQueryContext = new(Game1.currentLocation, Game1.player, shopRandom);
+                ItemQueryContext itemQueryContext = new(Game1.currentLocation, Game1.player, shopRandom, sourcePhrase);
 
                 HashSet<string> syncKeys = new();
                 foreach (ShopItemData itemData in shop.Items)

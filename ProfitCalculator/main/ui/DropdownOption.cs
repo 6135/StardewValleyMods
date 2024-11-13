@@ -118,28 +118,15 @@ namespace ProfitCalculator.main.ui
 
             if (Dropped)
             {
-                if (Constants.TargetPlatform != GamePlatform.Android)
-                {
-                    //print all checked values
+                bool isMousePressed = Mouse.GetState().LeftButton == ButtonState.Pressed && Game1.oldMouseState.LeftButton == ButtonState.Released;
+                bool isGamePadPressed = Game1.input.GetGamePadState().Buttons.A == ButtonState.Pressed && Game1.oldPadState.Buttons.A == ButtonState.Released;
 
-                    if (((Mouse.GetState().LeftButton == ButtonState.Pressed && Game1.oldMouseState.LeftButton == ButtonState.Released) ||
-                         (Game1.input.GetGamePadState().Buttons.A == ButtonState.Pressed && Game1.oldPadState.Buttons.A == ButtonState.Released))
-                        && !justClicked)
-                    {
-                        Game1.playSound("drumkit6");
-                        Dropped = false;
-                    }
-                }
-                else
+                if ((isMousePressed || isGamePadPressed) && !justClicked)
                 {
-                    if (((Game1.input.GetMouseState().LeftButton == ButtonState.Pressed && Game1.oldMouseState.LeftButton == ButtonState.Released) ||
-                         (Game1.input.GetGamePadState().Buttons.A == ButtonState.Pressed && Game1.oldPadState.Buttons.A == ButtonState.Released))
-                        && !justClicked)
-                    {
-                        Game1.playSound("drumkit6");
-                        Dropped = false;
-                    }
+                    Game1.playSound("drumkit6");
+                    Dropped = false;
                 }
+
                 int tall = Math.Min(MaxValuesAtOnce, Choices.Length - ActivePosition) * DropDownBoxHeight;
                 int drawY = Math.Min((int)Position.Y, Game1.uiViewport.Height - tall);
                 var bounds2 = new Rectangle((int)Position.X, drawY, DropDownBoxWidth, DropDownBoxHeight * MaxValuesAtOnce);
