@@ -94,10 +94,7 @@ namespace ProfitCalculator.main
             var type = typeof(T);
             lock (_lock)
             {
-                if (_instances.ContainsKey(type))
-                {
-                    _instances.Remove(type);
-                }
+                _instances.Remove(type);
             }
         }
 
