@@ -1,4 +1,5 @@
-﻿using StardewModdingAPI;
+﻿using CoreUtils.management.memory;
+using StardewModdingAPI;
 using StardewValley;
 using StardewValley.GameData.Shops;
 using StardewValley.Internal;
@@ -28,7 +29,7 @@ namespace ProfitCalculator.main.accessors
         /// </summary>
         public ShopAccessor()
         {
-            var Helper = Container.Instance.GetInstance<IModHelper>();
+            var Helper = Container.Instance.GetInstance<IModHelper>(ModEntry.UniqueID);
             // Initialize seed price cache with data from SeedPrices.json
             seedPriceCache = new(
                     () => Helper?.ModContent.Load<Dictionary<string, int>>(Path.Combine("assets", "SeedPrices.json"))
@@ -61,7 +62,7 @@ namespace ProfitCalculator.main.accessors
         /// <returns>A dictionary containing the stock information for the shop.</returns>
         public static Dictionary<ISalable, ItemStockInformation> GetShopStock(string shopId, ShopData shop)
         {
-            var Monitor = Container.Instance.GetInstance<IMonitor>();
+            var Monitor = Container.Instance.GetInstance<IMonitor>(ModEntry.UniqueID);
             Dictionary<ISalable, ItemStockInformation> stock = new();
             List<ShopItemData> items = shop.Items;
             if (items != null && items.Count > 0)

@@ -1,4 +1,4 @@
-using ProfitCalculator.main;
+using CoreUtils.management.memory;
 using StardewModdingAPI;
 using StardewValley;
 using System;
@@ -7,7 +7,7 @@ using SObject = StardewValley.Object;
 #nullable enable
 #pragma warning disable CS1591 // Missing XML comment for publicly visible type or member
 
-namespace ProfitCalculator
+namespace CoreUtils
 {
     /// <summary>
     /// Provides a set of tools to be used by multiple classes of the mod.
@@ -100,7 +100,7 @@ namespace ProfitCalculator
         {
             //convert string to lowercase
             str = str.ToLower();
-            var Helper = Container.Instance.GetInstance<IModHelper>();
+            var Helper = Container.Instance.GetInstance<IModHelper>(ModEntry.UniqueID);
             return Helper?.Translation.Get(str) ?? "Error";
         }
 

@@ -11,6 +11,7 @@ using StardewValley;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Xml;
 using CropData = ProfitCalculator.main.models.CropData;
 
 #nullable enable
@@ -22,14 +23,16 @@ namespace ProfitCalculator
     {
         private ModConfig? Config;
         private ProfitCalculatorMainMenu? mainMenu;
+        internal static string UniqueID = "";
 
         /// <summary>The mod entry point, called after the mod is first loaded.</summary>
         /// <param name="helper">Provides simplified APIs for writing mods.</param>
         public override void Entry(IModHelper helper)
         {
-            Container.Instance.RegisterInstance<Calculator>();
-            Container.Instance.RegisterInstance(helper);
-            Container.Instance.RegisterInstance(this.Monitor);
+            UniqueID = this.ModManifest.UniqueID;
+            Container.Instance.RegisterInstance<Calculator>(UniqueID);
+            Container.Instance.RegisterInstance(helper, UniqueID);
+            Container.Instance.RegisterInstance(this.Monitor, UniqueID);
 
             //read config
             Config = helper.ReadConfig<ModConfig>();
@@ -54,7 +57,7 @@ namespace ProfitCalculator
         [EventPriority(EventPriority.Low - 9999)]
         private void OnDayStartedResetCache(object? sender, DayStartedEventArgs? e)
         {
-            Container.Instance.GetInstance<ShopAccessor>()?.ForceRebuildCache();
+            Container.Instance.GetInstance<ShopAccessor>(ModEntry.UniqueID)?.ForceRebuildCache();
         }
 
         private void OnGameLaunchedAPIs(object? sender, GameLaunchedEventArgs? e)
@@ -65,13 +68,13 @@ namespace ProfitCalculator
             {
                 Monitor.Log($"Generic Mod Config Menu not found", LogLevel.Debug);
             }
-            Container.Instance.RegisterInstance(configMenu);
+            Container.Instance.RegisterInstance(configMenu, UniqueID);
         }
 
         private void OnGameLaunchedAddGenericModConfigMenu(object? sender, GameLaunchedEventArgs? e)
         {
             //register config menu if generic mod config menu is installed
-            var configMenu = Container.Instance.GetInstance<IGenericModConfigMenuApi>();
+            var configMenu = Container.Instance.GetInstance<IGenericModConfigMenuApi>(UniqueID);
             if (configMenu is null)
                 return;
             // register mod
@@ -112,19 +115,19 @@ namespace ProfitCalculator
         [EventPriority(EventPriority.Low - 9999)]
         private void OnSaveGameLoaded(object? sender, SaveLoadedEventArgs? e)
         {
-            Container.Instance.RegisterInstance<ShopAccessor>();
-            Container.Instance.RegisterInstance<MachineAccessor>();
+            Container.Instance.RegisterInstance<ShopAccessor>(UniqueID);
+            Container.Instance.RegisterInstance<MachineAccessor>(UniqueID);
             var CustomBushAPI = Helper.ModRegistry.GetApi<ICustomBushApi>("furyx639.CustomBush");
             if (CustomBushAPI != null)
             {
-                Container.Instance.RegisterInstance(CustomBushAPI);
+                Container.Instance.RegisterInstance(CustomBushAPI, UniqueID);
             }
 
             if (Context.IsWorldReady)
             {
                 mainMenu = new ProfitCalculatorMainMenu();
             }
-            var Calculator = Container.Instance.GetInstance<Calculator>();
+            var Calculator = Container.Instance.GetInstance<Calculator>(ModEntry.UniqueID);
             if (Calculator is null)
             {
                 Monitor.Log("Calculator is null", LogLevel.Error);
@@ -198,7 +201,7 @@ namespace ProfitCalculator
         /// <param name="crop"> The crop to add. <see cref="CropData"/> </param>
         public static void AddCrop(string id, CropData crop)
         {
-            var Calculator = Container.Instance.GetInstance<Calculator>();
+            var Calculator = Container.Instance.GetInstance<Calculator>(UniqueID);
             Calculator?.AddCrop(id, crop);
         }
     }

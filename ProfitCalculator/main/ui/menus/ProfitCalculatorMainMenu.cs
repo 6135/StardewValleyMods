@@ -71,7 +71,7 @@ namespace ProfitCalculator.main.ui.menus
         /// <summary> Whether the profit calculator is open or not.  </summary>
         public bool IsProfitCalculatorOpen { get; set; } = false;
 
-        private readonly IModHelper Helper = Container.Instance.GetInstance<IModHelper>();
+        private readonly IModHelper Helper = Container.Instance.GetInstance<IModHelper>(ModEntry.UniqueID);
 
         /// <summary>
         /// Constructor for the ProfitCalculatorMainMenu class.
@@ -637,10 +637,10 @@ namespace ProfitCalculator.main.ui.menus
 
         private void DoCalculation()
         {
-            Container.Instance.GetInstance<Calculator>()?.SetSettings(Day, MaxDay, MinDay, Season, ProduceType, FertilizerQuality, PayForSeeds, PayForFertilizer, MaxMoney, UseBaseStats);
+            Container.Instance.GetInstance<Calculator>(ModEntry.UniqueID)?.SetSettings(Day, MaxDay, MinDay, Season, ProduceType, FertilizerQuality, PayForSeeds, PayForFertilizer, MaxMoney, UseBaseStats);
 
-            Container.Instance.GetInstance<IMonitor>()?.Log("Doing Calculation", LogLevel.Debug);
-            List<CropInfo> cropList = Container.Instance.GetInstance<Calculator>()?.RetrieveCropInfos();
+            Container.Instance.GetInstance<IMonitor>(ModEntry.UniqueID)?.Log("Doing Calculation", LogLevel.Debug);
+            List<CropInfo> cropList = Container.Instance.GetInstance<Calculator>(ModEntry.UniqueID)?.RetrieveCropInfos();
 
             ProfitCalculatorResultsList profitCalculatorResultsList = new(cropList);
             SetChildMenu(profitCalculatorResultsList);

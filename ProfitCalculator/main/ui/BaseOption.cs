@@ -15,7 +15,7 @@ namespace ProfitCalculator.main.ui
         /// <summary>
         /// The helper for the mod
         /// </summary>
-        protected readonly IModHelper Helper = Container.Instance.GetInstance<IModHelper>();
+        protected readonly IModHelper Helper = Container.Instance.GetInstance<IModHelper>(ModEntry.UniqueID);
 
         /// <summary> The sound to play when the option is clicked, or <c>null</c> to play no sound. </summary>
         public virtual string ClickedSound => null;

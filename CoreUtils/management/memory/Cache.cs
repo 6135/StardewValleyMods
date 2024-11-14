@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace ProfitCalculator.main
+namespace CoreUtils.management.memory
 {
     /// <summary>
     /// The cache class. This class is used to store data that is used by multiple classes. Cache can be invalidated and rebuilt.

@@ -26,4 +26,8 @@
     <PackageReference Include="Pathoschild.Stardew.ModBuildConfig" Version="4.3.2" />
   </ItemGroup>
 
+	<ItemGroup>
+	  <ProjectReference Include="..\CoreUtils\CoreUtils.csproj" />
+	</ItemGroup>
+
 </Project>

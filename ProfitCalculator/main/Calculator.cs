@@ -234,7 +234,7 @@ namespace ProfitCalculator.main
                 }
                 catch (Exception)
                 {
-                    Container.Instance.GetInstance<IMonitor>()?.Log("Failed to add\n" + crop.ToString(), LogLevel.Debug);
+                    Container.Instance.GetInstance<IMonitor>(ModEntry.UniqueID)?.Log("Failed to add\n" + crop.ToString(), LogLevel.Debug);
                 }
             }
         }
