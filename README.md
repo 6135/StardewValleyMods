@@ -1,5 +1,6 @@
 # 6135's Stardew Valley Mods Repository
 
+[![Codacy Badge](https://api.codacy.com/project/badge/Grade/ddb41dbbeac1420284ee60bb5dddf436)](https://app.codacy.com/gh/6135/StardewValleyMods?utm_source=github.com&utm_medium=referral&utm_content=6135/StardewValleyMods&utm_campaign=Badge_Grade)
 [![CodeFactor](https://www.codefactor.io/repository/github/6135/stardewvalleymods/badge)](https://www.codefactor.io/repository/github/6135/stardewvalleymods)
 
 This is my collection of asorted SDV Mods.
