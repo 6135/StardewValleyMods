@@ -1,7 +1,8 @@
-﻿using StardewValley;
+﻿using CoreUtils;
+using StardewValley;
 using System.Collections.Generic;
 using System.Linq;
-using static ProfitCalculator.Utils;
+using static CoreUtils.Utils;
 
 #nullable enable
 

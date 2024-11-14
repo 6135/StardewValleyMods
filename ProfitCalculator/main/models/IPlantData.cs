@@ -3,7 +3,7 @@ using Microsoft.Xna.Framework.Graphics;
 using StardewValley;
 using System;
 using System.Collections.Generic;
-using static ProfitCalculator.Utils;
+using static CoreUtils.Utils;
 
 #nullable enable
 

@@ -31,7 +31,7 @@ namespace ProfitCalculator.main
         public readonly double FertilizerLossPerDay;
 
         /// <summary> The produce type. </summary>
-        public readonly Utils.ProduceType ProduceType;
+        public readonly CoreUtils.Utils.ProduceType ProduceType;
 
         /// <summary> The duration. </summary>
         public readonly int Duration;
@@ -84,7 +84,7 @@ namespace ProfitCalculator.main
         /// <param name="chanceOfSilverQuality"> The chance of silver quality. </param>
         /// <param name="chanceOfGoldQuality"> The chance of gold quality. </param>
         /// <param name="chanceOfIridiumQuality"> The chance of iridium quality. </param>
-        public CropInfo(IPlantData crop, double totalProfit, double profitPerDay, double totalSeedLoss, double seedLossPerDay, double totalFertilizerLoss, double fertilizerLossPerDay, Utils.ProduceType produceType, int duration, int totalHarvests, int growthTime, int regrowthTime, int productCount, double chanceOfExtraProduct, double chanceOfNormalQuality, double chanceOfSilverQuality, double chanceOfGoldQuality, double chanceOfIridiumQuality)
+        public CropInfo(IPlantData crop, double totalProfit, double profitPerDay, double totalSeedLoss, double seedLossPerDay, double totalFertilizerLoss, double fertilizerLossPerDay, CoreUtils.Utils.ProduceType produceType, int duration, int totalHarvests, int growthTime, int regrowthTime, int productCount, double chanceOfExtraProduct, double chanceOfNormalQuality, double chanceOfSilverQuality, double chanceOfGoldQuality, double chanceOfIridiumQuality)
         {
             Crop = crop;
             TotalProfit = totalProfit - totalSeedLoss - totalFertilizerLoss;

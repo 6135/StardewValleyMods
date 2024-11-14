@@ -1,9 +1,10 @@
-﻿using ProfitCalculator.main.models;
+﻿using CoreUtils.management.memory;
+using ProfitCalculator.main.models;
 using StardewModdingAPI;
 using StardewValley;
 using System;
 using System.Collections.Generic;
-using static ProfitCalculator.Utils;
+using static CoreUtils.Utils;
 
 namespace ProfitCalculator.main
 {

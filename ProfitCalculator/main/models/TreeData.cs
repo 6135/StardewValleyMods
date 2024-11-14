@@ -6,7 +6,7 @@ using StardewValley;
 using StardewValley.GameData.FruitTrees;
 using System;
 using System.Collections.Generic;
-using static ProfitCalculator.Utils;
+using static CoreUtils.Utils;
 using SObject = StardewValley.Object;
 
 #nullable enable

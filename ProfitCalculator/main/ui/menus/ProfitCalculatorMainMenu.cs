@@ -7,7 +7,7 @@ using StardewValley.Menus;
 using System;
 using System.Collections.Generic;
 using System.IO;
-using static ProfitCalculator.Utils;
+using static CoreUtils.Utils;
 
 namespace ProfitCalculator.main.ui.menus
 {

@@ -1,3 +1,4 @@
+using CoreUtils.management.memory;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using ProfitCalculator.apis;
@@ -7,7 +8,7 @@ using StardewValley;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using static ProfitCalculator.Utils;
+using static CoreUtils.Utils;
 using SObject = StardewValley.Object;
 
 #nullable enable
