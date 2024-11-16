@@ -1,4 +1,5 @@
-﻿using ProfitCalculator.main.models;
+﻿using CoreUtils.management.memory;
+using ProfitCalculator.main.models;
 using StardewModdingAPI;
 using StardewValley;
 using System.Collections.Generic;

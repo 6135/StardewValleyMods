@@ -2,6 +2,7 @@
 using Microsoft.Xna.Framework.Input;
 using StardewModdingAPI;
 using StardewModdingAPI.Events;
+using System.Collections.Generic;
 using System.Threading;
 
 namespace CoreUtils
