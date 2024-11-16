@@ -8,6 +8,7 @@
 	  <EnableHarmony>true</EnableHarmony>
 	  <GamePath>$(STARDEW_GAME_DIR)</GamePath>
 	  <GenerateDocumentationFile>true</GenerateDocumentationFile>
+
   </PropertyGroup>
 
   <ItemGroup>
@@ -16,13 +17,12 @@
     <None Remove="FakesAssemblies\**" />
     <None Remove="manualCrops.json\**" />
   </ItemGroup>
+	
 	<ItemGroup>
 		<None Include="i18n\default.json" />
 	</ItemGroup>
 
 	<ItemGroup>
-    <PackageReference Include="Microsoft.QualityTools.Testing.Fakes" Version="17.12.0-beta.24429.1" />
-    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
     <PackageReference Include="Pathoschild.Stardew.ModBuildConfig" Version="4.3.2" />
   </ItemGroup>
 
