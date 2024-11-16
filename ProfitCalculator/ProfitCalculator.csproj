@@ -8,7 +8,8 @@
 	  <EnableHarmony>true</EnableHarmony>
 	  <GamePath>$(STARDEW_GAME_DIR)</GamePath>
 	  <GenerateDocumentationFile>true</GenerateDocumentationFile>
-
+	  <Platforms>x86</Platforms>
+	  <PlatformTarget>x86</PlatformTarget>
   </PropertyGroup>
 
   <ItemGroup>

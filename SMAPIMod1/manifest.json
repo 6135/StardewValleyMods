@@ -1,0 +1,10 @@
+﻿{
+  "Name": "SMAPIMod1",
+  "Author": "ModAuthor",
+  "Version": "1.0.0",
+  "Description": "Mod Template",
+  "UniqueID": "ModAuthor.SMAPIMod1",
+  "EntryDll": "SMAPIMod1.dll",
+  "MinimumApiVersion": "2.11",
+  "UpdateKeys": [ "Nexus:" ]
+}
