@@ -1,4 +1,4 @@
-using ProfitCalculator.main;
+using CoreUtils.management.memory;
 using StardewModdingAPI;
 using StardewValley;
 using System;
@@ -100,7 +100,7 @@ namespace ProfitCalculator
         {
             //convert string to lowercase
             str = str.ToLower();
-            var Helper = Container.Instance.GetInstance<IModHelper>();
+            var Helper = Container.Instance.GetInstance<IModHelper>(ModEntry.UniqueID);
             return Helper?.Translation.Get(str) ?? "Error";
         }
 

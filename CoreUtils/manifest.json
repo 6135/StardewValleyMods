@@ -1,0 +1,10 @@
+﻿{
+  "Name": "CoreUtils",
+  "Author": "6135",
+  "Version": "1.0.0",
+  "Description": "Core Utilities for 6135's Mods",
+  "UniqueID": "6135.CoreUtils",
+  "EntryDll": "CoreUtils.dll",
+  "MinimumApiVersion": "2.11",
+  "UpdateKeys": [ "Nexus:" ]
+}

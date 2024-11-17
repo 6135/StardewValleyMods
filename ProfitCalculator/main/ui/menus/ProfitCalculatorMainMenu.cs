@@ -1,3 +1,4 @@
+using CoreUtils.management.memory;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
@@ -16,10 +17,25 @@ namespace ProfitCalculator.main.ui.menus
     /// </summary>
     public class ProfitCalculatorMainMenu : IClickableMenu
     {
+        // Constants
+        private static readonly int widthOnScreen = 632 + (borderWidth * 2);
+
+        private static readonly int heightOnScreen = 600 + (borderWidth * 2) + Game1.tileSize;
+
+        // Fields
+        private bool stopSpreadingClick = false;
+
+        private readonly List<ClickableComponent> Labels = new();
+        private readonly List<BaseOption> Options = new();
+        private ClickableComponent calculateButton;
+        private ClickableComponent resetButton;
+        private readonly IModHelper Helper = Container.Instance.GetInstance<IModHelper>(ModEntry.UniqueID);
+
+        // Properties
         /// <summary> The day for planting. </summary>
         public uint Day { get; set; } = 1;
 
-        /// <summary> The ammount of days a Season can have. </summary>
+        /// <summary> The amount of days a Season can have. </summary>
         public uint MaxDay { get; set; } = 28;
 
         /// <summary> The minimum day a Season can have. </summary>
@@ -28,50 +44,36 @@ namespace ProfitCalculator.main.ui.menus
         /// <summary> The Season for planting. </summary>
         public UtilsSeason Season { get; set; } = UtilsSeason.Spring;
 
-        /// <summary>
-        /// Sets the Season for planting.
-        /// </summary>
-        /// <param name="season"> The Season to set. String, case insensetive</param>
-        public void SetSeason(string season)
-        {
-            Season = (UtilsSeason)Enum.Parse(typeof(UtilsSeason), season, false);
-        }
-
         /// <summary> The type of produce to calculate with, for now only raw works. </summary>
         public ProduceType ProduceType { get; set; } = ProduceType.Raw;
 
         /// <summary> The quality of fertilizer to use. </summary>
         public FertilizerQuality FertilizerQuality { get; set; } = FertilizerQuality.None;
 
-        /// <summary>
-        /// Whether the play wants to check which plants he can purchase with available cash.
-        /// </summary>
+        /// <summary> Whether the player wants to check which plants he can purchase with available cash. </summary>
         public bool PayForSeeds { get; set; } = true;
 
-        /// <summary> Whether the play wants to check which plants he can purchase with available cash. </summary>
+        /// <summary> Whether the player wants to check which plants he can purchase with available cash. </summary>
         public bool PayForFertilizer { get; set; } = false;
 
-        /// <summary> The maximum ammount of money the player wants to spend in seeds. </summary>
+        /// <summary> The maximum amount of money the player wants to spend on seeds. </summary>
         public uint MaxMoney { get; set; } = 0;
 
         /// <summary> Whether the player wants to use base stats or not. </summary>
         public bool UseBaseStats { get; set; } = false;
 
-        private static readonly int widthOnScreen = 632 + (borderWidth * 2);
-        private static readonly int heightOnScreen = 600 + (borderWidth * 2) + Game1.tileSize;
-        private bool stopSpreadingClick = false;
-
-        private readonly List<ClickableComponent> Labels = new();
-
-        private readonly List<BaseOption> Options = new();
-
-        private ClickableComponent calculateButton;
-        private ClickableComponent resetButton;
-
-        /// <summary> Whether the profit calculator is open or not.  </summary>
+        /// <summary> Whether the profit calculator is open or not. </summary>
         public bool IsProfitCalculatorOpen { get; set; } = false;
 
-        private readonly IModHelper Helper = Container.Instance.GetInstance<IModHelper>();
+        // Methods
+        /// <summary>
+        /// Sets the Season for planting.
+        /// </summary>
+        /// <param name="season"> The Season to set. String, case insensitive</param>
+        public void SetSeason(string season)
+        {
+            Season = (UtilsSeason)Enum.Parse(typeof(UtilsSeason), season, false);
+        }
 
         /// <summary>
         /// Constructor for the ProfitCalculatorMainMenu class.
@@ -194,7 +196,7 @@ namespace ProfitCalculator.main.ui.menus
                 name: () => "Season",
                 label: () => Helper.Translation.Get("Season"),
                 choices: () => Enum.GetNames(typeof(UtilsSeason)),
-                labels: () => GetAllTranslatedSeasons(),
+                labels: GetAllTranslatedSeasons,
                 valueGetter: Season.ToString,
                 valueSetter:
                     (value) => Season = (UtilsSeason)Enum.Parse(typeof(UtilsSeason), value, true)
@@ -204,6 +206,16 @@ namespace ProfitCalculator.main.ui.menus
             };
 
             Options.Add(seasonOption);
+        }
+
+        private string[] NotImplemented(int number)
+        {
+            string[] notImplemented = new string[number];
+            for (int i = 0; i < number; i++)
+            {
+                notImplemented[i] = Helper.Translation.Get("not-implemented");
+            }
+            return notImplemented;
         }
 
         private void SetUpProduceTypeOptionPositions()
@@ -227,7 +239,7 @@ namespace ProfitCalculator.main.ui.menus
                 name: () => "produceType",
                 label: () => Helper.Translation.Get("produce-type"),
                 choices: () => Enum.GetNames(typeof(ProduceType)),
-                labels: () => GetAllTranslatedProduceTypes(),
+                labels: () => NotImplemented(3),
                 valueGetter: ProduceType.ToString,
                 valueSetter: (value) => ProduceType = (ProduceType)Enum.Parse(typeof(ProduceType), value, true)
             )
@@ -637,10 +649,10 @@ namespace ProfitCalculator.main.ui.menus
 
         private void DoCalculation()
         {
-            Container.Instance.GetInstance<Calculator>()?.SetSettings(Day, MaxDay, MinDay, Season, ProduceType, FertilizerQuality, PayForSeeds, PayForFertilizer, MaxMoney, UseBaseStats);
+            Container.Instance.GetInstance<Calculator>(ModEntry.UniqueID)?.SetSettings(Day, MaxDay, MinDay, Season, ProduceType, FertilizerQuality, PayForSeeds, PayForFertilizer, MaxMoney, UseBaseStats);
 
-            Container.Instance.GetInstance<IMonitor>()?.Log("Doing Calculation", LogLevel.Debug);
-            List<CropInfo> cropList = Container.Instance.GetInstance<Calculator>()?.RetrieveCropInfos();
+            Container.Instance.GetInstance<IMonitor>(ModEntry.UniqueID)?.Log("Doing Calculation", LogLevel.Debug);
+            List<CropInfo> cropList = Container.Instance.GetInstance<Calculator>(ModEntry.UniqueID)?.RetrieveCropInfos();
 
             ProfitCalculatorResultsList profitCalculatorResultsList = new(cropList);
             SetChildMenu(profitCalculatorResultsList);

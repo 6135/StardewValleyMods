@@ -1,3 +1,4 @@
+using CoreUtils.management.memory;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using StardewModdingAPI;
@@ -22,7 +23,7 @@ namespace ProfitCalculator.main.ui
         private Rectangle drawBox;
         private readonly CropInfo cropInfo;
         private readonly SpriteFont font;
-        private readonly IModHelper Helper = Container.Instance.GetInstance<IModHelper>();
+        private readonly IModHelper Helper = Container.Instance.GetInstance<IModHelper>(ModEntry.UniqueID);
 
         /// <summary>
         /// Creates a new CropHoverBox.

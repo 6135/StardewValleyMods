@@ -1,3 +1,4 @@
+using CoreUtils.management.memory;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using ProfitCalculator.apis;
@@ -39,8 +40,10 @@ namespace ProfitCalculator.main.models
 
         /// <inheritdoc/>
         public bool AffectByQuality { get; set; }
+
         /// <inheritdoc/>
         public bool AffectByFertilizer { get; set; }
+
         /// <inheritdoc/>
         public int Days { get; set; }
 
@@ -49,16 +52,22 @@ namespace ProfitCalculator.main.models
 
         /// <inheritdoc/>
         public int RegrowDays { get; set; }
+
         /// <inheritdoc/>
         public int MinHarvests { get; set; }
+
         /// <inheritdoc/>
         public int MaxHarvests { get; set; }
+
         /// <inheritdoc/>
         public float MaxHarvestIncreasePerFarmingLevel { get; set; }
+
         /// <inheritdoc/>
         public double ChanceForExtraCrops { get; set; }
+
         /// <inheritdoc/>
         public string DisplayName { get; set; }
+
         /// <inheritdoc/>
         public Tuple<Texture2D, Rectangle> Sprite { get; set; }
 
@@ -73,7 +82,7 @@ namespace ProfitCalculator.main.models
         /// </summary>
         public int SeedPrice
         {
-            get => Container.Instance.GetInstance<ShopAccessor>()?.GetCheapestSeedPrice(Seed.QualifiedItemId) ?? 0;
+            get => Container.Instance.GetInstance<ShopAccessor>(ModEntry.UniqueID)?.GetCheapestSeedPrice(Seed.QualifiedItemId) ?? 0;
             set => throw new NotImplementedException();
         }
 
@@ -123,7 +132,7 @@ namespace ProfitCalculator.main.models
             }
             catch (Exception e)
             {
-                Container.Instance.GetInstance<IMonitor>()?.Log($"Error loading sprite for {Item.DisplayName}: {e.Message}", LogLevel.Error);
+                Container.Instance.GetInstance<IMonitor>(ModEntry.UniqueID)?.Log($"Error loading sprite for {Item.DisplayName}: {e.Message}", LogLevel.Error);
                 spriteSheet = Game1.objectSpriteSheet;
             }
 
@@ -327,9 +336,9 @@ namespace ProfitCalculator.main.models
         /// <inheritdoc/>
         public double TotalCropProfit()
         {
-            UtilsSeason season = Container.Instance.GetInstance<Calculator>()?.Season ?? UtilsSeason.Spring;
-            FertilizerQuality fertilizerQuality = Container.Instance.GetInstance<Calculator>()?.FertilizerQuality ?? FertilizerQuality.None;
-            uint day = Container.Instance.GetInstance<Calculator>()?.Day ?? 0;
+            UtilsSeason season = Container.Instance.GetInstance<Calculator>(ModEntry.UniqueID)?.Season ?? UtilsSeason.Spring;
+            FertilizerQuality fertilizerQuality = Container.Instance.GetInstance<Calculator>(ModEntry.UniqueID)?.FertilizerQuality ?? FertilizerQuality.None;
+            uint day = Container.Instance.GetInstance<Calculator>(ModEntry.UniqueID)?.Day ?? 0;
 
             double totalProfitFromFirstProduce = Price(season);
             double result = totalProfitFromFirstProduce * TotalHarvestsWithRemainingDays(season, fertilizerQuality, (int)day);
@@ -340,8 +349,8 @@ namespace ProfitCalculator.main.models
         /// <inheritdoc/>
         public double TotalCropProfitPerDay()
         {
-            UtilsSeason season = Container.Instance.GetInstance<Calculator>()?.Season ?? UtilsSeason.Spring;
-            uint day = Container.Instance.GetInstance<Calculator>()?.Day ?? 0;
+            UtilsSeason season = Container.Instance.GetInstance<Calculator>(ModEntry.UniqueID)?.Season ?? UtilsSeason.Spring;
+            uint day = Container.Instance.GetInstance<Calculator>(ModEntry.UniqueID)?.Day ?? 0;
             double totalProfit = TotalCropProfit();
             if (totalProfit == 0)
             {
@@ -354,8 +363,8 @@ namespace ProfitCalculator.main.models
         /// <inheritdoc/>
         public int TotalFertilizerNeeded()
         {
-            UtilsSeason season = Container.Instance.GetInstance<Calculator>()?.Season ?? UtilsSeason.Spring;
-            uint day = Container.Instance.GetInstance<Calculator>()?.Day ?? 0;
+            UtilsSeason season = Container.Instance.GetInstance<Calculator>(ModEntry.UniqueID)?.Season ?? UtilsSeason.Spring;
+            uint day = Container.Instance.GetInstance<Calculator>(ModEntry.UniqueID)?.Day ?? 0;
             if (season == UtilsSeason.Greenhouse || Seasons.Count == 1)
                 return 1;
             else
@@ -367,8 +376,8 @@ namespace ProfitCalculator.main.models
         /// <inheritdoc/>
         public int TotalFertilizerCost()
         {
-            bool payForFertilizer = Container.Instance.GetInstance<Calculator>()?.PayForFertilizer ?? false;
-            FertilizerQuality fertilizerQuality = Container.Instance.GetInstance<Calculator>()?.FertilizerQuality ?? FertilizerQuality.None;
+            bool payForFertilizer = Container.Instance.GetInstance<Calculator>(ModEntry.UniqueID)?.PayForFertilizer ?? false;
+            FertilizerQuality fertilizerQuality = Container.Instance.GetInstance<Calculator>(ModEntry.UniqueID)?.FertilizerQuality ?? FertilizerQuality.None;
             if (!payForFertilizer)
             {
                 return 0;
@@ -381,8 +390,8 @@ namespace ProfitCalculator.main.models
         /// <inheritdoc/>
         public double TotalFertilzerCostPerDay()
         {
-            UtilsSeason season = Container.Instance.GetInstance<Calculator>()?.Season ?? UtilsSeason.Spring;
-            uint day = Container.Instance.GetInstance<Calculator>()?.Day ?? 0;
+            UtilsSeason season = Container.Instance.GetInstance<Calculator>(ModEntry.UniqueID)?.Season ?? UtilsSeason.Spring;
+            uint day = Container.Instance.GetInstance<Calculator>(ModEntry.UniqueID)?.Day ?? 0;
             int fertCost = TotalFertilizerCost();
             if (fertCost == 0)
             {
@@ -395,9 +404,9 @@ namespace ProfitCalculator.main.models
         /// <inheritdoc/>
         public int TotalSeedsNeeded()
         {
-            UtilsSeason season = Container.Instance.GetInstance<Calculator>()?.Season ?? UtilsSeason.Spring;
-            uint day = Container.Instance.GetInstance<Calculator>()?.Day ?? 0;
-            FertilizerQuality fertilizerQuality = Container.Instance.GetInstance<Calculator>()?.FertilizerQuality ?? FertilizerQuality.None;
+            UtilsSeason season = Container.Instance.GetInstance<Calculator>(ModEntry.UniqueID)?.Season ?? UtilsSeason.Spring;
+            uint day = Container.Instance.GetInstance<Calculator>(ModEntry.UniqueID)?.Day ?? 0;
+            FertilizerQuality fertilizerQuality = Container.Instance.GetInstance<Calculator>(ModEntry.UniqueID)?.FertilizerQuality ?? FertilizerQuality.None;
             if (RegrowDays > 0 && TotalAvailableDays(season, (int)day) > 0)
                 return 1;
             else return TotalHarvestsWithRemainingDays(season, fertilizerQuality, (int)day);
@@ -406,7 +415,7 @@ namespace ProfitCalculator.main.models
         /// <inheritdoc/>
         public int TotalSeedsCost()
         {
-            bool payForSeeds = Container.Instance.GetInstance<Calculator>()?.PayForSeeds ?? false;
+            bool payForSeeds = Container.Instance.GetInstance<Calculator>(ModEntry.UniqueID)?.PayForSeeds ?? false;
             if (!payForSeeds)
                 return 0;
             int seedsNeeded = TotalSeedsNeeded();
@@ -418,8 +427,8 @@ namespace ProfitCalculator.main.models
         /// <inheritdoc/>
         public double TotalSeedsCostPerDay()
         {
-            UtilsSeason season = Container.Instance.GetInstance<Calculator>()?.Season ?? UtilsSeason.Spring;
-            uint day = Container.Instance.GetInstance<Calculator>()?.Day ?? 0;
+            UtilsSeason season = Container.Instance.GetInstance<Calculator>(ModEntry.UniqueID)?.Season ?? UtilsSeason.Spring;
+            uint day = Container.Instance.GetInstance<Calculator>(ModEntry.UniqueID)?.Day ?? 0;
             int seedCost = TotalSeedsCost();
             if (seedCost == 0)
             {
@@ -436,7 +445,7 @@ namespace ProfitCalculator.main.models
         /// <inheritdoc/>
         public double GetAverageValueMultiplierForCrop()
         {
-            double[] priceMultipliers = Container.Instance.GetInstance<Calculator>()?.PriceMultipliers ?? new double[] { 1.0, 1.25, 1.5, 2.0 };
+            double[] priceMultipliers = Container.Instance.GetInstance<Calculator>(ModEntry.UniqueID)?.PriceMultipliers ?? new double[] { 1.0, 1.25, 1.5, 2.0 };
 
             //apply farm level quality modifiers
             double chanceForGoldQuality = GetCropGoldQualityChance();
@@ -455,7 +464,7 @@ namespace ProfitCalculator.main.models
         /// <inheritdoc/>
         public double GetAverageValueForCropAfterModifiers()
         {
-            bool UseBaseStats = Container.Instance.GetInstance<Calculator>()?.UseBaseStats ?? false;
+            bool UseBaseStats = Container.Instance.GetInstance<Calculator>(ModEntry.UniqueID)?.UseBaseStats ?? false;
             double averageValue = GetAverageValueMultiplierForCrop();
             if (!UseBaseStats && Game1.player.professions.Contains(Farmer.tiller))
             {

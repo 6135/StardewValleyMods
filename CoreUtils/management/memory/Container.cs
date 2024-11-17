@@ -1,10 +1,9 @@
 ﻿using System;
-
 using System.Collections.Generic;
 
 #nullable enable
 
-namespace ProfitCalculator.main
+namespace CoreUtils.management.memory
 {
     /// <summary>
     /// The <see cref="Container"/> class is a thread-safe singleton that manages instances of various types.
@@ -14,7 +13,7 @@ namespace ProfitCalculator.main
     {
         private static readonly Lazy<Container> _instance = new(() => new Container());
 
-        private readonly Dictionary<Type, object> _instances = new();
+        private readonly Dictionary<string, object> _instances = new();
         private readonly object _lock = new(); // Lock object for synchronization
 
         /// <summary>
@@ -32,17 +31,18 @@ namespace ProfitCalculator.main
         /// Retrieves an instance of the specified type <typeparamref name="T"/> from the container.
         /// </summary>
         /// <typeparam name="T">The type of the instance to retrieve.</typeparam>
+        /// <param name="key">The unique key associated with the instance.</param>
         /// <returns>The instance of type <typeparamref name="T"/> if found; otherwise, the default value for type <typeparamref name="T"/>.</returns>
-        public T? GetInstance<T>()
+        public T? GetInstance<T>(string key)
         {
-            var type = typeof(T);
+            var typeKey = GetTypeKey<T>(key);
             lock (_lock)
             {
-                if (!_instances.ContainsKey(type))
+                if (!_instances.ContainsKey(typeKey))
                 {
                     return default;
                 }
-                return (T)_instances[type];
+                return (T)_instances[typeKey];
             }
         }
 
@@ -51,19 +51,21 @@ namespace ProfitCalculator.main
         /// </summary>
         /// <typeparam name="T">The type of the instance to register.</typeparam>
         /// <param name="instance">The instance to register.</param>
+        /// <param name="key">The unique key associated with the instance.</param>
         /// <exception cref="ArgumentNullException">Thrown when the instance is null.</exception>
-        public void RegisterInstance<T>(T instance)
+        public void RegisterInstance<T>(T instance, string key)
         {
-            var type = typeof(T);
+            var typeKey = GetTypeKey<T>(key);
             if (instance is null)
             {
                 throw new ArgumentNullException(nameof(instance));
             }
+
             lock (_lock)
             {
-                if (!_instances.ContainsKey(type))
+                if (!_instances.ContainsKey(typeKey))
                 {
-                    _instances[type] = instance;
+                    _instances[typeKey] = instance;
                 }
             }
         }
@@ -72,15 +74,16 @@ namespace ProfitCalculator.main
         /// Creates and registers a new instance of the specified type <typeparamref name="T"/> in the container.
         /// </summary>
         /// <typeparam name="T">The type of the instance to create and register.</typeparam>
-        public void RegisterInstance<T>() where T : new()
+        /// <param name="key">The unique key associated with the instance.</param>
+        public void RegisterInstance<T>(string key) where T : new()
         {
-            var type = typeof(T);
+            var typeKey = GetTypeKey<T>(key);
             var instance = new T();
             lock (_lock)
             {
-                if (!_instances.ContainsKey(type))
+                if (!_instances.ContainsKey(typeKey))
                 {
-                    _instances[type] = instance;
+                    _instances[typeKey] = instance;
                 }
             }
         }
@@ -89,12 +92,13 @@ namespace ProfitCalculator.main
         /// Unregisters an instance of the specified type <typeparamref name="T"/> from the container.
         /// </summary>
         /// <typeparam name="T">The type of the instance to unregister.</typeparam>
-        public void UnregisterInstance<T>()
+        /// <param name="key">The unique key associated with the instance.</param>
+        public void UnregisterInstance<T>(string key)
         {
-            var type = typeof(T);
+            var typeKey = GetTypeKey<T>(key);
             lock (_lock)
             {
-                _instances.Remove(type);
+                _instances.Remove(typeKey);
             }
         }
 
@@ -107,6 +111,17 @@ namespace ProfitCalculator.main
             {
                 _instances.Clear();
             }
+        }
+
+        /// <summary>
+        /// Generates a unique key for the type and the provided key.
+        /// </summary>
+        /// <typeparam name="T">The type of the instance.</typeparam>
+        /// <param name="key">The unique key associated with the instance.</param>
+        /// <returns>A unique string key.</returns>
+        private static string GetTypeKey<T>(string key)
+        {
+            return $"{typeof(T).FullName}_{key}";
         }
     }
 }

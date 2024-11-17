@@ -1,3 +1,4 @@
+using CoreUtils.management.memory;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
@@ -5,7 +6,9 @@ using StardewModdingAPI;
 using StardewValley;
 using StardewValley.Menus;
 using System;
+using System.ComponentModel;
 using System.Linq;
+using Container = CoreUtils.management.memory.Container;
 
 namespace ProfitCalculator.main.ui
 {
@@ -63,12 +66,16 @@ namespace ProfitCalculator.main.ui
         /// <summary> Determines whether the dropdown is dropped. </summary>
         private bool Dropped;
 
-#pragma warning disable S2223, CA2211, S1104
-
         /// <summary> The current active dropdown. </summary>
-        public static DropdownOption ActiveDropdown = null;
-
-#pragma warning restore S2223, CA2211, S1104
+        public static DropdownOption ActiveDropdown
+        {
+            get => Container.Instance.GetInstance<DropdownOption>(ModEntry.UniqueID);
+            set
+            {
+                Container.Instance.UnregisterInstance<DropdownOption>(ModEntry.UniqueID);
+                Container.Instance.RegisterInstance(value, ModEntry.UniqueID);
+            }
+        }
 
         /// <summary> The sound to play when the option is clicked. </summary>
         public override string ClickedSound => "shwip";
@@ -99,8 +106,8 @@ namespace ProfitCalculator.main.ui
             Labels = labels();
             ActiveChoice = Array.IndexOf(Choices, valueGetter());
             ValueSetter = valueSetter;
-            ClickableComponent.bounds.Width = DropDownBoxWidth;
-            ClickableComponent.bounds.Height = DropDownBoxHeight;
+            bounds.Width = DropDownBoxWidth;
+            bounds.Height = DropDownBoxHeight;
         }
 
         /// <summary>
@@ -259,7 +266,7 @@ namespace ProfitCalculator.main.ui
         public override void ReceiveLeftClick(int x, int y, Action stopSpread)
         {
             //if ClickMeantToCloseDropdown is false then open dropdown
-            if (ClickableComponent.containsPoint(x, y) && !Dropped && !Clicked)
+            if (containsPoint(x, y) && !Dropped && !Clicked)
             {
                 ExecuteClick();
             }

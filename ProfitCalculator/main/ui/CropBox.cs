@@ -57,8 +57,8 @@ namespace ProfitCalculator.main.ui
                 new(0, 256, 60, 60),
                 (int)Position.X,// - 16,
                 (int)Position.Y,// - 8 - 4,
-                ClickableComponent.bounds.Width,// + 32,
-                ClickableComponent.bounds.Height,// + 16 + 8,
+                bounds.Width,// + 32,
+                bounds.Height,// + 16 + 8,
                 Color.White,
                 1.2f,
                 false,
@@ -72,7 +72,7 @@ namespace ProfitCalculator.main.ui
                 cropInfo.Crop.Sprite.Item1,
                 new Rectangle(
                     (int)Position.X + (3 * Game1.tileSize / 8),
-                    (int)Position.Y + (ClickableComponent.bounds.Height / 2) - (Game1.tileSize / 2) + 6,
+                    (int)Position.Y + (bounds.Height / 2) - (Game1.tileSize / 2) + 6,
                     spriteDisplaySize,
                     spriteDisplaySize
                 ),
@@ -93,7 +93,7 @@ namespace ProfitCalculator.main.ui
             float rightSideTextMaxSize = Font.MeasureString(cropInfo.ProfitPerDay.ToString("0.00")).X + Font.MeasureString($" {Helper.Translation.Get("g")}/{Helper.Translation.Get("day")}").X;
             rightSideTextMaxSize *= 1.8f;
 
-            float boxWidth = ClickableComponent.bounds.Width - (3 * Game1.tileSize / 8) - rightSideTextMaxSize;
+            float boxWidth = bounds.Width - (3 * Game1.tileSize / 8) - rightSideTextMaxSize;
 
             while (fontSize > boxWidth)
             {
@@ -106,7 +106,7 @@ namespace ProfitCalculator.main.ui
                 mainText,
                 new Vector2(
                     Position.X + (3 * Game1.tileSize / 2),
-                    Position.Y + (ClickableComponent.bounds.Height / 2) - (Font.MeasureString(mainText).Y / 2)
+                    Position.Y + (bounds.Height / 2) - (Font.MeasureString(mainText).Y / 2)
                 ),
                 Color.Black,
                 0f,
@@ -132,7 +132,7 @@ namespace ProfitCalculator.main.ui
                 price,
                 new Vector2(
                     Position.X + (69 * (Game1.tileSize / 8)) - Font.MeasureString(price).X - Font.MeasureString(g).X,
-                    Position.Y + (ClickableComponent.bounds.Height / 2) + 3 - Font.MeasureString(price).Y
+                    Position.Y + (bounds.Height / 2) + 3 - Font.MeasureString(price).Y
                 ),
                 color,
                 0f,
@@ -146,7 +146,7 @@ namespace ProfitCalculator.main.ui
                 g,
                 new Vector2(
                     Position.X + (69 * (Game1.tileSize / 8)) - Font.MeasureString(g).X,
-                    Position.Y + (ClickableComponent.bounds.Height / 2) + 3 - Font.MeasureString(g).Y
+                    Position.Y + (bounds.Height / 2) + 3 - Font.MeasureString(g).Y
                 ),
                 Color.Black,
                 0f,
@@ -163,7 +163,7 @@ namespace ProfitCalculator.main.ui
                 pricePerDay,
                 new Vector2(
                     Position.X + (69 * (Game1.tileSize / 8)) - Font.MeasureString(pricePerDay).X - Font.MeasureString(ppd).X,
-                    Position.Y + (ClickableComponent.bounds.Height / 2) + 3
+                    Position.Y + (bounds.Height / 2) + 3
                 ),
                 color,
                 0f,
@@ -177,7 +177,7 @@ namespace ProfitCalculator.main.ui
                 ppd,
                 new Vector2(
                     Position.X + (69 * (Game1.tileSize / 8)) - Font.MeasureString(ppd).X,
-                    Position.Y + (ClickableComponent.bounds.Height / 2) + 3
+                    Position.Y + (bounds.Height / 2) + 3
                 ),
                 Color.Black,
                 0f,
@@ -201,7 +201,7 @@ namespace ProfitCalculator.main.ui
         public override void PerformHoverAction(int x, int y)
         {
             base.PerformHoverAction(x, y);
-            if (ClickableComponent.containsPoint(x, y))
+            if (containsPoint(x, y))
             {
                 cropHoverBox.Update();
                 cropHoverBox.Open(true);

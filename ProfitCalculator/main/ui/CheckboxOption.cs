@@ -47,8 +47,8 @@ namespace ProfitCalculator.main.ui
             Action<bool> valueSetter)
             : base(x, y, 0, 0, name, label, label)
         {
-            ClickableComponent.bounds.Width = OptionsCheckbox.sourceRectChecked.Width * 4;
-            ClickableComponent.bounds.Height = OptionsCheckbox.sourceRectChecked.Height * 4;
+            bounds.Width = OptionsCheckbox.sourceRectChecked.Width * 4;
+            bounds.Height = OptionsCheckbox.sourceRectChecked.Height * 4;
             ValueGetter = valueGetter;
             ValueSetter = valueSetter;
         }

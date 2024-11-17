@@ -1,4 +1,5 @@
-﻿using ProfitCalculator.main.models;
+﻿using CoreUtils.management.memory;
+using ProfitCalculator.main.models;
 using StardewModdingAPI;
 using StardewValley;
 using System;
@@ -14,10 +15,11 @@ namespace ProfitCalculator.main
     {
         #region properties
 
+        // Properties
         /// <summary>
         /// List of all crops in the game
         /// </summary>
-        public Dictionary<string, IPlantData> crops;
+        public Dictionary<string, IPlantData> Crops { get; set; }
 
         /// <summary>
         /// Day of the Season
@@ -38,14 +40,6 @@ namespace ProfitCalculator.main
         /// UtilsSeason of the year selected
         /// </summary>
         public UtilsSeason Season { get; set; }
-
-        /// <summary>
-        /// Get the current season
-        /// </summary>
-        /// <returns></returns>
-        public UtilsSeason GetSeason() => Season;
-
-        //UtislSeason to Season
 
         /// <summary>
         /// Type of produce selected
@@ -100,7 +94,7 @@ namespace ProfitCalculator.main
         /// </summary>
         public Calculator()
         {
-            crops = new Dictionary<string, IPlantData>();
+            Crops = new Dictionary<string, IPlantData>();
         }
 
         /// <summary>
@@ -145,7 +139,7 @@ namespace ProfitCalculator.main
         /// </summary>
         public void ClearCrops()
         {
-            crops.Clear();
+            Crops.Clear();
         }
 
         /// <summary>
@@ -157,7 +151,7 @@ namespace ProfitCalculator.main
             // sort crops by profit
             // return list
             List<IPlantData> cropList = new();
-            foreach (KeyValuePair<string, IPlantData> crop in crops)
+            foreach (KeyValuePair<string, IPlantData> crop in Crops)
             {
                 cropList.Add(crop.Value);
             }
@@ -172,7 +166,7 @@ namespace ProfitCalculator.main
         public List<CropInfo> RetrieveCropInfos()
         {
             List<CropInfo> cropInfos = new();
-            foreach (IPlantData crop in crops.Values)
+            foreach (IPlantData crop in Crops.Values)
             {
                 CropInfo ci = RetrieveCropInfo(crop);
                 if (ci.TotalHarvests >= 1)
@@ -226,15 +220,15 @@ namespace ProfitCalculator.main
         public void AddCrop(string id, IPlantData crop)
         {
             //check if already exists
-            if (!crops.ContainsKey(id))
+            if (!Crops.ContainsKey(id))
             {
                 try
                 {
-                    crops.Add(id, crop);
+                    Crops.Add(id, crop);
                 }
                 catch (Exception)
                 {
-                    Container.Instance.GetInstance<IMonitor>()?.Log("Failed to add\n" + crop.ToString(), LogLevel.Debug);
+                    Container.Instance.GetInstance<IMonitor>(ModEntry.UniqueID)?.Log("Failed to add\n" + crop.ToString(), LogLevel.Debug);
                 }
             }
         }
