@@ -114,13 +114,11 @@ namespace ProfitCalculator.main.ui.menus
             {
                 if (currentItemIndex + i >= Options.Count)
                     break;
-                Options[currentItemIndex + i].ClickableComponent = new(
-                    new(
+                Options[currentItemIndex + i].bounds = new(
                     (int)OptionSlots[i].X,
                     (int)OptionSlots[i].Y,
                     (int)OptionSlots[i].Z,
-                    (int)OptionSlots[i].W
-                ), Options[currentItemIndex + i].Name());
+                    (int)OptionSlots[i].W);
                 Options[currentItemIndex + i].Draw(b);
             }
 
@@ -130,7 +128,9 @@ namespace ProfitCalculator.main.ui.menus
             drawTextureBox(
                 b,
                 Game1.mouseCursors,
+
                 new Rectangle(403, 383, 6, 6),
+
                 scrollBarBounds.X,
                 scrollBarBounds.Y,
                 scrollBarBounds.Width,
@@ -150,8 +150,10 @@ namespace ProfitCalculator.main.ui.menus
             b.Begin(SpriteSortMode.Deferred, BlendState.AlphaBlend, SamplerState.PointClamp);
 
             if (shouldDrawCloseButton())
+
                 base.draw(b);
             if (!Game1.options.hardwareCursor)
+
                 b.Draw(Game1.mouseCursors, new Vector2(Game1.getMouseX(), Game1.getMouseY()), Game1.getSourceRectForStandardTileSheet(Game1.mouseCursors, Game1.options.gamepadControls ? 44 : 0, 16, 16), Color.White, 0f, Vector2.Zero, 4f + (Game1.dialogueButtonScale / 150f), SpriteEffects.None, 1f);
         }
 
@@ -244,7 +246,7 @@ namespace ProfitCalculator.main.ui.menus
         {
             for (int i = 0; i < OptionSlots.Count; i++)
             {
-                if (currentItemIndex >= 0 && currentItemIndex + i < Options.Count && Options[currentItemIndex + i].ClickableComponent.bounds.Contains(x - OptionSlots[i].X, y - OptionSlots[i].Y))
+                if (currentItemIndex >= 0 && currentItemIndex + i < Options.Count && Options[currentItemIndex + i].bounds.Contains(x - OptionSlots[i].X, y - OptionSlots[i].Y))
                 {
                     Game1.SetFreeCursorDrag();
                     break;

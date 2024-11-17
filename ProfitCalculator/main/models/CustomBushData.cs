@@ -8,7 +8,7 @@ using StardewValley;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using static CoreUtils.Utils;
+using static ProfitCalculator.Utils;
 using SObject = StardewValley.Object;
 
 #nullable enable

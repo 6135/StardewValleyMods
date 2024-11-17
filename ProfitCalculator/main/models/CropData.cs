@@ -1,4 +1,3 @@
-using CoreUtils;
 using CoreUtils.management.memory;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
@@ -8,7 +7,7 @@ using StardewValley;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using static CoreUtils.Utils;
+using static ProfitCalculator.Utils;
 using SCropData = StardewValley.GameData.Crops.CropData;
 using SObject = StardewValley.Object;
 

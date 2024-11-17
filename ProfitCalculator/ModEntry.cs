@@ -24,13 +24,12 @@ namespace ProfitCalculator
     {
         private ModConfig? Config;
         private ProfitCalculatorMainMenu? mainMenu;
-        internal static string UniqueID = "";
+        internal static readonly string UniqueID = "6135.ProfitCalculator";
 
         /// <summary>The mod entry point, called after the mod is first loaded.</summary>
         /// <param name="helper">Provides simplified APIs for writing mods.</param>
         public override void Entry(IModHelper helper)
         {
-            UniqueID = this.ModManifest.UniqueID;
             Container.Instance.RegisterInstance<Calculator>(UniqueID);
             Container.Instance.RegisterInstance(helper, UniqueID);
             Container.Instance.RegisterInstance(this.Monitor, UniqueID);
@@ -136,7 +135,7 @@ namespace ProfitCalculator
             }
             List<IDataBuilder> builder = new()
             {
-                //new CropBuilder(),
+                new CropBuilder(),
                 new FruitTreeBuilder(),
             };
             if (CustomBushAPI != null)

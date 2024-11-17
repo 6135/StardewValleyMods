@@ -4,7 +4,7 @@ using StardewModdingAPI;
 using StardewValley;
 using System;
 using System.Collections.Generic;
-using static CoreUtils.Utils;
+using static ProfitCalculator.Utils;
 
 namespace ProfitCalculator.main
 {

@@ -8,7 +8,7 @@ using StardewValley.Menus;
 using System;
 using System.Collections.Generic;
 using System.IO;
-using static CoreUtils.Utils;
+using static ProfitCalculator.Utils;
 
 namespace ProfitCalculator.main.ui.menus
 {
@@ -196,7 +196,7 @@ namespace ProfitCalculator.main.ui.menus
                 name: () => "Season",
                 label: () => Helper.Translation.Get("Season"),
                 choices: () => Enum.GetNames(typeof(UtilsSeason)),
-                labels: () => GetAllTranslatedSeasons(),
+                labels: GetAllTranslatedSeasons,
                 valueGetter: Season.ToString,
                 valueSetter:
                     (value) => Season = (UtilsSeason)Enum.Parse(typeof(UtilsSeason), value, true)
@@ -206,6 +206,16 @@ namespace ProfitCalculator.main.ui.menus
             };
 
             Options.Add(seasonOption);
+        }
+
+        private string[] NotImplemented(int number)
+        {
+            string[] notImplemented = new string[number];
+            for (int i = 0; i < number; i++)
+            {
+                notImplemented[i] = Helper.Translation.Get("not-implemented");
+            }
+            return notImplemented;
         }
 
         private void SetUpProduceTypeOptionPositions()
@@ -229,7 +239,7 @@ namespace ProfitCalculator.main.ui.menus
                 name: () => "produceType",
                 label: () => Helper.Translation.Get("produce-type"),
                 choices: () => Enum.GetNames(typeof(ProduceType)),
-                labels: () => GetAllTranslatedProduceTypes(),
+                labels: () => NotImplemented(3),
                 valueGetter: ProduceType.ToString,
                 valueSetter: (value) => ProduceType = (ProduceType)Enum.Parse(typeof(ProduceType), value, true)
             )

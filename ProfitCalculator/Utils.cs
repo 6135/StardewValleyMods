@@ -7,7 +7,7 @@ using SObject = StardewValley.Object;
 #nullable enable
 #pragma warning disable CS1591 // Missing XML comment for publicly visible type or member
 
-namespace CoreUtils
+namespace ProfitCalculator
 {
     /// <summary>
     /// Provides a set of tools to be used by multiple classes of the mod.

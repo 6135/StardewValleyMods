@@ -11,7 +11,7 @@ namespace ProfitCalculator.main.ui
     /// <summary>
     ///  Base class for all options in the options menu. This might be usefull for other mods. Might clean this up later and make it a seperate mod or framework.
     /// </summary>
-    public abstract class BaseOption
+    public abstract class BaseOption : ClickableComponent
     {
         /// <summary>
         /// The helper for the mod
@@ -28,46 +28,12 @@ namespace ProfitCalculator.main.ui
         public virtual string HoveredSound => null;
 
         /// <summary> Whether the option is currently hovered by the cursor. </summary>
-        public bool Hover { get; private set; }
+        public bool Hover { get; }
 
         /// <summary>
         /// If the option was clicked by a left click
         /// </summary>
-        public bool ClickGestured { get; private set; }
-
-        private ClickableComponent clickableComponent;
-
-        /// <summary>
-        /// Sets the clickable component for this option
-        /// </summary>
-        /// <param name="position"> The position of the clickable component in Vector2 format</param>
-        /// <param name="Size"> The size of the clickable component in Vector2 format</param>
-        public void SetClickableComponent(Vector2 position, Vector2 Size)
-        {
-            ClickableComponent = new(
-                new Rectangle(
-                    (int)position.X,
-                    (int)position.Y,
-                    (int)Size.X,
-                    (int)Size.Y
-                ),
-                Name(),
-                Name()
-            );
-        }
-
-        /// <summary>
-        /// Sets the clickable component for this option. Sets Position Vector2 to the position of the clickable component
-        /// </summary>
-        public ClickableComponent ClickableComponent
-        {
-            get => clickableComponent;
-            set
-            {
-                clickableComponent = value;
-                Position = new Vector2(clickableComponent.bounds.X, clickableComponent.bounds.Y);
-            }
-        }
+        public bool ClickGestured { get; }
 
         /// <summary>The tooltip text shown when the cursor hovers on the field, or <c>null</c> to disable the tooltip.</summary>
         public Func<string> Tooltip { get; }
@@ -79,7 +45,15 @@ namespace ProfitCalculator.main.ui
         public Func<string> Label { get; set; }
 
         /// <summary> The position of the clickable component in Vector2 format for easy access</summary>
-        public Vector2 Position { get; set; }
+        public Vector2 Position
+        {
+            get => new(bounds.X, bounds.Y);
+            set
+            {
+                bounds.X = (int)value.X;
+                bounds.Y = (int)value.Y;
+            }
+        }
 
         /// <summary>
         /// Creates a new BaseOption
@@ -91,19 +65,9 @@ namespace ProfitCalculator.main.ui
         /// <param name="name"> The name of the clickable component</param>
         /// <param name="label"> The label of the clickable component</param>
         /// <param name="tooltip"> The tooltip of the clickable component</param>
-        protected BaseOption(int x, int y, int w, int h, Func<string> name, Func<string> label, Func<string> tooltip)
+        protected BaseOption(int x, int y, int w, int h, Func<string> name, Func<string> label, Func<string> tooltip) :
+            base(new Rectangle(x, y, w, h), name(), label())
         {
-            ClickableComponent =
-                new ClickableComponent(
-                    new Rectangle(
-                        x,
-                        y,
-                        w,
-                        h
-                    ),
-                    name(),
-                    label()
-                );
             Tooltip = tooltip;
             Name = name;
             Label = label;
@@ -132,7 +96,7 @@ namespace ProfitCalculator.main.ui
         {
             BeforeReceiveLeftClick(x, y);
             //check if x and y are within the bounds of the checkbox
-            if (ClickableComponent.containsPoint(x, y))
+            if (containsPoint(x, y))
                 ExecuteClick();
         }
 

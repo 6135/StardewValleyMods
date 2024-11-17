@@ -74,8 +74,8 @@ namespace ProfitCalculator.main.ui
         public void SetTexture(Texture2D tex)
         {
             Tex = tex;
-            ClickableComponent.bounds.Width = tex.Width;
-            ClickableComponent.bounds.Height = tex.Height;
+            bounds.Width = tex.Width;
+            bounds.Height = tex.Height;
         }
 
         /// <inheritdoc/>
@@ -207,7 +207,7 @@ namespace ProfitCalculator.main.ui
         /// <param name="y"></param>
         public override void BeforeReceiveLeftClick(int x, int y)
         {
-            if (Selected && !ClickableComponent.containsPoint(x, y))
+            if (Selected && !containsPoint(x, y))
             {
                 Selected = false;
             }
