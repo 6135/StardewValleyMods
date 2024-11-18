@@ -110,6 +110,10 @@ namespace ProfitCalculator.main.ui
             bounds.Height = DropDownBoxHeight;
         }
 
+        private static bool IsMousePressed() => Mouse.GetState().LeftButton == ButtonState.Pressed && Game1.oldMouseState.LeftButton == ButtonState.Released;
+
+        private static bool IsGamePadPressed() => Game1.input.GetGamePadState().Buttons.A == ButtonState.Pressed && Game1.oldPadState.Buttons.A == ButtonState.Released;
+
         /// <summary>
         /// The Update behaviour of the option
         /// </summary>
@@ -125,10 +129,9 @@ namespace ProfitCalculator.main.ui
 
             if (Dropped)
             {
-                bool isMousePressed = Mouse.GetState().LeftButton == ButtonState.Pressed && Game1.oldMouseState.LeftButton == ButtonState.Released;
-                bool isGamePadPressed = Game1.input.GetGamePadState().Buttons.A == ButtonState.Pressed && Game1.oldPadState.Buttons.A == ButtonState.Released;
+                bool isInputPressed = IsMousePressed() || IsGamePadPressed();
 
-                if ((isMousePressed || isGamePadPressed) && !justClicked)
+                if (isInputPressed && !justClicked)
                 {
                     Game1.playSound("drumkit6");
                     Dropped = false;
