@@ -1,4 +1,4 @@
-using CoreUtils.management.memory;
+using ProfitCalculator.main.memory;
 using StardewModdingAPI;
 using StardewValley;
 using System;

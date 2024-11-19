@@ -1,4 +1,4 @@
-using CoreUtils.management.memory;
+using ProfitCalculator.main.memory;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;

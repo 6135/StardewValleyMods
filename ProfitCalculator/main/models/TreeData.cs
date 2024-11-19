@@ -1,7 +1,7 @@
-using CoreUtils.management.memory;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using ProfitCalculator.main.accessors;
+using ProfitCalculator.main.memory;
 using StardewModdingAPI;
 using StardewValley;
 using StardewValley.GameData.FruitTrees;

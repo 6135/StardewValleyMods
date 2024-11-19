@@ -1,4 +1,4 @@
-﻿using CoreUtils.management.memory;
+﻿using ProfitCalculator.main.memory;
 using StardewModdingAPI;
 using StardewValley;
 using StardewValley.GameData.Shops;
@@ -42,7 +42,7 @@ namespace ProfitCalculator.main.accessors
         /// Builds the cache for shop stock information.
         /// </summary>
         /// <returns>A dictionary containing shop stock information.</returns>
-        private Dictionary<string, Dictionary<ISalable, ItemStockInformation>> BuildCache()
+        private static Dictionary<string, Dictionary<ISalable, ItemStockInformation>> BuildCache()
         {
             Dictionary<string, ShopData> shopData = DataLoader.Shops(Game1.content);
             Dictionary<string, Dictionary<ISalable, ItemStockInformation>> cache = new();

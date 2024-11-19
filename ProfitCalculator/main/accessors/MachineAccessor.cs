@@ -9,7 +9,7 @@ namespace ProfitCalculator.main.accessors
         {
         }
 
-        private Dictionary<string, Dictionary<ISalable, ItemStockInformation>> BuildCache()
+        private static Dictionary<string, Dictionary<ISalable, ItemStockInformation>> BuildCache()
         {
             return new();
         }

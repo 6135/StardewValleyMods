@@ -1,4 +1,4 @@
-﻿using CoreUtils.management.memory;
+﻿using ProfitCalculator.main.memory;
 using ProfitCalculator.apis;
 using ProfitCalculator.main;
 using ProfitCalculator.main.accessors;

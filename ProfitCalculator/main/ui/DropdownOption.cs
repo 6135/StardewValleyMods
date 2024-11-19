@@ -1,14 +1,12 @@
-using CoreUtils.management.memory;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
-using StardewModdingAPI;
+
 using StardewValley;
 using StardewValley.Menus;
 using System;
-using System.ComponentModel;
 using System.Linq;
-using Container = CoreUtils.management.memory.Container;
+using Container = ProfitCalculator.main.memory.Container;
 
 namespace ProfitCalculator.main.ui
 {
@@ -73,7 +71,8 @@ namespace ProfitCalculator.main.ui
             set
             {
                 Container.Instance.UnregisterInstance<DropdownOption>(ModEntry.UniqueID);
-                Container.Instance.RegisterInstance(value, ModEntry.UniqueID);
+                if(value != null)
+                    Container.Instance.RegisterInstance(value, ModEntry.UniqueID);
             }
         }
 
