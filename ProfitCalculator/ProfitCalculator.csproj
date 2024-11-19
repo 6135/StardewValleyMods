@@ -13,14 +13,15 @@
   <ItemGroup>
     <Compile Remove="manualCrops.json\**" />
     <EmbeddedResource Remove="manualCrops.json\**" />
+    <None Remove="FakesAssemblies\**" />
     <None Remove="manualCrops.json\**" />
   </ItemGroup>
+	
 	<ItemGroup>
 		<None Include="i18n\default.json" />
 	</ItemGroup>
 
 	<ItemGroup>
-    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
     <PackageReference Include="Pathoschild.Stardew.ModBuildConfig" Version="4.3.2" />
   </ItemGroup>
 

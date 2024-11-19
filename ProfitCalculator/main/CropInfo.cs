@@ -1,4 +1,5 @@
-﻿using System;
+﻿using ProfitCalculator.main.models;
+using System;
 using System.Collections.Generic;
 
 namespace ProfitCalculator.main
@@ -9,7 +10,7 @@ namespace ProfitCalculator.main
     public class CropInfo
     {
         ///<summary> The crop. </summary>
-        public readonly CropDataExpanded Crop;
+        public readonly IPlantData Crop;
 
         /// <summary> The total profit. </summary>
         public readonly double TotalProfit;
@@ -83,7 +84,7 @@ namespace ProfitCalculator.main
         /// <param name="chanceOfSilverQuality"> The chance of silver quality. </param>
         /// <param name="chanceOfGoldQuality"> The chance of gold quality. </param>
         /// <param name="chanceOfIridiumQuality"> The chance of iridium quality. </param>
-        public CropInfo(CropDataExpanded crop, double totalProfit, double profitPerDay, double totalSeedLoss, double seedLossPerDay, double totalFertilizerLoss, double fertilizerLossPerDay, Utils.ProduceType produceType, int duration, int totalHarvests, int growthTime, int regrowthTime, int productCount, double chanceOfExtraProduct, double chanceOfNormalQuality, double chanceOfSilverQuality, double chanceOfGoldQuality, double chanceOfIridiumQuality)
+        public CropInfo(IPlantData crop, double totalProfit, double profitPerDay, double totalSeedLoss, double seedLossPerDay, double totalFertilizerLoss, double fertilizerLossPerDay, Utils.ProduceType produceType, int duration, int totalHarvests, int growthTime, int regrowthTime, int productCount, double chanceOfExtraProduct, double chanceOfNormalQuality, double chanceOfSilverQuality, double chanceOfGoldQuality, double chanceOfIridiumQuality)
         {
             Crop = crop;
             TotalProfit = totalProfit - totalSeedLoss - totalFertilizerLoss;
@@ -114,7 +115,7 @@ namespace ProfitCalculator.main
         public override string ToString()
         { //return object in json format
             return "{" +
-                $"\"CropDataExpanded\": {Crop.Item.Name}," +
+                $"\"CropDataExpanded\": {Crop.DropInformation}," +
                 $"\"TotalProfit\": {TotalProfit}," +
                 $"\"ProfitPerDay\": {ProfitPerDay}," +
                 $"\"TotalSeedLoss\": {TotalSeedLoss}," +
@@ -142,25 +143,39 @@ namespace ProfitCalculator.main
         /// <returns> <c>true</c> if the specified <see cref="CropInfo"/> is equal to the current <see cref="CropInfo"/>; otherwise, <c>false</c>. </returns>
         public override bool Equals(object obj)
         {
-            return obj is CropInfo cropInfo &&
-                   EqualityComparer<CropDataExpanded>.Default.Equals(Crop, cropInfo.Crop) &&
-                   TotalProfit == cropInfo.TotalProfit &&
-                   ProfitPerDay == cropInfo.ProfitPerDay &&
-                   TotalSeedLoss == cropInfo.TotalSeedLoss &&
-                   SeedLossPerDay == cropInfo.SeedLossPerDay &&
-                   TotalFertilizerLoss == cropInfo.TotalFertilizerLoss &&
-                   FertilizerLossPerDay == cropInfo.FertilizerLossPerDay &&
+            if (obj is not CropInfo cropInfo)
+                return false;
+
+            static bool AreDoublesEqual(double a, double b, double tolerance) => Math.Abs(a - b) < tolerance;
+
+            var doubleProperties = new (double, double)[]
+            {
+                (TotalProfit, cropInfo.TotalProfit),
+                (ProfitPerDay, cropInfo.ProfitPerDay),
+                (TotalSeedLoss, cropInfo.TotalSeedLoss),
+                (SeedLossPerDay, cropInfo.SeedLossPerDay),
+                (TotalFertilizerLoss, cropInfo.TotalFertilizerLoss),
+                (FertilizerLossPerDay, cropInfo.FertilizerLossPerDay),
+                (ChanceOfExtraProduct, cropInfo.ChanceOfExtraProduct),
+                (ChanceOfNormalQuality, cropInfo.ChanceOfNormalQuality),
+                (ChanceOfSilverQuality, cropInfo.ChanceOfSilverQuality),
+                (ChanceOfGoldQuality, cropInfo.ChanceOfGoldQuality),
+                (ChanceOfIridiumQuality, cropInfo.ChanceOfIridiumQuality)
+            };
+
+            foreach (var (prop, cropProp) in doubleProperties)
+            {
+                if (!AreDoublesEqual(prop, cropProp, 0.0001))
+                    return false;
+            }
+
+            return EqualityComparer<IPlantData>.Default.Equals(Crop, cropInfo.Crop) &&
                    ProduceType == cropInfo.ProduceType &&
                    Duration == cropInfo.Duration &&
                    TotalHarvests == cropInfo.TotalHarvests &&
                    GrowthTime == cropInfo.GrowthTime &&
                    RegrowthTime == cropInfo.RegrowthTime &&
-                   ProductCount == cropInfo.ProductCount &&
-                   ChanceOfExtraProduct == cropInfo.ChanceOfExtraProduct &&
-                   ChanceOfNormalQuality == cropInfo.ChanceOfNormalQuality &&
-                   ChanceOfSilverQuality == cropInfo.ChanceOfSilverQuality &&
-                   ChanceOfGoldQuality == cropInfo.ChanceOfGoldQuality &&
-                   ChanceOfIridiumQuality == cropInfo.ChanceOfIridiumQuality;
+                   ProductCount == cropInfo.ProductCount;
         }
 
         /// <summary>

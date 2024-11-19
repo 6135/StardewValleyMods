@@ -1,0 +1,17 @@
+﻿{
+  "Name": "UIFramework",
+  "Author": "6135",
+  "Version": "1.0.0",
+  "Description": "UI Framework for SDV",
+  "UniqueID": "6135.UIFramework",
+  "EntryDll": "UIFramework.dll",
+  "MinimumApiVersion": "2.11",
+  "UpdateKeys": [ "Nexus:" ],
+  "Dependencies": [
+    {
+      "UniqueID": "6135.CoreUtils",
+      "MinimumVersion": "1.0.0",
+      "IsRequired": true
+    }
+  ]
+}
