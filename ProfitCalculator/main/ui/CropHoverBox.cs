@@ -693,14 +693,19 @@ namespace ProfitCalculator.main.ui
         /// <summary>
         ///  Opens or closes the hover box.
         /// </summary>
-        /// <param name="open"> Whether to open or close the box.</param>
-        public void Open(bool open = false)
+        /// <param name="_open"> Whether to open or close the box.</param>
+        public void Open(bool _open)
         {
-            isOpen = open;
-            if (!open)
+            isOpen = _open;
+            if (!_open)
             {
                 hoverDelay = hoverDelayDefault;
             }
         }
+
+        /// <summary>
+        ///  Opens or closes the hover box.
+        /// </summary>
+        public void Open() => Open(false);
     }
 }

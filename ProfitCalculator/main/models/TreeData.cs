@@ -95,7 +95,7 @@ namespace ProfitCalculator.main.models
         }
 
         /// <inheritdoc/>
-        public override double GetCropBaseGoldQualityChance(double limit = 9999999999)
+        public override double GetCropBaseGoldQualityChance(double limit)
         {
             return 0f;
         }

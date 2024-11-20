@@ -35,8 +35,8 @@ namespace ProfitCalculator.main.models
             SCropData _cropData,
             Item _seed,
             DropInformation _dropInformation,
-            bool _affectedByQuality = true,
-            bool _affectedByFertilizer = true
+            bool _affectedByQuality,
+            bool _affectedByFertilizer
             ) : base
             (
                 _cropData.DaysInPhase.Sum(),
@@ -50,6 +50,35 @@ namespace ProfitCalculator.main.models
                 _seed,
                 _affectedByQuality,
                 _affectedByFertilizer,
+                _dropInformation
+            )
+        {
+            IsPaddyCrop = _cropData.IsPaddyCrop;
+        }
+
+        /// <summary>
+        /// Constructor for <c>CropDataExpanded</c> class. It's used to create a new instance of the class.
+        /// </summary>
+        /// <param name="_cropData">Crop's full Data</param>
+        /// <param name="_seed" >Seed Item</param>
+        /// <param name="_dropInformation">Information about the crop's drops</param>
+        public CropData(
+            SCropData _cropData,
+            Item _seed,
+            DropInformation _dropInformation
+            ) : base
+            (
+                _cropData.DaysInPhase.Sum(),
+                _cropData.RegrowDays,
+                _cropData.HarvestMinStack,
+                _cropData.HarvestMinStack,
+                _cropData.HarvestMaxIncreasePerFarmingLevel,
+                _cropData.ExtraHarvestChance,
+                _dropInformation.Drops[0].Item.DisplayName,
+                _cropData.Seasons,
+                _seed,
+                true,
+                true,
                 _dropInformation
             )
         {

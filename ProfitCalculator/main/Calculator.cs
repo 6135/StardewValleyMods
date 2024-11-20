@@ -111,7 +111,7 @@ namespace ProfitCalculator.main
         /// <param name="maxMoney"> <see cref="MaxMoney"/></param>
         /// <param name="useBaseStats"> <see cref="UseBaseStats"/></param>
         /// <param name="crossSeason"> <see cref="CrossSeason"/></param>
-        public void SetSettings(uint day, uint maxDay, uint minDay, UtilsSeason _season, ProduceType produceType, FertilizerQuality fertilizerQuality, bool payForSeeds, bool payForFertilizer, uint maxMoney, bool useBaseStats, bool crossSeason = true)
+        public void SetSettings(uint day, uint maxDay, uint minDay, UtilsSeason _season, ProduceType produceType, FertilizerQuality fertilizerQuality, bool payForSeeds, bool payForFertilizer, uint maxMoney, bool useBaseStats, bool crossSeason)
         {
             Day = day;
             MaxDay = maxDay;
@@ -133,6 +133,21 @@ namespace ProfitCalculator.main
                 FarmingLevel = Game1.player.FarmingLevel;
             }
         }
+
+        /// <summary>
+        /// Sets the settings for the calculator to use when calculating profits.
+        /// </summary>
+        /// <param name="day"><see cref="Day"/></param>
+        /// <param name="maxDay"><see cref="MaxDay"/></param>
+        /// <param name="minDay"><see cref="MinDay"/></param>
+        /// <param name="_season"><see cref="StardewValley.Season"/></param>
+        /// <param name="produceType"><see cref="ProduceType"/></param>
+        /// <param name="fertilizerQuality"> <see cref="FertilizerQuality"/></param>
+        /// <param name="payForSeeds"> <see cref="PayForSeeds"/></param>
+        /// <param name="payForFertilizer"> <see cref="PayForFertilizer"/></param>
+        /// <param name="maxMoney"> <seex cref="MaxMoney"/></param>
+        /// <param name="useBaseStats"> <see cref="UseBaseStats"/></param>
+        public void SetSettings(uint day, uint maxDay, uint minDay, UtilsSeason _season, ProduceType produceType, FertilizerQuality fertilizerQuality, bool payForSeeds, bool payForFertilizer, uint maxMoney, bool useBaseStats) => SetSettings(day, maxDay, minDay, _season, produceType, fertilizerQuality, payForSeeds, payForFertilizer, maxMoney, useBaseStats, true);
 
         /// <summary>
         /// Clears the list of crops.

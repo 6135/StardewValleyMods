@@ -212,14 +212,19 @@ namespace ProfitCalculator.main.models
             if (IsAvailableForCurrentSeason(currentSeason) || currentSeason == UtilsSeason.Greenhouse)
             {
                 if (totalAvailableDays < growingDays)
+                {
                     return 0;
+                }
+
                 //if the crop regrows, then the total harvest times are 1 for the first harvest and then the number of times it can regrow in the remaining days. We always need to subtract one to account for the day lost in the planting day.
                 if (daysToRegrow > 0)
                 {
                     totalHarvestTimes = (int)(1 + ((totalAvailableDays - growingDays) / (double)daysToRegrow));
                 }
                 else
+                {
                     totalHarvestTimes = totalAvailableDays / growingDays;
+                }
             }
             return totalHarvestTimes;
         }
@@ -426,7 +431,7 @@ namespace ProfitCalculator.main.models
             return Math.Round(averageValue, 2);
         }
 
-        public virtual double GetCropBaseGoldQualityChance(double limit = 9999999999)
+        public virtual double GetCropBaseGoldQualityChance(double limit)
         {
             FertilizerQuality? FertilizerQuality = Container.Instance.GetInstance<Calculator>(ModEntry.UniqueID)?.FertilizerQuality;
             FertilizerQuality ??= Utils.FertilizerQuality.None;
@@ -437,6 +442,8 @@ namespace ProfitCalculator.main.models
             double part2 = 0.2 * (fertilizerQualityLevel * ((FarmingLevel + 2) / 12.0));
             return Math.Min(limit, part1 + part2);
         }
+
+        public virtual double GetCropBaseGoldQualityChance() => GetCropBaseGoldQualityChance(9999999999);
 
         public virtual double GetCropBaseQualityChance()
         {
