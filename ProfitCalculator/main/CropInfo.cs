@@ -169,13 +169,17 @@ namespace ProfitCalculator.main
                     return false;
             }
 
-            return EqualityComparer<IPlantData>.Default.Equals(Crop, cropInfo.Crop) &&
-                   ProduceType == cropInfo.ProduceType &&
-                   Duration == cropInfo.Duration &&
-                   TotalHarvests == cropInfo.TotalHarvests &&
-                   GrowthTime == cropInfo.GrowthTime &&
-                   RegrowthTime == cropInfo.RegrowthTime &&
-                   ProductCount == cropInfo.ProductCount;
+            bool part1 =
+                    EqualityComparer<IPlantData>.Default.Equals(Crop, cropInfo.Crop) &&
+                    ProduceType == cropInfo.ProduceType &&
+                    Duration == cropInfo.Duration;
+
+            bool parte2 =
+                    TotalHarvests == cropInfo.TotalHarvests &&
+                    GrowthTime == cropInfo.GrowthTime &&
+                    RegrowthTime == cropInfo.RegrowthTime;
+
+            return part1 && parte2 && ProductCount == cropInfo.ProductCount;
         }
 
         /// <summary>

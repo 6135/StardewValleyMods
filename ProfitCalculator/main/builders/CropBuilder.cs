@@ -13,7 +13,7 @@ namespace ProfitCalculator.main.builders
     /// <summary>
     /// Parses the vanilla crops from the game files. Also parses crops from the ManualCrops.json file.
     /// </summary>
-    internal class CropBuilder : IDataBuilder
+    public class CropBuilder : IDataBuilder
     {
         /// <inheritdoc/>
         /// <summary>

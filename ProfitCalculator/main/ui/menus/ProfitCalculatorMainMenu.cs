@@ -522,6 +522,10 @@ namespace ProfitCalculator.main.ui.menus
                 case Keys.Escape:
                     exitThisMenu();
                     break;
+
+                default:
+                    base.receiveKeyPress(key);
+                    break;
             }
         }
 

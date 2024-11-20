@@ -7,7 +7,7 @@ Provides the ability to select whether the user wants to buy seeds or fertilizer
 ## Installation
 
 1. Install [SMAPI](https://smapi.io/).
-2. Install [Generic Config Menu](https://www.nexusmods.com/stardewvalley/mods/5098). Optional but recommended to allow for more customization of settings.	
+2. Install [Generic Config Menu](https://www.nexusmods.com/stardewvalley/mods/5098). Optional but recommended to allow for more customization of settings.
 3. Drop the contents of the provided folder into your `Stardew Valley/Mods` folder, or install from Nexus.
 4. Run the game using SMAPI.
 5. Press `F8` to open the calculator. This can be changed in the config file or in the Generic Config Menu.
@@ -62,7 +62,7 @@ If you want to add a crop that is not in the game, you can do so by adding a `cr
 3. Some extra large text may be too small to read. This is because the mod lowers the size of huge text to make it fit in the crop box. If you notice this, please let me know which crop it is and from which mod it is from so I can figure out a proper fix.
 4. When changing the scale of the game, the main options menu will be scaled but the options will be in the original positions, to fix this you need to close and reopen the options menu. 
 
-### TODO:
+### TODO
 
 - [X] Take Fertilizer into account.
 - [X] Take Quality into account.

@@ -234,6 +234,10 @@ namespace ProfitCalculator.main.ui.menus
                         Game1.playSound("shwip");
                     }
                     break;
+
+                default:
+                    base.receiveKeyPress(key);
+                    break;
             }
         }
 
@@ -353,12 +357,19 @@ namespace ProfitCalculator.main.ui.menus
             {
                 scrolling = true;
             }
-            else if (!downArrow.containsPoint(x, y) && x > xPositionOnScreen + width && x < xPositionOnScreen + width + 128 && y > yPositionOnScreen && y < yPositionOnScreen + height)
+            else if (IsWithinScrollArea(x, y))
             {
                 scrolling = true;
                 leftClickHeld(x, y);
                 releaseLeftClick(x, y);
             }
+        }
+
+        private bool IsWithinScrollArea(int x, int y)
+        {
+            bool isWithinXBounds = x > xPositionOnScreen + width && x < xPositionOnScreen + width + 128;
+            bool isWithinYBounds = y > yPositionOnScreen && y < yPositionOnScreen + height;
+            return !downArrow.containsPoint(x, y) && isWithinXBounds && isWithinYBounds;
         }
 
         /// <summary>

@@ -2,7 +2,7 @@
 
 namespace ProfitCalculator.main.models
 {
-    internal interface IDataBuilder
+    public interface IDataBuilder
     {
         /// <summary>
         /// Builds a dictionary of crops from the game files. Accesses the data from the game files and parses them into a dictionary.
