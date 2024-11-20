@@ -325,7 +325,7 @@ namespace ProfitCalculator.main.models
         {
             UtilsSeason season = Container.Instance.GetInstance<Calculator>(ModEntry.UniqueID)?.Season ?? UtilsSeason.Spring;
             uint day = Container.Instance.GetInstance<Calculator>(ModEntry.UniqueID)?.Day ?? 0;
-            if (season == UtilsSeason.Greenhouse || Seasons.Count == 1)
+            if (season == UtilsSeason.Greenhouse || Seasons.Count == 1) { return 1; }
                 return 1;
             else
             {
