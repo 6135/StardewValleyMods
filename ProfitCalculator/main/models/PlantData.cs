@@ -365,7 +365,7 @@ namespace ProfitCalculator.main.models
             FertilizerQuality fertilizerQuality = Container.Instance.GetInstance<Calculator>(ModEntry.UniqueID)?.FertilizerQuality ?? FertilizerQuality.None;
             if (RegrowDays > 0 && TotalAvailableDays(season, (int)day) > 0)
                 return 1;
-            else return TotalHarvestsWithRemainingDays(season, fertilizerQuality, (int)day);
+            else { return TotalHarvestsWithRemainingDays(season, fertilizerQuality, (int)day); }
         }
 
         public virtual int TotalSeedsCost()
