@@ -80,7 +80,7 @@ namespace ProfitCalculator.main
         /// <summary>
         /// Price multipliers for the different qualities of crops
         /// </summary>
-        public double[] PriceMultipliers { get; set; } = new double[4] { 1.0, 1.25, 1.5, 2.0 };
+        public double[] PriceMultipliers { get; set; } = { 1.0, 1.25, 1.5, 2.0 };
 
         /// <summary>
         /// Farming level of the player
@@ -171,9 +171,17 @@ namespace ProfitCalculator.main
                 CropInfo ci = RetrieveCropInfo(crop);
                 if (ci.TotalHarvests >= 1)
                     if (!PayForSeeds)
+                    {
                         cropInfos.Add(ci);
+                    }
                     else if (ci.TotalSeedLoss <= MaxMoney)
+                    {
                         cropInfos.Add(ci);
+                    }
+                    else
+                    {
+                        throw new InvalidOperationException();
+                    }
             }
             cropInfos.Sort((x, y) => y.ProfitPerDay.CompareTo(x.ProfitPerDay));
             return cropInfos;

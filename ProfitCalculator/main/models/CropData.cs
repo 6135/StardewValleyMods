@@ -81,6 +81,10 @@ namespace ProfitCalculator.main.models
             {
                 speedIncreaseModifier += 0.33f;
             }
+            else
+            {
+                throw new InvalidOperationException();
+            }
             //if paddy crop then add 0.25f and if profession is agriculturist then add 0.1f
             if (IsPaddyCrop)
             {

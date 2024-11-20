@@ -46,6 +46,7 @@ namespace ProfitCalculator.main.ui
         /// <param name="y"> The y position of the mouse</param>
         public override void BeforeReceiveLeftClick(int x, int y)
         {
+            //no behaviour needed
         }
 
         /// <inheritdoc/>
@@ -65,7 +66,7 @@ namespace ProfitCalculator.main.ui
                 0.5f
              );
             //draw crop sprite in the middle of the box aligned to the left
-            int spriteSize = 16;
+            const int spriteSize = 16;
             int spriteDisplaySize = (int)(spriteSize * 3.25f);
 
             b.Draw(
@@ -195,6 +196,7 @@ namespace ProfitCalculator.main.ui
         /// </summary>
         public override void Update()
         {
+            //No need to update
         }
 
         ///<inheritdoc/>

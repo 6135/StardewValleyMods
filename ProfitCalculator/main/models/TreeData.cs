@@ -55,7 +55,7 @@ namespace ProfitCalculator.main.models
             int totalHarvestTimes = 0;
             int totalAvailableDays = TotalAvailableDays(currentSeason, day);
             int daysToRegrow = RegrowDays;
-            int growingDays = 0;
+            const int growingDays = 0;
             if (IsAvailableForCurrentSeason(currentSeason) || currentSeason == UtilsSeason.Greenhouse)
             {
                 if (totalAvailableDays < growingDays)

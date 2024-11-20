@@ -113,6 +113,10 @@ namespace ProfitCalculator.main.ui
                 uint val = Math.Clamp(uint.Parse(ValueGetter()) - 1, Min(), Max());
                 ValueSetter(val.ToString());
             }
+            else
+            {
+                throw new InvalidOperationException();
+            }
         }
 
         /// <inheritdoc />

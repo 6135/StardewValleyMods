@@ -71,7 +71,7 @@ namespace ProfitCalculator.main.ui
             set
             {
                 Container.Instance.UnregisterInstance<DropdownOption>(ModEntry.UniqueID);
-                if(value != null)
+                if (value != null)
                     Container.Instance.RegisterInstance(value, ModEntry.UniqueID);
             }
         }
@@ -257,6 +257,7 @@ namespace ProfitCalculator.main.ui
         /// <inheritdoc/>
         public override void BeforeReceiveLeftClick(int x, int y)
         {
+            //no behaviour needed
         }
 
         /// <summary>
@@ -277,6 +278,10 @@ namespace ProfitCalculator.main.ui
                 Dropped = false;
                 Clicked = false;
                 stopSpread();
+            }
+            else
+            {
+                throw new InvalidOperationException();
             }
         }
     }

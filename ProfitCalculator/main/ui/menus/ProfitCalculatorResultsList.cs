@@ -24,12 +24,12 @@ namespace ProfitCalculator.main.ui.menus
         private Rectangle scrollBarBounds;
         private ClickableTextureComponent scrollBar;
 
-        private int currentItemIndex = 0;
+        private int currentItemIndex;
         private readonly int maxOptions = 6;
-        private bool scrolling = false;
+        private bool scrolling;
 
         /// <summary> Tracks whether the menu is open or not. </summary>
-        public bool IsResultsListOpen { get; set; } = false;
+        public bool IsResultsListOpen { get; set; }
 
         /// <summary>
         /// Creates a new instance of the ProfitCalculatorResultsList class.
@@ -362,6 +362,10 @@ namespace ProfitCalculator.main.ui.menus
                 scrolling = true;
                 leftClickHeld(x, y);
                 releaseLeftClick(x, y);
+            }
+            else
+            {
+                throw new InvalidOperationException();
             }
         }
 

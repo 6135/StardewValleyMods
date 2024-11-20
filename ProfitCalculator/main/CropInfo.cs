@@ -148,7 +148,7 @@ namespace ProfitCalculator.main
 
             static bool AreDoublesEqual(double a, double b, double tolerance) => Math.Abs(a - b) < tolerance;
 
-            var doubleProperties = new (double, double)[]
+            (double, double)[] doubleProperties =
             {
                 (TotalProfit, cropInfo.TotalProfit),
                 (ProfitPerDay, cropInfo.ProfitPerDay),

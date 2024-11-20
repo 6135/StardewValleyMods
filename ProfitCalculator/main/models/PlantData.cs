@@ -131,8 +131,7 @@ namespace ProfitCalculator.main.models
         /// <returns> Average growth speed value for the crop. <c>float</c></returns>
         public virtual float GetAverageGrowthSpeedValueForCrop(FertilizerQuality fertilizerQuality)
         {
-            float speedIncreaseModifier = 0.0f;
-            return speedIncreaseModifier;
+            return 0.0f;
         }
 
         /// <summary>
@@ -400,7 +399,7 @@ namespace ProfitCalculator.main.models
 
         public virtual double GetAverageValueMultiplierForCrop()
         {
-            double[] priceMultipliers = Container.Instance.GetInstance<Calculator>(ModEntry.UniqueID)?.PriceMultipliers ?? new double[] { 1.0, 1.25, 1.5, 2.0 };
+            double[]? priceMultipliers = Container.Instance.GetInstance<Calculator>(ModEntry.UniqueID)?.PriceMultipliers;
 
             //apply farm level quality modifiers
             double chanceForGoldQuality = GetCropGoldQualityChance();
