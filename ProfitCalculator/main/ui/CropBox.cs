@@ -67,7 +67,7 @@ namespace ProfitCalculator.main.ui
              );
             //draw crop sprite in the middle of the box aligned to the left
             const int spriteSize = 16;
-            int spriteDisplaySize = (int)(spriteSize * 3.25f);
+            const int spriteDisplaySize = (int)(spriteSize * 3.25f);
 
             b.Draw(
                 cropInfo.Crop.Sprite.Item1,

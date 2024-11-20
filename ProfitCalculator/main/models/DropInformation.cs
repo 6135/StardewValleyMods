@@ -29,7 +29,7 @@ namespace ProfitCalculator.main.models
             /// <param name="quantity">The quantity of the item to be dropped.</param>
             /// <param name="chance">The chance of the item being dropped.</param>
             /// <param name="season">The season in which the item can be dropped.</param>
-            public Drop(Item item, int quantity, double chance, Season season)
+            public Drop(Item item, int quantity, double chance, Season? season)
             {
                 Item = item;
                 Quantity = quantity;

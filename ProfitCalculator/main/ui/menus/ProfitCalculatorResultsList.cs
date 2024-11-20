@@ -201,6 +201,11 @@ namespace ProfitCalculator.main.ui.menus
                 ArrowPressed();
                 Game1.playSound("shiny4");
             }
+            else
+            {
+                throw new InvalidOperationException();
+            }
+
             if (Game1.options.SnappyMenus)
             {
                 snapCursorToCurrentSnappedComponent();
@@ -345,7 +350,7 @@ namespace ProfitCalculator.main.ui.menus
             }
             if (downArrow.containsPoint(x, y) && currentItemIndex < Math.Max(0, Options.Count - maxOptions))
             {
-                ArrowPressed(1);
+                ArrowPressed();
                 Game1.playSound("shwip");
             }
             else if (upArrow.containsPoint(x, y) && currentItemIndex > 0)
