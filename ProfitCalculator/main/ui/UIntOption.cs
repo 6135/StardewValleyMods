@@ -23,7 +23,34 @@ namespace ProfitCalculator.main.ui
         public bool IsValid => int.TryParse(ValueGetter(), out _);
 
         /// <summary>
-        /// Creates a new uint option.
+        /// Creates a new uint option. Clamping is enabled by default.
+        /// </summary>
+        /// <param name="x"> The x position of the option. </param>
+        /// <param name="y"> The y position of the option. </param>
+        /// <param name="name"> The name of the option. </param>
+        /// <param name="label"> The label of the option. </param>
+        /// <param name="valueGetter"> The function to get the value of the option. </param>
+        /// <param name="max"> The function to get the maximum value of the option. </param>
+        /// <param name="min"> The function to get the minimum value of the option. </param>
+        /// <param name="valueSetter"> The function to set the value of the option. </param>
+        public UIntOption(
+            int x,
+            int y,
+            Func<string> name,
+            Func<string> label,
+            Func<uint> valueGetter,
+            Func<uint> max,
+            Func<uint> min,
+            Action<string> valueSetter
+        ) : base(x, y, name, label, () => valueGetter().ToString(), valueSetter)
+        {
+            Max = max;
+            Min = min;
+            EnableClamping = true;
+        }
+
+        /// <summary>
+        /// Creates a new uint option. Clamping is not by default.
         /// </summary>
         /// <param name="x"> The x position of the option. </param>
         /// <param name="y"> The y position of the option. </param>
@@ -43,7 +70,7 @@ namespace ProfitCalculator.main.ui
             Func<uint> max,
             Func<uint> min,
             Action<string> valueSetter,
-            bool enableClamping = true
+            bool enableClamping
         ) : base(x, y, name, label, () => valueGetter().ToString(), valueSetter)
         {
             Max = max;
@@ -112,6 +139,10 @@ namespace ProfitCalculator.main.ui
             {
                 uint val = Math.Clamp(uint.Parse(ValueGetter()) - 1, Min(), Max());
                 ValueSetter(val.ToString());
+            }
+            else
+            {
+                throw new InvalidOperationException();
             }
         }
 

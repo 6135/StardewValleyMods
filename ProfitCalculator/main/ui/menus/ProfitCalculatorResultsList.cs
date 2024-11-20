@@ -24,12 +24,12 @@ namespace ProfitCalculator.main.ui.menus
         private Rectangle scrollBarBounds;
         private ClickableTextureComponent scrollBar;
 
-        private int currentItemIndex = 0;
+        private int currentItemIndex;
         private readonly int maxOptions = 6;
-        private bool scrolling = false;
+        private bool scrolling;
 
         /// <summary> Tracks whether the menu is open or not. </summary>
-        public bool IsResultsListOpen { get; set; } = false;
+        public bool IsResultsListOpen { get; set; }
 
         /// <summary>
         /// Creates a new instance of the ProfitCalculatorResultsList class.
@@ -201,6 +201,11 @@ namespace ProfitCalculator.main.ui.menus
                 ArrowPressed();
                 Game1.playSound("shiny4");
             }
+            else
+            {
+                throw new InvalidOperationException();
+            }
+
             if (Game1.options.SnappyMenus)
             {
                 snapCursorToCurrentSnappedComponent();
@@ -233,6 +238,10 @@ namespace ProfitCalculator.main.ui.menus
                         ArrowPressed(-1);
                         Game1.playSound("shwip");
                     }
+                    break;
+
+                default:
+                    base.receiveKeyPress(key);
                     break;
             }
         }
@@ -341,7 +350,7 @@ namespace ProfitCalculator.main.ui.menus
             }
             if (downArrow.containsPoint(x, y) && currentItemIndex < Math.Max(0, Options.Count - maxOptions))
             {
-                ArrowPressed(1);
+                ArrowPressed();
                 Game1.playSound("shwip");
             }
             else if (upArrow.containsPoint(x, y) && currentItemIndex > 0)
@@ -353,12 +362,23 @@ namespace ProfitCalculator.main.ui.menus
             {
                 scrolling = true;
             }
-            else if (!downArrow.containsPoint(x, y) && x > xPositionOnScreen + width && x < xPositionOnScreen + width + 128 && y > yPositionOnScreen && y < yPositionOnScreen + height)
+            else if (IsWithinScrollArea(x, y))
             {
                 scrolling = true;
                 leftClickHeld(x, y);
                 releaseLeftClick(x, y);
             }
+            else
+            {
+                throw new InvalidOperationException();
+            }
+        }
+
+        private bool IsWithinScrollArea(int x, int y)
+        {
+            bool isWithinXBounds = x > xPositionOnScreen + width && x < xPositionOnScreen + width + 128;
+            bool isWithinYBounds = y > yPositionOnScreen && y < yPositionOnScreen + height;
+            return !downArrow.containsPoint(x, y) && isWithinXBounds && isWithinYBounds;
         }
 
         /// <summary>

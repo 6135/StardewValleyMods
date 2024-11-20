@@ -9,7 +9,7 @@ using static ProfitCalculator.Utils;
 namespace ProfitCalculator.main
 {
     /// <summary>
-    /// Class used to calculate the profits for crops. Contains all the settings for the calculator and the functions used to calculate the profits. Also contains the list of crops and the crop parsers. <see cref="IPlantData.TotalCropProfit()"/> and <see cref="IPlantData.TotalCropProfitPerDay()"/>, <see cref="IPlantData.TotalFertilizerCost()"/>, <see cref="IPlantData.TotalFertilzerCostPerDay()"/>, <see cref="IPlantData.TotalSeedsCost()"/>, <see cref="IPlantData.TotalSeedsCostPerDay()"/> are the main functions used to calculate the profits. <see cref="RetrieveCropsAsOrderderList"/> and <see cref="RetrieveCropInfos"/> are the main functions used to retrieve the list of crops and crop infos.
+    /// Class used to calculate the profits for crops. Contains all the settings for the calculator and the functions used to calculate the profits. Also contains the list of crops and the crop parsers. <see cref="PlantData.TotalCropProfit()"/> and <see cref="PlantData.TotalCropProfitPerDay()"/>, <see cref="PlantData.TotalFertilizerCost()"/>, <see cref="PlantData.TotalFertilzerCostPerDay()"/>, <see cref="PlantData.TotalSeedsCost()"/>, <see cref="PlantData.TotalSeedsCostPerDay()"/> are the main functions used to calculate the profits. <see cref="RetrieveCropsAsOrderderList"/> and <see cref="RetrieveCropInfos"/> are the main functions used to retrieve the list of crops and crop infos.
     /// </summary>
     public class Calculator
     {
@@ -19,7 +19,7 @@ namespace ProfitCalculator.main
         /// <summary>
         /// List of all crops in the game
         /// </summary>
-        public Dictionary<string, IPlantData> Crops { get; set; }
+        public Dictionary<string, PlantData> Crops { get; set; }
 
         /// <summary>
         /// Day of the Season
@@ -80,7 +80,7 @@ namespace ProfitCalculator.main
         /// <summary>
         /// Price multipliers for the different qualities of crops
         /// </summary>
-        public double[] PriceMultipliers { get; set; } = new double[4] { 1.0, 1.25, 1.5, 2.0 };
+        public double[] PriceMultipliers { get; set; } = { 1.0, 1.25, 1.5, 2.0 };
 
         /// <summary>
         /// Farming level of the player
@@ -94,7 +94,7 @@ namespace ProfitCalculator.main
         /// </summary>
         public Calculator()
         {
-            Crops = new Dictionary<string, IPlantData>();
+            Crops = new Dictionary<string, PlantData>();
         }
 
         /// <summary>
@@ -111,7 +111,7 @@ namespace ProfitCalculator.main
         /// <param name="maxMoney"> <see cref="MaxMoney"/></param>
         /// <param name="useBaseStats"> <see cref="UseBaseStats"/></param>
         /// <param name="crossSeason"> <see cref="CrossSeason"/></param>
-        public void SetSettings(uint day, uint maxDay, uint minDay, UtilsSeason _season, ProduceType produceType, FertilizerQuality fertilizerQuality, bool payForSeeds, bool payForFertilizer, uint maxMoney, bool useBaseStats, bool crossSeason = true)
+        public void SetSettings(uint day, uint maxDay, uint minDay, UtilsSeason _season, ProduceType produceType, FertilizerQuality fertilizerQuality, bool payForSeeds, bool payForFertilizer, uint maxMoney, bool useBaseStats, bool crossSeason)
         {
             Day = day;
             MaxDay = maxDay;
@@ -135,6 +135,21 @@ namespace ProfitCalculator.main
         }
 
         /// <summary>
+        /// Sets the settings for the calculator to use when calculating profits.
+        /// </summary>
+        /// <param name="day"><see cref="Day"/></param>
+        /// <param name="maxDay"><see cref="MaxDay"/></param>
+        /// <param name="minDay"><see cref="MinDay"/></param>
+        /// <param name="_season"><see cref="StardewValley.Season"/></param>
+        /// <param name="produceType"><see cref="ProduceType"/></param>
+        /// <param name="fertilizerQuality"> <see cref="FertilizerQuality"/></param>
+        /// <param name="payForSeeds"> <see cref="PayForSeeds"/></param>
+        /// <param name="payForFertilizer"> <see cref="PayForFertilizer"/></param>
+        /// <param name="maxMoney"> <seex cref="MaxMoney"/></param>
+        /// <param name="useBaseStats"> <see cref="UseBaseStats"/></param>
+        public void SetSettings(uint day, uint maxDay, uint minDay, UtilsSeason _season, ProduceType produceType, FertilizerQuality fertilizerQuality, bool payForSeeds, bool payForFertilizer, uint maxMoney, bool useBaseStats) => SetSettings(day, maxDay, minDay, _season, produceType, fertilizerQuality, payForSeeds, payForFertilizer, maxMoney, useBaseStats, true);
+
+        /// <summary>
         /// Clears the list of crops.
         /// </summary>
         public void ClearCrops()
@@ -146,12 +161,12 @@ namespace ProfitCalculator.main
         /// Retrieves the list of crops as an ordered list by profit.
         /// </summary>
         /// <returns> List of crops ordered by profit </returns>
-        public List<IPlantData> RetrieveCropsAsOrderderList()
+        public List<PlantData> RetrieveCropsAsOrderderList()
         {
             // sort crops by profit
             // return list
-            List<IPlantData> cropList = new();
-            foreach (KeyValuePair<string, IPlantData> crop in Crops)
+            List<PlantData> cropList = new();
+            foreach (KeyValuePair<string, PlantData> crop in Crops)
             {
                 cropList.Add(crop.Value);
             }
@@ -166,14 +181,22 @@ namespace ProfitCalculator.main
         public List<CropInfo> RetrieveCropInfos()
         {
             List<CropInfo> cropInfos = new();
-            foreach (IPlantData crop in Crops.Values)
+            foreach (PlantData crop in Crops.Values)
             {
                 CropInfo ci = RetrieveCropInfo(crop);
                 if (ci.TotalHarvests >= 1)
                     if (!PayForSeeds)
+                    {
                         cropInfos.Add(ci);
+                    }
                     else if (ci.TotalSeedLoss <= MaxMoney)
+                    {
                         cropInfos.Add(ci);
+                    }
+                    else
+                    {
+                        throw new InvalidOperationException();
+                    }
             }
             cropInfos.Sort((x, y) => y.ProfitPerDay.CompareTo(x.ProfitPerDay));
             return cropInfos;
@@ -184,7 +207,7 @@ namespace ProfitCalculator.main
         /// </summary>
         /// <param name="crop"> CropDataExpanded to retrieve <see cref="CropInfo"/> for </param>
         /// <returns> <see cref="CropInfo"/> for the crop </returns>
-        private CropInfo RetrieveCropInfo(IPlantData crop)
+        private CropInfo RetrieveCropInfo(PlantData crop)
         {
             double totalProfit = crop.TotalCropProfit();
             double profitPerDay = crop.TotalCropProfitPerDay();
@@ -217,7 +240,7 @@ namespace ProfitCalculator.main
         /// </summary>
         /// <param name="id"> Id of the crop </param>
         /// <param name="crop"> CropDataExpanded to add </param>
-        public void AddCrop(string id, IPlantData crop)
+        public void AddCrop(string id, PlantData crop)
         {
             //check if already exists
             if (!Crops.ContainsKey(id))

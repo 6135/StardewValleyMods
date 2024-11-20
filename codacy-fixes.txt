@@ -1,0 +1,9 @@
+diff --git a/ProfitCalculator/README.md b/ProfitCalculator/README.md
+--- a/ProfitCalculator/README.md
++++ b/ProfitCalculator/README.md
+@@ -10,1 +10,1 @@
+-2. Install [Generic Config Menu](https://www.nexusmods.com/stardewvalley/mods/5098). Optional but recommended to allow for more customization of settings.	
++2. Install [Generic Config Menu](https://www.nexusmods.com/stardewvalley/mods/5098). Optional but recommended to allow for more customization of settings. 
+@@ -65,1 +65,1 @@
+-### TODO:
++### TODO

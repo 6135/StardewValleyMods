@@ -185,6 +185,10 @@ namespace ProfitCalculator
                     Game1.activeClickableMenu = null;
                     Game1.playSound("bigDeSelect");
                 }
+                else
+                {
+                    throw new InvalidOperationException();
+                }
             }
         }
 

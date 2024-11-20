@@ -96,7 +96,7 @@ namespace ProfitCalculator.main.ui
             // Copied from game code - caret and https://github.com/spacechase0/StardewValleyMods/blob/develop/SpaceShared/ui/Element.cs#L91
             string text = ValueGetter();
             Vector2 vector2;
-            float writeBarOffset = 26f;
+            const float writeBarOffset = 26f;
             for (vector2 = Font.MeasureString(text); vector2.X > Tex.Width - writeBarOffset; vector2 = Font.MeasureString(text))
                 text = text[1..];
 
@@ -227,6 +227,7 @@ namespace ProfitCalculator.main.ui
         /// </summary>
         public override void Update()
         {
+            //no update needed
         }
     }
 }

@@ -23,7 +23,7 @@ namespace ProfitCalculator.main.ui.menus
         private static readonly int heightOnScreen = 600 + (borderWidth * 2) + Game1.tileSize;
 
         // Fields
-        private bool stopSpreadingClick = false;
+        private bool stopSpreadingClick;
 
         private readonly List<ClickableComponent> Labels = new();
         private readonly List<BaseOption> Options = new();
@@ -54,16 +54,16 @@ namespace ProfitCalculator.main.ui.menus
         public bool PayForSeeds { get; set; } = true;
 
         /// <summary> Whether the player wants to check which plants he can purchase with available cash. </summary>
-        public bool PayForFertilizer { get; set; } = false;
+        public bool PayForFertilizer { get; set; }
 
         /// <summary> The maximum amount of money the player wants to spend on seeds. </summary>
-        public uint MaxMoney { get; set; } = 0;
+        public uint MaxMoney { get; set; }
 
         /// <summary> Whether the player wants to use base stats or not. </summary>
-        public bool UseBaseStats { get; set; } = false;
+        public bool UseBaseStats { get; set; }
 
         /// <summary> Whether the profit calculator is open or not. </summary>
-        public bool IsProfitCalculatorOpen { get; set; } = false;
+        public bool IsProfitCalculatorOpen { get; set; }
 
         // Methods
         /// <summary>
@@ -521,6 +521,10 @@ namespace ProfitCalculator.main.ui.menus
 
                 case Keys.Escape:
                     exitThisMenu();
+                    break;
+
+                default:
+                    base.receiveKeyPress(key);
                     break;
             }
         }

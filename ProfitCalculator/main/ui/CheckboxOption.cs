@@ -88,6 +88,7 @@ namespace ProfitCalculator.main.ui
         /// <param name="y"> The y position of the mouse</param>
         public override void BeforeReceiveLeftClick(int x, int y)
         {
+            //No need to do anything before receiving the left click
         }
 
         /// <summary>
@@ -95,6 +96,7 @@ namespace ProfitCalculator.main.ui
         /// </summary>
         public override void Update()
         {
+            //No need to update
         }
     }
 }

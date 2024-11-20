@@ -67,7 +67,14 @@ namespace ProfitCalculator.main.ui
                 //Bottom Panel
                 DrawSecondaryBox(b);
             }
-            else if (isOpen) hoverDelay--;
+            else if (isOpen)
+            {
+                hoverDelay--;
+            }
+            else
+            {
+                throw new InvalidOperationException();
+            }
         }
 
         private void DrawMainBox(SpriteBatch b)
@@ -259,7 +266,10 @@ namespace ProfitCalculator.main.ui
 
             string reGrow = $"{Helper.Translation.Get("regrow-time")}:";
             string reGrowValue = $"{cropInfo.RegrowthTime} {Helper.Translation.Get("days")}";
-            if (cropInfo.RegrowthTime <= 0) reGrowValue = Helper.Translation.Get("no");
+            if (cropInfo.RegrowthTime <= 0)
+            {
+                reGrowValue = Helper.Translation.Get("no");
+            }
             currentTextPosition.Y += font.MeasureString(seedLossPerDay).Y;
             b.DrawString(
                 font,
@@ -643,20 +653,28 @@ namespace ProfitCalculator.main.ui
             int mouseY = Game1.getMouseY();
 
             if (mouseX + windowWidth > safeArea.Right)
+            {
                 x = mouseX - windowWidth;
+            }
             else
                 x = mouseX;
 
             if (mouseY + windowHeight > safeArea.Bottom)
+            {
                 y = mouseY - windowHeight;
+            }
             else
                 y = mouseY;
 
             //if the box is off the screen, move it back on
             if (x < safeArea.Left)
+            {
                 x = safeArea.Left + (Game1.tileSize / 4);
+            }
             if (y < safeArea.Top)
+            {
                 y = safeArea.Top + (Game1.tileSize / 4);
+            }
 
             drawBox = new(
                 x,
@@ -669,16 +687,25 @@ namespace ProfitCalculator.main.ui
         /// <inheritdoc/>
         public void GameWindowSizeChanged()
         {
+            //No behavior needed
         }
 
         /// <summary>
         ///  Opens or closes the hover box.
         /// </summary>
-        /// <param name="open"> Whether to open or close the box.</param>
-        public void Open(bool open = false)
+        /// <param name="_open"> Whether to open or close the box.</param>
+        public void Open(bool _open)
         {
-            isOpen = open;
-            if (!open) hoverDelay = hoverDelayDefault;
+            isOpen = _open;
+            if (!_open)
+            {
+                hoverDelay = hoverDelayDefault;
+            }
         }
+
+        /// <summary>
+        ///  Opens or closes the hover box.
+        /// </summary>
+        public void Open() => Open(false);
     }
 }

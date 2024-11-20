@@ -1,8 +1,6 @@
 using ProfitCalculator.main.memory;
-using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using ProfitCalculator.apis;
-using ProfitCalculator.main.accessors;
 using StardewModdingAPI;
 using StardewValley;
 using System;
@@ -12,82 +10,25 @@ using static ProfitCalculator.Utils;
 using SObject = StardewValley.Object;
 
 #nullable enable
+#pragma warning disable
 
 namespace ProfitCalculator.main.models
 {
     /// <summary>
     /// Class <c>CropDataExpanded</c> models a crop from the game storing all relevant information about it.
     /// </summary>
-    public class CustomBushData : IPlantData
+    public class CustomBushData : PlantData
     {
-        /// <inheritdoc/>
-        public DropInformation DropInformation { get; set; }
-
-        /// <inheritdoc/>
-        public Item Seed { get; set; }
-
-        /// <inheritdoc/>
-        public Item Item
-        {
-            get => throw new NotSupportedException("Not applicable to type tree");
-            set => throw new NotSupportedException("Not applicable to type tree");
-        }
-
         /// <summary>
         /// List of fruits that the crop can drop.
         /// </summary>
         public List<ICustomBushDrop> Drops { get; set; }
 
-        /// <inheritdoc/>
-        public bool AffectByQuality { get; set; }
+        public int DaysToBeginProducing { get; private set; }
+        public Item Item { get; private set; }
 
         /// <inheritdoc/>
-        public bool AffectByFertilizer { get; set; }
-
-        /// <inheritdoc/>
-        public int Days { get; set; }
-
-        /// <ingeritdoc/>
-        public int DaysToBeginProducing { get; set; }
-
-        /// <inheritdoc/>
-        public int RegrowDays { get; set; }
-
-        /// <inheritdoc/>
-        public int MinHarvests { get; set; }
-
-        /// <inheritdoc/>
-        public int MaxHarvests { get; set; }
-
-        /// <inheritdoc/>
-        public float MaxHarvestIncreasePerFarmingLevel { get; set; }
-
-        /// <inheritdoc/>
-        public double ChanceForExtraCrops { get; set; }
-
-        /// <inheritdoc/>
-        public string DisplayName { get; set; }
-
-        /// <inheritdoc/>
-        public Tuple<Texture2D, Rectangle> Sprite { get; set; }
-
-        /// <inheritdoc/>
-        public bool IsPaddyCrop { get; set; }
-
-        /// <inheritdoc/>
-        public List<Season> Seasons { get; set; }
-
-        /// <summary>
-        /// Price of the seed
-        /// </summary>
-        public int SeedPrice
-        {
-            get => Container.Instance.GetInstance<ShopAccessor>(ModEntry.UniqueID)?.GetCheapestSeedPrice(Seed.QualifiedItemId) ?? 0;
-            set => throw new NotImplementedException();
-        }
-
-        /// <inheritdoc/>
-        public int Price(UtilsSeason season)
+        public override int Price(UtilsSeason season)
         {
             if (season == UtilsSeason.Greenhouse)
             {
@@ -108,43 +49,24 @@ namespace ProfitCalculator.main.models
         /// <param name="_drops">List of fruits</param>
         /// <param name="_seed" >Seed Item</param>
         public CustomBushData(ICustomBush _cropData, List<ICustomBushDrop> _drops, Item _seed)
+            : base(
+                  _cropData.AgeToProduce,
+                  1,
+                  1,
+                  1,
+                  0f,
+                  0f,
+                  _cropData.DisplayName,
+                  _cropData.Seasons,
+                  _seed,
+                  false,
+                  false,
+                  new()
+                  )
         {
-            Days = _cropData.AgeToProduce;
             DaysToBeginProducing = _cropData.DayToBeginProducing;
-            RegrowDays = 1;
-            MinHarvests = 1;
-            MaxHarvests = 1;
-            MaxHarvestIncreasePerFarmingLevel = 0f;
-            ChanceForExtraCrops = 0f;
-            DisplayName = _cropData.DisplayName;
-            IsPaddyCrop = false;
-            Seasons = _cropData.Seasons;
             Drops = _drops;
-
-            Seed = Item = _seed;
-            AffectByQuality = false;
-            AffectByFertilizer = false;
-            DropInformation = new();
-            Texture2D spriteSheet;
-            try
-            {
-                spriteSheet = ItemRegistry.GetData(Item.itemId.Value).GetTexture();
-            }
-            catch (Exception e)
-            {
-                Container.Instance.GetInstance<IMonitor>(ModEntry.UniqueID)?.Log($"Error loading sprite for {Item.DisplayName}: {e.Message}", LogLevel.Error);
-                spriteSheet = Game1.objectSpriteSheet;
-            }
-
-            Sprite = new(
-                spriteSheet,
-                Game1.getSourceRectForStandardTileSheet(
-                    spriteSheet,
-                    Item.ParentSheetIndex,
-                    SObject.spriteSheetTileSize,
-                    SObject.spriteSheetTileSize
-                    )
-                );
+            Item = _seed;
         }
 
         #region Growth Values Calculations
@@ -173,11 +95,6 @@ namespace ProfitCalculator.main.models
             else if ((int)fertilizerQuality == -3)
             {
                 speedIncreaseModifier += 0.33f;
-            }
-            //if paddy crop then add 0.25f and if profession is agriculturist then add 0.1f
-            if (IsPaddyCrop)
-            {
-                speedIncreaseModifier += 0.25f;
             }
             if (Game1.player.professions.Contains(Farmer.agriculturist))
             {
@@ -506,3 +423,5 @@ namespace ProfitCalculator.main.models
         #endregion Crop Modifer Value Calculations
     }
 }
+
+#pragma warning enable
