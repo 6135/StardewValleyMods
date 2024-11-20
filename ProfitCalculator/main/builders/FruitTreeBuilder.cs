@@ -1,4 +1,6 @@
-﻿using ProfitCalculator.main.models;
+﻿using ProfitCalculator.main.memory;
+using ProfitCalculator.main.models;
+using StardewModdingAPI;
 using StardewValley;
 using StardewValley.GameData.FruitTrees;
 using System.Collections.Generic;
@@ -12,10 +14,12 @@ namespace ProfitCalculator.main.builders
     public class FruitTreeBuilder : IDataBuilder
     {
         /// <inheritdoc/>
-        public Dictionary<string, IPlantData> BuildCrops()
+        public Dictionary<string, PlantData> BuildCrops()
         {
             Dictionary<string, FruitTreeData> loadedTrees = DataLoader.FruitTrees(Game1.content);
-            Dictionary<string, IPlantData> trees = new();
+            Dictionary<string, PlantData> trees = new();
+            var Monitor = Container.Instance.GetInstance<IMonitor>(ModEntry.UniqueID);
+            Monitor?.Log($"Trees loaded: {loadedTrees.Count}", LogLevel.Debug);
             foreach (var tree in loadedTrees)
             {
                 trees.Add(tree.Key, BuildCrop(tree.Value, tree.Key));
