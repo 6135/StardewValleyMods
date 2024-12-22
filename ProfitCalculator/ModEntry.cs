@@ -138,10 +138,10 @@ namespace ProfitCalculator
                 new CropBuilder(),
                 new FruitTreeBuilder(),
             };
-            if (CustomBushAPI != null)
+            /*if (CustomBushAPI != null)
             {
                 builder.Add(new CustomBushBuilder());
-            }
+            }*/
             //linq for each builder, call build crops and add to calculator
             builder.ForEach(b =>
             {
