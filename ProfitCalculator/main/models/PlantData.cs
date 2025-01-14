@@ -288,7 +288,7 @@ namespace ProfitCalculator.main.models
             double totalProfitFromFirstProduce;
             double totalProfitFromRemainingProduce;
 
-            if (AffectByQuality)
+            if (!AffectByQuality)
             {
                 totalProfitFromFirstProduce = 0;
                 totalProfitFromRemainingProduce = Price(Season);

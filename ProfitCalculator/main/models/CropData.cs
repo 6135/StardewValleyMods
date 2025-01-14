@@ -94,7 +94,7 @@ namespace ProfitCalculator.main.models
         public override float GetAverageGrowthSpeedValueForCrop(FertilizerQuality fertilizerQuality)
         {
             float speedIncreaseModifier = 0.0f;
-            if (!AffectByFertilizer || fertilizerQuality == 0)
+            if (!AffectByFertilizer )
             {
                 speedIncreaseModifier = 1.0f;
             }
@@ -109,6 +109,9 @@ namespace ProfitCalculator.main.models
             else if ((int)fertilizerQuality == -3)
             {
                 speedIncreaseModifier += 0.33f;
+            } else
+            {
+                speedIncreaseModifier = 0.00f;
             }
             //if paddy crop then add 0.25f and if profession is agriculturist then add 0.1f
             if (IsPaddyCrop)
