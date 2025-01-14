@@ -68,7 +68,10 @@ namespace ProfitCalculator
             {
                 Monitor.Log($"Generic Mod Config Menu not found", LogLevel.Debug);
             }
-            Container.Instance.RegisterInstance(configMenu, UniqueID);
+            else
+            {
+                Container.Instance.RegisterInstance(configMenu, UniqueID);
+            }
         }
 
         private void OnGameLaunchedAddGenericModConfigMenu(object? sender, GameLaunchedEventArgs? e)
