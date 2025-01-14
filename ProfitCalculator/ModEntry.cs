@@ -68,7 +68,10 @@ namespace ProfitCalculator
             {
                 Monitor.Log($"Generic Mod Config Menu not found", LogLevel.Debug);
             }
-            Container.Instance.RegisterInstance(configMenu, UniqueID);
+            else
+            {
+                Container.Instance.RegisterInstance(configMenu, UniqueID);
+            }
         }
 
         private void OnGameLaunchedAddGenericModConfigMenu(object? sender, GameLaunchedEventArgs? e)
@@ -184,10 +187,6 @@ namespace ProfitCalculator
                     DropdownOption.ActiveDropdown = null;
                     Game1.activeClickableMenu = null;
                     Game1.playSound("bigDeSelect");
-                }
-                else
-                {
-                    throw new InvalidOperationException();
                 }
             }
         }

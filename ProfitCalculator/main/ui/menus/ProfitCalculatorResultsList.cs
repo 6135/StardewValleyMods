@@ -201,10 +201,6 @@ namespace ProfitCalculator.main.ui.menus
                 ArrowPressed();
                 Game1.playSound("shiny4");
             }
-            else
-            {
-                throw new InvalidOperationException();
-            }
 
             if (Game1.options.SnappyMenus)
             {
@@ -367,10 +363,6 @@ namespace ProfitCalculator.main.ui.menus
                 scrolling = true;
                 leftClickHeld(x, y);
                 releaseLeftClick(x, y);
-            }
-            else
-            {
-                throw new InvalidOperationException();
             }
         }
 

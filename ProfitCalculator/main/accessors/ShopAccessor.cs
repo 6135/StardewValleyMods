@@ -78,7 +78,21 @@ namespace ProfitCalculator.main.accessors
                 {
                     Monitor?.Log($"Shop {shopId} has multiple items with entry ID '{itemData.Id}'. This may cause unintended behavior.", LogLevel.Debug);
                 }
+                var list = TryResolve(itemData, itemQueryContext, stockedItemIds, shopId, stock);
+                if (list != null)
+                {
+                    AddItemsToStock(list, itemData, shop, stock, stockedItemIds, shopRandom);
+                }
+            }
 
+            return stock;
+        }
+
+        private static IList<ItemQueryResult>? TryResolve(ShopItemData itemData, ItemQueryContext itemQueryContext, HashSet<string> stockedItemIds, String shopId, Dictionary<ISalable, ItemStockInformation> stock)
+        {
+            IMonitor Monitor = Container.Instance.GetInstance<IMonitor>(ModEntry.UniqueID);
+            try
+            {
                 IList<ItemQueryResult> list = ItemQueryResolver.TryResolve(
                     itemData,
                     itemQueryContext,
@@ -91,11 +105,15 @@ namespace ProfitCalculator.main.accessors
                         Monitor?.Log($"Failed parsing shop item query '{query}' for the '{shopId}' shop: {message}.", LogLevel.Debug);
                     }
                 );
-
-                AddItemsToStock(list, itemData, shop, stock, stockedItemIds, shopRandom);
+                return list;
             }
-
-            return stock;
+            catch (Exception e)
+            {
+                Monitor?.Log($"Failed to resolve item query {e.Message}", LogLevel.Warn);
+                //item specific information log
+                Monitor?.Log($"Failed to resolve the following Item: {itemData.ItemId}; {stock.ToList()}", LogLevel.Debug);
+            }
+            return null;
         }
 
         private static void AddItemsToStock(IList<ItemQueryResult> list, ShopItemData itemData, ShopData shop, Dictionary<ISalable, ItemStockInformation> stock, HashSet<string> stockedItemIds, Random shopRandom)
