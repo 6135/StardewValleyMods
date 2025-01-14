@@ -279,10 +279,6 @@ namespace ProfitCalculator.main.ui
                 Clicked = false;
                 stopSpread();
             }
-            else
-            {
-                throw new InvalidOperationException();
-            }
         }
     }
 }

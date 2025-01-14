@@ -71,10 +71,6 @@ namespace ProfitCalculator.main.ui
             {
                 hoverDelay--;
             }
-            else
-            {
-                throw new InvalidOperationException();
-            }
         }
 
         private void DrawMainBox(SpriteBatch b)

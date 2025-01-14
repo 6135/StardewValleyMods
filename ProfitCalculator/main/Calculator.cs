@@ -185,18 +185,12 @@ namespace ProfitCalculator.main
             {
                 CropInfo ci = RetrieveCropInfo(crop);
                 if (ci.TotalHarvests >= 1)
-                    if (!PayForSeeds)
+                {
+                    if (!PayForSeeds || ci.TotalSeedLoss <= MaxMoney)
                     {
                         cropInfos.Add(ci);
                     }
-                    else if (ci.TotalSeedLoss <= MaxMoney)
-                    {
-                        cropInfos.Add(ci);
-                    }
-                    else
-                    {
-                        throw new InvalidOperationException();
-                    }
+                }
             }
             cropInfos.Sort((x, y) => y.ProfitPerDay.CompareTo(x.ProfitPerDay));
             return cropInfos;
