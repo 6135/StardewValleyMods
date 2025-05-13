@@ -10,10 +10,6 @@
     {
       "UniqueID": "mistyspring.ItemExtensions",
       "IsRequired": true
-    },
-    {
-      "UniqueID": "spacechase0.JsonAssets",
-      "IsRequired": true
     }
   ],
   "ContentPackFor": {
