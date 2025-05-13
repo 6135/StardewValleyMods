@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg viewBox="0 0 500 80" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background Scroll -->
+  <path d="M20,10 C20,10 30,5 50,5 L450,5 C470,5 480,10 480,10 L490,20 C490,20 495,30 495,40 C495,50 490,60 490,60 L480,70 C480,70 470,75 450,75 L50,75 C30,75 20,70 20,70 L10,60 C10,60 5,50 5,40 C5,30 10,20 10,20 Z" fill="#e8d7b0" stroke="#7b5c34" stroke-width="2"/>
+  
+  <!-- Decorative Curl Left -->
+  <path d="M25,10 C25,10 15,20 15,40 C15,60 25,70 25,70" fill="none" stroke="#7b5c34" stroke-width="2"/>
+  
+  <!-- Decorative Curl Right -->
+  <path d="M475,10 C475,10 485,20 485,40 C485,60 475,70 475,70" fill="none" stroke="#7b5c34" stroke-width="2"/>
+  
+  <!-- Text -->
+  <text x="250" y="47" font-family="Georgia, serif" font-size="24" font-weight="bold" text-anchor="middle" fill="#7b5c34">Features</text>
+</svg>

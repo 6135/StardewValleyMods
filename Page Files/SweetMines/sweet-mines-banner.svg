@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg viewBox="0 0 800 200" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect width="800" height="200" fill="#512c1d" rx="10" ry="10"/>
+  
+  <!-- Sweet Mines Title -->
+  <text x="400" y="70" font-family="Georgia, serif" font-size="48" font-weight="bold" text-anchor="middle" fill="#f9e6a3">Sweet Mines</text>
+  
+  <!-- Candy decorations -->
+  <circle cx="150" cy="70" r="25" fill="#ff6b6b"/>
+  <circle cx="150" cy="70" r="20" fill="#ff8e8e"/>
+  <path d="M150,50 L150,90" stroke="white" stroke-width="3"/>
+  <path d="M130,70 L170,70" stroke="white" stroke-width="3"/>
+  
+  <circle cx="650" cy="70" r="25" fill="#a0db8e"/>
+  <circle cx="650" cy="70" r="20" fill="#c1ffb2"/>
+  <path d="M650,50 L650,90" stroke="white" stroke-width="3"/>
+  <path d="M630,70 L670,70" stroke="white" stroke-width="3"/>
+  
+  <!-- Subtitle -->
+  <text x="400" y="130" font-family="Arial, sans-serif" font-size="24" text-anchor="middle" fill="#f9e6a3">Transform your mines into a sweet wonderland!</text>
+  
+  <!-- Version -->
+  <text x="400" y="170" font-family="Arial, sans-serif" font-size="18" text-anchor="middle" fill="#f9e6a3">Version 1.0.0</text>
+</svg>
