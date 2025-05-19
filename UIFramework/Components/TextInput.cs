@@ -38,7 +38,7 @@ namespace UIFramework.Components
         public enum TextInputType
         { Any, Alphanumeric, Numeric, Letters }
 
-        public TextInput(string id, Vector2 position, Vector2 size, string initialValue = "")
+        public TextInput(string id, Vector2 position, Vector2 size, string initialValue = "") : base(id, position, size)
         {
             Id = id;
             Position = position;

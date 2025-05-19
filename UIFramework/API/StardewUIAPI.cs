@@ -70,20 +70,20 @@ namespace UIFramework.API
             // Create and configure a text input
         }
 
-        public NumberInput CreateNumberInput(string id, Vector2 position, int initialValue, int min, int max, Action<int> onValueChanged)
-        {
-            // Create and configure a number input
-        }
+        //public NumberInput CreateNumberInput(string id, Vector2 position, int initialValue, int min, int max, Action<int> onValueChanged)
+        //{
+        //    // Create and configure a number input
+        //}
 
-        public Checkbox CreateCheckbox(string id, Vector2 position, bool initialValue, Action<bool> onValueChanged)
-        {
-            // Create and configure a checkbox
-        }
+        //public Checkbox CreateCheckbox(string id, Vector2 position, bool initialValue, Action<bool> onValueChanged)
+        //{
+        //    // Create and configure a checkbox
+        //}
 
-        public Dropdown CreateDropdown(string id, Vector2 position, string[] options, int selectedIndex, Action<int> onSelectionChanged)
-        {
-            // Create and configure a dropdown
-        }
+        //public Dropdown CreateDropdown(string id, Vector2 position, string[] options, int selectedIndex, Action<int> onSelectionChanged)
+        //{
+        //    // Create and configure a dropdown
+        //}
 
         // Layout methods
 

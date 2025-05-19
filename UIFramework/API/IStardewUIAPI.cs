@@ -8,6 +8,7 @@ using System.Reflection.Emit;
 using System.Text;
 using System.Threading.Tasks;
 using UIFramework.Components;
+using UIFramework.Config;
 using UIFramework.Events;
 using UIFramework.Layout;
 using UIFramework.Menus;
@@ -33,11 +34,11 @@ namespace UIFramework.API
 
         TextInput CreateTextInput(string id, Vector2 position, string initialValue, Action<string> onValueChanged);
 
-        NumberInput CreateNumberInput(string id, Vector2 position, int initialValue, int min, int max, Action<int> onValueChanged);
+        //NumberInput CreateNumberInput(string id, Vector2 position, int initialValue, int min, int max, Action<int> onValueChanged);
 
-        Checkbox CreateCheckbox(string id, Vector2 position, bool initialValue, Action<bool> onValueChanged);
+        //Checkbox CreateCheckbox(string id, Vector2 position, bool initialValue, Action<bool> onValueChanged);
 
-        Dropdown CreateDropdown(string id, Vector2 position, string[] options, int selectedIndex, Action<int> onSelectionChanged);
+        //Dropdown CreateDropdown(string id, Vector2 position, string[] options, int selectedIndex, Action<int> onSelectionChanged);
 
         // Layout
         GridLayout CreateGridLayout(int columns, int rows, int cellWidth, int cellHeight);

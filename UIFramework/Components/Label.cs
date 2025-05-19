@@ -23,9 +23,8 @@ namespace UIFramework.Components
         { Left, Center, Right }
 
         public Label(string id, Vector2 position, string text)
+            : base(id, position, Vector2.Zero) // Pass required parameters to the base constructor
         {
-            Id = id;
-            Position = position;
             Text = text;
 
             if (AutoSize)
