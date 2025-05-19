@@ -1,8 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Graphics;
+using StardewValley;
+using System;
+using UIFramework.Events;
 
 namespace UIFramework.Components.Base
 {
@@ -10,10 +10,77 @@ namespace UIFramework.Components.Base
     {
         public event Action<ClickEventArgs> Clicked;
 
-        public virtual void OnClick(int x, int y);
+        public event Action<ClickEventArgs> RightClicked;
 
-        public virtual void OnRightClick(int x, int y);
+        public event Action<ClickEventArgs> Hovered;
 
-        public virtual void OnHover(int x, int y);
+        public Color DefaultColor { get; set; } = Color.White;
+        public Color HoverColor { get; set; } = Color.LightGray;
+        public Color PressedColor { get; set; } = Color.Gray;
+        public Color DisabledColor { get; set; } = new Color(120, 120, 120);
+
+        protected bool _isPressed;
+        protected string _hoverSound = "smallSelect";
+        protected string _clickSound = "bigClick";
+
+        protected BaseClickableComponent(string id, Vector2 position, Vector2 size)
+            : base(id, position, size)
+        {
+        }
+
+        public override void Update(GameTime time)
+        {
+            base.Update(time);
+
+            bool wasHovered = _isHovered;
+            _isHovered = Enabled && Visible && Contains(Game1.getMouseX(), Game1.getMouseY());
+
+            if (_isHovered && !wasHovered)
+            {
+                OnHover(Game1.getMouseX(), Game1.getMouseY());
+            }
+        }
+
+        public virtual void OnClick(int x, int y)
+        {
+            if (!Enabled || !Visible) return;
+
+            _isPressed = true;
+            if (!string.IsNullOrEmpty(_clickSound))
+                Game1.playSound(_clickSound);
+
+            Clicked?.Invoke(new ClickEventArgs(this, x, y, ClickEventArgs.MouseButton.Left));
+        }
+
+        public virtual void OnRightClick(int x, int y)
+        {
+            if (!Enabled || !Visible) return;
+
+            if (!string.IsNullOrEmpty(_clickSound))
+                Game1.playSound(_clickSound);
+
+            RightClicked?.Invoke(new ClickEventArgs(this, x, y, ClickEventArgs.MouseButton.Right));
+        }
+
+        public virtual void OnHover(int x, int y)
+        {
+            if (!Enabled || !Visible) return;
+
+            if (!string.IsNullOrEmpty(_hoverSound))
+                Game1.playSound(_hoverSound);
+
+            Hovered?.Invoke(new ClickEventArgs(this, x, y, ClickEventArgs.MouseButton.Left));
+        }
+
+        public virtual void OnReleased()
+        {
+            _isPressed = false;
+        }
+
+        public void SetSounds(string hoverSound, string clickSound)
+        {
+            _hoverSound = hoverSound;
+            _clickSound = clickSound;
+        }
     }
 }
