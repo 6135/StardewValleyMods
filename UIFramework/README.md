@@ -58,7 +58,7 @@ StardewUI/
 A comprehensive, flexible UI framework for developing custom menus and interfaces in Stardew Valley mods.
 
 ![Version](https://img.shields.io/badge/Version-1.0.0-blue)
-![API](https://img.shields.io/badge/SMAPI-3.0.0+-orange)
+![API](https://img.shields.io/badge/SMAPI-4.3.2+-orange)
 
 ## Overview
 
