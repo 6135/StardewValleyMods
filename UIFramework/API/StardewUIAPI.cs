@@ -36,11 +36,13 @@ namespace UIFramework.API
         public BaseMenu CreateMenu(string id, MenuConfig config)
         {
             // Create and configure a new menu
+            throw new NotImplementedException();
         }
 
         public void RegisterMenu(BaseMenu menu)
         {
             // Register a menu for management
+            throw new NotImplementedException();
         }
 
         public void ShowMenu(string menuId)
@@ -58,16 +60,19 @@ namespace UIFramework.API
         public Button CreateButton(string id, string text, Vector2 position, Action onClick)
         {
             // Create and configure a button
+            throw new NotImplementedException();
         }
 
         public Label CreateLabel(string id, string text, Vector2 position)
         {
             // Create and configure a label
+            throw new NotImplementedException();
         }
 
         public TextInput CreateTextInput(string id, Vector2 position, string initialValue, Action<string> onValueChanged)
         {
             // Create and configure a text input
+            throw new NotImplementedException();
         }
 
         //public NumberInput CreateNumberInput(string id, Vector2 position, int initialValue, int min, int max, Action<int> onValueChanged)
@@ -90,11 +95,13 @@ namespace UIFramework.API
         public GridLayout CreateGridLayout(int columns, int rows, int cellWidth, int cellHeight)
         {
             // Create a grid layout
+            throw new NotImplementedException();
         }
 
         public RelativeLayout CreateRelativeLayout()
         {
             // Create a relative layout
+            throw new NotImplementedException();
         }
 
         // Configuration methods
@@ -102,11 +109,13 @@ namespace UIFramework.API
         public void SetGlobalTooltipDelay(int delay)
         {
             // Set global tooltip delay
+            throw new NotImplementedException();
         }
 
         public void RegisterHotkey(string id, SButton key, Action onPressed)
         {
             // Register a hotkey
+            throw new NotImplementedException();
         }
 
         // Event registration methods
@@ -114,11 +123,13 @@ namespace UIFramework.API
         public void RegisterClickHandler(string componentId, Action<ClickEventArgs> handler)
         {
             // Register a click event handler
+            throw new NotImplementedException();
         }
 
         public void RegisterInputHandler(string componentId, Action<InputEventArgs> handler)
         {
             // Register an input event handler
+            throw new NotImplementedException();
         }
 
         // Event handlers
@@ -126,16 +137,19 @@ namespace UIFramework.API
         private void OnButtonPressed(object sender, StardewModdingAPI.Events.ButtonPressedEventArgs e)
         {
             // Handle button presses and trigger hotkeys
+            throw new NotImplementedException();
         }
 
         private void OnUpdateTicked(object sender, StardewModdingAPI.Events.UpdateTickedEventArgs e)
         {
             // Handle update logic
+            throw new NotImplementedException();
         }
 
         private void OnWindowResized(object sender, StardewModdingAPI.Events.WindowResizedEventArgs e)
         {
-            // Handle window resize events
+            // Handle window resize events.
+            throw new NotImplementedException();
         }
     }
 }

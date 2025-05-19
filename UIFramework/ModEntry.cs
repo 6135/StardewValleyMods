@@ -103,21 +103,5 @@ namespace UIFramework
                 max: 1000
             );
         }
-
-        [EventPriority(EventPriority.Low - 9999)]
-        private void OnSaveGameLoaded(object? sender, SaveLoadedEventArgs? e)
-        {
-        }
-
-        /// <summary>Raised after the player presses a button on the keyboard, controller, or mouse.</summary>
-        /// <param name="sender">The event sender.</param>
-        /// <param name="e">The event data.</param>
-        private void OnButtonPressed(object? sender, ButtonPressedEventArgs? e)
-        {
-        }
-
-        private void OnMouseWheelScrolled(object? sender, MouseWheelScrolledEventArgs? e)
-        {
-        }
     }
 }

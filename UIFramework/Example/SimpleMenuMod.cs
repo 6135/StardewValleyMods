@@ -42,15 +42,15 @@ namespace UIFramework.Example
             var nameInput = _uiApi.CreateTextInput("NameInput", new Vector2(0, 0), "", OnNameChanged);
             layout.AddComponent(nameInput, 0, 0, 2, 1);
 
-            var enableCheckbox = _uiApi.CreateCheckbox("EnableCheckbox", new Vector2(0, 0), true, OnEnableChanged);
-            layout.AddComponent(enableCheckbox, 0, 1);
+            //var enableCheckbox = _uiApi.CreateCheckbox("EnableCheckbox", new Vector2(0, 0), true, OnEnableChanged);
+            //layout.AddComponent(enableCheckbox, 0, 1);
 
-            var optionsDropdown = _uiApi.CreateDropdown("OptionsDropdown", new Vector2(0, 0),
-                new[] { "Option 1", "Option 2", "Option 3" }, 0, OnOptionSelected);
-            layout.AddComponent(optionsDropdown, 1, 1);
+            //var optionsDropdown = _uiApi.CreateDropdown("OptionsDropdown", new Vector2(0, 0),
+            //    new[] { "Option 1", "Option 2", "Option 3" }, 0, OnOptionSelected);
+            //layout.AddComponent(optionsDropdown, 1, 1);
 
-            var countInput = _uiApi.CreateNumberInput("CountInput", new Vector2(0, 0), 1, 0, 100, OnCountChanged);
-            layout.AddComponent(countInput, 0, 2);
+            //var countInput = _uiApi.CreateNumberInput("CountInput", new Vector2(0, 0), 1, 0, 100, OnCountChanged);
+            //layout.AddComponent(countInput, 0, 2);
 
             var submitButton = _uiApi.CreateButton("SubmitButton", "Submit", new Vector2(0, 0), OnSubmit);
             layout.AddComponent(submitButton, 1, 3);
