@@ -1,155 +1,231 @@
 ﻿using Microsoft.Xna.Framework;
 using StardewModdingAPI;
+using StardewValley;
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using UIFramework.Components;
+using UIFramework.Components.Base;
 using UIFramework.Config;
 using UIFramework.Events;
 using UIFramework.Layout;
 using UIFramework.Menus;
+using UIFramework.memory;
 
 namespace UIFramework.API
 {
     public class StardewUIAPI : IStardewUIAPI
     {
         private UIConfig _config;
-        private Dictionary<string, BaseMenu> _menus = new Dictionary<string, BaseMenu>();
-        private Dictionary<string, SButton> _hotkeys = new Dictionary<string, SButton>();
-        private Dictionary<string, Action> _hotkeyActions = new Dictionary<string, Action>();
-        private LayoutManager _layoutManager = new LayoutManager();
+        private readonly Dictionary<string, BaseMenu> _menus = new Dictionary<string, BaseMenu>();
+        private readonly Dictionary<string, SButton> _hotkeys = new Dictionary<string, SButton>();
+        private readonly Dictionary<string, Action> _hotkeyActions = new Dictionary<string, Action>();
+        private readonly IModHelper _helper;
+        private readonly IMonitor _monitor;
+        private readonly LayoutManager _layoutManager = new LayoutManager();
 
-        public StardewUIAPI(IModHelper helper, UIConfig config = null)
+        public StardewUIAPI()
         {
-            _config = config ?? new UIConfig();
+            _helper = Container.Instance.GetInstance<IModHelper>(ModEntry.UniqueID);
+            _monitor = Container.Instance.GetInstance<IMonitor>(ModEntry.UniqueID);
+            _config = Container.Instance.GetInstance<UIConfig>(ModEntry.UniqueID);
 
             // Register event handlers
-            helper.Events.Input.ButtonPressed += OnButtonPressed;
-            helper.Events.GameLoop.UpdateTicked += OnUpdateTicked;
-            helper.Events.Display.WindowResized += OnWindowResized;
+            _helper.Events.Input.ButtonPressed += OnButtonPressed;
+            _helper.Events.GameLoop.UpdateTicked += OnUpdateTicked;
+            _helper.Events.Display.WindowResized += OnWindowResized;
         }
 
         // IStardewUIAPI implementation methods
 
         public BaseMenu CreateMenu(string id, MenuConfig config)
         {
-            // Create and configure a new menu
-            throw new NotImplementedException();
+            if (string.IsNullOrEmpty(id))
+                throw new ArgumentNullException(nameof(id), "Menu ID cannot be null or empty");
+
+            if (_menus.ContainsKey(id))
+                throw new ArgumentException($"A menu with ID '{id}' already exists", nameof(id));
+
+            var menu = new BaseMenu(id, config);
+            return menu;
         }
 
         public void RegisterMenu(BaseMenu menu)
         {
-            // Register a menu for management
-            throw new NotImplementedException();
+            if (menu == null)
+                throw new ArgumentNullException(nameof(menu));
+
+            if (string.IsNullOrEmpty(menu.Id))
+                throw new ArgumentException("Menu must have a valid ID", nameof(menu));
+
+            if (_menus.ContainsKey(menu.Id))
+                _menus.Remove(menu.Id);
+
+            _menus[menu.Id] = menu;
         }
 
         public void ShowMenu(string menuId)
         {
-            // Show a registered menu
+            if (!_menus.TryGetValue(menuId, out var menu))
+            {
+                _monitor?.Log($"Cannot show menu: Menu with ID '{menuId}' not found", LogLevel.Warn);
+                return;
+            }
+
+            menu.Show();
         }
 
         public void HideMenu(string menuId)
         {
-            // Hide a registered menu
+            if (!_menus.TryGetValue(menuId, out var menu))
+            {
+                _monitor?.Log($"Cannot hide menu: Menu with ID '{menuId}' not found", LogLevel.Warn);
+                return;
+            }
+
+            menu.Hide();
         }
 
         // Component creation methods
 
         public Button CreateButton(string id, string text, Vector2 position, Action onClick)
         {
-            // Create and configure a button
-            throw new NotImplementedException();
+            var button = new Button(id, position, new Vector2(120, 48), text);
+
+            if (onClick != null)
+            {
+                button.Clicked += (e) => onClick();
+            }
+
+            return button;
         }
 
         public Label CreateLabel(string id, string text, Vector2 position)
         {
-            // Create and configure a label
-            throw new NotImplementedException();
+            return new Label(id, position, text);
         }
 
         public TextInput CreateTextInput(string id, Vector2 position, string initialValue, Action<string> onValueChanged)
         {
-            // Create and configure a text input
-            throw new NotImplementedException();
+            var textInput = new TextInput(id, position, new Vector2(200, 40), initialValue);
+
+            if (onValueChanged != null)
+            {
+                textInput.TextChanged += onValueChanged;
+            }
+
+            return textInput;
         }
-
-        //public NumberInput CreateNumberInput(string id, Vector2 position, int initialValue, int min, int max, Action<int> onValueChanged)
-        //{
-        //    // Create and configure a number input
-        //}
-
-        //public Checkbox CreateCheckbox(string id, Vector2 position, bool initialValue, Action<bool> onValueChanged)
-        //{
-        //    // Create and configure a checkbox
-        //}
-
-        //public Dropdown CreateDropdown(string id, Vector2 position, string[] options, int selectedIndex, Action<int> onSelectionChanged)
-        //{
-        //    // Create and configure a dropdown
-        //}
 
         // Layout methods
 
         public GridLayout CreateGridLayout(int columns, int rows, int cellWidth, int cellHeight)
         {
-            // Create a grid layout
-            throw new NotImplementedException();
+            return new GridLayout(columns, rows, cellWidth, cellHeight);
         }
 
         public RelativeLayout CreateRelativeLayout()
         {
-            // Create a relative layout
-            throw new NotImplementedException();
+            return new RelativeLayout();
         }
 
         // Configuration methods
 
         public void SetGlobalTooltipDelay(int delay)
         {
-            // Set global tooltip delay
-            throw new NotImplementedException();
+            _config.DefaultTooltipDelay = delay;
         }
 
         public void RegisterHotkey(string id, SButton key, Action onPressed)
         {
-            // Register a hotkey
-            throw new NotImplementedException();
+            if (string.IsNullOrEmpty(id))
+                throw new ArgumentNullException(nameof(id));
+
+            if (onPressed == null)
+                throw new ArgumentNullException(nameof(onPressed));
+
+            _hotkeys[id] = key;
+            _hotkeyActions[id] = onPressed;
         }
 
         // Event registration methods
 
         public void RegisterClickHandler(string componentId, Action<ClickEventArgs> handler)
         {
-            // Register a click event handler
-            throw new NotImplementedException();
+            if (string.IsNullOrEmpty(componentId) || handler == null)
+                return;
+
+            foreach (var menu in _menus.Values)
+            {
+                var component = menu.GetComponent(componentId) as BaseClickableComponent;
+                if (component != null)
+                {
+                    component.Clicked += handler;
+                    break;
+                }
+            }
         }
 
         public void RegisterInputHandler(string componentId, Action<InputEventArgs> handler)
         {
-            // Register an input event handler
-            throw new NotImplementedException();
+            if (string.IsNullOrEmpty(componentId) || handler == null)
+                return;
+
+            foreach (var menu in _menus.Values)
+            {
+                var component = menu.GetComponent(componentId) as BaseInputComponent;
+                if (component != null)
+                {
+                    component.ValueChanged += handler;
+                    break;
+                }
+            }
         }
 
         // Event handlers
 
         private void OnButtonPressed(object sender, StardewModdingAPI.Events.ButtonPressedEventArgs e)
         {
-            // Handle button presses and trigger hotkeys
-            throw new NotImplementedException();
+            if (Game1.activeClickableMenu != null && !Context.IsWorldReady)
+                return;
+
+            foreach (var entry in _hotkeys)
+            {
+                if (e.Button == entry.Value && _hotkeyActions.TryGetValue(entry.Key, out var action))
+                {
+                    action();
+                    break;
+                }
+            }
         }
 
         private void OnUpdateTicked(object sender, StardewModdingAPI.Events.UpdateTickedEventArgs e)
         {
-            // Handle update logic
-            throw new NotImplementedException();
+            // Nothing to do here for now
         }
 
         private void OnWindowResized(object sender, StardewModdingAPI.Events.WindowResizedEventArgs e)
         {
-            // Handle window resize events.
-            throw new NotImplementedException();
+            // Handle window resize by notifying all menus
+            foreach (var menu in _menus.Values)
+            {
+                if (menu.IsVisible())
+                {
+                    menu.gameWindowSizeChanged
+                        (new Rectangle(
+                            0,
+                            0,
+                            e.OldSize.X,
+                            e.OldSize.Y
+                        ),
+                        new Rectangle(
+                            0,
+                            0,
+                            e.NewSize.X,
+                            e.NewSize.Y
+                            )
+                        );
+                }
+            }
         }
     }
 }
