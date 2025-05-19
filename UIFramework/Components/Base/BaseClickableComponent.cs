@@ -43,32 +43,16 @@ namespace UIFramework.Components.Base
 
         public virtual void OnClick(int x, int y)
         {
-            if (!Enabled || !Visible) return;
-
-            _isPressed = true;
-            if (!string.IsNullOrEmpty(_clickSound))
-                Game1.playSound(_clickSound);
-
             Clicked?.Invoke(new ClickEventArgs(this, x, y, ClickEventArgs.MouseButton.Left));
         }
 
         public virtual void OnRightClick(int x, int y)
         {
-            if (!Enabled || !Visible) return;
-
-            if (!string.IsNullOrEmpty(_clickSound))
-                Game1.playSound(_clickSound);
-
             RightClicked?.Invoke(new ClickEventArgs(this, x, y, ClickEventArgs.MouseButton.Right));
         }
 
         public virtual void OnHover(int x, int y)
         {
-            if (!Enabled || !Visible) return;
-
-            if (!string.IsNullOrEmpty(_hoverSound))
-                Game1.playSound(_hoverSound);
-
             Hovered?.Invoke(new ClickEventArgs(this, x, y, ClickEventArgs.MouseButton.Left));
         }
 
