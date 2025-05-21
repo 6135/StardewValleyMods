@@ -1,10 +1,10 @@
 ﻿{
-  "Name": "UI Framework",
+  "Name": "UI Framework Example",
   "Author": "6135",
   "Version": "1.0.0",
-  "Description": "Adds an UI Framework to stardew valley to help you build your menus",
-  "UniqueID": "6135.UIFramework",
-  "EntryDll": "UIFramework.dll",
+  "Description": "Adds an UI Framework Example",
+  "UniqueID": "6135.UIFrameworkExample",
+  "EntryDll": "UIFrameworkExample.dll",
   "MinimumApiVersion": "3.0.0",
   "UpdateKeys": []
 }

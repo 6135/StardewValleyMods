@@ -23,6 +23,12 @@ namespace UIFramework.API
         private readonly IMonitor _monitor;
         private readonly LayoutManager _layoutManager = new LayoutManager();
 
+        // Track components by ID for external reference
+        private readonly Dictionary<string, BaseComponent> _components = new Dictionary<string, BaseComponent>();
+
+        private readonly Dictionary<string, GridLayout> _gridLayouts = new Dictionary<string, GridLayout>();
+        private readonly Dictionary<string, RelativeLayout> _relativeLayouts = new Dictionary<string, RelativeLayout>();
+
         public StardewUIAPI()
         {
             _helper = Container.Instance.GetInstance<IModHelper>(ModEntry.UniqueID);
@@ -37,7 +43,9 @@ namespace UIFramework.API
 
         // IStardewUIAPI implementation methods
 
-        public BaseMenu CreateMenu(string id, MenuConfig config)
+        public string CreateMenu(string id, string title, int width = 800, int height = 600,
+            bool draggable = false, bool resizable = false, bool modal = true,
+            bool showCloseButton = true, SButton toggleKey = SButton.None)
         {
             if (string.IsNullOrEmpty(id))
                 throw new ArgumentNullException(nameof(id), "Menu ID cannot be null or empty");
@@ -45,23 +53,31 @@ namespace UIFramework.API
             if (_menus.ContainsKey(id))
                 throw new ArgumentException($"A menu with ID '{id}' already exists", nameof(id));
 
+            var config = new MenuConfig
+            {
+                Title = title,
+                Width = width,
+                Height = height,
+                Draggable = draggable,
+                Resizable = resizable,
+                Modal = modal,
+                ShowCloseButton = showCloseButton,
+                ToggleKey = toggleKey
+            };
+
             var menu = new BaseMenu(id, config);
-            return menu;
+            _menus[id] = menu;
+
+            return id;
         }
 
-        // If ToggleKey is set, it automatically registers it as Open + MenuID
-        public void RegisterMenu(BaseMenu menu)
+        public void RegisterMenu(string menuId)
         {
-            if (menu == null)
-                throw new ArgumentNullException(nameof(menu));
-
-            if (string.IsNullOrEmpty(menu.Id))
-                throw new ArgumentException("Menu must have a valid ID", nameof(menu));
-
-            if (_menus.ContainsKey(menu.Id))
-                _menus.Remove(menu.Id);
-
-            _menus[menu.Id] = menu;
+            if (!_menus.TryGetValue(menuId, out var menu))
+            {
+                _monitor?.Log($"Cannot register menu: Menu with ID '{menuId}' not found", LogLevel.Warn);
+                return;
+            }
 
             if (menu.Config.ToggleKey != SButton.None)
             {
@@ -93,45 +109,190 @@ namespace UIFramework.API
 
         // Component creation methods
 
-        public Button CreateButton(string id, string text, Vector2 position, Action onClick)
+        public string CreateButton(string menuId, string id, string text, int x, int y, int width = 120, int height = 48,
+            Action onClick = null)
         {
-            var button = new Button(id, position, new Vector2(120, 48), text);
+            if (!_menus.TryGetValue(menuId, out var menu))
+            {
+                _monitor?.Log($"Cannot create button: Menu with ID '{menuId}' not found", LogLevel.Warn);
+                return string.Empty;
+            }
+
+            var button = new Button(id, new Vector2(x, y), new Vector2(width, height), text);
 
             if (onClick != null)
             {
                 button.Clicked += (e) => onClick();
             }
 
-            return button;
+            menu.AddComponent(button);
+            _components[id] = button;
+
+            return id;
         }
 
-        public Label CreateLabel(string id, string text, Vector2 position)
+        public string CreateLabel(string menuId, string id, string text, int x, int y)
         {
-            return new Label(id, position, text);
+            if (!_menus.TryGetValue(menuId, out var menu))
+            {
+                _monitor?.Log($"Cannot create label: Menu with ID '{menuId}' not found", LogLevel.Warn);
+                return string.Empty;
+            }
+
+            var label = new Label(id, new Vector2(x, y), text);
+            menu.AddComponent(label);
+            _components[id] = label;
+
+            return id;
         }
 
-        public TextInput CreateTextInput(string id, Vector2 position, string initialValue, Action<string> onValueChanged)
+        public string CreateTextInput(string menuId, string id, int x, int y, int width = 200, int height = 40,
+            string initialValue = "", Action<string> onValueChanged = null)
         {
-            var textInput = new TextInput(id, position, new Vector2(200, 40), initialValue);
+            if (!_menus.TryGetValue(menuId, out var menu))
+            {
+                _monitor?.Log($"Cannot create text input: Menu with ID '{menuId}' not found", LogLevel.Warn);
+                return string.Empty;
+            }
+
+            var textInput = new TextInput(id, new Vector2(x, y), new Vector2(width, height), initialValue);
 
             if (onValueChanged != null)
             {
                 textInput.TextChanged += onValueChanged;
             }
 
-            return textInput;
+            menu.AddComponent(textInput);
+            _components[id] = textInput;
+
+            return id;
         }
 
         // Layout methods
 
-        public GridLayout CreateGridLayout(int columns, int rows, int cellWidth, int cellHeight)
+        public string CreateGridLayout(string menuId, string id, int columns, int rows, int cellWidth, int cellHeight)
         {
-            return new GridLayout(columns, rows, cellWidth, cellHeight);
+            if (!_menus.TryGetValue(menuId, out var menu))
+            {
+                _monitor?.Log($"Cannot create grid layout: Menu with ID '{menuId}' not found", LogLevel.Warn);
+                return string.Empty;
+            }
+
+            var gridLayout = new GridLayout(columns, rows, cellWidth, cellHeight);
+            _gridLayouts[id] = gridLayout;
+
+            return id;
         }
 
-        public RelativeLayout CreateRelativeLayout()
+        public string AddComponentToGrid(string menuId, string layoutId, string componentId, int column, int row,
+            int columnSpan = 1, int rowSpan = 1)
         {
-            return new RelativeLayout();
+            if (!_menus.TryGetValue(menuId, out var menu))
+            {
+                _monitor?.Log($"Cannot add component to grid: Menu with ID '{menuId}' not found", LogLevel.Warn);
+                return string.Empty;
+            }
+
+            if (!_gridLayouts.TryGetValue(layoutId, out var gridLayout))
+            {
+                _monitor?.Log($"Cannot add component to grid: Grid layout with ID '{layoutId}' not found", LogLevel.Warn);
+                return string.Empty;
+            }
+
+            if (!_components.TryGetValue(componentId, out var component))
+            {
+                _monitor?.Log($"Cannot add component to grid: Component with ID '{componentId}' not found", LogLevel.Warn);
+                return string.Empty;
+            }
+
+            gridLayout.AddComponent(component, column, row, columnSpan, rowSpan);
+            menu.PositionGridLayout(gridLayout);
+
+            return componentId;
+        }
+
+        public string CreateRelativeLayout(string menuId, string id)
+        {
+            if (!_menus.TryGetValue(menuId, out _))
+            {
+                _monitor?.Log($"Cannot create relative layout: Menu with ID '{menuId}' not found", LogLevel.Warn);
+                return string.Empty;
+            }
+
+            var relativeLayout = new RelativeLayout();
+            _relativeLayouts[id] = relativeLayout;
+
+            return id;
+        }
+
+        public string AddComponentToRelativeLayout(string menuId, string layoutId, string componentId,
+            string anchorPoint = "TopLeft", int offsetX = 0, int offsetY = 0)
+        {
+            if (!_menus.TryGetValue(menuId, out _))
+            {
+                _monitor?.Log($"Cannot add component to layout: Menu with ID '{menuId}' not found", LogLevel.Warn);
+                return string.Empty;
+            }
+
+            if (!_relativeLayouts.TryGetValue(layoutId, out var relativeLayout))
+            {
+                _monitor?.Log($"Cannot add component to layout: Relative layout with ID '{layoutId}' not found", LogLevel.Warn);
+                return string.Empty;
+            }
+
+            if (!_components.TryGetValue(componentId, out var component))
+            {
+                _monitor?.Log($"Cannot add component to layout: Component with ID '{componentId}' not found", LogLevel.Warn);
+                return string.Empty;
+            }
+
+            // Parse anchor point from string
+            if (!Enum.TryParse<RelativeLayout.AnchorPoint>(anchorPoint, out var anchor))
+            {
+                anchor = RelativeLayout.AnchorPoint.TopLeft;
+            }
+
+            relativeLayout.AddComponent(component, anchor, new Vector2(offsetX, offsetY));
+
+            return componentId;
+        }
+
+        public string AddComponentRelativeToAnother(string menuId, string layoutId, string componentId,
+            string relativeToId, string anchorPoint = "TopLeft", int offsetX = 0, int offsetY = 0)
+        {
+            if (!_menus.TryGetValue(menuId, out _))
+            {
+                _monitor?.Log($"Cannot add component to layout: Menu with ID '{menuId}' not found", LogLevel.Warn);
+                return string.Empty;
+            }
+
+            if (!_relativeLayouts.TryGetValue(layoutId, out var relativeLayout))
+            {
+                _monitor?.Log($"Cannot add component to layout: Relative layout with ID '{layoutId}' not found", LogLevel.Warn);
+                return string.Empty;
+            }
+
+            if (!_components.TryGetValue(componentId, out var component))
+            {
+                _monitor?.Log($"Cannot add component to layout: Component with ID '{componentId}' not found", LogLevel.Warn);
+                return string.Empty;
+            }
+
+            if (!_components.TryGetValue(relativeToId, out var relativeTo))
+            {
+                _monitor?.Log($"Cannot add component to layout: RelativeTo component with ID '{relativeToId}' not found", LogLevel.Warn);
+                return string.Empty;
+            }
+
+            // Parse anchor point from string
+            if (!Enum.TryParse<RelativeLayout.AnchorPoint>(anchorPoint, out var anchor))
+            {
+                anchor = RelativeLayout.AnchorPoint.TopLeft;
+            }
+
+            relativeLayout.AddComponent(component, relativeTo, anchor, new Vector2(offsetX, offsetY));
+
+            return componentId;
         }
 
         // Configuration methods
@@ -155,39 +316,102 @@ namespace UIFramework.API
 
         // Event registration methods
 
-        public void RegisterClickHandler(string componentId, Action<ClickEventArgs> handler)
+        public void RegisterClickHandler(string componentId, Action<int, int, string> handler)
         {
             if (string.IsNullOrEmpty(componentId) || handler == null)
                 return;
 
-            foreach (var menu in _menus.Values)
+            if (!_components.TryGetValue(componentId, out var component) || !(component is BaseClickableComponent clickable))
             {
-                var component = menu.GetComponent(componentId) as BaseClickableComponent;
-                if (component != null)
-                {
-                    component.Clicked += handler;
-                    break;
-                }
+                _monitor?.Log($"Cannot register click handler: Component with ID '{componentId}' not found or is not clickable", LogLevel.Warn);
+                return;
             }
+
+            clickable.Clicked += (e) => handler(e.X, e.Y, e.Button.ToString());
         }
 
-        public void RegisterInputHandler(string componentId, Action<InputEventArgs> handler)
+        public void RegisterInputHandler(string componentId, Action<string, string> handler)
         {
             if (string.IsNullOrEmpty(componentId) || handler == null)
                 return;
 
-            foreach (var menu in _menus.Values)
+            if (!_components.TryGetValue(componentId, out var component) || !(component is BaseInputComponent input))
             {
-                var component = menu.GetComponent(componentId) as BaseInputComponent;
-                if (component != null)
-                {
-                    component.ValueChanged += handler;
-                    break;
-                }
+                _monitor?.Log($"Cannot register input handler: Component with ID '{componentId}' not found or is not an input component", LogLevel.Warn);
+                return;
             }
+
+            input.ValueChanged += (e) => handler(e.OldValue, e.NewValue);
         }
 
-        // Event handlers
+        // Component customization
+
+        public void SetComponentTooltip(string menuId, string componentId, string tooltip)
+        {
+            if (!_menus.TryGetValue(menuId, out var menu))
+            {
+                _monitor?.Log($"Cannot set tooltip: Menu with ID '{menuId}' not found", LogLevel.Warn);
+                return;
+            }
+
+            var component = menu.GetComponent(componentId);
+            if (component == null)
+            {
+                _monitor?.Log($"Cannot set tooltip: Component with ID '{componentId}' not found", LogLevel.Warn);
+                return;
+            }
+
+            component.Tooltip = tooltip;
+        }
+
+        public void SetButtonColors(string menuId, string buttonId, Color? textColor = null,
+            Color? backgroundColor = null, Color? hoverColor = null, Color? pressedColor = null)
+        {
+            if (!_menus.TryGetValue(menuId, out var menu))
+            {
+                _monitor?.Log($"Cannot set button colors: Menu with ID '{menuId}' not found", LogLevel.Warn);
+                return;
+            }
+
+            var component = menu.GetComponent(buttonId);
+            if (component == null || !(component is Button button))
+            {
+                _monitor?.Log($"Cannot set button colors: Button with ID '{buttonId}' not found", LogLevel.Warn);
+                return;
+            }
+
+            if (textColor.HasValue)
+                button.TextColor = textColor.Value;
+
+            if (backgroundColor.HasValue)
+                button.BackgroundColor = backgroundColor.Value;
+
+            if (hoverColor.HasValue)
+                button.HoverColor = hoverColor.Value;
+
+            if (pressedColor.HasValue)
+                button.PressedColor = pressedColor.Value;
+        }
+
+        public void SetLabelText(string menuId, string labelId, string text)
+        {
+            if (!_menus.TryGetValue(menuId, out var menu))
+            {
+                _monitor?.Log($"Cannot set label text: Menu with ID '{menuId}' not found", LogLevel.Warn);
+                return;
+            }
+
+            var component = menu.GetComponent(labelId);
+            if (component == null || !(component is Label label))
+            {
+                _monitor?.Log($"Cannot set label text: Label with ID '{labelId}' not found", LogLevel.Warn);
+                return;
+            }
+
+            label.SetText(text);
+        }
+
+        // Event handlers (unchanged from original)
 
         private void OnButtonPressed(object sender, StardewModdingAPI.Events.ButtonPressedEventArgs e)
         {
@@ -210,7 +434,7 @@ namespace UIFramework.API
                 }
             }
 
-            // Handle other registered hotkeys (existing code)
+            // Handle other registered hotkeys
             foreach (var entry in _hotkeys)
             {
                 if (e.Button == entry.Value && _hotkeyActions.TryGetValue(entry.Key, out var action))
@@ -233,20 +457,10 @@ namespace UIFramework.API
             {
                 if (menu.IsVisible())
                 {
-                    menu.gameWindowSizeChanged
-                        (new Rectangle(
-                            0,
-                            0,
-                            e.OldSize.X,
-                            e.OldSize.Y
-                        ),
-                        new Rectangle(
-                            0,
-                            0,
-                            e.NewSize.X,
-                            e.NewSize.Y
-                            )
-                        );
+                    menu.gameWindowSizeChanged(
+                        new Rectangle(0, 0, e.OldSize.X, e.OldSize.Y),
+                        new Rectangle(0, 0, e.NewSize.X, e.NewSize.Y)
+                    );
                 }
             }
         }

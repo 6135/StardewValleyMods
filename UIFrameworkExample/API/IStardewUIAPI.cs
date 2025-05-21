@@ -1,49 +1,47 @@
 ﻿using Microsoft.Xna.Framework;
 using StardewModdingAPI;
-using StardewValley.Menus;
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Reflection.Emit;
-using System.Text;
-using System.Threading.Tasks;
-using UIFramework.Components;
-using UIFramework.Config;
-using UIFramework.Events;
-using UIFramework.Layout;
-using UIFramework.Menus;
-using Label = UIFramework.Components.Label;
 
-namespace UIFrameworkExample.API
+namespace UIFramework.API
 {
-    internal interface IStardewUIAPI
+    /// <summary>
+    /// Public API interface for interacting with the UIFramework
+    /// </summary>
+    public interface IStardewUIAPI
     {
         // Menu Management
-        Object CreateMenu(string id, Object config);
+        string CreateMenu(string id, string title, int width = 800, int height = 600,
+            bool draggable = false, bool resizable = false, bool modal = true,
+            bool showCloseButton = true, SButton toggleKey = SButton.None);
 
-        void RegisterMenu(Object menu);
+        void RegisterMenu(string menuId);
 
         void ShowMenu(string menuId);
 
         void HideMenu(string menuId);
 
         // Component Creation
-        Object CreateButton(string id, string text, Vector2 position, Action onClick);
+        string CreateButton(string menuId, string id, string text, int x, int y, int width = 120, int height = 48,
+            Action onClick = null);
 
-        Object CreateLabel(string id, string text, Vector2 position);
+        string CreateLabel(string menuId, string id, string text, int x, int y);
 
-        Object CreateTextInput(string id, Vector2 position, string initialValue, Action<string> onValueChanged);
-
-        //NumberInput CreateNumberInput(string id, Vector2 position, int initialValue, int min, int max, Action<int> onValueChanged);
-
-        //Checkbox CreateCheckbox(string id, Vector2 position, bool initialValue, Action<bool> onValueChanged);
-
-        //Dropdown CreateDropdown(string id, Vector2 position, string[] options, int selectedIndex, Action<int> onSelectionChanged);
+        string CreateTextInput(string menuId, string id, int x, int y, int width = 200, int height = 40,
+            string initialValue = "", Action<string> onValueChanged = null);
 
         // Layout
-        Object CreateGridLayout(int columns, int rows, int cellWidth, int cellHeight);
+        string CreateGridLayout(string menuId, string id, int columns, int rows, int cellWidth, int cellHeight);
 
-        Object CreateRelativeLayout();
+        string AddComponentToGrid(string menuId, string layoutId, string componentId, int column, int row,
+            int columnSpan = 1, int rowSpan = 1);
+
+        string CreateRelativeLayout(string menuId, string id);
+
+        string AddComponentToRelativeLayout(string menuId, string layoutId, string componentId,
+            string anchorPoint = "TopLeft", int offsetX = 0, int offsetY = 0);
+
+        string AddComponentRelativeToAnother(string menuId, string layoutId, string componentId,
+            string relativeToId, string anchorPoint = "TopLeft", int offsetX = 0, int offsetY = 0);
 
         // Configuration
         void SetGlobalTooltipDelay(int delay);
@@ -51,8 +49,16 @@ namespace UIFrameworkExample.API
         void RegisterHotkey(string id, SButton key, Action onPressed);
 
         // Event Registration
-        void RegisterClickHandler(string componentId, Action<ClickEventArgs> handler);
+        void RegisterClickHandler(string componentId, Action<int, int, string> handler);
 
-        void RegisterInputHandler(string componentId, Action<InputEventArgs> handler);
+        void RegisterInputHandler(string componentId, Action<string, string> handler);
+
+        // Component customization
+        void SetComponentTooltip(string menuId, string componentId, string tooltip);
+
+        void SetButtonColors(string menuId, string buttonId, Color? textColor = null,
+            Color? backgroundColor = null, Color? hoverColor = null, Color? pressedColor = null);
+
+        void SetLabelText(string menuId, string labelId, string text);
     }
 }

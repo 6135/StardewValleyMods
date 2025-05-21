@@ -4,174 +4,122 @@ using StardewModdingAPI.Events;
 using StardewValley;
 using System;
 using UIFramework.API;
-using UIFramework.Components;
-using UIFramework.Components.Base;
-using UIFramework.Config;
-using UIFramework.Layout;
-using UIFramework.memory;
-using UIFrameworkExample.API;
 
-#nullable enable
-
-namespace UIFramework
+namespace UIFrameworkExample
 {
     public class ModEntry : Mod
     {
-        private bool _exampleInitialized = false;
-        internal static readonly string UniqueID = "6135.UIFramework";
-        private IStardewUIAPI? _api;
+        private IStardewUIAPI _uiApi;
+        private string _mainMenuId = "ExampleMod_MainMenu";
+        private bool _uiInitialized = false;
 
         public override void Entry(IModHelper helper)
         {
-            // Register API for other mods to access
             helper.Events.GameLoop.GameLaunched += OnGameLaunched;
-            helper.Events.GameLoop.SaveLoaded += OnSaveLoaded;
+            helper.Events.GameLoop.DayStarted += OnDayStarted;
+
+            // Register keybind in the config file
+            helper.ConsoleCommands.Add("showui", "Shows the example UI", (s, args) => ShowUI());
         }
 
-        private void OnGameLaunched(object? sender, GameLaunchedEventArgs e)
+        private void OnGameLaunched(object sender, GameLaunchedEventArgs e)
         {
-            // Make API available to other mods
-            Monitor.Log("Registering UI Framework Example", LogLevel.Info);
-        }
+            // Get API from the UIFramework mod
+            _uiApi = Helper.ModRegistry.GetApi<IStardewUIAPI>("6135.UIFramework");
 
-        private void OnSaveLoaded(object? sender, SaveLoadedEventArgs e)
-        {
-            // Initialize API
-            _api = Helper.ModRegistry.GetApi<IStardewUIAPI>("6135.UIFramework");
-            // Initialize example UI when a save is loaded
-            if (!_exampleInitialized)
+            if (_uiApi == null)
             {
-                InitializeExampleUI();
-                _exampleInitialized = true;
+                Monitor.Log("Failed to get UIFramework API. Make sure UIFramework is installed correctly.", LogLevel.Error);
+                return;
+            }
+
+            Monitor.Log("UIFramework API loaded successfully!", LogLevel.Info);
+        }
+
+        private void OnDayStarted(object sender, DayStartedEventArgs e)
+        {
+            // Initialize UI the first time
+            if (_uiApi != null && !_uiInitialized)
+            {
+                InitializeUI();
+                _uiInitialized = true;
+
             }
         }
 
-        private void InitializeExampleUI()
+        private void InitializeUI()
         {
-            // Create menu configuration
-            var menuConfig = new MenuConfig
+            try
             {
-                Title = "UI Framework Example",
-                Width = 600,
-                Height = 400,
-                ShowCloseButton = true,
-                ToggleKey = SButton.F9
-            };
+                // Create a main menu
+                _uiApi.CreateMenu(
+                    _mainMenuId,
+                    "Example UI Framework Menu",
+                    width: 600,
+                    height: 400,
+                    showCloseButton: true,
+                    toggleKey: SButton.F9
+                );
 
-            // Create main menu
-            var mainMenu = _api!.CreateMenu("ExampleMenu", menuConfig);
+                // Register the menu with the framework
+                _uiApi.RegisterMenu(_mainMenuId);
 
-            // Create layout
-            var gridLayout = _api.CreateGridLayout(2, 5, 250, 50);
+                // Add a text input
+                string nameInputId = _uiApi.CreateTextInput(
+                    _mainMenuId,
+                    "nameInput",
+                    x: 50,
+                    y: 150,
+                    width: 200,
+                    height: 40,
+                    initialValue: "",
+                    onValueChanged: OnNameInputChanged
+                );
 
-            // Add header label
-            //var headerLabel = _api.CreateLabel("HeaderLabel", "Welcome to UI Framework Demo", new Vector2(200, 50));
-            //headerLabel.Font = Game1.dialogueFont;
-            //headerLabel.Scale = 0.8f;
-            //mainMenu.AddComponent(headerLabel);
+                _uiApi.SetComponentTooltip(_mainMenuId, nameInputId, "Enter your name here");
 
-            // Create input field with label
-            var nameLabel = _api.CreateLabel("NameLabel", "Enter your name:", new Vector2(0, 0));
-            gridLayout.AddComponent(nameLabel, 0, 1);
 
-            var nameInput = _api.CreateTextInput("NameInput", new Vector2(0, 0), "", OnNameChanged);
-            gridLayout.AddComponent(nameInput, 1, 1);
+                // Add event handlers for components
+                _uiApi.RegisterInputHandler(nameInputId, OnInputChanged);
 
-            // Create description field with label
-            var descLabel = _api.CreateLabel("DescLabel", "Enter description:", new Vector2(0, 0));
-            gridLayout.AddComponent(descLabel, 0, 2);
+                // Create a grid layout
+                string gridLayoutId = _uiApi.CreateGridLayout(_mainMenuId, "mainGrid", 1, 3, 200, 60);
 
-            var descInput = _api.CreateTextInput("DescInput", new Vector2(0, 0), "", OnDescriptionChanged);
-            gridLayout.AddComponent(descInput, 1, 2);
-
-            // Add result label
-            var resultLabel = _api.CreateLabel("ResultLabel", "Results will appear here", new Vector2(0, 0));
-            resultLabel.WordWrap = true;
-            resultLabel.MaxWidth = 500;
-            gridLayout.AddComponent(resultLabel, 0, 3, 2, 1);
-
-            // Add submit button
-            var submitButton = _api.CreateButton("SubmitButton", "Submit", new Vector2(0, 0), OnSubmitClicked);
-            gridLayout.AddComponent(submitButton, 0, 4);
-
-            // Add close button
-            var closeButton = _api.CreateButton("CloseButton", "Close", new Vector2(0, 0), () => _api.HideMenu("ExampleMenu"));
-            gridLayout.AddComponent(closeButton, 1, 4);
-
-            // Set the grid's origin to match the menu's position
-            if (mainMenu is UIFramework.Menus.BaseMenu baseMenu)
-            {
-                // Use the PositionGridLayout method to set the grid's origin based on the menu position
-                baseMenu.PositionGridLayout(gridLayout);
+                Monitor.Log("UI Initialized successfully", LogLevel.Info);
             }
-
-            // Add all components from the grid layout to the menu
-            foreach (var component in gridLayout.GetComponents())
+            catch (Exception ex)
             {
-                mainMenu.AddComponent(component);
-            }
-
-            // Register menu with the framework
-            _api.RegisterMenu(mainMenu);
-
-            // Register hotkey to open menu
-            _api.RegisterHotkey("OpenExampleMenu", SButton.F8, () => _api.ShowMenu("ExampleMenu"));
-
-            Monitor.Log("UI Framework example menu initialized. Press F8 to open it.", LogLevel.Info);
-        }
-
-        private void OnNameChanged(string newValue)
-        {
-            UpdateResultLabel();
-        }
-
-        private void OnDescriptionChanged(string newValue)
-        {
-            UpdateResultLabel();
-        }
-
-        private void UpdateResultLabel()
-        {
-            var nameInput = FindComponentById("NameInput") as TextInput;
-            var descInput = FindComponentById("DescInput") as TextInput;
-            var resultLabel = FindComponentById("ResultLabel") as Label;
-
-            if (nameInput != null && descInput != null && resultLabel != null)
-            {
-                string name = nameInput.Value;
-                string desc = descInput.Value;
-
-                if (!string.IsNullOrEmpty(name) || !string.IsNullOrEmpty(desc))
-                {
-                    resultLabel.SetText($"Hello {name}! Description: {desc}");
-                }
-                else
-                {
-                    resultLabel.SetText("Please enter your information");
-                }
+                Monitor.Log($"Error initializing UI: {ex.Message}", LogLevel.Error);
             }
         }
 
-        private BaseComponent? FindComponentById(string id)
+        public void ShowUI()
         {
-            if (Game1.activeClickableMenu is Menus.BaseMenu menu)
+            Game1.addHUDMessage(new HUDMessage("Button was clicked!", HUDMessage.newQuest_type));
+            if (_uiApi != null)
             {
-                return menu.GetComponent(id);
+                _uiApi.ShowMenu(_mainMenuId);
             }
-            return null;
         }
 
-        private void OnSubmitClicked()
+        private void OnActionButtonClicked()
         {
-            var nameInput = FindComponentById("NameInput");
-            var descInput = FindComponentById("DescInput");
+            Game1.addHUDMessage(new HUDMessage("Button was clicked!", HUDMessage.newQuest_type));
+        }
 
-            if (nameInput != null && descInput != null)
-            {
-                string message = $"Form submitted with Name: {nameInput.Value}, Description: {descInput.Value}";
-                Monitor.Log(message, LogLevel.Info);
-                Game1.addHUDMessage(new HUDMessage(message, HUDMessage.newQuest_type));
-            }
+        private void OnNameInputChanged(string newValue)
+        {
+            Monitor.Log($"Name changed to: {newValue}", LogLevel.Debug);
+        }
+
+        private void OnButtonClicked(int x, int y, string button)
+        {
+            Monitor.Log($"Button clicked at position: ({x}, {y}) with {button} button", LogLevel.Debug);
+        }
+
+        private void OnInputChanged(string oldValue, string newValue)
+        {
+            Monitor.Log($"Input changed from '{oldValue}' to '{newValue}'", LogLevel.Debug);
         }
     }
 }
