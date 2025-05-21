@@ -146,14 +146,11 @@ namespace UIFramework.Layout
         /// Creates a new grid layout, registers it with the given ID, and returns it.
         /// </summary>
         /// <param name="id">The unique identifier for the layout.</param>
-        /// <param name="columns">The number of columns in the grid.</param>
-        /// <param name="rows">The number of rows in the grid.</param>
-        /// <param name="cellWidth">The width of each cell in the grid.</param>
-        /// <param name="cellHeight">The height of each cell in the grid.</param>
+        /// <param name="menu">The parent menu for the grid layout.</param>
         /// <returns>The created grid layout.</returns>
-        public GridLayout CreateGridLayout(string id, int columns, int rows, int cellWidth, int cellHeight)
+        public GridLayout CreateGridLayout(string id, BaseMenu menu)
         {
-            var gridLayout = new GridLayout(columns, rows, cellWidth, cellHeight);
+            var gridLayout = new GridLayout(menu);
             RegisterLayout(id, gridLayout);
             return gridLayout;
         }

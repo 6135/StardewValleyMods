@@ -2,7 +2,7 @@
 using StardewModdingAPI;
 using System;
 
-namespace UIFramework.API
+namespace UIFrameworkExample.API
 {
     /// <summary>
     /// Public API interface for interacting with the UIFramework

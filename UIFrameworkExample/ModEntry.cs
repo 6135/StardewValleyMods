@@ -3,7 +3,7 @@ using StardewModdingAPI;
 using StardewModdingAPI.Events;
 using StardewValley;
 using System;
-using UIFramework.API;
+using UIFrameworkExample.API;
 
 namespace UIFrameworkExample
 {
@@ -115,12 +115,18 @@ namespace UIFrameworkExample
                 _uiApi.RegisterInputHandler(nameInputId, OnInputChanged);
 
                 // Create a grid layout
-                string gridLayoutId = _uiApi.CreateGridLayout(_mainMenuId, "mainGrid", 2, 3, 200, 60);
+                string gridLayoutId = _uiApi.CreateGridLayout(_mainMenuId, "mainGrid");
 
-                // Add some components to the grid
-                for (int i = 0; i < 2; i++)
+                // Set grid spacing for better visual separation
+                _uiApi.SetGridSpacing(_mainMenuId, gridLayoutId, 10, 10);
+
+                // Add components to the grid
+                // The grid is 12x12 cells by default (defined in GridLayout.GRID_COLUMNS and GridLayout.GRID_ROWS)
+
+                // Add buttons to different cells in the grid
+                for (int i = 0; i < 3; i++) // Using just the first 3 columns
                 {
-                    for (int j = 0; j < 3; j++)
+                    for (int j = 0; j < 3; j++) // And first 3 rows
                     {
                         if (i == 0 && j == 0) continue; // Skip first cell
 
@@ -128,13 +134,44 @@ namespace UIFrameworkExample
                             _mainMenuId,
                             $"gridButton_{i}_{j}",
                             $"Button {i},{j}",
-                            x: 300, // These will be repositioned by the grid
-                            y: 200
+                            x: 0, // Position will be set by the grid
+                            y: 0,
+                            width: 90,
+                            height: 40
                         );
 
+                        // Add to grid - based on the API, we specify column, row, columnSpan, rowSpan
                         _uiApi.AddComponentToGrid(_mainMenuId, gridLayoutId, buttonId, i, j);
                     }
                 }
+
+                // Add a button that spans multiple cells
+                string wideButtonId = _uiApi.CreateButton(
+                    _mainMenuId,
+                    "wideButton",
+                    "Wide Button",
+                    x: 0,
+                    y: 0,
+                    width: 200,
+                    height: 40
+                );
+
+                // Add to grid spanning 2 columns
+                _uiApi.AddComponentToGrid(_mainMenuId, gridLayoutId, wideButtonId, 0, 5, 2, 1);
+
+                // Add a tall button that spans multiple rows
+                string tallButtonId = _uiApi.CreateButton(
+                    _mainMenuId,
+                    "tallButton",
+                    "Tall",
+                    x: 0,
+                    y: 0,
+                    width: 80,
+                    height: 100
+                );
+
+                // Add to grid spanning 2 rows
+                _uiApi.AddComponentToGrid(_mainMenuId, gridLayoutId, tallButtonId, 3, 0, 1, 2);
 
                 Monitor.Log("UI Initialized successfully", LogLevel.Info);
             }
@@ -146,7 +183,6 @@ namespace UIFrameworkExample
 
         public void ShowUI()
         {
-            Game1.addHUDMessage(new HUDMessage("Button was clicked!", HUDMessage.newQuest_type));
             if (_uiApi != null)
             {
                 _uiApi.ShowMenu(_mainMenuId);
