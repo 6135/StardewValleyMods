@@ -44,6 +44,8 @@ namespace UIFrameworkExample
                 InitializeUI();
                 _uiInitialized = true;
 
+                // Register hotkey to show/hide menu
+                _uiApi.RegisterHotkey("ToggleExampleMenu", SButton.F8, ShowUI);
             }
         }
 
@@ -58,11 +60,30 @@ namespace UIFrameworkExample
                     width: 600,
                     height: 400,
                     showCloseButton: true,
-                    toggleKey: SButton.F9
+                    toggleKey: SButton.F8
                 );
 
                 // Register the menu with the framework
                 _uiApi.RegisterMenu(_mainMenuId);
+
+                // Add a label to the menu
+                string welcomeLabelId = _uiApi.CreateLabel(
+                    _mainMenuId,
+                    "welcomeLabel",
+                    "Welcome to the Example UI!",
+                    x: 50,
+                    y: 50
+                );
+
+                // Add a button that does something
+                string actionButtonId = _uiApi.CreateButton(
+                    _mainMenuId,
+                    "actionButton",
+                    "Click Me!",
+                    x: 50,
+                    y: 100,
+                    onClick: OnActionButtonClicked
+                );
 
                 // Add a text input
                 string nameInputId = _uiApi.CreateTextInput(
@@ -76,14 +97,44 @@ namespace UIFrameworkExample
                     onValueChanged: OnNameInputChanged
                 );
 
+                // Set tooltips for components
+                _uiApi.SetComponentTooltip(_mainMenuId, actionButtonId, "Click this button to perform an action");
                 _uiApi.SetComponentTooltip(_mainMenuId, nameInputId, "Enter your name here");
 
+                // Customize button colors
+                _uiApi.SetButtonColors(
+                    _mainMenuId,
+                    actionButtonId,
+                    textColor: Color.White,
+                    backgroundColor: new Color(75, 105, 175),
+                    hoverColor: new Color(100, 130, 200)
+                );
 
                 // Add event handlers for components
+                _uiApi.RegisterClickHandler(actionButtonId, OnButtonClicked);
                 _uiApi.RegisterInputHandler(nameInputId, OnInputChanged);
 
                 // Create a grid layout
-                string gridLayoutId = _uiApi.CreateGridLayout(_mainMenuId, "mainGrid", 1, 3, 200, 60);
+                string gridLayoutId = _uiApi.CreateGridLayout(_mainMenuId, "mainGrid", 2, 3, 200, 60);
+
+                // Add some components to the grid
+                for (int i = 0; i < 2; i++)
+                {
+                    for (int j = 0; j < 3; j++)
+                    {
+                        if (i == 0 && j == 0) continue; // Skip first cell
+
+                        string buttonId = _uiApi.CreateButton(
+                            _mainMenuId,
+                            $"gridButton_{i}_{j}",
+                            $"Button {i},{j}",
+                            x: 300, // These will be repositioned by the grid
+                            y: 200
+                        );
+
+                        _uiApi.AddComponentToGrid(_mainMenuId, gridLayoutId, buttonId, i, j);
+                    }
+                }
 
                 Monitor.Log("UI Initialized successfully", LogLevel.Info);
             }

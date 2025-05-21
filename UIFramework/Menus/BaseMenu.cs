@@ -212,21 +212,20 @@ namespace UIFramework.Menus
             return isVisible;
         }
 
+        // This is a partial implementation showing just the modified PositionGridLayout method
+
         public virtual void PositionGridLayout(GridLayout layout)
         {
             if (layout == null)
                 return;
 
-            // Set the grid's origin to the menu's position, with optional title offset
-            int titleOffset = !string.IsNullOrEmpty(Config.Title) ? 50 : 0;
-            layout.SetOrigin(new Vector2(xPositionOnScreen, yPositionOnScreen + titleOffset));
+            // Update the grid layout's parent menu reference (if needed)
+            // This ensures the grid layout has the correct menu dimensions
+            layout.SetParentMenu(this);
 
-            // Update all components in the grid to reflect their new positions
-            foreach (var component in layout.GetComponents())
-            {
-                // We don't need to update the component positions here as the SetOrigin method
-                // in the GridLayout will handle updating all component positions
-            }
+            // The layout will update component positions based on the menu dimensions
+            layout.UpdateOrigin();
+            layout.UpdateComponentPositions();
         }
 
         public override void draw(SpriteBatch b)

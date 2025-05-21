@@ -33,39 +33,37 @@ namespace UIFramework.Components
             if (!Visible)
                 return;
 
-            // Draw background
-            Color currentColor = BackgroundColor;
+            // Determine button color based on state
+            Color boxColor = Color.White;
             if (!Enabled)
-                currentColor = Color.Gray;
+                boxColor = Color.Gray;
             else if (isPressed)
-                currentColor = PressedColor;
+                boxColor = PressedColor;
             else if (isHovering)
-                currentColor = HoverColor;
+                boxColor = HoverColor;
 
-            // Draw button background
-            b.Draw(
-                Game1.staminaRect,
-                new Rectangle((int)Position.X, (int)Position.Y, (int)Size.X, (int)Size.Y),
-                currentColor
+            // Draw button background using Stardew's texture box method
+            Utils.drawTextureBox(
+                b,
+                Game1.mouseCursors,
+                new Rectangle(432, 439, 9, 9),
+                (int)Position.X,
+                (int)Position.Y,
+                (int)Size.X,
+                (int)Size.Y,
+                boxColor,
+                4f,
+                false
             );
 
-            // Draw border
-            if (BorderWidth > 0)
-            {
-                DrawBorder(b, new Rectangle((int)Position.X, (int)Position.Y, (int)Size.X, (int)Size.Y), BorderWidth, BorderColor);
-            }
-
-            // Draw text
-            Vector2 textSize = Font.MeasureString(Text) * Scale;
-            Vector2 textPosition = new Vector2(
-                Position.X + (Size.X - textSize.X) / 2,
-                Position.Y + (Size.Y - textSize.Y) / 2
-            );
-
+            // Draw text centered in the button
             b.DrawString(
                 Font,
                 Text,
-                textPosition,
+                new Vector2(
+                    Position.X + (Size.X / 2) - (Font.MeasureString(Text).X / 2),
+                    Position.Y + (Size.Y / 2) - (Font.MeasureString(Text).Y / 2)
+                ),
                 Enabled ? TextColor : Color.DarkGray,
                 0f,
                 Vector2.Zero,
@@ -73,18 +71,6 @@ namespace UIFramework.Components
                 SpriteEffects.None,
                 0.9f
             );
-        }
-
-        private void DrawBorder(SpriteBatch b, Rectangle rect, int width, Color color)
-        {
-            // Top
-            b.Draw(Game1.staminaRect, new Rectangle(rect.X, rect.Y, rect.Width, width), color);
-            // Bottom
-            b.Draw(Game1.staminaRect, new Rectangle(rect.X, rect.Y + rect.Height - width, rect.Width, width), color);
-            // Left
-            b.Draw(Game1.staminaRect, new Rectangle(rect.X, rect.Y + width, width, rect.Height - (width * 2)), color);
-            // Right
-            b.Draw(Game1.staminaRect, new Rectangle(rect.X + rect.Width - width, rect.Y + width, width, rect.Height - (width * 2)), color);
         }
 
         public override void OnClick(int x, int y)

@@ -30,10 +30,12 @@ namespace UIFramework.API
             string initialValue = "", Action<string> onValueChanged = null);
 
         // Layout
-        string CreateGridLayout(string menuId, string id, int columns, int rows, int cellWidth, int cellHeight);
+        string CreateGridLayout(string menuId, string id);
 
         string AddComponentToGrid(string menuId, string layoutId, string componentId, int column, int row,
             int columnSpan = 1, int rowSpan = 1);
+
+        void SetGridSpacing(string menuId, string layoutId, int horizontalSpacing, int verticalSpacing);
 
         string CreateRelativeLayout(string menuId, string id);
 

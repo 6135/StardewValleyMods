@@ -169,8 +169,9 @@ namespace UIFramework.API
         }
 
         // Layout methods
+        // This is a partial implementation showing just the GridLayout-related methods
 
-        public string CreateGridLayout(string menuId, string id, int columns, int rows, int cellWidth, int cellHeight)
+        public string CreateGridLayout(string menuId, string id)
         {
             if (!_menus.TryGetValue(menuId, out var menu))
             {
@@ -178,7 +179,8 @@ namespace UIFramework.API
                 return string.Empty;
             }
 
-            var gridLayout = new GridLayout(columns, rows, cellWidth, cellHeight);
+            // Create a new grid layout with the menu as its parent
+            var gridLayout = new GridLayout(menu);
             _gridLayouts[id] = gridLayout;
 
             return id;
@@ -205,10 +207,36 @@ namespace UIFramework.API
                 return string.Empty;
             }
 
+            // Validate column and row values against the fixed grid size
+            if (column < 0 || column + columnSpan > GridLayout.GRID_COLUMNS ||
+                row < 0 || row + rowSpan > GridLayout.GRID_ROWS)
+            {
+                _monitor?.Log($"Cannot add component to grid: Position ({column},{row}) with span ({columnSpan},{rowSpan}) " +
+                              $"exceeds grid bounds of {GridLayout.GRID_COLUMNS}x{GridLayout.GRID_ROWS}", LogLevel.Warn);
+                return string.Empty;
+            }
+
+            // Add the component to the grid
             gridLayout.AddComponent(component, column, row, columnSpan, rowSpan);
-            menu.PositionGridLayout(gridLayout);
 
             return componentId;
+        }
+
+        public void SetGridSpacing(string menuId, string layoutId, int horizontalSpacing, int verticalSpacing)
+        {
+            if (!_menus.TryGetValue(menuId, out _))
+            {
+                _monitor?.Log($"Cannot set grid spacing: Menu with ID '{menuId}' not found", LogLevel.Warn);
+                return;
+            }
+
+            if (!_gridLayouts.TryGetValue(layoutId, out var gridLayout))
+            {
+                _monitor?.Log($"Cannot set grid spacing: Grid layout with ID '{layoutId}' not found", LogLevel.Warn);
+                return;
+            }
+
+            gridLayout.SetSpacing(horizontalSpacing, verticalSpacing);
         }
 
         public string CreateRelativeLayout(string menuId, string id)
