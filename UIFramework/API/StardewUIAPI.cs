@@ -48,6 +48,7 @@ namespace UIFramework.API
             var menu = new BaseMenu(id, config);
             return menu;
         }
+
         // If ToggleKey is set, it automatically registers it as Open + MenuID
         public void RegisterMenu(BaseMenu menu)
         {
@@ -219,6 +220,7 @@ namespace UIFramework.API
                 }
             }
         }
+
         private void OnUpdateTicked(object sender, StardewModdingAPI.Events.UpdateTickedEventArgs e)
         {
             // Nothing to do here for now

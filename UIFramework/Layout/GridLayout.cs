@@ -13,6 +13,7 @@ namespace UIFramework.Layout
         public int CellHeight { get; set; }
         public int HorizontalSpacing { get; set; } = 0;
         public int VerticalSpacing { get; set; } = 0;
+        public Vector2 Origin { get; set; } = Vector2.Zero; // Base position of the grid
 
         private readonly Dictionary<string, (int Column, int Row, int ColumnSpan, int RowSpan)> _componentPositions;
         private readonly List<BaseComponent> _components;
@@ -32,8 +33,8 @@ namespace UIFramework.Layout
             if (column < 0 || column >= Columns || row < 0 || row >= Rows)
                 throw new ArgumentOutOfRangeException($"Position ({column}, {row}) is outside the grid bounds.");
 
-            float x = column * (CellWidth + HorizontalSpacing);
-            float y = row * (CellHeight + VerticalSpacing);
+            float x = Origin.X + column * (CellWidth + HorizontalSpacing);
+            float y = Origin.Y + row * (CellHeight + VerticalSpacing);
 
             return new Vector2(x, y);
         }
@@ -164,6 +165,22 @@ namespace UIFramework.Layout
                 return position;
             }
             return null;
+        }
+
+        public void SetOrigin(Vector2 origin)
+        {
+            Vector2 offset = origin - Origin;
+            Origin = origin;
+
+            // Update all component positions based on the new origin
+            foreach (var component in _components)
+            {
+                if (_componentPositions.TryGetValue(component.Id, out var position))
+                {
+                    // Just offset the current position by the difference in origin
+                    component.Position += offset;
+                }
+            }
         }
     }
 }

@@ -8,6 +8,7 @@ using System.Collections.Generic;
 using System.Linq;
 using UIFramework.Components.Base;
 using UIFramework.Config;
+using UIFramework.Layout;
 
 namespace UIFramework.Menus
 {
@@ -66,6 +67,7 @@ namespace UIFramework.Menus
                 upperRightCloseButton = null;
             }
         }
+
         public override void receiveKeyPress(Keys key)
         {
             if (!isVisible)
@@ -101,7 +103,27 @@ namespace UIFramework.Menus
             if (Components.Any(c => c.Id == component.Id))
                 throw new ArgumentException($"Component with ID '{component.Id}' already exists");
 
+            // Add the component to the list
             Components.Add(component);
+
+            // Adjust the component position relative to menu if it's not already positioned
+            if (component.Position.X < xPositionOnScreen || component.Position.Y < yPositionOnScreen)
+            {
+                // Apply menu position offset to components not already placed relative to menu
+                // This helps with components created by layouts
+                if (!(component.Position.X >= xPositionOnScreen &&
+                     component.Position.Y >= yPositionOnScreen &&
+                     component.Position.X + component.Size.X <= xPositionOnScreen + width &&
+                     component.Position.Y + component.Size.Y <= yPositionOnScreen + height))
+                {
+                    // Add title offset if title is present
+                    int titleOffset = !string.IsNullOrEmpty(Config.Title) ? 50 : 0;
+                    component.Position = new Vector2(
+                        xPositionOnScreen + component.Position.X,
+                        yPositionOnScreen + component.Position.Y + titleOffset
+                    );
+                }
+            }
         }
 
         public virtual void RemoveComponent(string componentId)
@@ -188,6 +210,23 @@ namespace UIFramework.Menus
         public virtual bool IsVisible()
         {
             return isVisible;
+        }
+
+        public virtual void PositionGridLayout(GridLayout layout)
+        {
+            if (layout == null)
+                return;
+
+            // Set the grid's origin to the menu's position, with optional title offset
+            int titleOffset = !string.IsNullOrEmpty(Config.Title) ? 50 : 0;
+            layout.SetOrigin(new Vector2(xPositionOnScreen, yPositionOnScreen + titleOffset));
+
+            // Update all components in the grid to reflect their new positions
+            foreach (var component in layout.GetComponents())
+            {
+                // We don't need to update the component positions here as the SetOrigin method
+                // in the GridLayout will handle updating all component positions
+            }
         }
 
         public override void draw(SpriteBatch b)
