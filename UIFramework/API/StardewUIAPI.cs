@@ -48,7 +48,7 @@ namespace UIFramework.API
             var menu = new BaseMenu(id, config);
             return menu;
         }
-
+        // If ToggleKey is set, it automatically registers it as Open + MenuID
         public void RegisterMenu(BaseMenu menu)
         {
             if (menu == null)
@@ -61,6 +61,11 @@ namespace UIFramework.API
                 _menus.Remove(menu.Id);
 
             _menus[menu.Id] = menu;
+
+            if (menu.Config.ToggleKey != SButton.None)
+            {
+                this.RegisterHotkey($"Open{menu.Id}", menu.Config.ToggleKey, () => this.ShowMenu(menu.Id));
+            }
         }
 
         public void ShowMenu(string menuId)
@@ -185,9 +190,26 @@ namespace UIFramework.API
 
         private void OnButtonPressed(object sender, StardewModdingAPI.Events.ButtonPressedEventArgs e)
         {
-            if (Game1.activeClickableMenu != null && !Context.IsWorldReady)
+            // Skip if we're not in a world or if a menu is already active
+            if (!Context.IsWorldReady)
                 return;
 
+            // Check if any registered menu has this key as its toggle key
+            foreach (var menu in _menus.Values)
+            {
+                if (menu.Config.ToggleKey == e.Button)
+                {
+                    if (menu.IsVisible())
+                        menu.Hide();
+                    else
+                        menu.Show();
+
+                    // Break to prevent multiple menus with the same key from toggling
+                    break;
+                }
+            }
+
+            // Handle other registered hotkeys (existing code)
             foreach (var entry in _hotkeys)
             {
                 if (e.Button == entry.Value && _hotkeyActions.TryGetValue(entry.Key, out var action))
@@ -197,7 +219,6 @@ namespace UIFramework.API
                 }
             }
         }
-
         private void OnUpdateTicked(object sender, StardewModdingAPI.Events.UpdateTickedEventArgs e)
         {
             // Nothing to do here for now

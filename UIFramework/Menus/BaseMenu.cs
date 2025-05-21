@@ -1,5 +1,6 @@
 ﻿using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
+using Microsoft.Xna.Framework.Input;
 using StardewValley;
 using StardewValley.Menus;
 using System;
@@ -64,6 +65,31 @@ namespace UIFramework.Menus
             {
                 upperRightCloseButton = null;
             }
+        }
+        public override void receiveKeyPress(Keys key)
+        {
+            if (!isVisible)
+                return;
+
+            // Check if any submenu is visible and let it handle the key press first
+            foreach (var subMenu in SubMenus)
+            {
+                if (subMenu.IsVisible())
+                {
+                    subMenu.receiveKeyPress(key);
+                    return;
+                }
+            }
+
+            // Handle ESC key for this menu
+            if (key == Keys.Escape)
+            {
+                ExitMenu();
+                return;
+            }
+
+            // For all other keys, call the base implementation
+            base.receiveKeyPress(key);
         }
 
         public virtual void AddComponent(BaseComponent component)
@@ -133,12 +159,23 @@ namespace UIFramework.Menus
 
         public virtual void Show()
         {
+            // Only play sound if menu wasn't already visible
+            if (!isVisible)
+            {
+                Game1.playSound("bigSelect");
+            }
             isVisible = true;
             Game1.activeClickableMenu = this;
         }
 
         public virtual void Hide()
         {
+            // Only play sound if menu was visible
+            if (isVisible)
+            {
+                Game1.playSound("bigDeSelect");
+            }
+
             isVisible = false;
 
             // If this menu is the active menu, clear it
