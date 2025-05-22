@@ -1,0 +1,10 @@
+﻿{
+  "Name": "UI Framework Example",
+  "Author": "6135",
+  "Version": "1.0.0",
+  "Description": "Adds an UI Framework Example",
+  "UniqueID": "6135.UIFrameworkExample",
+  "EntryDll": "UIFrameworkExample.dll",
+  "MinimumApiVersion": "3.0.0",
+  "UpdateKeys": []
+}
