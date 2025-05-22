@@ -1,4 +1,4 @@
-﻿using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using StardewValley;
@@ -43,8 +43,8 @@ namespace UIFramework.Menus
             // If position is default (0, 0), center the menu on screen
             if (Config.Position == Vector2.Zero)
             {
-                xPositionOnScreen = Game1.viewport.Width / 2 - Config.Width / 2;
-                yPositionOnScreen = Game1.viewport.Height / 2 - Config.Height / 2;
+                xPositionOnScreen = (Game1.viewport.Width / 2) - (Config.Width / 2);
+                yPositionOnScreen = (Game1.viewport.Height / 2) - (Config.Height / 2);
             }
 
             // Setup close button if enabled
@@ -289,7 +289,7 @@ namespace UIFramework.Menus
             if (!string.IsNullOrEmpty(Config.Title))
             {
                 Vector2 titleSize = Game1.dialogueFont.MeasureString(Config.Title);
-                float titleX = xPositionOnScreen + width / 2 - titleSize.X / 2;
+                float titleX = xPositionOnScreen + (width / 2) - (titleSize.X / 2);
                 float titleY = yPositionOnScreen + 20;
 
                 b.DrawString(
@@ -460,8 +460,8 @@ namespace UIFramework.Menus
             // Recalculate menu position if it was centered
             if (Config.Position == Vector2.Zero)
             {
-                xPositionOnScreen = Game1.viewport.Width / 2 - width / 2;
-                yPositionOnScreen = Game1.viewport.Height / 2 - height / 2;
+                xPositionOnScreen = (Game1.viewport.Width / 2) - (width / 2);
+                yPositionOnScreen = (Game1.viewport.Height / 2) - (height / 2);
             }
 
             // Adjust close button position

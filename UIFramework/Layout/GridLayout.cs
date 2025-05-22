@@ -1,4 +1,4 @@
-﻿using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework;
 using System;
 using System.Collections.Generic;
 using UIFramework.Components.Base;
@@ -75,8 +75,8 @@ namespace UIFramework.Layout
             // Calculate cell dimensions based on menu size
             (float cellWidth, float cellHeight) = GetCellDimensions();
 
-            float x = Origin.X + column * (cellWidth + HorizontalSpacing);
-            float y = Origin.Y + row * (cellHeight + VerticalSpacing);
+            float x = Origin.X + (column * (cellWidth + HorizontalSpacing));
+            float y = Origin.Y + (row * (cellHeight + VerticalSpacing));
 
             return new Vector2(x, y);
         }
