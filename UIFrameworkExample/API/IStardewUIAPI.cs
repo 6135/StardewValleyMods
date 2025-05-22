@@ -10,11 +10,10 @@ namespace UIFrameworkExample.API
     public interface IStardewUIAPI
     {
         // Menu Management
-        string CreateMenu(string id, string title, int width = 800, int height = 600,
+        string CreateAndRegisterMenu(string id, string title, int width = 800, int height = 600,
             bool draggable = false, bool resizable = false, bool modal = true,
             bool showCloseButton = true, SButton toggleKey = SButton.None);
 
-        void RegisterMenu(string menuId);
 
         void ShowMenu(string menuId);
 

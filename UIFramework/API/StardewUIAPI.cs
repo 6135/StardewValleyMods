@@ -10,6 +10,7 @@ using UIFramework.Events;
 using UIFramework.Layout;
 using UIFramework.Menus;
 using UIFramework.memory;
+using System.Linq;
 
 namespace UIFramework.API
 {
@@ -21,7 +22,6 @@ namespace UIFramework.API
         private readonly Dictionary<string, Action> _hotkeyActions = new Dictionary<string, Action>();
         private readonly IModHelper _helper;
         private readonly IMonitor _monitor;
-        private readonly LayoutManager _layoutManager = new LayoutManager();
 
         // Track components by ID for external reference
         private readonly Dictionary<string, BaseComponent> _components = new Dictionary<string, BaseComponent>();
@@ -43,7 +43,7 @@ namespace UIFramework.API
 
         // IStardewUIAPI implementation methods
 
-        public string CreateMenu(string id, string title, int width = 800, int height = 600,
+        public string CreateAndRegisterMenu(string id, string title, int width = 800, int height = 600,
             bool draggable = false, bool resizable = false, bool modal = true,
             bool showCloseButton = true, SButton toggleKey = SButton.None)
         {
@@ -68,21 +68,12 @@ namespace UIFramework.API
             var menu = new BaseMenu(id, config);
             _menus[id] = menu;
 
-            return id;
-        }
-
-        public void RegisterMenu(string menuId)
-        {
-            if (!_menus.TryGetValue(menuId, out var menu))
-            {
-                _monitor?.Log($"Cannot register menu: Menu with ID '{menuId}' not found", LogLevel.Warn);
-                return;
-            }
-
             if (menu.Config.ToggleKey != SButton.None)
             {
                 this.RegisterHotkey($"Open{menu.Id}", menu.Config.ToggleKey, () => this.ShowMenu(menu.Id));
             }
+
+            return id;
         }
 
         public void ShowMenu(string menuId)
@@ -439,7 +430,545 @@ namespace UIFramework.API
             label.SetText(text);
         }
 
-        // Event handlers (unchanged from original)
+        // ... existing fields and methods ...
+
+        #region Advanced Management Methods - Internal Data Access
+
+        /// <summary>
+        /// Gets menu(s) from the framework. Use with caution as this exposes internal state.
+        /// </summary>
+        /// <param name="id">Optional specific menu ID. If null, returns all menus.</param>
+        /// <returns>Dictionary of menu ID to menu object mappings</returns>
+        public Dictionary<string, object> GetMenus(string id = null)
+        {
+            try
+            {
+                var result = new Dictionary<string, object>();
+
+                if (!string.IsNullOrEmpty(id))
+                {
+                    // Return specific menu if it exists
+                    if (_menus.TryGetValue(id, out var specificMenu))
+                    {
+                        result[id] = specificMenu;
+                    }
+                    else
+                    {
+                        _monitor?.Log($"Menu with ID '{id}' not found", LogLevel.Debug);
+                    }
+                }
+                else
+                {
+                    // Return all menus (deep copy to prevent external modifications)
+                    foreach (var kvp in _menus)
+                    {
+                        result[kvp.Key] = kvp.Value;
+                    }
+                }
+
+                return result;
+            }
+            catch (Exception ex)
+            {
+                _monitor?.Log($"Error getting menus: {ex.Message}", LogLevel.Error);
+                return new Dictionary<string, object>();
+            }
+        }
+
+        /// <summary>
+        /// Gets registered hotkey(s). Use with caution as this exposes internal state.
+        /// </summary>
+        /// <param name="id">Optional specific hotkey ID. If null, returns all hotkeys.</param>
+        /// <returns>Dictionary of hotkey ID to SButton mappings</returns>
+        public Dictionary<string, SButton> GetHotkeys(string id = null)
+        {
+            try
+            {
+                var result = new Dictionary<string, SButton>();
+
+                if (!string.IsNullOrEmpty(id))
+                {
+                    if (_hotkeys.TryGetValue(id, out var specificHotkey))
+                    {
+                        result[id] = specificHotkey;
+                    }
+                    else
+                    {
+                        _monitor?.Log($"Hotkey with ID '{id}' not found", LogLevel.Debug);
+                    }
+                }
+                else
+                {
+                    // Return copy of all hotkeys
+                    foreach (var kvp in _hotkeys)
+                    {
+                        result[kvp.Key] = kvp.Value;
+                    }
+                }
+
+                return result;
+            }
+            catch (Exception ex)
+            {
+                _monitor?.Log($"Error getting hotkeys: {ex.Message}", LogLevel.Error);
+                return new Dictionary<string, SButton>();
+            }
+        }
+
+        /// <summary>
+        /// Gets registered hotkey action(s). Use with caution as this exposes internal state.
+        /// </summary>
+        /// <param name="id">Optional specific action ID. If null, returns all actions.</param>
+        /// <returns>Dictionary of action ID to Action mappings</returns>
+        public Dictionary<string, Action> GetRegisteredHotkeyActions(string id = null)
+        {
+            try
+            {
+                var result = new Dictionary<string, Action>();
+
+                if (!string.IsNullOrEmpty(id))
+                {
+                    if (_hotkeyActions.TryGetValue(id, out var specificAction))
+                    {
+                        result[id] = specificAction;
+                    }
+                    else
+                    {
+                        _monitor?.Log($"Hotkey action with ID '{id}' not found", LogLevel.Debug);
+                    }
+                }
+                else
+                {
+                    // Return copy of all hotkey actions
+                    foreach (var kvp in _hotkeyActions)
+                    {
+                        result[kvp.Key] = kvp.Value;
+                    }
+                }
+
+                return result;
+            }
+            catch (Exception ex)
+            {
+                _monitor?.Log($"Error getting hotkey actions: {ex.Message}", LogLevel.Error);
+                return new Dictionary<string, Action>();
+            }
+        }
+
+        /// <summary>
+        /// Gets registered component(s). Use with caution as this exposes internal state.
+        /// </summary>
+        /// <param name="id">Optional specific component ID. If null, returns all components.</param>
+        /// <returns>Dictionary of component ID to component object mappings</returns>
+        public Dictionary<string, object> GetRegisteredComponents(string id = null)
+        {
+            try
+            {
+                var result = new Dictionary<string, object>();
+
+                if (!string.IsNullOrEmpty(id))
+                {
+                    if (_components.TryGetValue(id, out var specificComponent))
+                    {
+                        result[id] = specificComponent;
+                    }
+                    else
+                    {
+                        _monitor?.Log($"Component with ID '{id}' not found", LogLevel.Debug);
+                    }
+                }
+                else
+                {
+                    // Return copy of all components
+                    foreach (var kvp in _components)
+                    {
+                        result[kvp.Key] = kvp.Value;
+                    }
+                }
+
+                return result;
+            }
+            catch (Exception ex)
+            {
+                _monitor?.Log($"Error getting components: {ex.Message}", LogLevel.Error);
+                return new Dictionary<string, object>();
+            }
+        }
+
+        /// <summary>
+        /// Gets registered grid layout(s). Use with caution as this exposes internal state.
+        /// </summary>
+        /// <param name="id">Optional specific layout ID. If null, returns all grid layouts.</param>
+        /// <returns>Dictionary of layout ID to grid layout object mappings</returns>
+        public Dictionary<string, object> GetRegisteredGridLayouts(string id = null)
+        {
+            try
+            {
+                var result = new Dictionary<string, object>();
+
+                if (!string.IsNullOrEmpty(id))
+                {
+                    if (_gridLayouts.TryGetValue(id, out var specificLayout))
+                    {
+                        result[id] = specificLayout;
+                    }
+                    else
+                    {
+                        _monitor?.Log($"Grid layout with ID '{id}' not found", LogLevel.Debug);
+                    }
+                }
+                else
+                {
+                    // Return copy of all grid layouts
+                    foreach (var kvp in _gridLayouts)
+                    {
+                        result[kvp.Key] = kvp.Value;
+                    }
+                }
+
+                return result;
+            }
+            catch (Exception ex)
+            {
+                _monitor?.Log($"Error getting grid layouts: {ex.Message}", LogLevel.Error);
+                return new Dictionary<string, object>();
+            }
+        }
+
+        /// <summary>
+        /// Gets registered relative layout(s). Use with caution as this exposes internal state.
+        /// </summary>
+        /// <param name="id">Optional specific layout ID. If null, returns all relative layouts.</param>
+        /// <returns>Dictionary of layout ID to relative layout object mappings</returns>
+        public Dictionary<string, object> GetRegisteredRelativeLayouts(string id = null)
+        {
+            try
+            {
+                var result = new Dictionary<string, object>();
+
+                if (!string.IsNullOrEmpty(id))
+                {
+                    if (_relativeLayouts.TryGetValue(id, out var specificLayout))
+                    {
+                        result[id] = specificLayout;
+                    }
+                    else
+                    {
+                        _monitor?.Log($"Relative layout with ID '{id}' not found", LogLevel.Debug);
+                    }
+                }
+                else
+                {
+                    // Return copy of all relative layouts
+                    foreach (var kvp in _relativeLayouts)
+                    {
+                        result[kvp.Key] = kvp.Value;
+                    }
+                }
+
+                return result;
+            }
+            catch (Exception ex)
+            {
+                _monitor?.Log($"Error getting relative layouts: {ex.Message}", LogLevel.Error);
+                return new Dictionary<string, object>();
+            }
+        }
+
+        #endregion Advanced Management Methods - Internal Data Access
+
+        #region Replace/Alter Methods - Advanced Management
+
+        /// <summary>
+        /// Replaces or updates an existing menu. Use with extreme caution.
+        /// </summary>
+        /// <param name="id">Menu ID to replace</param>
+        /// <param name="menu">New menu object</param>
+        /// <returns>True if replacement was successful, false otherwise</returns>
+        public bool ReplaceMenu(string id, object menu)
+        {
+            if (string.IsNullOrEmpty(id))
+            {
+                _monitor?.Log("Cannot replace menu: ID cannot be null or empty", LogLevel.Warn);
+                return false;
+            }
+
+            if (menu == null)
+            {
+                _monitor?.Log("Cannot replace menu: Menu object cannot be null", LogLevel.Warn);
+                return false;
+            }
+
+            try
+            {
+                // Validate that the object is actually a BaseMenu
+                if (!(menu is BaseMenu baseMenu))
+                {
+                    _monitor?.Log($"Cannot replace menu '{id}': Object is not a BaseMenu", LogLevel.Error);
+                    return false;
+                }
+
+                // Check if menu exists
+                if (!_menus.ContainsKey(id))
+                {
+                    _monitor?.Log($"Cannot replace menu '{id}': Menu does not exist", LogLevel.Warn);
+                    return false;
+                }
+
+                // Hide existing menu if it's visible
+                if (_menus[id].IsVisible())
+                {
+                    _menus[id].Hide();
+                }
+
+                // Replace the menu
+                _menus[id] = baseMenu;
+
+                _monitor?.Log($"Successfully replaced menu '{id}'", LogLevel.Debug);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                _monitor?.Log($"Error replacing menu '{id}': {ex.Message}", LogLevel.Error);
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Replaces or updates an existing hotkey binding.
+        /// </summary>
+        /// <param name="id">Hotkey ID to replace</param>
+        /// <param name="key">New SButton key</param>
+        /// <returns>True if replacement was successful, false otherwise</returns>
+        public bool ReplaceHotkey(string id, SButton key)
+        {
+            if (string.IsNullOrEmpty(id))
+            {
+                _monitor?.Log("Cannot replace hotkey: ID cannot be null or empty", LogLevel.Warn);
+                return false;
+            }
+
+            try
+            {
+                if (!_hotkeys.ContainsKey(id))
+                {
+                    _monitor?.Log($"Cannot replace hotkey '{id}': Hotkey does not exist", LogLevel.Warn);
+                    return false;
+                }
+
+                // Check if the new key is already in use by another hotkey
+                var existingKeyUsage = _hotkeys.FirstOrDefault(kvp => kvp.Value == key && kvp.Key != id);
+                if (!existingKeyUsage.Equals(default(KeyValuePair<string, SButton>)))
+                {
+                    _monitor?.Log($"Warning: Key '{key}' is already used by hotkey '{existingKeyUsage.Key}'", LogLevel.Warn);
+                }
+
+                _hotkeys[id] = key;
+                _monitor?.Log($"Successfully replaced hotkey '{id}' with key '{key}'", LogLevel.Debug);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                _monitor?.Log($"Error replacing hotkey '{id}': {ex.Message}", LogLevel.Error);
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Replaces or updates an existing hotkey action.
+        /// </summary>
+        /// <param name="id">Action ID to replace</param>
+        /// <param name="action">New Action delegate</param>
+        /// <returns>True if replacement was successful, false otherwise</returns>
+        public bool ReplaceRegisteredHotkeyActions(string id, Action action)
+        {
+            if (string.IsNullOrEmpty(id))
+            {
+                _monitor?.Log("Cannot replace hotkey action: ID cannot be null or empty", LogLevel.Warn);
+                return false;
+            }
+
+            if (action == null)
+            {
+                _monitor?.Log("Cannot replace hotkey action: Action cannot be null", LogLevel.Warn);
+                return false;
+            }
+
+            try
+            {
+                if (!_hotkeyActions.ContainsKey(id))
+                {
+                    _monitor?.Log($"Cannot replace hotkey action '{id}': Action does not exist", LogLevel.Warn);
+                    return false;
+                }
+
+                _hotkeyActions[id] = action;
+                _monitor?.Log($"Successfully replaced hotkey action '{id}'", LogLevel.Debug);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                _monitor?.Log($"Error replacing hotkey action '{id}': {ex.Message}", LogLevel.Error);
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Replaces or updates an existing registered component.
+        /// </summary>
+        /// <param name="id">Component ID to replace</param>
+        /// <param name="component">New component object</param>
+        /// <returns>True if replacement was successful, false otherwise</returns>
+        public bool ReplaceRegisteredComponents(string id, object component)
+        {
+            if (string.IsNullOrEmpty(id))
+            {
+                _monitor?.Log("Cannot replace component: ID cannot be null or empty", LogLevel.Warn);
+                return false;
+            }
+
+            if (component == null)
+            {
+                _monitor?.Log("Cannot replace component: Component cannot be null", LogLevel.Warn);
+                return false;
+            }
+
+            try
+            {
+                // Validate that the object is actually a BaseComponent
+                if (!(component is BaseComponent baseComponent))
+                {
+                    _monitor?.Log($"Cannot replace component '{id}': Object is not a BaseComponent", LogLevel.Error);
+                    return false;
+                }
+
+                if (!_components.ContainsKey(id))
+                {
+                    _monitor?.Log($"Cannot replace component '{id}': Component does not exist", LogLevel.Warn);
+                    return false;
+                }
+
+                // Update component ID to match the key
+                baseComponent.Id = id;
+
+                // Find which menu(s) contain this component and update them
+                bool componentUpdatedInMenu = false;
+                foreach (var menu in _menus.Values)
+                {
+                    var existingComponent = menu.GetComponent(id);
+                    if (existingComponent != null)
+                    {
+                        menu.RemoveComponent(id);
+                        menu.AddComponent(baseComponent);
+                        componentUpdatedInMenu = true;
+                    }
+                }
+
+                _components[id] = baseComponent;
+
+                _monitor?.Log($"Successfully replaced component '{id}'{(componentUpdatedInMenu ? " and updated in menus" : "")}", LogLevel.Debug);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                _monitor?.Log($"Error replacing component '{id}': {ex.Message}", LogLevel.Error);
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Replaces or updates an existing grid layout.
+        /// </summary>
+        /// <param name="id">Layout ID to replace</param>
+        /// <param name="gridLayout">New grid layout object</param>
+        /// <returns>True if replacement was successful, false otherwise</returns>
+        public bool ReplaceRegisteredGridLayouts(string id, object gridLayout)
+        {
+            if (string.IsNullOrEmpty(id))
+            {
+                _monitor?.Log("Cannot replace grid layout: ID cannot be null or empty", LogLevel.Warn);
+                return false;
+            }
+
+            if (gridLayout == null)
+            {
+                _monitor?.Log("Cannot replace grid layout: Layout cannot be null", LogLevel.Warn);
+                return false;
+            }
+
+            try
+            {
+                // Validate that the object is actually a GridLayout
+                if (!(gridLayout is GridLayout grid))
+                {
+                    _monitor?.Log($"Cannot replace grid layout '{id}': Object is not a GridLayout", LogLevel.Error);
+                    return false;
+                }
+
+                if (!_gridLayouts.ContainsKey(id))
+                {
+                    _monitor?.Log($"Cannot replace grid layout '{id}': Layout does not exist", LogLevel.Warn);
+                    return false;
+                }
+
+                _gridLayouts[id] = grid;
+                _monitor?.Log($"Successfully replaced grid layout '{id}'", LogLevel.Debug);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                _monitor?.Log($"Error replacing grid layout '{id}': {ex.Message}", LogLevel.Error);
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Replaces or updates an existing relative layout.
+        /// </summary>
+        /// <param name="id">Layout ID to replace</param>
+        /// <param name="relativeLayout">New relative layout object</param>
+        /// <returns>True if replacement was successful, false otherwise</returns>
+        public bool ReplaceRegisteredRelativeLayouts(string id, object relativeLayout)
+        {
+            if (string.IsNullOrEmpty(id))
+            {
+                _monitor?.Log("Cannot replace relative layout: ID cannot be null or empty", LogLevel.Warn);
+                return false;
+            }
+
+            if (relativeLayout == null)
+            {
+                _monitor?.Log("Cannot replace relative layout: Layout cannot be null", LogLevel.Warn);
+                return false;
+            }
+
+            try
+            {
+                // Validate that the object is actually a RelativeLayout
+                if (!(relativeLayout is RelativeLayout relative))
+                {
+                    _monitor?.Log($"Cannot replace relative layout '{id}': Object is not a RelativeLayout", LogLevel.Error);
+                    return false;
+                }
+
+                if (!_relativeLayouts.ContainsKey(id))
+                {
+                    _monitor?.Log($"Cannot replace relative layout '{id}': Layout does not exist", LogLevel.Warn);
+                    return false;
+                }
+
+                _relativeLayouts[id] = relative;
+                _monitor?.Log($"Successfully replaced relative layout '{id}'", LogLevel.Debug);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                _monitor?.Log($"Error replacing relative layout '{id}': {ex.Message}", LogLevel.Error);
+                return false;
+            }
+        }
+
+        #endregion Replace/Alter Methods - Advanced Management
 
         private void OnButtonPressed(object sender, StardewModdingAPI.Events.ButtonPressedEventArgs e)
         {

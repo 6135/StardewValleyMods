@@ -54,7 +54,7 @@ namespace UIFrameworkExample
             try
             {
                 // Create a main menu
-                _uiApi.CreateMenu(
+                _uiApi.CreateAndRegisterMenu(
                     _mainMenuId,
                     "Example UI Framework Menu",
                     width: 600,
@@ -63,8 +63,6 @@ namespace UIFrameworkExample
                     toggleKey: SButton.F8
                 );
 
-                // Register the menu with the framework
-                _uiApi.RegisterMenu(_mainMenuId);
 
                 // Add a label to the menu
                 string welcomeLabelId = _uiApi.CreateLabel(
