@@ -84,7 +84,7 @@ namespace UIFramework.Components
             string displayText = Password ? new string(PasswordChar, Value.Length) : Value;
 
             // Calculate text position with padding
-            Vector2 textPosition = new Vector2(Position.X + Padding, Position.Y + (Size.Y - Font.MeasureString(displayText).Y * Scale) / 2);
+            Vector2 textPosition = new Vector2(Position.X + Padding, Position.Y + ((Size.Y - (Font.MeasureString(displayText).Y * Scale)) / 2));
 
             // Determine if text needs to be truncated to fit the input field
             Vector2 textSize = Font.MeasureString(displayText) * Scale;
@@ -137,7 +137,7 @@ namespace UIFramework.Components
             if (Selected && cursorVisible)
             {
                 string textBeforeCursor = Password ? new string(PasswordChar, cursorPosition) : Value.Substring(0, cursorPosition);
-                float cursorX = textPosition.X + Font.MeasureString(textBeforeCursor).X * Scale;
+                float cursorX = textPosition.X + (Font.MeasureString(textBeforeCursor).X * Scale);
 
                 // Ensure cursor is visible within the text input bounds
                 if (cursorX >= Position.X + Padding && cursorX <= Position.X + Size.X - Padding)
@@ -146,7 +146,7 @@ namespace UIFramework.Components
                         Game1.staminaRect,
                         new Rectangle(
                             (int)cursorX,
-                            (int)(Position.Y + (Size.Y - Font.LineSpacing * Scale) / 2),
+                            (int)(Position.Y + ((Size.Y - (Font.LineSpacing * Scale)) / 2)),
                             2,
                             (int)(Font.LineSpacing * Scale)
                         ),
