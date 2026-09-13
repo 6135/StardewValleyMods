@@ -454,3 +454,64 @@ Decisions taken in this document:
 - Layout owned by containers with a measure/arrange pass (not absolute positions with ratio rescaling).
 - Overlay pass + centralized focus manager instead of per‑component global state.
 - Per‑consumer API instances so ids, hotkeys and styles are namespaced and cleaned up per mod.
+
+---
+
+## 16. Roadmap beyond v1
+
+v1 (§1–§15) ships a code‑first framework that one mod uses to build its own screens. v2 opens those screens to *other* mods. v3 is a list of optional differentiators, each independent, picked up as time allows.
+
+### 16.1 v2 — Modders hook their own components into any framework screen
+
+Goal: a modder can contribute UI to a screen they do not own, and can build that contribution out of the framework's out‑of‑the‑box components rather than drawing pixels themselves.
+
+**Extension slots**
+
+- A screen owner declares named slots anywhere in its tree: `api.AddSlot(parent, "results.footer")`. A slot is an `IUIContainer` with an optional layout hint (stack direction, max height) and an optional `Func<bool>` visibility predicate.
+- Any other mod registers a contribution: `api.ContributeTo("6135.ProfitCalculator", "results.footer", (IUIContainer slot, IUIScreenContext ctx) => { … })`. The builder callback receives the slot container and adds normal components to it (labels, checkboxes, a grid, a custom component). Contributions run every time the screen is built, so they see fresh state.
+- `IUIScreenContext` exposes what the owner chooses to share: read‑only values (`ctx.GetString("season")`, `ctx.GetNumber("day")`), commands the owner exports (`ctx.Invoke("recalculate")`) and an event bus (`ctx.Subscribe("results.changed", Action)`). Owners publish values and commands explicitly through `api.Expose(menu, key, Func<string>)` / `api.ExposeCommand(menu, key, Action)`. Nothing else is reachable, which keeps owners in control and keeps the surface proxy‑safe (strings, numbers, delegates only).
+- Ordering and conflicts: contributions are sorted by an optional `priority` then by mod id; a slot can declare `MaxContributions`; the owner can veto by contributor id. Contributions from a mod that throws are muted and logged, as in §10.
+- Discovery: `api.ListSlots(ownerModId)` returns declared slots with their hints, so contributing mods can adapt at runtime and a debug command can print the slot map of every open screen.
+
+**Reusable composite components**
+
+- Consumers can package a subtree as a **composite**: `api.DefineComposite("6135.Shared.MoneyField", (IUIContainer host, IUICompositeArgs args) => { label + number input + currency icon })`. Composites are registered by one mod but resolvable by any mod through `api.AddComposite(parent, id, "6135.Shared.MoneyField", args)`. Args are a string‑keyed bag of primitives and delegates (proxy‑safe).
+- Composites expose their own values and commands via the same `IUIScreenContext` mechanism, so a composite behaves like a first‑class component to whoever uses it.
+- This is how mods share widgets without sharing assemblies: the framework is the only DLL anyone references.
+
+**Custom components that embed built‑ins**
+
+- `IUICustomComponent` (§7) gains an optional `Build(IUIContainer host)` step: the framework calls it once with a container the custom component owns, so a custom component can be "a hand‑drawn frame around a Stack of built‑in inputs". Layout, focus and events of the embedded built‑ins are handled by the framework; the custom component only draws its own chrome and handles its own clicks.
+- The adapter forwards `Measure` to the embedded container when the custom component returns `null` from its own `Measure`.
+
+**Screen decoration and wrapping**
+
+- `api.OnScreenBuilt(ownerModId, menuId, Action<IUIMenu>)` lets a mod inspect and adjust an existing screen after it is built (hide an element, change a tooltip, add a button next to an existing one via `Find`). Runs after all slot contributions, so decorators see the final tree.
+- Owners can mark elements `Sealed = true` to opt out of external modification.
+
+**Deliverables**
+
+- API additions: `AddSlot`, `ContributeTo`, `ListSlots`, `Expose`, `ExposeCommand`, `IUIScreenContext`, `DefineComposite`, `AddComposite`, `IUICompositeArgs`, `OnScreenBuilt`, `Sealed`, `IUICustomComponent.Build`.
+- Profit Calculator declares slots (`settings.extra`, `results.header`, `results.footer`, `crop.hoverbox.extra`) and exposes its settings and the `recalculate` command; the example mod contributes a row to each to prove the path.
+- Docs: a "Contributing UI to another mod" guide plus a "Publishing a composite" guide.
+
+### 16.2 v3 — Optional differentiators
+
+Each item stands alone; none is required by another unless noted.
+
+| Feature | What it is | Builds on | Value |
+|---|---|---|---|
+| **In‑game inspector and editor** | Devtools‑style overlay: hover any element to see id, bounds, margins, grid tracks; drag to nudge, edit properties live; **export the resulting C# builder code** to the clipboard/log. | Tree + debug overlay (§11), layout engine | Cuts the compile‑launch‑look loop to seconds; no other Stardew UI framework has it. |
+| **Player‑owned layout** | Every framework window is movable/resizable/collapsible by the player; positions and sizes persist per save via `helper.Data`. Zero consumer code. | `MenuHost`, `MenuRegistry` | Consistent player experience across all consumer mods. |
+| **Theme assets** | Theme = Content Patcher‑patchable asset (fonts, colors, box sprites, spacing scale) with dark, high‑contrast and colorblind variants. One theme applies to every consumer. | `Theme`/`DefaultTheme` (§9) | Players restyle all mod UIs at once; modders get it free. |
+| **Data grid** | Virtualized table with sortable/filterable columns, column resize, cell renderers, row selection and multi‑select events. | `ListView`, `ScrollView`, `Grid` | Replaces the Profit Calculator results list; nothing comparable exists. |
+| **Signals** | `api.Signal(get)`, `api.Computed(() => …)` with automatic dependency tracking; bound labels/inputs re‑render only when inputs change. | Value binding (§6.2) | Reactive UI without StarML or view models. |
+| **Auto‑forms from POCOs** | Generate a complete form from an object using attributes (`[Range]`, `[Choices]`, `[Section]`, `[Tooltip]`), with validation, dirty tracking, undo/redo, Save/Cancel. | Grid, inputs, validators | GMCM‑style forms for any object on any screen. |
+| **HUD widgets and toasts** | Non‑modal overlays drawn during gameplay (counters, timers, notifications) using the same components, drawn from `Display.RenderedHud`. | Components, player‑owned layout | Extends the framework beyond menus. |
+| **Accessibility** | Focused‑element announcements via the Stardew Access API, text scaling, reduced motion, high‑contrast theme. | FocusManager, themes | First accessible UI framework for SDV. |
+| **Rich inline text** | Markup in labels/tooltips: colored spans, item icons, links, bold. | Label, tooltip builder | Better tooltips and result rows. |
+| **Headless test harness** | Public `UIFramework.Testing` package: fake `ITextMeasurer`, scripted input driver, tree snapshot assertions; consumers test screens in CI without the game. | Tests (§14) | Unique developer‑experience win. |
+| **Pseudo‑localization mode** | Config flag that stretches and accents all strings to catch overflow before translation. | Label | Cheap, useful. |
+| **Debug console** | `ui_list`, `ui_dump <menu>`, `ui_perf`, `ui_slots` console commands. | Registry, inspector | Support and diagnostics. |
+
+Suggested order if all are pursued: inspector → theme assets → data grid → player‑owned layout → signals → auto‑forms → HUD widgets → accessibility → rich text → test harness → pseudo‑localization → debug console.
