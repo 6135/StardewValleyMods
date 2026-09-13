@@ -13,7 +13,7 @@ namespace UIFramework.Api
     /// The per-consumer facade handed out by <see cref="ModEntry.GetApi(IModInfo)"/>. Validates arguments, keeps ids
     /// namespaced to the consumer, and creates the internal element classes behind the public interfaces.
     /// </summary>
-    internal sealed class StardewUIApi : IStardewUIApi
+    public sealed class StardewUIApi : IStardewUIApi
     {
         public const string Version = "1.0.0";
 
@@ -21,7 +21,7 @@ namespace UIFramework.Api
         private readonly MenuRegistry menus;
         private readonly HotkeyService hotkeys;
 
-        public StardewUIApi(ConsumerContext consumer, MenuRegistry menus, HotkeyService hotkeys)
+        internal StardewUIApi(ConsumerContext consumer, MenuRegistry menus, HotkeyService hotkeys)
         {
             this.consumer = consumer;
             this.menus = menus;
