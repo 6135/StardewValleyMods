@@ -1,0 +1,207 @@
+using System;
+using Microsoft.Xna.Framework.Input;
+using UIFramework.Api;
+
+namespace UIFramework.Core
+{
+    /// <summary>
+    /// Turns the raw callbacks the game gives <see cref="Hosting.MenuHost"/> into routed UI events:
+    /// overlay first → hit-test → deliver to the target → bubble to ancestors while not handled → menu-level fallback.
+    /// Also owns mouse capture (drag) and the hover / tooltip bookkeeping.
+    /// </summary>
+    internal sealed class EventRouter
+    {
+        private readonly UIMenu menu;
+
+        /// <summary>Element that received the last left click; gets held / release callbacks.</summary>
+        public UIElement? Captured { get; private set; }
+
+        public EventRouter(UIMenu menu)
+        {
+            this.menu = menu;
+        }
+
+        // ---------------------------------------------------------------------------------------------------------
+        //  Mouse
+        // ---------------------------------------------------------------------------------------------------------
+
+        /// <summary>Route a click. Returns true if any element (or popup) handled it.</summary>
+        public bool Click(int x, int y, UIMouseButton button)
+        {
+            Captured = null;
+
+            // 1. overlays get first pick; clicking outside an open popup closes it and swallows the click
+            var probe = new UIClickEvent(null, x, y, button);
+            if (menu.Overlay.TryHandleClick(probe))
+                return true;
+
+            // 2. hit-test
+            UIElement? target = menu.Root.HitTest(x, y);
+
+            // 3. focus: focusable target takes it, empty space clears it
+            if (button == UIMouseButton.Left)
+            {
+                if (target != null && target.Focusable)
+                    menu.Focus.SetFocus(target);
+                else if (target == null || !target.Focusable)
+                    menu.Focus.ClearFocus();
+                Captured = target;
+            }
+
+            if (target == null)
+                return false;
+
+            // 4. bubble
+            var e = new UIClickEvent(target, x, y, button);
+            for (UIElement? cur = target; cur != null && !e.Handled; cur = cur.ParentElement)
+            {
+                if (cur.HandleClick(e))
+                    e.Handled = true;
+            }
+            return e.Handled;
+        }
+
+        public void ClickHeld(int x, int y)
+        {
+            Captured?.HandleClickHeld(x, y);
+        }
+
+        public void ClickReleased(int x, int y)
+        {
+            UIElement? captured = Captured;
+            Captured = null;
+            captured?.HandleClickRelease(x, y);
+        }
+
+        /// <summary>Hover pass: raise enter / leave, track the hovered element for tooltips.</summary>
+        public void Hover(int x, int y)
+        {
+            menu.CursorX = x;
+            menu.CursorY = y;
+
+            if (menu.Overlay.TryHandleHover(x, y))
+            {
+                SetHovered(null);
+                return;
+            }
+
+            UIElement? target = menu.Root.HitTest(x, y);
+            SetHovered(target);
+            target?.HandleHoverMove(x, y);
+        }
+
+        internal void SetHovered(UIElement? target)
+        {
+            if (menu.Hovered == target)
+                return;
+            UIElement? old = menu.Hovered;
+            menu.Hovered = target;
+            menu.HoverStartMs = UIServices.NowMs();
+            old?.HandleHoverLeave();
+            target?.HandleHoverEnter();
+        }
+
+        /// <summary>Scroll wheel: popup → hovered element chain → menu.</summary>
+        public bool Scroll(int direction)
+        {
+            if (menu.Overlay.TryHandleScroll(direction, menu.CursorX, menu.CursorY))
+                return true;
+
+            for (UIElement? cur = menu.Hovered; cur != null; cur = cur.ParentElement)
+            {
+                if (cur.HandleScroll(direction))
+                    return true;
+            }
+
+            if (menu.OnScroll != null)
+            {
+                Action<int> cb = menu.OnScroll;
+                menu.Consumer.Invoke(menu.Id, "OnScroll", () => cb(direction));
+                return true;
+            }
+            return false;
+        }
+
+        // ---------------------------------------------------------------------------------------------------------
+        //  Keyboard
+        // ---------------------------------------------------------------------------------------------------------
+
+        /// <summary>
+        /// Key press: focused element first, bubbling up; then menu <c>OnKey</c>; then built-in bindings
+        /// (Tab traversal, arrows, Enter → default button, Escape → cancel / close). Returns true if consumed.
+        /// </summary>
+        public bool Key(Keys key, bool shift, bool ctrl, bool alt)
+        {
+            UIElement? focused = menu.Focus.Focused;
+            var e = new UIKeyEvent(focused, key, shift, ctrl, alt);
+
+            for (UIElement? cur = focused; cur != null && !e.Handled; cur = cur.ParentElement)
+            {
+                if (cur.HandleKey(e))
+                    e.Handled = true;
+            }
+            if (e.Handled)
+                return true;
+
+            if (menu.OnKey != null)
+            {
+                Func<IUIKeyEvent, bool> cb = menu.OnKey;
+                if (menu.Consumer.Invoke(menu.Id, "OnKey", () => cb(e), false))
+                    return true;
+            }
+
+            switch (key)
+            {
+                case Keys.Tab:
+                    return menu.Focus.MoveNext(shift);
+
+                case Keys.Up:
+                    return menu.Focus.MoveDirection(0, -1);
+                case Keys.Down:
+                    return menu.Focus.MoveDirection(0, 1);
+                case Keys.Left:
+                    return menu.Focus.MoveDirection(-1, 0);
+                case Keys.Right:
+                    return menu.Focus.MoveDirection(1, 0);
+
+                case Keys.Enter:
+                case Keys.Space:
+                    // Space only activates buttons; Enter also falls through to the default button
+                    if (key == Keys.Space && (focused == null || !focused.ActivateOnEnter))
+                        return false;
+                    if (focused != null && focused.HandleActivate())
+                        return true;
+                    if (menu.DefaultButtonElement != null && menu.DefaultButtonElement.OwnerMenu == menu)
+                    {
+                        menu.DefaultButtonElement.HandleActivate();
+                        return true;
+                    }
+                    return false;
+
+                case Keys.Escape:
+                    if (menu.Overlay.HasPopups)
+                    {
+                        menu.Overlay.CloseAll();
+                        return true;
+                    }
+                    if (focused != null)
+                    {
+                        menu.Focus.ClearFocus();
+                        return true;
+                    }
+                    if (menu.CancelButtonElement != null && menu.CancelButtonElement.OwnerMenu == menu)
+                    {
+                        menu.CancelButtonElement.HandleActivate();
+                        return true;
+                    }
+                    if (menu.CloseOnEscape)
+                    {
+                        menu.Close();
+                        return true;
+                    }
+                    return false;
+            }
+            return false;
+        }
+    }
+}

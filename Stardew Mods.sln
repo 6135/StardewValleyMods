@@ -13,9 +13,9 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "[CP] Sweet Mines", "[CP] Sw
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Adjustable Fertilizer", "Adjustable Fertilizer\Adjustable Fertilizer.csproj", "{0E2DCBFA-6A6F-4474-9564-5B1F76427913}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UIFramework", "UIFramework\UIFramework.csproj", "{1A77A589-242F-5857-480B-7E9D9C5E064A}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "UIFramework", "StardewUIFramework\UIFramework.csproj", "{1A77A589-242F-5857-480B-7E9D9C5E064A}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UIFrameworkExample", "UIFrameworkExample\UIFrameworkExample.csproj", "{33D3C5BC-9A15-17B0-65A0-24CBAF16A45D}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "UIFrameworkExample", "UIFrameworkExample\UIFrameworkExample.csproj", "{33D3C5BC-9A15-17B0-65A0-24CBAF16A45D}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

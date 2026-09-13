@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <AssemblyName>UIFrameworkExample</AssemblyName>
+    <RootNamespace>UIFrameworkExample</RootNamespace>
+    <Version>1.0.0</Version>
+    <TargetFramework>net6.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <LangVersion>latest</LangVersion>
+    <EnableHarmony>false</EnableHarmony>
+    <GamePath>$(STARDEW_GAME_DIR)</GamePath>
+    <DefaultItemExcludes>$(DefaultItemExcludes);obj/**;bin/**</DefaultItemExcludes>
+  </PropertyGroup>
+
+  <!-- Deliberately no ProjectReference to UIFramework: this mod must compile against the copied Api/IStardewUIApi.cs only. -->
+  <ItemGroup>
+    <PackageReference Include="Pathoschild.Stardew.ModBuildConfig" Version="4.3.2" />
+  </ItemGroup>
+
+</Project>
