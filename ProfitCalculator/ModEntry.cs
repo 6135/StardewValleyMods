@@ -5,6 +5,7 @@ using ProfitCalculator.main.accessors;
 using ProfitCalculator.main.builders;
 using ProfitCalculator.main.models;
 using ProfitCalculator.main.ui;
+using ProfitCalculator.main.ui.framework;
 using ProfitCalculator.main.ui.menus;
 using StardewModdingAPI;
 using StardewModdingAPI.Events;
@@ -12,7 +13,7 @@ using StardewValley;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Xml;
+using UIFramework.Api;
 using CropData = ProfitCalculator.main.models.CropData;
 
 #nullable enable
@@ -24,7 +25,14 @@ namespace ProfitCalculator
     {
         private ModConfig? Config;
         private ProfitCalculatorMainMenu? mainMenu;
+        private IStardewUIApi? uiApi;
+        private FrameworkMainMenu? frameworkMenu;
+        private ProfitCalculatorSettings? frameworkSettings;
         internal static readonly string UniqueID = "6135.ProfitCalculator";
+        private const string UIFrameworkId = "6135.UIFramework";
+
+        /// <summary> Whether the UI Framework screens are active (the legacy hotkey toggle is skipped then). </summary>
+        private bool UseFrameworkUI => frameworkMenu != null;
 
         /// <summary>The mod entry point, called after the mod is first loaded.</summary>
         /// <param name="helper">Provides simplified APIs for writing mods.</param>
@@ -45,6 +53,7 @@ namespace ProfitCalculator
             helper.Events.Input.ButtonPressed += OnButtonPressed;
             helper.Events.GameLoop.GameLaunched += OnGameLaunchedAPIs;
             helper.Events.GameLoop.GameLaunched += OnGameLaunchedAddGenericModConfigMenu;
+            helper.Events.GameLoop.GameLaunched += OnGameLaunchedUIFramework;
             helper.Events.GameLoop.SaveLoaded += OnSaveGameLoaded;
             helper.Events.Input.MouseWheelScrolled += this.OnMouseWheelScrolled;
             helper.Events.GameLoop.DayStarted += OnDayStartedResetCache;
@@ -84,7 +93,11 @@ namespace ProfitCalculator
             configMenu.Register(
                 mod: this.ModManifest,
                 reset: () => this.Config = new ModConfig(),
-                save: () => this.Helper.WriteConfig(this.Config!)
+                save: () =>
+                {
+                    this.Helper.WriteConfig(this.Config!);
+                    ApplyUIChoice();
+                }
             );
 
             // add keybinding setting
@@ -94,10 +107,27 @@ namespace ProfitCalculator
                 setValue: value =>
                 {
                     if (this.Config != null)
+                    {
                         this.Config.HotKey = value;
+                        BindFrameworkHotkey();
+                    }
                 },
                 name: () => (this.Helper.Translation.Get("open") + " " + this.Helper.Translation.Get("app-name")).ToString(),
                 tooltip: () => this.Helper.Translation.Get("hot-key-tooltip")
+            );
+
+            configMenu.AddBoolOption(
+                mod: this.ModManifest,
+                getValue: () => this.Config?.UseUIFramework ?? true,
+                setValue: value =>
+                {
+                    if (this.Config != null)
+                    {
+                        this.Config.UseUIFramework = value;
+                    }
+                },
+                name: () => this.Helper.Translation.Get("use-ui-framework"),
+                tooltip: () => this.Helper.Translation.Get("use-ui-framework-desc")
             );
 
             configMenu.AddNumberOption(
@@ -115,6 +145,74 @@ namespace ProfitCalculator
             );
         }
 
+        #region UI Framework
+
+        private void OnGameLaunchedUIFramework(object? sender, GameLaunchedEventArgs? e)
+        {
+            uiApi = Helper.ModRegistry.GetApi<IStardewUIApi>(UIFrameworkId);
+            ApplyUIChoice();
+        }
+
+        /// <summary>
+        /// Enable or disable the UI Framework screens to match <see cref="ModConfig.UseUIFramework"/>; the built-in
+        /// screens are used when the flag is off or the framework is not installed. Logs which UI is in use.
+        /// </summary>
+        private void ApplyUIChoice()
+        {
+            bool wantFramework = (Config?.UseUIFramework ?? true) && uiApi != null;
+            if (wantFramework && !UseFrameworkUI)
+            {
+                EnableFrameworkUI(uiApi!);
+            }
+            else if (!wantFramework && UseFrameworkUI)
+            {
+                DisableFrameworkUI(uiApi!);
+            }
+            BindFrameworkHotkey();
+            Monitor.Log(DescribeUIChoice(), LogLevel.Info);
+        }
+
+        private string DescribeUIChoice()
+        {
+            if (UseFrameworkUI)
+            {
+                return $"Using the UI Framework screens ({UIFrameworkId} API {uiApi!.ApiVersion}).";
+            }
+            return uiApi is null
+                ? $"UI Framework ({UIFrameworkId}) is not installed; using the built-in screens."
+                : "Using the built-in screens (UseUIFramework is off).";
+        }
+
+        private void EnableFrameworkUI(IStardewUIApi api)
+        {
+            frameworkSettings = new ProfitCalculatorSettings();
+            frameworkMenu = new FrameworkMainMenu(api, Helper, Monitor, frameworkSettings, new FrameworkResultsMenu(api, Helper));
+        }
+
+        private void DisableFrameworkUI(IStardewUIApi api)
+        {
+            if (frameworkMenu != null)
+            {
+                api.BindToggleHotkey(frameworkMenu.Menu, string.Empty);
+            }
+            api.DestroyMenu(FrameworkResultsMenu.MenuId);
+            api.DestroyMenu(FrameworkMainMenu.MenuId);
+            frameworkMenu = null;
+            frameworkSettings = null;
+        }
+
+        /// <summary>(Re)bind the configured hotkey to toggle the framework main menu.</summary>
+        private void BindFrameworkHotkey()
+        {
+            if (uiApi is null || frameworkMenu is null)
+            {
+                return;
+            }
+            uiApi.BindToggleHotkey(frameworkMenu.Menu, (Config?.HotKey ?? SButton.F8).ToString());
+        }
+
+        #endregion UI Framework
+
         [EventPriority(EventPriority.Low - 9999)]
         private void OnSaveGameLoaded(object? sender, SaveLoadedEventArgs? e)
         {
@@ -129,6 +227,7 @@ namespace ProfitCalculator
             if (Context.IsWorldReady)
             {
                 mainMenu = new ProfitCalculatorMainMenu();
+                frameworkSettings?.Reset();
             }
             var Calculator = Container.Instance.GetInstance<Calculator>(ModEntry.UniqueID);
             if (Calculator is null)
@@ -165,8 +264,8 @@ namespace ProfitCalculator
         /// <param name="e">The event data.</param>
         private void OnButtonPressed(object? sender, ButtonPressedEventArgs? e)
         {
-            // ignore if player hasn't loaded a save yet
-            if (!Context.IsWorldReady || e == null)
+            // ignore if player hasn't loaded a save yet, or if the UI Framework owns the hotkey
+            if (!Context.IsWorldReady || e == null || UseFrameworkUI)
                 return;
 
             //check if button pressed is button in config

@@ -52,6 +52,23 @@ namespace ProfitCalculator.main.ui
         /// <inheritdoc/>
         public override void Draw(SpriteBatch b)
         {
+            DrawContent(b);
+            cropHoverBox.Draw(b);
+        }
+
+        /// <summary>
+        /// Draws the box at explicit bounds, without the hover box (used by the UI Framework results screen, which draws the hover box in its overlay pass).
+        /// </summary>
+        /// <param name="b"> The SpriteBatch to draw to</param>
+        /// <param name="drawBounds"> The absolute bounds to draw the box in</param>
+        public void Draw(SpriteBatch b, Rectangle drawBounds)
+        {
+            bounds = drawBounds;
+            DrawContent(b);
+        }
+
+        private void DrawContent(SpriteBatch b)
+        {
             IClickableMenu.drawTextureBox(
                 b,
                 Game1.menuTexture,
@@ -187,8 +204,6 @@ namespace ProfitCalculator.main.ui
                 SpriteEffects.None,
                 0.6f
             );
-
-            cropHoverBox.Draw(b);
         }
 
         /// <summary>
