@@ -34,7 +34,23 @@ namespace UIFramework.Components
             Rectangle bounds = Bounds;
             if (OwnerMenu != null && Raise("WantsOverlay", () => implementation.WantsOverlay, false))
             {
-                OwnerMenu.Overlay.RegisterDraw(sb => Raise("Draw", () => implementation.Draw(sb, bounds)));
+                Action<SpriteBatch, Rectangle>? extra = OnDrawExtra;
+                if (extra != null)
+                {
+                    OnDrawExtra = null;
+                }
+                OwnerMenu.Overlay.RegisterDraw(sb =>
+                {
+                    Raise("Draw", () => implementation.Draw(sb, bounds));
+                    if (extra != null)
+                    {
+                        Raise("OnDrawExtra", () => extra(sb, bounds));
+                        if (OnDrawExtra == null)
+                        {
+                            OnDrawExtra = extra;
+                        }
+                    }
+                });
                 return;
             }
             Raise("Draw", () => implementation.Draw(b, bounds));
