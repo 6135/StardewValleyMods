@@ -55,8 +55,8 @@ namespace UIFramework.Rendering
             }
         }
 
-        /// <summary>Draw text aligned inside a rectangle.</summary>
-        internal static void TextInRect(SpriteBatch b, string text, UIFont font, Rectangle rect, Color color, bool shadow, float scale, UIAlign horizontal, UIAlign vertical)
+        /// <summary>Draw text aligned horizontally inside a rectangle (top-aligned vertically).</summary>
+        internal static void TextInRect(SpriteBatch b, string text, UIFont font, Rectangle rect, Color color, bool shadow, float scale, UIAlign horizontal)
         {
             if (string.IsNullOrEmpty(text))
             {
@@ -65,8 +65,7 @@ namespace UIFramework.Rendering
 
             Vector2 size = UIServices.Text.Measure(font, text, scale);
             float x = rect.X + LayoutEngine.AlignOffset(horizontal == UIAlign.Stretch ? UIAlign.Start : horizontal, rect.Width, (int)size.X);
-            float y = rect.Y + LayoutEngine.AlignOffset(vertical == UIAlign.Stretch ? UIAlign.Start : vertical, rect.Height, (int)size.Y);
-            Text(b, text, font, new Vector2((int)x, (int)y), color, shadow, scale);
+            Text(b, text, font, new Vector2((int)x, rect.Y), color, shadow, scale);
         }
 
         /// <summary>Solid rectangle (uses <c>Game1.staminaRect</c>).</summary>

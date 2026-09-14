@@ -219,18 +219,23 @@ namespace UIFramework.Components
                 return this;
             }
 
-            if (ViewportRect.Contains(px, py))
+            UIElement? hit = ViewportRect.Contains(px, py) ? HitTestChildren(px, py) : null;
+            return hit ?? (IsHitTestVisible ? this : null);
+        }
+
+        /// <summary>Top-most child under the point (children are only reachable inside the viewport).</summary>
+        private UIElement? HitTestChildren(int px, int py)
+        {
+            for (int i = Children.Count - 1; i >= 0; i--)
             {
-                for (int i = Children.Count - 1; i >= 0; i--)
+                UIElement? hit = Children[i].HitTest(px, py);
+                if (hit != null)
                 {
-                    UIElement? hit = Children[i].HitTest(px, py);
-                    if (hit != null)
-                    {
-                        return hit;
-                    }
+                    return hit;
                 }
             }
-            return IsHitTestVisible ? this : null;
+
+            return null;
         }
 
         protected internal override bool HandleClick(UIClickEvent e)

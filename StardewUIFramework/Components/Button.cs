@@ -180,13 +180,7 @@ namespace UIFramework.Components
             }
             // synthesize a click at the center so bubbling / callbacks behave exactly like a mouse click
             var e = new UIClickEvent(this, Bounds.Center.X, Bounds.Center.Y, UIMouseButton.Left);
-            for (UIElement? cur = this; cur != null && !e.Handled; cur = cur.ParentElement)
-            {
-                if (cur.HandleClick(e))
-                {
-                    e.Handled = true;
-                }
-            }
+            EventRouter.Bubble(e);
             return true;
         }
     }

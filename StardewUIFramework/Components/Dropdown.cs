@@ -34,8 +34,8 @@ namespace UIFramework.Components
 
         private readonly Func<string[]>? choicesFunc;
         private readonly Func<string[]>? labelsFunc;
-        private readonly Func<string>? get;
-        private readonly Action<string>? set;
+        private readonly Func<string>? getter;
+        private readonly Action<string>? setter;
         private string[] choices = Array.Empty<string>();
         private string[] labels = Array.Empty<string>();
         private int ownIndex = -1;
@@ -43,12 +43,12 @@ namespace UIFramework.Components
         private int highlightIndex = -1;
         private int activePosition;
 
-        internal Dropdown(string id, Func<string[]>? choices, Func<string[]>? labels, Func<string>? get, Action<string>? set) : base(id)
+        internal Dropdown(string id, Func<string[]>? choices, Func<string[]>? labels, Func<string>? getter, Action<string>? setter) : base(id)
         {
             choicesFunc = choices;
             labelsFunc = labels;
-            this.get = get;
-            this.set = set;
+            this.getter = getter;
+            this.setter = setter;
             RefreshChoices();
         }
 
@@ -65,12 +65,12 @@ namespace UIFramework.Components
         {
             get
             {
-                if (get == null)
+                if (getter == null)
                 {
                     return ownIndex;
                 }
 
-                string? value = Raise("get", get, string.Empty);
+                string? value = Raise("get", getter, string.Empty);
                 return value == null ? -1 : Array.IndexOf(choices, value);
             }
             set
@@ -78,10 +78,10 @@ namespace UIFramework.Components
                 if (value >= 0 && value < choices.Length)
                 {
                     ownIndex = value;
-                    if (set != null)
+                    if (setter != null)
                     {
                         string choice = choices[value];
-                        Raise("set", () => set(choice));
+                        Raise("set", () => setter(choice));
                     }
                 }
                 else
@@ -130,13 +130,13 @@ namespace UIFramework.Components
         /// <summary>Re-evaluate the choices / labels delegates; labels fall back to the choices when missing or mismatched.</summary>
         public void RefreshChoices()
         {
-            string previous = get == null ? GetChoice(ownIndex) : string.Empty;
+            string previous = getter == null ? GetChoice(ownIndex) : string.Empty;
 
             choices = Raise("choices", choicesFunc, Array.Empty<string>()) ?? Array.Empty<string>();
             string[]? newLabels = labelsFunc == null ? null : Raise("labels", labelsFunc, choices);
             labels = newLabels != null && newLabels.Length == choices.Length ? newLabels : choices;
 
-            if (get == null)
+            if (getter == null)
             {
                 ownIndex = RestoreOwnIndex(previous);
             }
@@ -197,9 +197,9 @@ namespace UIFramework.Components
             string oldChoice = GetChoice(oldIndex);
             string newChoice = choices[newIndex];
             ownIndex = newIndex;
-            if (set != null)
+            if (setter != null)
             {
-                Raise("set", () => set(newChoice));
+                Raise("set", () => setter(newChoice));
             }
 
             if (OnValueChanged != null)

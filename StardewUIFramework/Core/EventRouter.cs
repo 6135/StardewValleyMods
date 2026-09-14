@@ -40,35 +40,41 @@ namespace UIFramework.Core
             // 2. hit-test
             UIElement? target = menu.Root.HitTest(x, y);
 
-            // 3. focus: focusable target takes it, empty space clears it
+            // 3. focus + capture (left button only)
             if (button == UIMouseButton.Left)
             {
-                if (target != null && target.Focusable)
-                {
-                    menu.Focus.SetFocus(target);
-                }
-                else
-                {
-                    menu.Focus.ClearFocus();
-                }
-
+                FocusFromClick(target);
                 Captured = target;
             }
 
-            if (target == null)
-            {
-                return false;
-            }
-
             // 4. bubble
-            var e = new UIClickEvent(target, x, y, button);
-            for (UIElement? cur = target; cur != null && !e.Handled; cur = cur.ParentElement)
+            return target != null && Bubble(new UIClickEvent(target, x, y, button));
+        }
+
+        /// <summary>A focusable target takes focus; clicking empty space or a non-focusable element clears it.</summary>
+        private void FocusFromClick(UIElement? target)
+        {
+            if (target != null && target.Focusable)
+            {
+                menu.Focus.SetFocus(target);
+            }
+            else
+            {
+                menu.Focus.ClearFocus();
+            }
+        }
+
+        /// <summary>Deliver a click to its target and then to each ancestor until one marks it handled.</summary>
+        internal static bool Bubble(UIClickEvent e)
+        {
+            for (UIElement? cur = e.Target; cur != null && !e.Handled; cur = cur.ParentElement)
             {
                 if (cur.HandleClick(e))
                 {
                     e.Handled = true;
                 }
             }
+
             return e.Handled;
         }
 

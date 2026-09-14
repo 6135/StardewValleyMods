@@ -20,8 +20,8 @@ namespace UIFramework.Components
     {
         private static readonly CultureInfo Culture = CultureInfo.InvariantCulture;
 
-        private readonly Func<double>? get;
-        private readonly Action<double>? set;
+        private readonly Func<double>? getter;
+        private readonly Action<double>? setter;
         private double ownValue;
         private int decimals;
         private Texture2D? texture;
@@ -32,10 +32,10 @@ namespace UIFramework.Components
         /// <summary>True when <see cref="buffer"/> was auto-filled after clearing, so the next digit replaces it.</summary>
         private bool bufferIsPlaceholder;
 
-        internal NumberInput(string id, Func<double>? get, Action<double>? set, double min, double max, double step, bool clamp) : base(id)
+        internal NumberInput(string id, Func<double>? getter, Action<double>? setter, double min, double max, double step, bool clamp) : base(id)
         {
-            this.get = get;
-            this.set = set;
+            this.getter = getter;
+            this.setter = setter;
             Min = min;
             Max = max;
             Step = step;
@@ -48,7 +48,7 @@ namespace UIFramework.Components
         /// </summary>
         public double Value
         {
-            get => get != null ? Raise("get", get, ownValue) : ownValue;
+            get => getter != null ? Raise("get", getter, ownValue) : ownValue;
             set
             {
                 Store(value);
@@ -110,7 +110,7 @@ namespace UIFramework.Components
         //  Number helpers
         // ---------------------------------------------------------------------------------------------------------
 
-        /// <summary>Round to <see cref="Decimals"/> and, when <see cref="Clamp"/> is set (or <paramref name="forceClamp"/>), clamp to the range.</summary>
+        /// <summary>Round to <see cref="Decimals"/> and, when <see cref="Clamp"/> is setter (or <paramref name="forceClamp"/>), clamp to the range.</summary>
         private double Normalize(double value, bool forceClamp = false)
         {
             if (double.IsNaN(value) || double.IsInfinity(value))
@@ -160,10 +160,10 @@ namespace UIFramework.Components
         private void Store(double value)
         {
             ownValue = value;
-            if (set != null)
+            if (setter != null)
             {
-                Action<double> setter = set;
-                Raise("set", () => setter(value));
+                Action<double> bound = setter;
+                Raise("set", () => bound(value));
             }
         }
 

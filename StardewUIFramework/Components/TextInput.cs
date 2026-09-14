@@ -97,7 +97,7 @@ namespace UIFramework.Components
         /// <summary>Whether the caret is in the visible half of its blink cycle.</summary>
         internal static bool CaretVisible => UIServices.NowMs() % 1000 >= 500;
 
-        /// <summary>Draw the (clipped) text and, when <paramref name="caret"/> is set, the blinking caret after it.</summary>
+        /// <summary>Draw the (clipped) text and, when <paramref name="caret"/> is setter, the blinking caret after it.</summary>
         internal static void DrawText(SpriteBatch b, Rectangle bounds, string text, UIFont font, Color color, bool shadow, bool caret)
         {
             int centerShift = (bounds.Height - VanillaHeight) / 2;
@@ -142,15 +142,15 @@ namespace UIFramework.Components
     /// </summary>
     internal sealed class TextInput : UIElement, IUITextInput
     {
-        private readonly Func<string>? get;
-        private readonly Action<string>? set;
+        private readonly Func<string>? getter;
+        private readonly Action<string>? setter;
         private string ownValue = string.Empty;
         private Texture2D? texture;
 
-        internal TextInput(string id, Func<string>? get, Action<string>? set) : base(id)
+        internal TextInput(string id, Func<string>? getter, Action<string>? setter) : base(id)
         {
-            this.get = get;
-            this.set = set;
+            this.getter = getter;
+            this.setter = setter;
         }
 
         /// <summary>
@@ -159,7 +159,7 @@ namespace UIFramework.Components
         /// </summary>
         public string Value
         {
-            get => get != null ? Raise("get", get, ownValue) ?? string.Empty : ownValue;
+            get => getter != null ? Raise("get", getter, ownValue) ?? string.Empty : ownValue;
             set => Store(value ?? string.Empty);
         }
 
@@ -208,10 +208,10 @@ namespace UIFramework.Components
         private void Store(string value)
         {
             ownValue = value;
-            if (set != null)
+            if (setter != null)
             {
-                Action<string> setter = set;
-                Raise("set", () => setter(value));
+                Action<string> bound = setter;
+                Raise("set", () => bound(value));
             }
         }
 
@@ -280,7 +280,7 @@ namespace UIFramework.Components
             TextBoxDrawing.DrawText(b, Bounds, value, style.Font, textColor, style.TextShadow, focused);
         }
 
-        /// <summary>The placeholder text right now (empty when none is set).</summary>
+        /// <summary>The placeholder text right now (empty when none is setter).</summary>
         private string CurrentPlaceholder => PlaceholderFunc == null ? string.Empty : Raise("Placeholder", PlaceholderFunc, string.Empty) ?? string.Empty;
 
         // ---------------------------------------------------------------------------------------------------------

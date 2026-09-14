@@ -21,14 +21,14 @@ namespace UIFramework.Components
         private const int DefaultWidth = 192;
         private const int DefaultHeight = 24;
 
-        private readonly Func<double>? get;
-        private readonly Action<double>? set;
+        private readonly Func<double>? getter;
+        private readonly Action<double>? setter;
         private double ownValue;
 
-        internal Slider(string id, Func<double>? get, Action<double>? set, double min, double max) : base(id)
+        internal Slider(string id, Func<double>? getter, Action<double>? setter, double min, double max) : base(id)
         {
-            this.get = get;
-            this.set = set;
+            this.getter = getter;
+            this.setter = setter;
             Min = min;
             Max = max;
         }
@@ -39,7 +39,7 @@ namespace UIFramework.Components
         /// </summary>
         public double Value
         {
-            get => get != null ? Raise("get", get, ownValue) : ownValue;
+            get => getter != null ? Raise("get", getter, ownValue) : ownValue;
             set => Store(value);
         }
 
@@ -75,10 +75,10 @@ namespace UIFramework.Components
         private void Store(double value)
         {
             ownValue = value;
-            if (set != null)
+            if (setter != null)
             {
-                Action<double> setter = set;
-                Raise("set", () => setter(value));
+                Action<double> bound = setter;
+                Raise("set", () => bound(value));
             }
         }
 

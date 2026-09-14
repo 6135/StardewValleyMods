@@ -52,67 +52,69 @@ namespace UIFrameworkExample
             demo.OnOpen = _ => Monitor.Log("Demo menu opened.", LogLevel.Debug);
             demo.OnClose = _ => Monitor.Log("Demo menu closed.", LogLevel.Debug);
 
-            // ---- form: label / control rows in a two-column grid ----
-            IUIGrid form = api.AddGrid(demo.Root, "form", "auto,*", "auto,auto,auto,auto,auto");
+            BuildForm(api, demo.Root);
+
+            IUISpacer divider = api.AddSpacer(demo.Root, "divider", 0, 8);
+            divider.Line = true;
+
+            BuildList(api, demo.Root);
+            BuildButtons(api, demo);
+            return demo;
+        }
+
+        /// <summary>Label / control rows in a two-column grid, one of every input type.</summary>
+        private void BuildForm(IStardewUIApi api, IUIContainer parent)
+        {
+            IUIGrid form = api.AddGrid(parent, "form", "auto,*", "auto,auto,auto,auto,auto");
             form.ColumnSpacing = 24;
             form.RowSpacing = 12;
 
-            int row = 0;
-            IUILabel nameLabel = api.AddLabel(form, "name.label", () => "Name:");
-            nameLabel.Row = row;
-            nameLabel.VerticalAlign = UIAlign.Center;
             IUITextInput nameInput = api.AddTextInput(form, "name", () => name, v => name = v);
-            nameInput.Row = row;
-            nameInput.Column = 1;
             nameInput.MaxLength = 20;
             nameInput.Tooltip = () => "Letters only (validated).";
             nameInput.Validate = v => v.Length == 0 || char.IsLetter(v[^1]) || v[^1] == ' ';
-            row++;
+            AddFormRow(api, form, 0, "Name:", nameInput);
 
-            IUILabel dayLabel = api.AddLabel(form, "day.label", () => "Day:");
-            dayLabel.Row = row;
-            dayLabel.VerticalAlign = UIAlign.Center;
             IUINumberInput dayInput = api.AddNumberInput(form, "day", () => day, v => day = v, 1, 28, 1, true);
-            dayInput.Row = row;
-            dayInput.Column = 1;
             dayInput.Width = 120;
             dayInput.Tooltip = () => "1-28, Up/Down or wheel to step.";
-            row++;
+            AddFormRow(api, form, 1, "Day:", dayInput);
 
-            IUILabel seasonLabel = api.AddLabel(form, "season.label", () => "Season:");
-            seasonLabel.Row = row;
-            seasonLabel.VerticalAlign = UIAlign.Center;
             IUIDropdown seasonDropdown = api.AddDropdown(form, "season",
                 () => new[] { "spring", "summer", "fall", "winter" },
                 () => new[] { "Spring", "Summer", "Fall", "Winter" },
                 () => season, v => season = v);
-            seasonDropdown.Row = row;
-            seasonDropdown.Column = 1;
             seasonDropdown.OnValueChanged = e => Monitor.Log($"Season → {e.NewValue}", LogLevel.Debug);
-            row++;
+            AddFormRow(api, form, 2, "Season:", seasonDropdown);
 
-            IUILabel seedsLabel = api.AddLabel(form, "seeds.label", () => "Pay for seeds:");
-            seedsLabel.Row = row;
-            seedsLabel.VerticalAlign = UIAlign.Center;
             IUICheckbox seeds = api.AddCheckbox(form, "seeds", () => payForSeeds, v => payForSeeds = v);
-            seeds.Row = row;
-            seeds.Column = 1;
-            row++;
+            AddFormRow(api, form, 3, "Pay for seeds:", seeds);
 
-            IUILabel volumeLabel = api.AddLabel(form, "volume.label", () => $"Volume ({volume:0}):");
-            volumeLabel.Row = row;
-            volumeLabel.VerticalAlign = UIAlign.Center;
             IUISlider slider = api.AddSlider(form, "volume", () => volume, v => volume = v, 0, 100);
-            slider.Row = row;
-            slider.Column = 1;
             slider.Step = 5;
             slider.VerticalAlign = UIAlign.Center;
+            AddFormRow(api, form, 4, () => $"Volume ({volume:0}):", slider);
+        }
 
-            // ---- a scrollable list of virtualized rows ----
-            IUISpacer divider = api.AddSpacer(demo.Root, "divider", 0, 8);
-            divider.Line = true;
+        private static void AddFormRow(IStardewUIApi api, IUIGrid form, int row, string label, IUIElement control)
+        {
+            AddFormRow(api, form, row, () => label, control);
+        }
 
-            IUIList list = api.AddList(demo.Root, "list", 44, 4, () => 30, (index, container) =>
+        /// <summary>Put a label in column 0 and <paramref name="control"/> in column 1 of <paramref name="row"/>.</summary>
+        private static void AddFormRow(IStardewUIApi api, IUIGrid form, int row, Func<string> label, IUIElement control)
+        {
+            IUILabel rowLabel = api.AddLabel(form, control.Id + ".label", label);
+            rowLabel.Row = row;
+            rowLabel.VerticalAlign = UIAlign.Center;
+            control.Row = row;
+            control.Column = 1;
+        }
+
+        /// <summary>A scrollable list of virtualized rows (only the visible rows exist as elements).</summary>
+        private void BuildList(IStardewUIApi api, IUIContainer parent)
+        {
+            IUIList list = api.AddList(parent, "list", 44, 4, () => 30, (index, container) =>
             {
                 IUIStack line = api.AddStack(container, $"row{index}", true, 12);
                 line.VerticalAlign = UIAlign.Center;
@@ -121,11 +123,14 @@ namespace UIFrameworkExample
             });
             list.Selectable = true;
             list.OnValueChanged = e => selectedRow = e.NewIndex;
+        }
 
-            // ---- buttons ----
+        /// <summary>OK (also the Enter default) and Close.</summary>
+        private void BuildButtons(IStardewUIApi api, IUIMenu demo)
+        {
             IUIStack buttons = api.AddStack(demo.Root, "buttons", true, 16);
             buttons.HorizontalAlign = UIAlign.Center;
-            IUIButton ok = api.AddButton(buttons, "ok", () => $"OK ({clicks})", e =>
+            IUIButton ok = api.AddButton(buttons, "ok", () => $"OK ({clicks})", _ =>
             {
                 clicks++;
                 Monitor.Log($"OK: name={name} day={day} season={season} seeds={payForSeeds} volume={volume} row={selectedRow}", LogLevel.Info);
@@ -133,8 +138,6 @@ namespace UIFrameworkExample
             ok.Tooltip = () => "Enter also triggers this button.";
             api.AddButton(buttons, "close", () => "Close", _ => demo.Close());
             demo.DefaultButton = ok;
-
-            return demo;
         }
     }
 }

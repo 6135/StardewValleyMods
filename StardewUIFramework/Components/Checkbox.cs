@@ -16,16 +16,16 @@ namespace UIFramework.Components
     {
         private const int LabelGap = 8;
 
-        private readonly Func<bool>? get;
-        private readonly Action<bool>? set;
+        private readonly Func<bool>? getter;
+        private readonly Action<bool>? setter;
         private bool ownValue;
         private Func<string>? label;
         private string measuredLabel = string.Empty;
 
-        internal Checkbox(string id, Func<bool>? get, Action<bool>? set) : base(id)
+        internal Checkbox(string id, Func<bool>? getter, Action<bool>? setter) : base(id)
         {
-            this.get = get;
-            this.set = set;
+            this.getter = getter;
+            this.setter = setter;
         }
 
         /// <summary>Size of the box in UI pixels (9px sprite at the theme scale).</summary>
@@ -37,7 +37,7 @@ namespace UIFramework.Components
         /// </summary>
         public bool Value
         {
-            get => get != null ? Raise("get", get, ownValue) : ownValue;
+            get => getter != null ? Raise("get", getter, ownValue) : ownValue;
             set => Store(value);
         }
 
@@ -75,10 +75,10 @@ namespace UIFramework.Components
         private void Store(bool value)
         {
             ownValue = value;
-            if (set != null)
+            if (setter != null)
             {
-                Action<bool> setter = set;
-                Raise("set", () => setter(value));
+                Action<bool> bound = setter;
+                Raise("set", () => bound(value));
             }
         }
 
@@ -163,13 +163,7 @@ namespace UIFramework.Components
             }
             // synthesize a click at the center so the toggle, bubbling and callbacks behave exactly like a mouse click
             var e = new UIClickEvent(this, Bounds.Center.X, Bounds.Center.Y, UIMouseButton.Left);
-            for (UIElement? cur = this; cur != null && !e.Handled; cur = cur.ParentElement)
-            {
-                if (cur.HandleClick(e))
-                {
-                    e.Handled = true;
-                }
-            }
+            EventRouter.Bubble(e);
             return true;
         }
     }

@@ -110,7 +110,7 @@ namespace UIFramework.Components
                 InvalidateLayout();
             }
             ResolvedStyle style = Style;
-            DrawHelper.TextInRect(b, displayText, Font, Bounds, Color ?? style.TextColor, Shadow || style.TextShadow, scale, TextAlign, UIAlign.Start);
+            DrawHelper.TextInRect(b, displayText, Font, Bounds, Color ?? style.TextColor, Shadow || style.TextShadow, scale, TextAlign);
         }
     }
 }
