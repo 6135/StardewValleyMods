@@ -49,13 +49,16 @@ namespace UIFramework.Components
         public double Value
         {
             get => getter != null ? Raise("get", getter, ownValue) : ownValue;
-            set
+            set => WriteValue(value);
+        }
+
+        /// <summary>Store a programmatic value and, while editing, mirror it into the buffer.</summary>
+        private void WriteValue(double value)
+        {
+            Store(value);
+            if (buffer != null)
             {
-                Store(value);
-                if (buffer != null)
-                {
-                    SetBuffer(Trim(value));
-                }
+                SetBuffer(Trim(value));
             }
         }
 
