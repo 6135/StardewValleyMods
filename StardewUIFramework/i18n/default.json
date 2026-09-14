@@ -1,0 +1,9 @@
+{
+  "menu.close": "Close",
+  "config.tooltip-delay": "Tooltip delay (ms)",
+  "config.tooltip-delay.desc": "How long the cursor must rest on an element before its tooltip appears.",
+  "config.debug-overlay": "Debug overlay",
+  "config.debug-overlay.desc": "Draw the bounds and ids of every element in framework menus.",
+  "config.log-callbacks": "Log callbacks",
+  "config.log-callbacks.desc": "Write a trace log line every time a consumer callback is invoked."
+}

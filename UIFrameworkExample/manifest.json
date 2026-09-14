@@ -1,10 +1,13 @@
-﻿{
+{
   "Name": "UI Framework Example",
   "Author": "6135",
   "Version": "1.0.0",
-  "Description": "Adds an UI Framework Example",
+  "Description": "Example consumer of the UI Framework: press F9 in-game to open a demo menu.",
   "UniqueID": "6135.UIFrameworkExample",
   "EntryDll": "UIFrameworkExample.dll",
-  "MinimumApiVersion": "3.0.0",
-  "UpdateKeys": []
+  "MinimumApiVersion": "4.0.0",
+  "UpdateKeys": [],
+  "Dependencies": [
+    { "UniqueID": "6135.UIFramework", "MinimumVersion": "1.0.0", "IsRequired": true }
+  ]
 }

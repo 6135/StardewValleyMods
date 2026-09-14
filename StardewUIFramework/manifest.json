@@ -1,0 +1,10 @@
+{
+  "Name": "UI Framework",
+  "Author": "6135",
+  "Version": "1.0.0",
+  "Description": "A code-first UI framework other mods use to build in-game menus out of reusable components.",
+  "UniqueID": "6135.UIFramework",
+  "EntryDll": "UIFramework.dll",
+  "MinimumApiVersion": "4.0.0",
+  "UpdateKeys": []
+}

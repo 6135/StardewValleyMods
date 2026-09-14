@@ -1,9 +1,93 @@
-diff --git a/ProfitCalculator/README.md b/ProfitCalculator/README.md
---- a/ProfitCalculator/README.md
-+++ b/ProfitCalculator/README.md
+diff --git a/StardewUIFramework/architecture.md b/StardewUIFramework/architecture.md
+--- a/StardewUIFramework/architecture.md
++++ b/StardewUIFramework/architecture.md
+@@ -9,1 +9,1 @@
+-- Framework mods (data/delegate style): https://stardewmodding.wiki.gg/wiki/Tutorial:_C_Sharp_-_Making_Framework_Mods
++- Framework mods (data/delegate style): <https://stardewmodding.wiki.gg/wiki/Tutorial:_C_Sharp_-_Making_Framework_Mods>
 @@ -10,1 +10,1 @@
--2. Install [Generic Config Menu](https://www.nexusmods.com/stardewvalley/mods/5098). Optional but recommended to allow for more customization of settings.	
-+2. Install [Generic Config Menu](https://www.nexusmods.com/stardewvalley/mods/5098). Optional but recommended to allow for more customization of settings. 
-@@ -65,1 +65,1 @@
--### TODO:
-+### TODO
+-- Custom C# mods index: https://stardewmodding.wiki.gg/wiki/Making_Mods:_Custom_C_Sharp
++- Custom C# mods index: <https://stardewmodding.wiki.gg/wiki/Making_Mods:_Custom_C_Sharp>
+@@ -11,1 +11,1 @@
+-- SMAPI modâprovided APIs (`Mod.GetApi`, Pintail proxying): https://stardewvalleywiki.com/Modding:Modder_Guide/APIs/Integrations#Mod-provided_APIs
++- SMAPI modâprovided APIs (`Mod.GetApi`, Pintail proxying): <https://stardewvalleywiki.com/Modding:Modder_Guide/APIs/Integrations#Mod-provided_APIs>
+@@ -392,1 +392,1 @@
+-### Phase 0 â Skeleton
++### Phase 0 â Skeleton
+
+@@ -393,1 +393,1 @@
+-- Create both projects, manifests, sln entries, `ModEntry.GetApi(IModInfo)`.
++
+- Create both projects, manifests, sln entries, `ModEntry.GetApi(IModInfo)`.
+@@ -396,1 +396,1 @@
+-### Phase 1 â Core tree + host + layout
++### Phase 1 â Core tree + host + layout
+
+@@ -397,1 +397,1 @@
+-- `UIElement`, `UIContainer`, `UIMenu`, `MenuHost` with draw/update/resize.
++
+- `UIElement`, `UIContainer`, `UIMenu`, `MenuHost` with draw/update/resize.
+@@ -402,1 +402,1 @@
+-### Phase 2 â Input, focus, events
++### Phase 2 â Input, focus, events
+
+@@ -403,1 +403,1 @@
+-- `EventRouter` (hitâtest, bubble, capture), `FocusManager` + single keyboard subscriber adapter, hotkey service with `KeybindList`.
++
+- `EventRouter` (hitâtest, bubble, capture), `FocusManager` + single keyboard subscriber adapter, hotkey service with `KeybindList`.
+@@ -407,1 +407,1 @@
+-### Phase 3 â Text and numbers
++### Phase 3 â Text and numbers
+
+@@ -408,1 +408,1 @@
+-- `TextInput` (caret, placeholder, max length, validator, paste), `NumberInput` (clamp, step, up/down, wheel), `Slider`.
++
+- `TextInput` (caret, placeholder, max length, validator, paste), `NumberInput` (clamp, step, up/down, wheel), `Slider`.
+@@ -411,1 +411,1 @@
+-### Phase 4 â Overlay, dropdown, tooltips
++### Phase 4 â Overlay, dropdown, tooltips
+
+@@ -412,1 +412,1 @@
+-- `OverlayLayer`; `Dropdown` with open list, scroll, clickâoutside close + swallow; only one open at a time.
++
+- `OverlayLayer`; `Dropdown` with open list, scroll, clickâoutside close + swallow; only one open at a time.
+@@ -415,1 +415,1 @@
+-### Phase 5 â Grid, ScrollView, List
++### Phase 5 â Grid, ScrollView, List
+
+@@ -416,1 +416,1 @@
+-- `Grid` with `auto/px/*` tracks and spans; `ScrollView` with scissor clipping, arrows, thumb drag, wheel; virtualized `ListView` with selection + `OnValueChanged`.
++
+- `Grid` with `auto/px/*` tracks and spans; `ScrollView` with scissor clipping, arrows, thumb drag, wheel; virtualized `ListView` with selection + `OnValueChanged`.
+@@ -418,1 +418,1 @@
+-### Phase 6 â Custom components + polish
++### Phase 6 â Custom components + polish
+
+@@ -419,1 +419,1 @@
+-- `IUICustomComponent` + `CustomElementAdapter`; `OnDrawExtra`; styles/theme overrides; debug overlay; `PerScreen` state; closeâall on returnâtoâtitle.
++
+- `IUICustomComponent` + `CustomElementAdapter`; `OnDrawExtra`; styles/theme overrides; debug overlay; `PerScreen` state; closeâall on returnâtoâtitle.
+@@ -421,1 +421,1 @@
+-### Phase 7 â Acceptance: port Profit Calculator
++### Phase 7 â Acceptance: port Profit Calculator
+
+@@ -422,1 +422,1 @@
+-- Rebuild `ProfitCalculatorMainMenu` as: Panel â Grid(2 cols) with rows Day/NumberInput, Season/Dropdown, Produce/Dropdown, Fertilizer/Dropdown, PayForSeeds/Checkbox, PayForFertilizer/Checkbox, MaxMoney/NumberInput, BaseStats/Checkbox; a horizontal Stack with Calculate/Reset buttons; Enter â Calculate.
++
+- Rebuild `ProfitCalculatorMainMenu` as: Panel â Grid(2 cols) with rows Day/NumberInput, Season/Dropdown, Produce/Dropdown, Fertilizer/Dropdown, PayForSeeds/Checkbox, PayForFertilizer/Checkbox, MaxMoney/NumberInput, BaseStats/Checkbox; a horizontal Stack with Calculate/Reset buttons; Enter â Calculate.
+@@ -426,1 +426,1 @@
+-### Phase 8 â Docs and release
++### Phase 8 â Docs and release
+
+@@ -427,1 +427,1 @@
+-- `UIFramework/README.md` rewritten from what actually exists; API reference generated from XML docs (a Doxyfile is already in the repo); Nexus page; example mod zipped alongside.
++
+- `UIFramework/README.md` rewritten from what actually exists; API reference generated from XML docs (a Doxyfile is already in the repo); Nexus page; example mod zipped alongside.
+diff --git a/UIFramework/README.md b/UIFramework/README.md
+--- a/UIFramework/README.md
++++ b/UIFramework/README.md
+@@ -7,1 +7,1 @@
+-
++
+@@ -14,1 +14,1 @@
+-## Structure
++## Structure
