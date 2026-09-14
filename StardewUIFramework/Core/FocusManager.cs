@@ -39,20 +39,25 @@ namespace UIFramework.Core
         internal static Func<IKeyboardSubscriber?>? GetSubscriber { get; set; }
         internal static Action<IKeyboardSubscriber?>? SetSubscriber { get; set; }
 
-        public UIElement? Focused { get; private set; }
+        internal UIElement? Focused { get; private set; }
 
-        public FocusManager(UIMenu menu)
+        internal FocusManager(UIMenu menu)
         {
             this.menu = menu;
             adapter = new KeyboardAdapter(this);
         }
 
-        public void SetFocus(UIElement? element)
+        internal void SetFocus(UIElement? element)
         {
             if (element != null && (!element.Focusable || !element.Visible || !element.Enabled || element.OwnerMenu != menu))
+            {
                 return;
+            }
+
             if (Focused == element)
+            {
                 return;
+            }
 
             UIElement? old = Focused;
             Focused = element;
@@ -61,17 +66,20 @@ namespace UIFramework.Core
             element?.HandleFocusGained();
         }
 
-        public void ClearFocus() => SetFocus(null);
+        internal void ClearFocus() => SetFocus(null);
 
         /// <summary>Re-evaluate whether the game's keyboard subscriber should be ours (call after focus changes or on open/close).</summary>
-        public void UpdateSubscription()
+        internal void UpdateSubscription()
         {
             bool wants = Focused != null && Focused.WantsTextInput && menu.IsOpen;
             if (wants && !subscribed)
             {
                 previousSubscriber = ReadSubscriber();
                 if (previousSubscriber == adapter)
+                {
                     previousSubscriber = null;
+                }
+
                 WriteSubscriber(adapter);
                 subscribed = true;
             }
@@ -79,24 +87,36 @@ namespace UIFramework.Core
             {
                 Release();
             }
+            else
+            {
+                // subscription already matches the focused element
+            }
         }
 
         /// <summary>Give the keyboard back (menu closing).</summary>
-        public void Release()
+        internal void Release()
         {
             if (!subscribed)
+            {
                 return;
+            }
+
             if (ReadSubscriber() == adapter)
+            {
                 WriteSubscriber(previousSubscriber);
+            }
+
             previousSubscriber = null;
             subscribed = false;
         }
 
         /// <summary>Drop focus if the focused element left the tree or became unusable.</summary>
-        public void Validate()
+        internal void Validate()
         {
             if (Focused != null && (Focused.OwnerMenu != menu || !Focused.Visible || !Focused.Enabled))
+            {
                 ClearFocus();
+            }
         }
 
         // ---------------------------------------------------------------------------------------------------------
@@ -104,13 +124,15 @@ namespace UIFramework.Core
         // ---------------------------------------------------------------------------------------------------------
 
         /// <summary>Focusable elements in layout (tree) order.</summary>
-        public List<UIElement> FocusableElements()
+        internal List<UIElement> FocusableElements()
         {
             var list = new List<UIElement>();
             foreach (UIElement e in menu.Root.SelfAndDescendants())
             {
                 if (e.Focusable && IsUsable(e))
+                {
                     list.Add(e);
+                }
             }
             return list;
         }
@@ -120,17 +142,22 @@ namespace UIFramework.Core
             for (UIElement? cur = e; cur != null; cur = cur.ParentElement)
             {
                 if (!cur.Visible || !cur.Enabled)
+                {
                     return false;
+                }
             }
             return true;
         }
 
         /// <summary>Tab / Shift+Tab.</summary>
-        public bool MoveNext(bool backwards)
+        internal bool MoveNext(bool backwards)
         {
             List<UIElement> all = FocusableElements();
             if (all.Count == 0)
+            {
                 return false;
+            }
+
             int index = Focused == null ? -1 : all.IndexOf(Focused);
             int next = backwards
                 ? (index <= 0 ? all.Count - 1 : index - 1)
@@ -140,11 +167,14 @@ namespace UIFramework.Core
         }
 
         /// <summary>Arrow keys / d-pad: nearest focusable element in the given direction (dx, dy ∈ {-1,0,1}).</summary>
-        public bool MoveDirection(int dx, int dy)
+        internal bool MoveDirection(int dx, int dy)
         {
             List<UIElement> all = FocusableElements();
             if (all.Count == 0)
+            {
                 return false;
+            }
+
             if (Focused == null)
             {
                 SetFocus(all[0]);
@@ -158,13 +188,19 @@ namespace UIFramework.Core
             foreach (UIElement candidate in all)
             {
                 if (candidate == Focused)
+                {
                     continue;
+                }
+
                 Vector2 delta = candidate.Bounds.Center.ToVector2() - origin;
-                float along = delta.X * dx + delta.Y * dy;
+                float along = (delta.X * dx) + (delta.Y * dy);
                 if (along <= 0)
+                {
                     continue;
+                }
+
                 float across = Math.Abs(dx != 0 ? delta.Y : delta.X);
-                float score = along + across * 2.5f;
+                float score = along + (across * 2.5f);
                 if (score < bestScore)
                 {
                     bestScore = score;
@@ -172,7 +208,10 @@ namespace UIFramework.Core
                 }
             }
             if (best == null)
+            {
                 return false;
+            }
+
             SetFocus(best);
             return true;
         }
@@ -180,7 +219,10 @@ namespace UIFramework.Core
         private static IKeyboardSubscriber? ReadSubscriber()
         {
             if (GetSubscriber != null)
+            {
                 return GetSubscriber();
+            }
+
             return Game1.keyboardDispatcher?.Subscriber;
         }
 
@@ -192,7 +234,9 @@ namespace UIFramework.Core
                 return;
             }
             if (Game1.keyboardDispatcher != null)
+            {
                 Game1.keyboardDispatcher.Subscriber = subscriber;
+            }
         }
     }
 }

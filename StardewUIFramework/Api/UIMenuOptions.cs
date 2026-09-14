@@ -6,7 +6,7 @@ namespace UIFramework.Api
     /// <summary>Plain bag of initial menu settings (see <see cref="IUIMenuOptions"/>).</summary>
     internal sealed class UIMenuOptions : IUIMenuOptions
     {
-        public Func<string>? TitleFunc { get; set; }
+        internal Func<string>? TitleFunc { get; set; }
         Func<string> IUIMenuOptions.Title { get => TitleFunc!; set => TitleFunc = value; }
         public int? Width { get; set; }
         public int? Height { get; set; }

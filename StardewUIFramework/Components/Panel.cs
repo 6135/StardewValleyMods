@@ -14,7 +14,7 @@ namespace UIFramework.Components
         private bool drawBox;
         private int padding;
 
-        public Panel(string id, bool drawBox, int padding) : base(id)
+        internal Panel(string id, bool drawBox, int padding) : base(id)
         {
             this.drawBox = drawBox;
             this.padding = Math.Max(0, padding);
@@ -33,7 +33,10 @@ namespace UIFramework.Components
             {
                 value = Math.Max(0, value);
                 if (padding == value)
+                {
                     return;
+                }
+
                 padding = value;
                 InvalidateLayout();
             }
@@ -43,22 +46,22 @@ namespace UIFramework.Components
         private int EffectivePadding => padding > 0 ? padding : Style.Padding ?? 0;
 
         // a bare panel (no box, no handlers) lets clicks fall through so empty space clears focus
-        protected override bool IsHitTestVisible => drawBox || OnClick != null || OnRightClick != null || Tooltip != null || OnHover != null;
+        protected override bool IsHitTestVisible => drawBox || HasPointerHandlers;
 
         /// <summary>Absolute content rectangle (bounds minus padding).</summary>
-        public Rectangle ContentBounds
+        internal Rectangle ContentBounds
         {
             get
             {
                 int p = EffectivePadding;
-                return new Rectangle(Bounds.X + p, Bounds.Y + p, Math.Max(0, Bounds.Width - 2 * p), Math.Max(0, Bounds.Height - 2 * p));
+                return new Rectangle(Bounds.X + p, Bounds.Y + p, Math.Max(0, Bounds.Width - (2 * p)), Math.Max(0, Bounds.Height - (2 * p)));
             }
         }
 
         protected override Vector2 MeasureCore(Vector2 available)
         {
             int p = EffectivePadding;
-            var inner = new Vector2(Math.Max(0, available.X - 2 * p), Math.Max(0, available.Y - 2 * p));
+            var inner = new Vector2(Math.Max(0, available.X - (2 * p)), Math.Max(0, available.Y - (2 * p)));
             float w = 0, h = 0;
             foreach (UIElement child in Children)
             {
@@ -66,14 +69,16 @@ namespace UIFramework.Components
                 w = Math.Max(w, size.X);
                 h = Math.Max(h, size.Y);
             }
-            return new Vector2(w + 2 * p, h + 2 * p);
+            return new Vector2(w + (2 * p), h + (2 * p));
         }
 
         protected override void ArrangeCore()
         {
             Rectangle content = ContentBounds;
             foreach (UIElement child in Children)
+            {
                 child.Arrange(content);
+            }
         }
 
         protected override void DrawCore(SpriteBatch b)

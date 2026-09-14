@@ -32,7 +32,7 @@ namespace UIFramework.Components
         /// <summary>True when <see cref="buffer"/> was auto-filled after clearing, so the next digit replaces it.</summary>
         private bool bufferIsPlaceholder;
 
-        public NumberInput(string id, Func<double>? get, Action<double>? set, double min, double max, double step, bool clamp) : base(id)
+        internal NumberInput(string id, Func<double>? get, Action<double>? set, double min, double max, double step, bool clamp) : base(id)
         {
             this.get = get;
             this.set = set;
@@ -53,7 +53,9 @@ namespace UIFramework.Components
             {
                 Store(value);
                 if (buffer != null)
+                {
                     SetBuffer(Trim(value));
+                }
             }
         }
 
@@ -74,12 +76,12 @@ namespace UIFramework.Components
         }
 
         /// <summary>Called with the prospective value before it is applied; false rejects the edit silently.</summary>
-        public Func<double, bool>? ValidateFunc { get; set; }
+        internal Func<double, bool>? ValidateFunc { get; set; }
 
         Func<double, bool> IUINumberInput.Validate { get => ValidateFunc!; set => ValidateFunc = value; }
 
         /// <summary>Custom box texture (null = vanilla <c>LooseSprites\textBox</c>). Changes the natural size.</summary>
-        public Texture2D? Texture
+        internal Texture2D? Texture
         {
             get => texture;
             set
@@ -91,16 +93,16 @@ namespace UIFramework.Components
 
         Texture2D IUINumberInput.Texture { get => texture!; set => Texture = value; }
 
-        public Action<IUIValueEvent>? OnValueChanged { get; set; }
+        internal Action<IUIValueEvent>? OnValueChanged { get; set; }
 
         Action<IUIValueEvent> IUINumberInput.OnValueChanged { get => OnValueChanged!; set => OnValueChanged = value; }
 
-        public Action<IUIElement>? OnSubmit { get; set; }
+        internal Action<IUIElement>? OnSubmit { get; set; }
 
         Action<IUIElement> IUINumberInput.OnSubmit { get => OnSubmit!; set => OnSubmit = value; }
 
-        public override bool Focusable => true;
-        public override bool WantsTextInput => true;
+        internal override bool Focusable => true;
+        internal override bool WantsTextInput => true;
 
         private double EffectiveStep => Step > 0 ? Step : 1;
 
@@ -112,10 +114,16 @@ namespace UIFramework.Components
         private double Normalize(double value, bool forceClamp = false)
         {
             if (double.IsNaN(value) || double.IsInfinity(value))
+            {
                 value = 0;
+            }
+
             value = Math.Round(value, decimals, MidpointRounding.AwayFromZero);
             if (Clamp || forceClamp)
+            {
                 value = ClampToRange(value);
+            }
+
             return value;
         }
 
@@ -137,7 +145,7 @@ namespace UIFramework.Components
         private string Format(double value) => value.ToString("F" + decimals, Culture);
 
         /// <summary>The value a cleared box falls back to: 0, or the nearest bound when 0 is out of range.</summary>
-        private double EmptyValue => 0 < Min ? Min : 0 > Max ? Max : 0;
+        private double EmptyValue => Math.Clamp(0, Math.Min(Min, Max), Math.Max(Min, Max));
 
         private static bool TryParse(string text, out double value)
         {
@@ -164,12 +172,17 @@ namespace UIFramework.Components
         {
             double oldValue = Value;
             if (oldValue == newValue)
+            {
                 return false;
+            }
+
             if (ValidateFunc != null)
             {
                 Func<double, bool> validate = ValidateFunc;
                 if (!Raise("Validate", () => validate(newValue), false))
+                {
                     return false;
+                }
             }
             Store(newValue);
             if (OnValueChanged != null)
@@ -195,12 +208,18 @@ namespace UIFramework.Components
         private void ApplyBuffer(string previous)
         {
             if (buffer == null || !TryParse(buffer, out double parsed))
+            {
                 return;
+            }
+
             double normalized = Normalize(parsed);
             if (normalized == Value)
             {
                 if (normalized != parsed)
+                {
                     SetBuffer(Trim(normalized));
+                }
+
                 return;
             }
             if (!TryCommit(normalized))
@@ -209,20 +228,31 @@ namespace UIFramework.Components
                 return;
             }
             if (normalized != parsed)
+            {
                 SetBuffer(Trim(normalized));
+            }
         }
 
         /// <summary>Move the value by <paramref name="direction"/> steps (clamped to the range) and commit it.</summary>
         private bool StepBy(int direction)
         {
             double current = Value;
-            double target = Normalize(current + direction * EffectiveStep, forceClamp: true);
+            double target = Normalize(current + (direction * EffectiveStep), forceClamp: true);
             if (target == current)
+            {
                 return false;
+            }
+
             if (!TryCommit(target))
+            {
                 return false;
+            }
+
             if (buffer != null)
+            {
                 SetBuffer(Trim(target));
+            }
+
             return true;
         }
 
@@ -230,41 +260,89 @@ namespace UIFramework.Components
         private bool Insert(char c)
         {
             if (buffer == null)
+            {
                 SetBuffer(Trim(Value));
-            string previous = buffer!;
+            }
 
-            if (char.IsDigit(c))
-            {
-                if (bufferIsPlaceholder)
-                    SetBuffer(c.ToString());
-                else if (previous == "0")
-                    SetBuffer(c.ToString());
-                else if (previous == "-0")
-                    SetBuffer("-" + c);
-                else
-                    SetBuffer(previous + c);
-            }
-            else if (c == '-')
-            {
-                if (Min >= 0 || (previous.Length > 0 && !bufferIsPlaceholder))
-                    return false;
-                SetBuffer("-");
-                ApplyBuffer(previous);
-                return true;
-            }
-            else if (c == '.')
-            {
-                if (decimals <= 0 || (previous.Contains('.') && !bufferIsPlaceholder))
-                    return false;
-                SetBuffer(bufferIsPlaceholder ? "0." : previous.Length == 0 || previous == "-" ? previous + "0." : previous + ".");
-            }
-            else
+            string previous = buffer!;
+            string? next = NextBuffer(c, previous);
+            if (next == null)
             {
                 return false;
             }
 
+            SetBuffer(next);
             ApplyBuffer(previous);
             return true;
+        }
+
+        /// <summary>The buffer after typing <paramref name="c"/> onto <paramref name="previous"/>, or null when the character is rejected.</summary>
+        private string? NextBuffer(char c, string previous)
+        {
+            if (char.IsDigit(c))
+            {
+                return InsertDigit(c, previous);
+            }
+
+            if (c == '-')
+            {
+                return InsertMinus(previous);
+            }
+
+            if (c == '.')
+            {
+                return InsertDecimalPoint(previous);
+            }
+
+            return null;
+        }
+
+        /// <summary>A digit replaces a placeholder / lone zero, otherwise appends.</summary>
+        private string InsertDigit(char c, string previous)
+        {
+            if (bufferIsPlaceholder || previous == "0")
+            {
+                return c.ToString();
+            }
+
+            if (previous == "-0")
+            {
+                return "-" + c;
+            }
+
+            return previous + c;
+        }
+
+        /// <summary>A leading minus is only allowed on an empty buffer when the range goes below zero.</summary>
+        private string? InsertMinus(string previous)
+        {
+            if (Min >= 0 || (previous.Length > 0 && !bufferIsPlaceholder))
+            {
+                return null;
+            }
+
+            return "-";
+        }
+
+        /// <summary>One decimal point, only when decimals are accepted; an empty / sign-only buffer gets a leading zero.</summary>
+        private string? InsertDecimalPoint(string previous)
+        {
+            if (decimals <= 0 || (previous.Contains('.') && !bufferIsPlaceholder))
+            {
+                return null;
+            }
+
+            if (bufferIsPlaceholder)
+            {
+                return "0.";
+            }
+
+            if (previous.Length == 0 || previous == "-")
+            {
+                return previous + "0.";
+            }
+
+            return previous + ".";
         }
 
         // ---------------------------------------------------------------------------------------------------------
@@ -278,7 +356,9 @@ namespace UIFramework.Components
             ResolvedStyle style = Style;
             Texture2D tex = TextBoxDrawing.Resolve(texture, out bool sizeChanged);
             if (sizeChanged && texture == null)
+            {
                 InvalidateLayout();
+            }
 
             TextBoxDrawing.DrawBox(b, tex, Bounds, Enabled ? Color.White : Color.Gray);
 
@@ -306,7 +386,10 @@ namespace UIFramework.Components
             double current = Value;
             double normalized = Normalize(current);
             if (normalized != current)
+            {
                 TryCommit(normalized);
+            }
+
             base.HandleFocusLost();
         }
 
@@ -317,29 +400,47 @@ namespace UIFramework.Components
         protected internal override void HandleTextInput(char c)
         {
             if (!Enabled)
+            {
                 return;
+            }
+
             if (Insert(c))
+            {
                 UIServices.PlaySound(Theme.TypeSound);
+            }
         }
 
         /// <summary>Paste: feed each character through the same filter, silently.</summary>
         protected internal override void HandleTextInput(string text)
         {
             if (!Enabled || string.IsNullOrEmpty(text))
+            {
                 return;
+            }
+
             foreach (char c in text)
+            {
                 Insert(c);
+            }
         }
 
         protected internal override void HandleCommandInput(char command)
         {
             if (!Enabled || command != '\b')
+            {
                 return;
+            }
+
             if (buffer == null)
+            {
                 SetBuffer(Trim(Value));
+            }
+
             string previous = buffer!;
             if (previous.Length == 0)
+            {
                 return;
+            }
 
             UIServices.PlaySound(Theme.BackspaceSound);
             string shorter = bufferIsPlaceholder ? string.Empty : previous.Substring(0, previous.Length - 1);
@@ -349,7 +450,10 @@ namespace UIFramework.Components
                 double empty = Normalize(EmptyValue);
                 SetBuffer(Trim(empty), placeholder: true);
                 if (!TryCommit(empty) && Value != empty)
+                {
                     SetBuffer(Trim(Value), placeholder: true);
+                }
+
                 return;
             }
             SetBuffer(shorter);
@@ -359,18 +463,32 @@ namespace UIFramework.Components
         protected internal override void HandleSpecialInput(Keys key)
         {
             if (!Enabled)
+            {
                 return;
+            }
+
             if (key == Keys.Up)
+            {
                 StepBy(1);
+            }
             else if (key == Keys.Down)
+            {
                 StepBy(-1);
+            }
+            else
+            {
+                // other special keys (arrows, Home/End) are handled by the router / ignored
+            }
         }
 
         /// <summary>Wheel over the box (while focused or hovered) steps the value.</summary>
         protected internal override bool HandleScroll(int direction)
         {
             if (!Enabled || direction == 0 || !(IsFocused || IsHovered))
+            {
                 return false;
+            }
+
             StepBy(direction > 0 ? 1 : -1);
             return true;
         }
@@ -378,19 +496,28 @@ namespace UIFramework.Components
         protected internal override bool HandleKey(UIKeyEvent e)
         {
             if (base.HandleKey(e))
+            {
                 return true;
+            }
+
             if (e.Key == Keys.Enter)
             {
                 // with no OnSubmit, Enter falls through to the menu's DefaultButton
                 if (OnSubmit == null)
+                {
                     return false;
+                }
+
                 Action<IUIElement> cb = OnSubmit;
                 Raise("OnSubmit", () => cb(this));
                 return true;
             }
             // Up / Down arrive through HandleSpecialInput (keyboard subscriber); consume them here so focus does not move
             if (e.Key == Keys.Up || e.Key == Keys.Down)
+            {
                 return true;
+            }
+
             return TextBoxDrawing.IsTypingKey(e.Key);
         }
     }

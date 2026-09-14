@@ -11,20 +11,20 @@ namespace UIFramework.Rendering
         public UIFont? Font { get; set; }
         public Color? TextColor { get; set; }
         public Color? HoverColor { get; set; }
-        public Texture2D? BoxTexture { get; set; }
+        internal Texture2D? BoxTexture { get; set; }
         public Rectangle? BoxSource { get; set; }
         public float? BoxScale { get; set; }
         public int? Padding { get; set; }
         public bool? TextShadow { get; set; }
-        public string? ClickSound { get; set; }
-        public string? HoverSound { get; set; }
+        internal string? ClickSound { get; set; }
+        internal string? HoverSound { get; set; }
 
         Texture2D IUIStyle.BoxTexture { get => BoxTexture!; set => BoxTexture = value; }
         string IUIStyle.ClickSound { get => ClickSound!; set => ClickSound = value; }
         string IUIStyle.HoverSound { get => HoverSound!; set => HoverSound = value; }
 
         /// <summary>Copy every member set on <paramref name="over"/> onto a clone of this style.</summary>
-        public UIStyle Merge(UIStyle? over)
+        internal UIStyle Merge(UIStyle? over)
         {
             var result = new UIStyle
             {
@@ -32,7 +32,10 @@ namespace UIFramework.Rendering
                 BoxScale = BoxScale, Padding = Padding, TextShadow = TextShadow, ClickSound = ClickSound, HoverSound = HoverSound
             };
             if (over == null)
+            {
                 return result;
+            }
+
             result.Font = over.Font ?? result.Font;
             result.TextColor = over.TextColor ?? result.TextColor;
             result.HoverColor = over.HoverColor ?? result.HoverColor;
@@ -51,22 +54,22 @@ namespace UIFramework.Rendering
     /// A fully resolved style: theme defaults, then the consumer's default style, then the element's own style.
     /// Box members stay nullable because each component has its own vanilla box (buttons vs panels vs text boxes).
     /// </summary>
-    internal readonly struct ResolvedStyle
+    internal readonly record struct ResolvedStyle
     {
-        public readonly UIFont Font;
-        public readonly Color TextColor;
-        public readonly Color HoverColor;
-        public readonly Texture2D? BoxTexture;
-        public readonly Rectangle? BoxSource;
-        public readonly float? BoxScale;
-        public readonly int? Padding;
-        public readonly bool TextShadow;
+        internal readonly UIFont Font;
+        internal readonly Color TextColor;
+        internal readonly Color HoverColor;
+        internal readonly Texture2D? BoxTexture;
+        internal readonly Rectangle? BoxSource;
+        internal readonly float? BoxScale;
+        internal readonly int? Padding;
+        internal readonly bool TextShadow;
         /// <summary>null = component default, empty = silent.</summary>
-        public readonly string? ClickSound;
+        internal readonly string? ClickSound;
         /// <summary>null = component default, empty = silent.</summary>
-        public readonly string? HoverSound;
+        internal readonly string? HoverSound;
 
-        public ResolvedStyle(UIStyle s)
+        internal ResolvedStyle(UIStyle s)
         {
             Font = s.Font ?? UIFont.Small;
             TextColor = s.TextColor ?? Theme.TextColor;
@@ -85,35 +88,46 @@ namespace UIFramework.Rendering
     internal static class Theme
     {
         // 9-slice boxes
-        public static readonly Rectangle PanelBoxSource = new(0, 256, 60, 60);        // Game1.menuTexture
-        public static readonly Rectangle ButtonBoxSource = new(432, 439, 9, 9);       // Game1.mouseCursors
-        public static readonly Rectangle DropdownBoxSource = new(433, 451, 3, 3);     // OptionsDropDown.dropDownBGSource
-        public static readonly Rectangle DropdownButtonSource = new(437, 450, 10, 11); // OptionsDropDown.dropDownButtonSource
-        public static readonly Rectangle CheckboxChecked = new(236, 425, 9, 9);       // OptionsCheckbox.sourceRectChecked
-        public static readonly Rectangle CheckboxUnchecked = new(227, 425, 9, 9);     // OptionsCheckbox.sourceRectUnchecked
-        public static readonly Rectangle ScrollUpArrow = new(421, 459, 11, 12);
-        public static readonly Rectangle ScrollDownArrow = new(421, 472, 11, 12);
-        public static readonly Rectangle ScrollTrack = new(403, 383, 6, 6);
-        public static readonly Rectangle ScrollThumb = new(435, 463, 6, 10);
-        public static readonly Rectangle SliderTrack = new(403, 383, 6, 6);
-        public static readonly Rectangle SliderKnob = new(420, 441, 10, 6);           // OptionsSlider.sliderButtonRect
+        internal static readonly Rectangle PanelBoxSource = new(0, 256, 60, 60);        // Game1.menuTexture
+        internal static readonly Rectangle ButtonBoxSource = new(432, 439, 9, 9);       // Game1.mouseCursors
+        internal static readonly Rectangle DropdownBoxSource = new(433, 451, 3, 3);     // OptionsDropDown.dropDownBGSource
+        internal static readonly Rectangle DropdownButtonSource = new(437, 450, 10, 11); // OptionsDropDown.dropDownButtonSource
+        internal static readonly Rectangle CheckboxChecked = new(236, 425, 9, 9);       // OptionsCheckbox.sourceRectChecked
+        internal static readonly Rectangle CheckboxUnchecked = new(227, 425, 9, 9);     // OptionsCheckbox.sourceRectUnchecked
+        internal static readonly Rectangle ScrollUpArrow = new(421, 459, 11, 12);
+        internal static readonly Rectangle ScrollDownArrow = new(421, 472, 11, 12);
+        internal static readonly Rectangle ScrollTrack = new(403, 383, 6, 6);
+        internal static readonly Rectangle ScrollThumb = new(435, 463, 6, 10);
+        internal static readonly Rectangle SliderTrack = new(403, 383, 6, 6);
+        internal static readonly Rectangle SliderKnob = new(420, 441, 10, 6);           // OptionsSlider.sliderButtonRect
 
         // sounds
-        public const string ButtonClickSound = "select";
-        public const string CheckboxClickSound = "drumkit6";
-        public const string DropdownOpenSound = "shwip";
-        public const string DropdownCloseSound = "drumkit6";
-        public const string ScrollSound = "shiny4";
-        public const string BackspaceSound = "tinyWhip";
-        public const string TypeSound = "cowboy_monsterhit";
-        public const string HoverSound = "";
+        internal const string ButtonClickSound = "select";
+        internal const string CheckboxClickSound = "drumkit6";
+        internal const string DropdownOpenSound = "shwip";
+        internal const string DropdownCloseSound = "drumkit6";
+        internal const string ScrollSound = "shiny4";
+        internal const string BackspaceSound = "tinyWhip";
+        internal const string TypeSound = "cowboy_monsterhit";
+        internal const string HoverSound = "";
 
-        public const int PixelScale = 4;
+        internal const int PixelScale = 4;
 
-        public static Color TextColor => Game1.textColor;
+        internal static Color TextColor => Game1.textColor;
+
+        /// <summary>Tint for a box / sprite: gray when disabled, the hover color when hovered or focused, white otherwise.</summary>
+        internal static Color StateTint(bool enabled, bool highlighted, Color hoverColor)
+        {
+            if (!enabled)
+            {
+                return Color.Gray;
+            }
+
+            return highlighted ? hoverColor : Color.White;
+        }
 
         /// <summary>The theme's base style (every member set).</summary>
-        public static UIStyle Default { get; } = new()
+        internal static UIStyle Default { get; } = new()
         {
             Font = UIFont.Small,
             TextColor = null, // resolved lazily so Game1.textColor is read at draw time

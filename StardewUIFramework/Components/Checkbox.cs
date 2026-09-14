@@ -22,7 +22,7 @@ namespace UIFramework.Components
         private Func<string>? label;
         private string measuredLabel = string.Empty;
 
-        public Checkbox(string id, Func<bool>? get, Action<bool>? set) : base(id)
+        internal Checkbox(string id, Func<bool>? get, Action<bool>? set) : base(id)
         {
             this.get = get;
             this.set = set;
@@ -41,7 +41,7 @@ namespace UIFramework.Components
             set => Store(value);
         }
 
-        public Func<string>? LabelFunc
+        internal Func<string>? LabelFunc
         {
             get => label;
             set
@@ -54,16 +54,16 @@ namespace UIFramework.Components
         Func<string> IUICheckbox.Label { get => label!; set => LabelFunc = value; }
 
         /// <summary>null = theme default, empty = silent.</summary>
-        public string? ClickSound { get; set; }
+        internal string? ClickSound { get; set; }
 
         string IUICheckbox.ClickSound { get => ClickSound!; set => ClickSound = value; }
 
-        public Action<IUIValueEvent>? OnValueChanged { get; set; }
+        internal Action<IUIValueEvent>? OnValueChanged { get; set; }
 
         Action<IUIValueEvent> IUICheckbox.OnValueChanged { get => OnValueChanged!; set => OnValueChanged = value; }
 
-        public override bool Focusable => true;
-        public override bool ActivateOnEnter => true;
+        internal override bool Focusable => true;
+        internal override bool ActivateOnEnter => true;
 
         private string CurrentLabel => Raise("Label", label, string.Empty) ?? string.Empty;
 
@@ -106,7 +106,10 @@ namespace UIFramework.Components
             measuredLabel = CurrentLabel;
             int box = BoxSize;
             if (measuredLabel.Length == 0)
+            {
                 return new Vector2(box, box);
+            }
+
             Vector2 textSize = UIServices.Text.Measure(Style.Font, measuredLabel, 1f);
             return new Vector2(box + LabelGap + textSize.X, Math.Max(box, textSize.Y));
         }
@@ -115,10 +118,10 @@ namespace UIFramework.Components
         {
             ResolvedStyle style = Style;
             bool highlighted = Enabled && (IsHovered || IsFocused);
-            Color tint = !Enabled ? Color.Gray : highlighted ? style.HoverColor : Color.White;
+            Color tint = Theme.StateTint(Enabled, highlighted, style.HoverColor);
 
             int box = BoxSize;
-            var boxPos = new Vector2(Bounds.X, Bounds.Y + (Bounds.Height - box) / 2);
+            var boxPos = new Vector2(Bounds.X, Bounds.Y + ((Bounds.Height - box) / 2));
             b.Draw(Game1.mouseCursors, boxPos, Value ? Theme.CheckboxChecked : Theme.CheckboxUnchecked, tint, 0f, Vector2.Zero, Theme.PixelScale, SpriteEffects.None, 0f);
 
             string current = CurrentLabel;
@@ -128,11 +131,13 @@ namespace UIFramework.Components
                 InvalidateLayout();
             }
             if (current.Length == 0)
+            {
                 return;
+            }
 
             Vector2 textSize = UIServices.Text.Measure(style.Font, current, 1f);
             Color textColor = Enabled ? style.TextColor : style.TextColor * 0.5f;
-            var textPos = new Vector2(Bounds.X + box + LabelGap, (int)(Bounds.Y + (Bounds.Height - textSize.Y) / 2f));
+            var textPos = new Vector2(Bounds.X + box + LabelGap, (int)(Bounds.Y + ((Bounds.Height - textSize.Y) / 2f)));
             DrawHelper.Text(b, current, style.Font, textPos, textColor, style.TextShadow, 1f);
         }
 
@@ -143,20 +148,27 @@ namespace UIFramework.Components
         protected internal override bool HandleClick(UIClickEvent e)
         {
             if (e.Target == this && e.Button == UIMouseButton.Left && Enabled)
+            {
                 Toggle();
+            }
+
             return base.HandleClick(e);
         }
 
         protected internal override bool HandleActivate()
         {
             if (!Enabled || !Visible)
+            {
                 return false;
+            }
             // synthesize a click at the center so the toggle, bubbling and callbacks behave exactly like a mouse click
             var e = new UIClickEvent(this, Bounds.Center.X, Bounds.Center.Y, UIMouseButton.Left);
             for (UIElement? cur = this; cur != null && !e.Handled; cur = cur.ParentElement)
             {
                 if (cur.HandleClick(e))
+                {
                     e.Handled = true;
+                }
             }
             return true;
         }

@@ -34,7 +34,7 @@ namespace UIFramework.Components
         private int selectedIndex = -1;
         private bool dragging;
 
-        public ListView(string id, int rowHeight, int visibleRows, Func<int>? itemCount, Action<int, IUIContainer>? buildRow) : base(id)
+        internal ListView(string id, int rowHeight, int visibleRows, Func<int>? itemCount, Action<int, IUIContainer>? buildRow) : base(id)
         {
             this.rowHeight = Math.Max(1, rowHeight);
             this.visibleRows = Math.Max(1, visibleRows);
@@ -54,7 +54,10 @@ namespace UIFramework.Components
             {
                 value = Math.Max(1, value);
                 if (rowHeight == value)
+                {
                     return;
+                }
+
                 rowHeight = value;
                 InvalidateLayout();
             }
@@ -68,7 +71,10 @@ namespace UIFramework.Components
             {
                 value = Math.Max(1, value);
                 if (visibleRows == value)
+                {
                     return;
+                }
+
                 visibleRows = value;
                 EnsureRowContainers();
                 Refresh();
@@ -98,11 +104,11 @@ namespace UIFramework.Components
             set => selectedIndex = Math.Max(-1, value);
         }
 
-        public Action<IUIValueEvent>? OnValueChanged { get; set; }
+        internal Action<IUIValueEvent>? OnValueChanged { get; set; }
 
         Action<IUIValueEvent> IUIList.OnValueChanged { get => OnValueChanged!; set => OnValueChanged = value; }
 
-        public Action<int>? OnScroll { get; set; }
+        internal Action<int>? OnScroll { get; set; }
 
         Action<int> IUIList.OnScroll { get => OnScroll!; set => OnScroll = value; }
 
@@ -149,7 +155,10 @@ namespace UIFramework.Components
             lastCount = ItemCount;
             firstVisibleIndex = Math.Clamp(firstVisibleIndex, 0, MaxFirstIndex);
             for (int i = 0; i < rows.Count; i++)
+            {
                 BuildRow(i, firstVisibleIndex + i);
+            }
+
             InvalidateLayout();
         }
 
@@ -157,7 +166,9 @@ namespace UIFramework.Components
         private void EnsureFresh()
         {
             if (needsRefresh)
+            {
                 Refresh();
+            }
         }
 
         /// <summary>Point row <paramref name="row"/> at item <paramref name="item"/>: clear it, hide it past the end, otherwise let the consumer fill it.</summary>
@@ -186,14 +197,19 @@ namespace UIFramework.Components
             EnsureFresh();
             value = Math.Clamp(value, 0, MaxFirstIndex);
             if (firstVisibleIndex == value)
+            {
                 return false;
+            }
+
             int delta = value - firstVisibleIndex;
             firstVisibleIndex = value;
             for (int i = 0; i < rows.Count; i++)
             {
                 int item = firstVisibleIndex + i;
                 if (rowItems[i] != (item < lastCount ? item : -1))
+                {
                     BuildRow(i, item);
+                }
             }
             InvalidateLayout();
             if (OnScroll != null)
@@ -209,14 +225,19 @@ namespace UIFramework.Components
         {
             int target = (int)Math.Round(scrollbar.FractionFromY(py) * MaxFirstIndex);
             if (SetFirstVisible(target))
+            {
                 UIServices.PlaySound(Theme.ScrollSound);
+            }
         }
 
         /// <summary>Select an item from a click and raise <see cref="OnValueChanged"/>.</summary>
         private void Select(int item)
         {
             if (selectedIndex == item)
+            {
                 return;
+            }
+
             int old = selectedIndex;
             selectedIndex = item;
             if (OnValueChanged != null)
@@ -242,7 +263,10 @@ namespace UIFramework.Components
             foreach (UIElement child in Children)
             {
                 if (!child.Visible)
+                {
                     continue;
+                }
+
                 maxRowWidth = Math.Max(maxRowWidth, child.Measure(rowAvailable).X);
             }
             // fill the available width so rows are wide; size to content only when the width is unbounded
@@ -254,12 +278,16 @@ namespace UIFramework.Components
         {
             Rectangle content = ContentRect;
             for (int i = 0; i < rows.Count; i++)
-                rows[i].Arrange(new Rectangle(content.X, content.Y + i * rowHeight, content.Width, rowHeight));
+            {
+                rows[i].Arrange(new Rectangle(content.X, content.Y + (i * rowHeight), content.Width, rowHeight));
+            }
             // any other child a consumer added directly overlaps the content area
             foreach (UIElement child in Children)
             {
                 if (child is not Panel p || !rows.Contains(p))
+                {
                     child.Arrange(content);
+                }
             }
 
             int max = MaxFirstIndex;
@@ -270,11 +298,14 @@ namespace UIFramework.Components
         //  Update / draw
         // ---------------------------------------------------------------------------------------------------------
 
-        public override void Update(double elapsedMs)
+        internal override void Update(double elapsedMs)
         {
             // rebuild before (never while) the children are iterated
             if (needsRefresh || ItemCount != lastCount)
+            {
                 Refresh();
+            }
+
             base.Update(elapsedMs);
         }
 
@@ -285,12 +316,16 @@ namespace UIFramework.Components
                 for (int i = 0; i < rows.Count; i++)
                 {
                     if (rowItems[i] == selectedIndex && rows[i].Visible)
+                    {
                         DrawHelper.Fill(b, rows[i].Bounds, SelectionColor);
+                    }
                 }
             }
             DrawChildren(b);
             if (ScrollbarVisible)
+            {
                 scrollbar.Draw(b);
+            }
         }
 
         // ---------------------------------------------------------------------------------------------------------
@@ -307,11 +342,17 @@ namespace UIFramework.Components
                     {
                         case ScrollbarGadget.Part.UpArrow:
                             if (SetFirstVisible(firstVisibleIndex - 1))
+                            {
                                 UIServices.PlaySound(Theme.ScrollSound);
+                            }
+
                             return true;
                         case ScrollbarGadget.Part.DownArrow:
                             if (SetFirstVisible(firstVisibleIndex + 1))
+                            {
                                 UIServices.PlaySound(Theme.ScrollSound);
+                            }
+
                             return true;
                         case ScrollbarGadget.Part.Thumb:
                             dragging = true;
@@ -320,6 +361,8 @@ namespace UIFramework.Components
                             dragging = true;
                             SetFirstVisibleFromY(e.Y);
                             return true;
+                        default:
+                            break;
                     }
                 }
 
@@ -328,7 +371,9 @@ namespace UIFramework.Components
                 {
                     int row = (e.Y - Bounds.Y) / rowHeight;
                     if (row >= 0 && row < rows.Count && rowItems[row] >= 0)
+                    {
                         Select(rowItems[row]);
+                    }
                 }
             }
             return base.HandleClick(e);
@@ -337,7 +382,9 @@ namespace UIFramework.Components
         protected internal override void HandleClickHeld(int px, int py)
         {
             if (dragging)
+            {
                 SetFirstVisibleFromY(py);
+            }
         }
 
         protected internal override void HandleClickRelease(int px, int py)
@@ -349,9 +396,15 @@ namespace UIFramework.Components
         protected internal override bool HandleScroll(int direction)
         {
             if (direction == 0)
+            {
                 return false;
+            }
+
             if (!SetFirstVisible(firstVisibleIndex + (direction > 0 ? -1 : 1)))
+            {
                 return false;
+            }
+
             UIServices.PlaySound(Theme.ScrollSound);
             return true;
         }

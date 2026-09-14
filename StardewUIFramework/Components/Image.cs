@@ -17,14 +17,14 @@ namespace UIFramework.Components
         private Rectangle? source;
         private float scale;
 
-        public Image(string id, Texture2D? texture, Rectangle? source, float scale) : base(id)
+        internal Image(string id, Texture2D? texture, Rectangle? source, float scale) : base(id)
         {
             this.texture = texture;
             this.source = source;
             this.scale = scale <= 0 ? 1f : scale;
         }
 
-        public Texture2D? Texture
+        internal Texture2D? Texture
         {
             get => texture;
             set
@@ -65,7 +65,10 @@ namespace UIFramework.Components
             get
             {
                 if (texture == null)
+                {
                     return Point.Zero;
+                }
+
                 Rectangle src = source ?? texture.Bounds;
                 return new Point(Math.Max(0, src.Width), Math.Max(0, src.Height));
             }
@@ -80,10 +83,15 @@ namespace UIFramework.Components
         protected override void DrawCore(SpriteBatch b)
         {
             if (texture == null || Bounds.Width <= 0 || Bounds.Height <= 0)
+            {
                 return;
+            }
+
             Point size = SourceSize;
             if (size.X <= 0 || size.Y <= 0)
+            {
                 return;
+            }
 
             Color tint = Enabled ? Tint : Tint * 0.5f;
             Rectangle? src = source;

@@ -110,10 +110,10 @@ namespace UIFramework.Api
 
         public IUIList AddList(IUIContainer parent, string id, int rowHeight, int visibleRows, Func<int> itemCount, Action<int, IUIContainer> buildRow)
         {
-            if (itemCount == null)
-                throw new ArgumentNullException(nameof(itemCount));
-            if (buildRow == null)
-                throw new ArgumentNullException(nameof(buildRow));
+            ArgumentNullException.ThrowIfNull(itemCount);
+
+            ArgumentNullException.ThrowIfNull(buildRow);
+
             return Attach(parent, new ListView(RequireId(id), rowHeight, visibleRows, itemCount, buildRow));
         }
 
@@ -149,21 +149,27 @@ namespace UIFramework.Api
         public IUINumberInput AddNumberInput(IUIContainer parent, string id, Func<double> get, Action<double> set, double min, double max, double step, bool clamp)
         {
             if (max < min)
+            {
                 (min, max) = (max, min);
+            }
+
             return Attach(parent, new NumberInput(RequireId(id), get, set, min, max, step, clamp));
         }
 
         public IUIDropdown AddDropdown(IUIContainer parent, string id, Func<string[]> choices, Func<string[]> labels, Func<string> get, Action<string> set)
         {
-            if (choices == null)
-                throw new ArgumentNullException(nameof(choices));
+            ArgumentNullException.ThrowIfNull(choices);
+
             return Attach(parent, new Dropdown(RequireId(id), choices, labels, get, set));
         }
 
         public IUISlider AddSlider(IUIContainer parent, string id, Func<double> get, Action<double> set, double min, double max)
         {
             if (max < min)
+            {
                 (min, max) = (max, min);
+            }
+
             return Attach(parent, new Slider(RequireId(id), get, set, min, max));
         }
 
@@ -174,8 +180,7 @@ namespace UIFramework.Api
 
         public IUIElement AddCustom(IUIContainer parent, string id, IUICustomComponent implementation)
         {
-            if (implementation == null)
-                throw new ArgumentNullException(nameof(implementation));
+            ArgumentNullException.ThrowIfNull(implementation);
             // custom components (architecture.md §7 / phase 6) are not implemented yet; fail loudly rather than add a blank element
             throw new NotSupportedException($"[{consumer.ModId}] AddCustom('{id}'): custom components are not supported by UI Framework {Version} yet.");
         }
@@ -187,7 +192,10 @@ namespace UIFramework.Api
         public IUIElement Find(IUIMenu menu, string id)
         {
             if (menu is not UIMenu m)
+            {
                 throw new ArgumentException("The menu was not created by this framework.", nameof(menu));
+            }
+
             return m.Root.FindById(id ?? string.Empty)!;
         }
 
@@ -200,7 +208,9 @@ namespace UIFramework.Api
         public void InvalidateLayout(IUIMenu menu)
         {
             if (menu is UIMenu m)
+            {
                 m.InvalidateLayout();
+            }
         }
 
         // ---------------------------------------------------------------------------------------------------------
@@ -210,8 +220,8 @@ namespace UIFramework.Api
         public void RegisterHotkey(string id, string keybindList, Action onPressed)
         {
             RequireId(id);
-            if (onPressed == null)
-                throw new ArgumentNullException(nameof(onPressed));
+            ArgumentNullException.ThrowIfNull(onPressed);
+
             hotkeys.Register(consumer, id, keybindList, onPressed);
         }
 
@@ -220,7 +230,10 @@ namespace UIFramework.Api
         public void BindToggleHotkey(IUIMenu menu, string keybindList)
         {
             if (menu is not UIMenu m)
+            {
                 throw new ArgumentException("The menu was not created by this framework.", nameof(menu));
+            }
+
             string id = "__toggle:" + m.Id;
             if (string.IsNullOrWhiteSpace(keybindList))
             {
@@ -230,9 +243,13 @@ namespace UIFramework.Api
             hotkeys.Register(consumer, id, keybindList, () =>
             {
                 if (m.IsOpen)
+                {
                     m.Close();
+                }
                 else
+                {
                     m.Open(false);
+                }
             });
         }
 
@@ -253,20 +270,32 @@ namespace UIFramework.Api
         private static string RequireId(string id)
         {
             if (string.IsNullOrWhiteSpace(id))
+            {
                 throw new ArgumentException("An element / menu id is required.", nameof(id));
+            }
+
             return id;
         }
 
         private T Attach<T>(IUIContainer parent, T element) where T : UIElement
         {
-            if (parent == null)
-                throw new ArgumentNullException(nameof(parent));
+            ArgumentNullException.ThrowIfNull(parent);
+
             if (parent is not UIContainer container)
+            {
                 throw new ArgumentException("The parent container was not created by this framework.", nameof(parent));
+            }
+
             if (container.OwnerMenu != null && container.OwnerMenu.Consumer != consumer)
+            {
                 throw new InvalidOperationException($"'{container.Id}' belongs to another mod's menu.");
+            }
+
             if (container.OwnerMenu != null && container.OwnerMenu.Root.FindById(element.Id) != null)
+            {
                 UIServices.Log($"[{consumer.ModId}] element id '{element.Id}' is already used in menu '{container.OwnerMenu.Id}'; Find() will return the first one.", LogLevel.Debug);
+            }
+
             container.Add(element);
             return element;
         }

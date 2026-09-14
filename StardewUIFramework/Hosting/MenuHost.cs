@@ -17,16 +17,16 @@ namespace UIFramework.Hosting
     {
         private bool closed;
 
-        public UIMenu Menu { get; }
+        internal UIMenu Menu { get; }
 
-        public MenuHost(UIMenu menu) : base(0, 0, 100, 100, showUpperRightCloseButton: false)
+        internal MenuHost(UIMenu menu) : base(0, 0, 100, 100, showUpperRightCloseButton: false)
         {
             Menu = menu;
             SyncCloseButton();
         }
 
         /// <summary>Copy the model's bounds onto the IClickableMenu fields (after layout).</summary>
-        public void SyncBounds()
+        internal void SyncBounds()
         {
             Rectangle r = Menu.Bounds;
             xPositionOnScreen = r.X;
@@ -37,12 +37,16 @@ namespace UIFramework.Hosting
             allClickableComponents = null; // rebuilt lazily for gamepad snapping
         }
 
-        public void SyncCloseButton()
+        internal void SyncCloseButton()
         {
             if (Menu.ShowCloseButton && Menu.DrawBox)
+            {
                 initializeUpperRightCloseButton();
+            }
             else
+            {
                 upperRightCloseButton = null;
+            }
         }
 
         // ---------------------------------------------------------------------------------------------------------
@@ -59,7 +63,10 @@ namespace UIFramework.Hosting
         {
             Menu.Draw(b);
             if (shouldDrawCloseButton())
+            {
                 base.draw(b);
+            }
+
             drawMouse(b);
         }
 
@@ -82,14 +89,19 @@ namespace UIFramework.Hosting
             if (upperRightCloseButton != null && shouldDrawCloseButton() && upperRightCloseButton.containsPoint(x, y))
             {
                 if (playSound)
+                {
                     Game1.playSound(closeSound);
+                }
+
                 Menu.Close();
                 return;
             }
 
             bool handled = Menu.Router.Click(x, y, UIMouseButton.Left);
             if (!handled && !Menu.Modal && !Menu.Bounds.Contains(x, y) && !Menu.Overlay.HasPopups)
+            {
                 Menu.Close();
+            }
         }
 
         public override void receiveRightClick(int x, int y, bool playSound = true)
@@ -126,19 +138,26 @@ namespace UIFramework.Hosting
             bool alt = kb.IsKeyDown(Keys.LeftAlt) || kb.IsKeyDown(Keys.RightAlt);
 
             if (Menu.Router.Key(key, shift, ctrl, alt))
+            {
                 return;
+            }
 
             // vanilla behaviour: the menu button (E / Escape) closes, unless a text field is taking input
             bool textFocused = Menu.Focus.Focused?.WantsTextInput == true;
             if (!textFocused && Game1.options.doesInputListContain(Game1.options.menuButton, key))
             {
                 if (Menu.CloseOnEscape)
+                {
                     Menu.Close();
+                }
+
                 return;
             }
 
             if (!textFocused && Game1.options.snappyMenus && Game1.options.gamepadControls)
+            {
                 applyMovementKey(key);
+            }
         }
 
         public override void receiveGamePadButton(Buttons b)
@@ -163,14 +182,20 @@ namespace UIFramework.Hosting
                 });
             }
             if (upperRightCloseButton != null)
+            {
                 list.Add(upperRightCloseButton);
+            }
+
             allClickableComponents = list;
         }
 
         public override void snapToDefaultClickableComponent()
         {
             if (allClickableComponents == null)
+            {
                 populateClickableComponentList();
+            }
+
             if (allClickableComponents != null && allClickableComponents.Count > 0)
             {
                 currentlySnappedComponent = allClickableComponents[0];
@@ -204,25 +229,33 @@ namespace UIFramework.Hosting
         private void HandleClosed()
         {
             if (closed)
+            {
                 return;
+            }
+
             closed = true;
             if (_childMenu is MenuHost child)
+            {
                 child.Menu.Close();
+            }
+
             Menu.OnHostClosed(this);
         }
 
         /// <summary>Whether this host is still reachable from the game's active menu chain.</summary>
-        public bool IsStillActive()
+        internal bool IsStillActive()
         {
             for (IClickableMenu? m = Game1.activeClickableMenu; m != null; m = m.GetChildMenu())
             {
                 if (m == this)
+                {
                     return true;
+                }
             }
             return false;
         }
 
         /// <summary>Mark closed without going through the game (the game already dropped this host).</summary>
-        public void NotifyDropped() => HandleClosed();
+        internal void NotifyDropped() => HandleClosed();
     }
 }

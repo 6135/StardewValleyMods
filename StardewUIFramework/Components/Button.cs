@@ -23,13 +23,13 @@ namespace UIFramework.Components
         private float iconScale = 4f;
         private string measuredText = string.Empty;
 
-        public Button(string id, Func<string>? text, Action<IUIClickEvent>? onClick) : base(id)
+        internal Button(string id, Func<string>? text, Action<IUIClickEvent>? onClick) : base(id)
         {
             this.text = text;
             OnClick = onClick;
         }
 
-        public Func<string>? TextFunc
+        internal Func<string>? TextFunc
         {
             get => text;
             set
@@ -51,7 +51,7 @@ namespace UIFramework.Components
             }
         }
 
-        public Texture2D? Icon
+        internal Texture2D? Icon
         {
             get => icon;
             set
@@ -84,17 +84,17 @@ namespace UIFramework.Components
         }
 
         /// <summary>null = theme default, empty = silent.</summary>
-        public string? ClickSound { get; set; }
+        internal string? ClickSound { get; set; }
 
-        public string? HoverSound { get; set; }
+        internal string? HoverSound { get; set; }
 
         string IUIButton.ClickSound { get => ClickSound!; set => ClickSound = value; }
         string IUIButton.HoverSound { get => HoverSound!; set => HoverSound = value; }
 
         public bool DrawBox { get; set; } = true;
 
-        public override bool Focusable => true;
-        public override bool ActivateOnEnter => true;
+        internal override bool Focusable => true;
+        internal override bool ActivateOnEnter => true;
 
         protected override string? HoverSoundCue => HoverSound ?? Style.HoverSound ?? Theme.HoverSound;
 
@@ -107,24 +107,25 @@ namespace UIFramework.Components
             measuredText = CurrentText;
             Vector2 textSize = measuredText.Length > 0 ? UIServices.Text.Measure(Font, measuredText, 1f) : Vector2.Zero;
             Vector2 iconSize = IconSize;
-            float w = textSize.X + iconSize.X + (textSize.X > 0 && iconSize.X > 0 ? IconGap : 0) + (DrawBox ? 2 * PadX : 0);
-            float h = Math.Max(textSize.Y, iconSize.Y) + (DrawBox ? 2 * PadY : 0);
+            float w = textSize.X + iconSize.X + (textSize.X > 0 && iconSize.X > 0 ? IconGap : 0) + (DrawBox ? (2 * PadX) : 0);
+            float h = Math.Max(textSize.Y, iconSize.Y) + (DrawBox ? (2 * PadY) : 0);
             if (DrawBox)
+            {
                 h = Math.Max(h, MinHeight);
+            }
+
             return new Vector2(w, h);
         }
 
         protected override void DrawCore(SpriteBatch b)
         {
             ResolvedStyle style = Style;
-            bool highlighted = Enabled && (IsHovered || IsFocused);
-            Color tint = !Enabled ? Color.Gray : highlighted ? style.HoverColor : Color.White;
-
             if (DrawBox)
             {
+                bool highlighted = Enabled && (IsHovered || IsFocused);
                 Texture2D texture = style.BoxTexture ?? Game1.mouseCursors;
                 Rectangle source = style.BoxSource ?? (style.BoxTexture == null ? Theme.ButtonBoxSource : texture.Bounds);
-                DrawHelper.Box(b, texture, source, Bounds, tint, style.BoxScale ?? 4f);
+                DrawHelper.Box(b, texture, source, Bounds, Theme.StateTint(Enabled, highlighted, style.HoverColor), style.BoxScale ?? 4f);
             }
 
             string current = CurrentText;
@@ -134,42 +135,57 @@ namespace UIFramework.Components
                 InvalidateLayout();
             }
 
+            DrawContent(b, style, current);
+        }
+
+        /// <summary>Icon then text, centered as one block inside the bounds.</summary>
+        private void DrawContent(SpriteBatch b, ResolvedStyle style, string current)
+        {
             Vector2 textSize = current.Length > 0 ? UIServices.Text.Measure(Font, current, 1f) : Vector2.Zero;
             Vector2 iconSize = IconSize;
-            float contentW = textSize.X + iconSize.X + (textSize.X > 0 && iconSize.X > 0 ? IconGap : 0);
-            float x = Bounds.X + (Bounds.Width - contentW) / 2f;
+            float gap = textSize.X > 0 && iconSize.X > 0 ? IconGap : 0;
+            float x = Bounds.X + ((Bounds.Width - (textSize.X + iconSize.X + gap)) / 2f);
 
             if (icon != null)
             {
-                var dest = new Rectangle((int)x, (int)(Bounds.Y + (Bounds.Height - iconSize.Y) / 2f), (int)iconSize.X, (int)iconSize.Y);
+                int iconY = (int)(Bounds.Y + ((Bounds.Height - iconSize.Y) / 2f));
+                var dest = new Rectangle((int)x, iconY, (int)iconSize.X, (int)iconSize.Y);
                 b.Draw(icon, dest, iconSource, Enabled ? Color.White : Color.White * 0.5f);
-                x += iconSize.X + (textSize.X > 0 ? IconGap : 0);
+                x += iconSize.X + gap;
             }
 
             if (current.Length > 0)
             {
                 Color textColor = Enabled ? style.TextColor : style.TextColor * 0.5f;
-                DrawHelper.Text(b, current, Font, new Vector2((int)x, (int)(Bounds.Y + (Bounds.Height - textSize.Y) / 2f)), textColor, style.TextShadow, 1f);
+                int textY = (int)(Bounds.Y + ((Bounds.Height - textSize.Y) / 2f));
+                DrawHelper.Text(b, current, Font, new Vector2((int)x, textY), textColor, style.TextShadow, 1f);
             }
         }
 
         protected internal override bool HandleClick(UIClickEvent e)
         {
             if (e.Target == this && e.Button == UIMouseButton.Left)
+            {
                 UIServices.PlaySound(ClickSound ?? Style.ClickSound ?? Theme.ButtonClickSound);
+            }
+
             return base.HandleClick(e);
         }
 
         protected internal override bool HandleActivate()
         {
             if (!Enabled || !Visible)
+            {
                 return false;
+            }
             // synthesize a click at the center so bubbling / callbacks behave exactly like a mouse click
             var e = new UIClickEvent(this, Bounds.Center.X, Bounds.Center.Y, UIMouseButton.Left);
             for (UIElement? cur = this; cur != null && !e.Handled; cur = cur.ParentElement)
             {
                 if (cur.HandleClick(e))
+                {
                     e.Handled = true;
+                }
             }
             return true;
         }

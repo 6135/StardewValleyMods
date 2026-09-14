@@ -18,12 +18,12 @@ namespace UIFramework.Components
         private string displayText = string.Empty;
         private int wrapWidth = -1;
 
-        public Label(string id, Func<string>? text) : base(id)
+        internal Label(string id, Func<string>? text) : base(id)
         {
             this.text = text;
         }
 
-        public Func<string>? TextFunc
+        internal Func<string>? TextFunc
         {
             get => text;
             set
@@ -55,7 +55,10 @@ namespace UIFramework.Components
             set
             {
                 if (wrap == value)
+                {
                     return;
+                }
+
                 wrap = value;
                 InvalidateLayout();
             }
@@ -74,10 +77,10 @@ namespace UIFramework.Components
         }
 
         /// <summary>Current (unwrapped) text.</summary>
-        public string CurrentText => Raise("Text", text, string.Empty) ?? string.Empty;
+        internal string CurrentText => Raise("Text", text, string.Empty) ?? string.Empty;
 
         // labels only take clicks / hover when they have a reason to
-        protected override bool IsHitTestVisible => OnClick != null || OnRightClick != null || Tooltip != null || OnHover != null || OnHoverEnd != null;
+        protected override bool IsHitTestVisible => HasPointerHandlers;
 
         protected override Vector2 MeasureCore(Vector2 available)
         {

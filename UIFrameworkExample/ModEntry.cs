@@ -12,7 +12,6 @@ namespace UIFrameworkExample
     /// </summary>
     public class ModEntry : Mod
     {
-        private IStardewUIApi? ui;
         private IUIMenu? menu;
 
         // state edited by the form (values live here, the framework reads/writes them through delegates)
@@ -32,7 +31,7 @@ namespace UIFrameworkExample
 
         private void OnGameLaunched(object? sender, GameLaunchedEventArgs e)
         {
-            ui = Helper.ModRegistry.GetApi<IStardewUIApi>("6135.UIFramework");
+            IStardewUIApi? ui = Helper.ModRegistry.GetApi<IStardewUIApi>("6135.UIFramework");
             if (ui == null)
             {
                 Monitor.Log("UI Framework (6135.UIFramework) is not installed; the example menu is unavailable.", LogLevel.Warn);
@@ -117,7 +116,7 @@ namespace UIFrameworkExample
             {
                 IUIStack line = api.AddStack(container, $"row{index}", true, 12);
                 line.VerticalAlign = UIAlign.Center;
-                api.AddImage(line, $"row{index}.icon", Game1.mouseCursors, new Microsoft.Xna.Framework.Rectangle(128 + (index % 4) * 16, 256, 16, 16), 2f);
+                api.AddImage(line, $"row{index}.icon", Game1.mouseCursors, new Microsoft.Xna.Framework.Rectangle(128 + ((index % 4) * 16), 256, 16, 16), 2f);
                 api.AddLabel(line, $"row{index}.text", () => $"Item {index + 1}");
             });
             list.Selectable = true;
@@ -132,7 +131,7 @@ namespace UIFrameworkExample
                 Monitor.Log($"OK: name={name} day={day} season={season} seeds={payForSeeds} volume={volume} row={selectedRow}", LogLevel.Info);
             });
             ok.Tooltip = () => "Enter also triggers this button.";
-            IUIButton close = api.AddButton(buttons, "close", () => "Close", _ => demo.Close());
+            api.AddButton(buttons, "close", () => "Close", _ => demo.Close());
             demo.DefaultButton = ok;
 
             return demo;

@@ -6,9 +6,9 @@ The reference implementation for "what a consumer needs" is the **Profit Calcula
 
 Background reading:
 
-- Framework mods (data/delegate style): https://stardewmodding.wiki.gg/wiki/Tutorial:_C_Sharp_-_Making_Framework_Mods
-- Custom C# mods index: https://stardewmodding.wiki.gg/wiki/Making_Mods:_Custom_C_Sharp
-- SMAPI mod‑provided APIs (`Mod.GetApi`, Pintail proxying): https://stardewvalleywiki.com/Modding:Modder_Guide/APIs/Integrations#Mod-provided_APIs
+- Framework mods (data/delegate style): <https://stardewmodding.wiki.gg/wiki/Tutorial:_C_Sharp_-_Making_Framework_Mods>
+- Custom C# mods index: <https://stardewmodding.wiki.gg/wiki/Making_Mods:_Custom_C_Sharp>
+- SMAPI mod‑provided APIs (`Mod.GetApi`, Pintail proxying): <https://stardewvalleywiki.com/Modding:Modder_Guide/APIs/Integrations#Mod-provided_APIs>
 
 ---
 
@@ -390,40 +390,49 @@ Repository tasks:
 Each phase ends in a buildable, demoable state.
 
 ### Phase 0 — Skeleton
+
 - Create both projects, manifests, sln entries, `ModEntry.GetApi(IModInfo)`.
 - Empty `IStardewUIApi` with `ApiVersion`; example mod logs the version. Verifies the proxy path end to end.
 
 ### Phase 1 — Core tree + host + layout
+
 - `UIElement`, `UIContainer`, `UIMenu`, `MenuHost` with draw/update/resize.
 - `LayoutEngine` measure/arrange; `Stack`, `Panel`, `Canvas`, `Spacer`, `Label`, `Image`.
 - Window chrome (dialogue box, title, close button, dim). Centering/clamping.
 - Example: a titled menu with two labels opens on F9 and survives window resize.
 
 ### Phase 2 — Input, focus, events
+
 - `EventRouter` (hit‑test, bubble, capture), `FocusManager` + single keyboard subscriber adapter, hotkey service with `KeybindList`.
 - `Button` (click/hover/sounds), `Checkbox`, event‑args interfaces, callback try/catch + logging.
 - Tab/arrow focus traversal; Enter/Escape defaults; gamepad `myID` neighbor wiring generated from layout.
 
 ### Phase 3 — Text and numbers
+
 - `TextInput` (caret, placeholder, max length, validator, paste), `NumberInput` (clamp, step, up/down, wheel), `Slider`.
 - Port Profit Calculator's `TextOption`/`UIntOption` behaviors as the spec; per‑character sounds kept.
 
 ### Phase 4 — Overlay, dropdown, tooltips
+
 - `OverlayLayer`; `Dropdown` with open list, scroll, click‑outside close + swallow; only one open at a time.
 - Tooltip delay + `drawHoverText`; rich tooltip builder.
 
 ### Phase 5 — Grid, ScrollView, List
+
 - `Grid` with `auto/px/*` tracks and spans; `ScrollView` with scissor clipping, arrows, thumb drag, wheel; virtualized `ListView` with selection + `OnValueChanged`.
 
 ### Phase 6 — Custom components + polish
+
 - `IUICustomComponent` + `CustomElementAdapter`; `OnDrawExtra`; styles/theme overrides; debug overlay; `PerScreen` state; close‑all on return‑to‑title.
 
 ### Phase 7 — Acceptance: port Profit Calculator
+
 - Rebuild `ProfitCalculatorMainMenu` as: Panel → Grid(2 cols) with rows Day/NumberInput, Season/Dropdown, Produce/Dropdown, Fertilizer/Dropdown, PayForSeeds/Checkbox, PayForFertilizer/Checkbox, MaxMoney/NumberInput, BaseStats/Checkbox; a horizontal Stack with Calculate/Reset buttons; Enter → Calculate.
 - Rebuild `ProfitCalculatorResultsList` as a ListView of custom `CropBox` rows with `CropHoverBox` in overlay, opened as a child menu.
 - Ship the port behind a config flag until parity is confirmed, then delete `ProfitCalculator/main/ui/**`.
 
 ### Phase 8 — Docs and release
+
 - `UIFramework/README.md` rewritten from what actually exists; API reference generated from XML docs (a Doxyfile is already in the repo); Nexus page; example mod zipped alongside.
 
 ---
@@ -465,7 +474,7 @@ v1 (§1–§15) ships a code‑first framework that one mod uses to build its ow
 
 Goal: a modder can contribute UI to a screen they do not own, and can build that contribution out of the framework's out‑of‑the‑box components rather than drawing pixels themselves.
 
-**Extension slots**
+#### Extension slots
 
 - A screen owner declares named slots anywhere in its tree: `api.AddSlot(parent, "results.footer")`. A slot is an `IUIContainer` with an optional layout hint (stack direction, max height) and an optional `Func<bool>` visibility predicate.
 - Any other mod registers a contribution: `api.ContributeTo("6135.ProfitCalculator", "results.footer", (IUIContainer slot, IUIScreenContext ctx) => { … })`. The builder callback receives the slot container and adds normal components to it (labels, checkboxes, a grid, a custom component). Contributions run every time the screen is built, so they see fresh state.
@@ -473,23 +482,23 @@ Goal: a modder can contribute UI to a screen they do not own, and can build that
 - Ordering and conflicts: contributions are sorted by an optional `priority` then by mod id; a slot can declare `MaxContributions`; the owner can veto by contributor id. Contributions from a mod that throws are muted and logged, as in §10.
 - Discovery: `api.ListSlots(ownerModId)` returns declared slots with their hints, so contributing mods can adapt at runtime and a debug command can print the slot map of every open screen.
 
-**Reusable composite components**
+#### Reusable composite components
 
 - Consumers can package a subtree as a **composite**: `api.DefineComposite("6135.Shared.MoneyField", (IUIContainer host, IUICompositeArgs args) => { label + number input + currency icon })`. Composites are registered by one mod but resolvable by any mod through `api.AddComposite(parent, id, "6135.Shared.MoneyField", args)`. Args are a string‑keyed bag of primitives and delegates (proxy‑safe).
 - Composites expose their own values and commands via the same `IUIScreenContext` mechanism, so a composite behaves like a first‑class component to whoever uses it.
 - This is how mods share widgets without sharing assemblies: the framework is the only DLL anyone references.
 
-**Custom components that embed built‑ins**
+#### Custom components that embed built‑ins
 
 - `IUICustomComponent` (§7) gains an optional `Build(IUIContainer host)` step: the framework calls it once with a container the custom component owns, so a custom component can be "a hand‑drawn frame around a Stack of built‑in inputs". Layout, focus and events of the embedded built‑ins are handled by the framework; the custom component only draws its own chrome and handles its own clicks.
 - The adapter forwards `Measure` to the embedded container when the custom component returns `null` from its own `Measure`.
 
-**Screen decoration and wrapping**
+#### Screen decoration and wrapping
 
 - `api.OnScreenBuilt(ownerModId, menuId, Action<IUIMenu>)` lets a mod inspect and adjust an existing screen after it is built (hide an element, change a tooltip, add a button next to an existing one via `Find`). Runs after all slot contributions, so decorators see the final tree.
 - Owners can mark elements `Sealed = true` to opt out of external modification.
 
-**Deliverables**
+#### Deliverables
 
 - API additions: `AddSlot`, `ContributeTo`, `ListSlots`, `Expose`, `ExposeCommand`, `IUIScreenContext`, `DefineComposite`, `AddComposite`, `IUICompositeArgs`, `OnScreenBuilt`, `Sealed`, `IUICustomComponent.Build`.
 - Profit Calculator declares slots (`settings.extra`, `results.header`, `results.footer`, `crop.hoverbox.extra`) and exposes its settings and the `recalculate` command; the example mod contributes a row to each to prove the path.

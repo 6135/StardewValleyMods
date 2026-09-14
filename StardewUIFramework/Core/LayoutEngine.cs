@@ -6,22 +6,22 @@ using UIFramework.Api;
 namespace UIFramework.Core
 {
     /// <summary>A grid track definition: <c>auto</c>, fixed pixels, or a star (proportional) weight.</summary>
-    internal readonly struct GridTrack
+    internal readonly record struct GridTrack
     {
-        public enum Kind { Auto, Pixels, Star }
+        internal enum Kind { Auto, Pixels, Star }
 
-        public readonly Kind Type;
-        public readonly float Value;
+        internal readonly Kind Type;
+        internal readonly float Value;
 
-        public GridTrack(Kind type, float value)
+        internal GridTrack(Kind type, float value)
         {
             Type = type;
             Value = value;
         }
 
-        public static GridTrack Auto => new(Kind.Auto, 0);
-        public static GridTrack Px(float px) => new(Kind.Pixels, px);
-        public static GridTrack Star(float weight) => new(Kind.Star, weight);
+        internal static GridTrack Auto => new(Kind.Auto, 0);
+        internal static GridTrack Px(float px) => new(Kind.Pixels, px);
+        internal static GridTrack Star(float weight) => new(Kind.Star, weight);
 
         public override string ToString() => Type switch
         {
@@ -35,7 +35,7 @@ namespace UIFramework.Core
     internal static class LayoutEngine
     {
         /// <summary>Offset of a child of size <paramref name="size"/> inside a slot of <paramref name="available"/> for the alignment.</summary>
-        public static int AlignOffset(UIAlign align, int available, int size)
+        internal static int AlignOffset(UIAlign align, int available, int size)
         {
             return align switch
             {
@@ -49,7 +49,7 @@ namespace UIFramework.Core
         /// Parse a comma separated track list: <c>auto</c>, <c>120px</c>, <c>120</c>, <c>*</c>, <c>2*</c>.
         /// Whitespace is ignored; an empty string yields a single star track. Unknown tokens are treated as auto.
         /// </summary>
-        public static List<GridTrack> ParseTracks(string? definition)
+        internal static List<GridTrack> ParseTracks(string? definition)
         {
             var tracks = new List<GridTrack>();
             if (string.IsNullOrWhiteSpace(definition))
@@ -62,12 +62,15 @@ namespace UIFramework.Core
             {
                 string token = raw.Trim().ToLowerInvariant();
                 if (token.Length == 0)
+                {
                     continue;
+                }
+
                 if (token == "auto")
                 {
                     tracks.Add(GridTrack.Auto);
                 }
-                else if (token.EndsWith("*"))
+                else if (token.EndsWith('*'))
                 {
                     string weightText = token[..^1];
                     float weight = weightText.Length == 0 ? 1 : ParseFloat(weightText, 1);
@@ -81,7 +84,10 @@ namespace UIFramework.Core
             }
 
             if (tracks.Count == 0)
+            {
                 tracks.Add(GridTrack.Star(1));
+            }
+
             return tracks;
         }
 
@@ -96,7 +102,7 @@ namespace UIFramework.Core
         /// (excluding spacing). Star tracks share what is left after auto and pixel tracks; if there is no remaining
         /// space star tracks fall back to their content size.
         /// </summary>
-        public static float[] ResolveTracks(IReadOnlyList<GridTrack> tracks, float[] autoSizes, float available)
+        internal static float[] ResolveTracks(IReadOnlyList<GridTrack> tracks, float[] autoSizes, float available)
         {
             var sizes = new float[tracks.Count];
             float used = 0;
@@ -124,32 +130,45 @@ namespace UIFramework.Core
             for (int i = 0; i < tracks.Count; i++)
             {
                 if (tracks[i].Type != GridTrack.Kind.Star)
+                {
                     continue;
+                }
+
                 if (infinite || remaining <= 0 || starTotal <= 0)
+                {
                     sizes[i] = autoSizes[i];
+                }
                 else
+                {
                     sizes[i] = remaining * (tracks[i].Value / starTotal);
+                }
             }
             return sizes;
         }
 
         /// <summary>Sum of the tracks in [start, start + span) plus the spacing between them.</summary>
-        public static float SpanSize(float[] sizes, int start, int span, int spacing)
+        internal static float SpanSize(float[] sizes, int start, int span, int spacing)
         {
             float total = 0;
             int end = Math.Min(sizes.Length, start + span);
             for (int i = start; i < end; i++)
+            {
                 total += sizes[i];
+            }
+
             int gaps = Math.Max(0, end - start - 1);
-            return total + gaps * spacing;
+            return total + (gaps * spacing);
         }
 
         /// <summary>Offset of track <paramref name="index"/> from the start, including spacing.</summary>
-        public static float TrackOffset(float[] sizes, int index, int spacing)
+        internal static float TrackOffset(float[] sizes, int index, int spacing)
         {
             float offset = 0;
             for (int i = 0; i < index && i < sizes.Length; i++)
+            {
                 offset += sizes[i] + spacing;
+            }
+
             return offset;
         }
     }

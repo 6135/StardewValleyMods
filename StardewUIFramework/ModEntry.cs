@@ -60,25 +60,29 @@ namespace UIFramework
         {
             var gmcm = Helper.ModRegistry.GetApi<IGenericModConfigMenuApi>("spacechase0.GenericModConfigMenu");
             if (gmcm == null)
+            {
                 return;
+            }
 
-            gmcm.Register(ModManifest, () => UIServices.Config = config = new ModConfig(), () => Helper.WriteConfig(config));
+            gmcm.Register(ModManifest, () => UIServices.Config = config = new ModConfig(), () => Helper.WriteConfig(config), titleScreenOnly: false);
             gmcm.AddNumberOption(ModManifest,
                 getValue: () => config.TooltipDelayMs,
                 setValue: v => config.TooltipDelayMs = v,
                 name: () => Helper.Translation.Get("config.tooltip-delay"),
                 tooltip: () => Helper.Translation.Get("config.tooltip-delay.desc"),
-                min: 0, max: 3000, interval: 50);
+                min: 0, max: 3000, interval: 50, formatValue: null, fieldId: null);
             gmcm.AddBoolOption(ModManifest,
                 getValue: () => config.DebugOverlay,
                 setValue: v => config.DebugOverlay = v,
                 name: () => Helper.Translation.Get("config.debug-overlay"),
-                tooltip: () => Helper.Translation.Get("config.debug-overlay.desc"));
+                tooltip: () => Helper.Translation.Get("config.debug-overlay.desc"),
+                fieldId: null);
             gmcm.AddBoolOption(ModManifest,
                 getValue: () => config.LogCallbacks,
                 setValue: v => config.LogCallbacks = v,
                 name: () => Helper.Translation.Get("config.log-callbacks"),
-                tooltip: () => Helper.Translation.Get("config.log-callbacks.desc"));
+                tooltip: () => Helper.Translation.Get("config.log-callbacks.desc"),
+                fieldId: null);
         }
     }
 }

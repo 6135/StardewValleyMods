@@ -33,7 +33,7 @@ namespace UIFramework.Components
         private float[] columnAuto = Array.Empty<float>();
         private float[] rowAuto = Array.Empty<float>();
 
-        public Grid(string id, string columns, string rows) : base(id)
+        internal Grid(string id, string columns, string rows) : base(id)
         {
             this.columns = columns ?? "*";
             this.rows = rows ?? "auto";
@@ -51,7 +51,10 @@ namespace UIFramework.Components
             {
                 value ??= "*";
                 if (columns == value)
+                {
                     return;
+                }
+
                 columns = value;
                 columnTracks = LayoutEngine.ParseTracks(value);
                 InvalidateLayout();
@@ -66,7 +69,10 @@ namespace UIFramework.Components
             {
                 value ??= "auto";
                 if (rows == value)
+                {
                     return;
+                }
+
                 rows = value;
                 rowTracks = LayoutEngine.ParseTracks(value);
                 InvalidateLayout();
@@ -80,7 +86,10 @@ namespace UIFramework.Components
             {
                 value = Math.Max(0, value);
                 if (columnSpacing == value)
+                {
                     return;
+                }
+
                 columnSpacing = value;
                 InvalidateLayout();
             }
@@ -93,14 +102,17 @@ namespace UIFramework.Components
             {
                 value = Math.Max(0, value);
                 if (rowSpacing == value)
+                {
                     return;
+                }
+
                 rowSpacing = value;
                 InvalidateLayout();
             }
         }
 
         // a grid is layout-only: clicks on the gaps fall through unless it has a handler / tooltip
-        protected override bool IsHitTestVisible => OnClick != null || OnRightClick != null || Tooltip != null || OnHover != null;
+        protected override bool IsHitTestVisible => HasPointerHandlers;
 
         // ---------------------------------------------------------------------------------------------------------
         //  Tracks
@@ -110,11 +122,17 @@ namespace UIFramework.Components
         private static List<GridTrack> Extend(List<GridTrack> defined, int needed)
         {
             if (needed <= defined.Count)
+            {
                 return defined;
+            }
+
             var result = new List<GridTrack>(needed);
             result.AddRange(defined);
             while (result.Count < needed)
+            {
                 result.Add(GridTrack.Auto);
+            }
+
             return result;
         }
 
@@ -138,7 +156,9 @@ namespace UIFramework.Components
             for (int i = start; i < start + span && i < tracks.Count; i++)
             {
                 if (tracks[i].Type != GridTrack.Kind.Pixels)
+                {
                     return false;
+                }
             }
             return true;
         }
@@ -149,8 +169,11 @@ namespace UIFramework.Components
             float total = 0;
             int end = Math.Min(tracks.Count, start + span);
             for (int i = start; i < end; i++)
+            {
                 total += tracks[i].Value;
-            return total + Math.Max(0, end - start - 1) * spacing;
+            }
+
+            return total + (Math.Max(0, end - start - 1) * spacing);
         }
 
         /// <summary>Grow the auto sizes of the spanned tracks so the span fits <paramref name="desired"/> (excess spread evenly over the non-pixel tracks).</summary>
@@ -159,21 +182,31 @@ namespace UIFramework.Components
             float current = LayoutEngine.SpanSize(auto, start, span, spacing);
             float excess = desired - current;
             if (excess <= 0)
+            {
                 return;
+            }
+
             int end = Math.Min(tracks.Count, start + span);
             int flexible = 0;
             for (int i = start; i < end; i++)
             {
                 if (tracks[i].Type != GridTrack.Kind.Pixels)
+                {
                     flexible++;
+                }
             }
             if (flexible == 0)
+            {
                 return;
+            }
+
             float share = excess / flexible;
             for (int i = start; i < end; i++)
             {
                 if (tracks[i].Type != GridTrack.Kind.Pixels)
+                {
                     auto[i] += share;
+                }
             }
         }
 
@@ -181,7 +214,10 @@ namespace UIFramework.Components
         {
             float total = 0;
             foreach (float s in sizes)
+            {
                 total += s;
+            }
+
             return total;
         }
 
@@ -191,71 +227,107 @@ namespace UIFramework.Components
 
         protected override Vector2 MeasureCore(Vector2 available)
         {
-            // 1. how many tracks do we need (explicit definitions, extended by children placed beyond them)
-            int neededColumns = columnTracks.Count;
-            int neededRows = rowTracks.Count;
+            ResolveEffectiveTracks();
+            MeasureChildren(available);
+            ComputeAutoSizes();
+
+            // resolve against the available size (star tracks share what is left)
+            float colSpacingTotal = columnSpacing * Math.Max(0, effectiveColumns.Count - 1);
+            float rowSpacingTotal = rowSpacing * Math.Max(0, effectiveRows.Count - 1);
+            float[] colSizes = LayoutEngine.ResolveTracks(effectiveColumns, columnAuto, available.X - colSpacingTotal);
+            float[] rowSizes = LayoutEngine.ResolveTracks(effectiveRows, rowAuto, available.Y - rowSpacingTotal);
+            return new Vector2(Sum(colSizes) + colSpacingTotal, Sum(rowSizes) + rowSpacingTotal);
+        }
+
+        /// <summary>Visible children only (hidden ones take no cell).</summary>
+        private IEnumerable<UIElement> VisibleChildren()
+        {
             foreach (UIElement child in Children)
             {
-                if (!child.Visible)
-                    continue;
+                if (child.Visible)
+                {
+                    yield return child;
+                }
+            }
+        }
+
+        /// <summary>Step 1: the explicit tracks, extended with implicit auto tracks for children placed beyond them; pixel tracks pre-fill their auto size.</summary>
+        private void ResolveEffectiveTracks()
+        {
+            int neededColumns = columnTracks.Count;
+            int neededRows = rowTracks.Count;
+            foreach (UIElement child in VisibleChildren())
+            {
                 neededColumns = Math.Max(neededColumns, child.Column + child.ColumnSpan);
                 neededRows = Math.Max(neededRows, child.Row + child.RowSpan);
             }
             effectiveColumns = Extend(columnTracks, neededColumns);
             effectiveRows = Extend(rowTracks, neededRows);
+            columnAuto = PixelSizes(effectiveColumns);
+            rowAuto = PixelSizes(effectiveRows);
+        }
+
+        /// <summary>Pixel tracks sized up front (so their auto size still reads sensibly); everything else 0.</summary>
+        private static float[] PixelSizes(List<GridTrack> tracks)
+        {
+            var sizes = new float[tracks.Count];
+            for (int i = 0; i < tracks.Count; i++)
+            {
+                sizes[i] = tracks[i].Type == GridTrack.Kind.Pixels ? tracks[i].Value : 0;
+            }
+
+            return sizes;
+        }
+
+        /// <summary>Step 2: measure every child with what its cell can offer — pixel tracks give their size, anything else the whole available size.</summary>
+        private void MeasureChildren(Vector2 available)
+        {
             int colCount = effectiveColumns.Count;
             int rowCount = effectiveRows.Count;
-
-            // pixel tracks sized up front so their auto size (unused by ResolveTracks) still reads sensibly
-            columnAuto = new float[colCount];
-            rowAuto = new float[rowCount];
-            for (int i = 0; i < colCount; i++)
-                columnAuto[i] = effectiveColumns[i].Type == GridTrack.Kind.Pixels ? effectiveColumns[i].Value : 0;
-            for (int i = 0; i < rowCount; i++)
-                rowAuto[i] = effectiveRows[i].Type == GridTrack.Kind.Pixels ? effectiveRows[i].Value : 0;
-
-            // 2. measure every child with what its cell can offer: pixel tracks give their size, anything else the whole available size
-            foreach (UIElement child in Children)
+            foreach (UIElement child in VisibleChildren())
             {
-                if (!child.Visible)
-                    continue;
                 ColumnCell(child, colCount, out int col, out int colSpan);
                 RowCell(child, rowCount, out int row, out int rowSpan);
                 float cellW = AllPixels(effectiveColumns, col, colSpan) ? PixelSpan(effectiveColumns, col, colSpan, columnSpacing) : available.X;
                 float cellH = AllPixels(effectiveRows, row, rowSpan) ? PixelSpan(effectiveRows, row, rowSpan, rowSpacing) : available.Y;
                 child.Measure(new Vector2(cellW, cellH));
             }
+        }
 
-            // 3. content size per track: single-track children first, then spanning children spread their excess
-            foreach (UIElement child in Children)
+        /// <summary>Step 3: content size per track — single-track children first, then spanning children spread their excess.</summary>
+        private void ComputeAutoSizes()
+        {
+            int colCount = effectiveColumns.Count;
+            int rowCount = effectiveRows.Count;
+            foreach (UIElement child in VisibleChildren())
             {
-                if (!child.Visible)
-                    continue;
                 ColumnCell(child, colCount, out int col, out int colSpan);
                 RowCell(child, rowCount, out int row, out int rowSpan);
                 if (colSpan == 1 && effectiveColumns[col].Type != GridTrack.Kind.Pixels)
+                {
                     columnAuto[col] = Math.Max(columnAuto[col], child.DesiredSize.X);
+                }
+
                 if (rowSpan == 1 && effectiveRows[row].Type != GridTrack.Kind.Pixels)
+                {
                     rowAuto[row] = Math.Max(rowAuto[row], child.DesiredSize.Y);
+                }
             }
-            foreach (UIElement child in Children)
+
+            foreach (UIElement child in VisibleChildren())
             {
-                if (!child.Visible)
-                    continue;
                 ColumnCell(child, colCount, out int col, out int colSpan);
                 RowCell(child, rowCount, out int row, out int rowSpan);
                 if (colSpan > 1)
+                {
                     DistributeSpan(effectiveColumns, columnAuto, col, colSpan, columnSpacing, child.DesiredSize.X);
-                if (rowSpan > 1)
-                    DistributeSpan(effectiveRows, rowAuto, row, rowSpan, rowSpacing, child.DesiredSize.Y);
-            }
+                }
 
-            // 4. resolve against the available size (star tracks share what is left)
-            float colSpacingTotal = columnSpacing * Math.Max(0, colCount - 1);
-            float rowSpacingTotal = rowSpacing * Math.Max(0, rowCount - 1);
-            float[] colSizes = LayoutEngine.ResolveTracks(effectiveColumns, columnAuto, available.X - colSpacingTotal);
-            float[] rowSizes = LayoutEngine.ResolveTracks(effectiveRows, rowAuto, available.Y - rowSpacingTotal);
-            return new Vector2(Sum(colSizes) + colSpacingTotal, Sum(rowSizes) + rowSpacingTotal);
+                if (rowSpan > 1)
+                {
+                    DistributeSpan(effectiveRows, rowAuto, row, rowSpan, rowSpacing, child.DesiredSize.Y);
+                }
+            }
         }
 
         protected override void ArrangeCore()

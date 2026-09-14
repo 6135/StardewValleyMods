@@ -13,7 +13,7 @@ namespace UIFramework.Core
         protected UIContainer(string id) : base(id) { }
 
         /// <summary>Children in add (= draw / layout) order. Do not mutate; use Add/Remove.</summary>
-        public IReadOnlyList<UIElement> Children => children;
+        internal IReadOnlyList<UIElement> Children => children;
 
         public int ChildCount => children.Count;
 
@@ -28,12 +28,15 @@ namespace UIFramework.Core
             return element as UIElement ?? throw new ArgumentException("The element was not created by this framework.", nameof(element));
         }
 
-        public void Add(UIElement child)
+        internal void Add(UIElement child)
         {
-            if (child == null)
-                throw new ArgumentNullException(nameof(child));
+            ArgumentNullException.ThrowIfNull(child);
+
             if (child == this || IsSelfOrDescendantOf(child))
+            {
                 throw new InvalidOperationException($"Cannot add '{child.Id}' to '{Id}': it would create a cycle.");
+            }
+
             child.ParentElement?.Remove(child);
             children.Add(child);
             child.ParentElement = this;
@@ -41,17 +44,20 @@ namespace UIFramework.Core
             InvalidateLayout();
         }
 
-        public void Insert(int index, UIElement child)
+        internal void Insert(int index, UIElement child)
         {
             Add(child);
             children.Remove(child);
             children.Insert(Math.Clamp(index, 0, children.Count), child);
         }
 
-        public void Remove(UIElement child)
+        internal void Remove(UIElement child)
         {
             if (!children.Remove(child))
+            {
                 return;
+            }
+
             child.ParentElement = null;
             child.SetOwnerMenu(null);
             InvalidateLayout();
@@ -72,16 +78,20 @@ namespace UIFramework.Core
         {
             base.SetOwnerMenu(menu);
             foreach (UIElement child in children)
+            {
                 child.SetOwnerMenu(menu);
+            }
         }
 
-        public override IEnumerable<UIElement> SelfAndDescendants()
+        internal override IEnumerable<UIElement> SelfAndDescendants()
         {
             yield return this;
             foreach (UIElement child in children)
             {
                 foreach (UIElement e in child.SelfAndDescendants())
+                {
                     yield return e;
+                }
             }
         }
 
@@ -91,15 +101,20 @@ namespace UIFramework.Core
         internal virtual UIAlign DefaultChildVerticalAlign(UIElement child) => UIAlign.Start;
 
         /// <summary>Containers themselves are only hit when no child is, and only if they have a click / tooltip reason to be.</summary>
-        public override UIElement? HitTest(int px, int py)
+        internal override UIElement? HitTest(int px, int py)
         {
             if (!Visible || !Enabled || !Bounds.Contains(px, py))
+            {
                 return null;
+            }
+
             for (int i = children.Count - 1; i >= 0; i--)
             {
                 UIElement? hit = children[i].HitTest(px, py);
                 if (hit != null)
+                {
                     return hit;
+                }
             }
             return IsHitTestVisible ? this : null;
         }
@@ -113,13 +128,17 @@ namespace UIFramework.Core
         {
             // index loop: a consumer callback raised from a child's draw may mutate the tree
             for (int i = 0; i < children.Count; i++)
+            {
                 children[i].Draw(b);
+            }
         }
 
-        public override void Update(double elapsedMs)
+        internal override void Update(double elapsedMs)
         {
             for (int i = 0; i < children.Count; i++)
+            {
                 children[i].Update(elapsedMs);
+            }
         }
     }
 }

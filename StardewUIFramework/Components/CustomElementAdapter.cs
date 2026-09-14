@@ -11,15 +11,18 @@ namespace UIFramework.Components
     /// </summary>
     internal sealed class CustomElementAdapter : UIElement
     {
-        public IUICustomComponent Implementation { get; }
+        internal IUICustomComponent Implementation { get; }
 
-        public CustomElementAdapter(string id, IUICustomComponent implementation) : base(id)
+        internal CustomElementAdapter(string id, IUICustomComponent implementation) : base(id)
         {
             Implementation = implementation;
         }
 
-        protected override Vector2 MeasureCore(Vector2 available) => Vector2.Zero;
+        protected override Vector2 MeasureCore(Vector2 available) => Vector2.Zero; // placeholder: no layout until phase 6
 
-        protected override void DrawCore(SpriteBatch b) { }
+        protected override void DrawCore(SpriteBatch b)
+        {
+            // placeholder: nothing to draw until the custom-component tier ships
+        }
     }
 }

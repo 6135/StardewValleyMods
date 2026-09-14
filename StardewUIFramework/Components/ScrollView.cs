@@ -23,7 +23,7 @@ namespace UIFramework.Components
         private int contentHeight;
         private bool dragging;
 
-        public ScrollView(string id, int viewportHeight) : base(id)
+        internal ScrollView(string id, int viewportHeight) : base(id)
         {
             this.viewportHeight = Math.Max(0, viewportHeight);
         }
@@ -40,7 +40,10 @@ namespace UIFramework.Components
             {
                 value = Math.Max(0, value);
                 if (viewportHeight == value)
+                {
                     return;
+                }
+
                 viewportHeight = value;
                 InvalidateLayout();
             }
@@ -68,13 +71,16 @@ namespace UIFramework.Components
             set
             {
                 if (showScrollbar == value)
+                {
                     return;
+                }
+
                 showScrollbar = value;
                 InvalidateLayout();
             }
         }
 
-        public Action<int>? OnScroll { get; set; }
+        internal Action<int>? OnScroll { get; set; }
 
         Action<int> IUIScrollView.OnScroll { get => OnScroll!; set => OnScroll = value; }
 
@@ -106,7 +112,10 @@ namespace UIFramework.Components
         {
             value = Math.Clamp(value, 0, MaxScroll);
             if (scrollOffset == value)
+            {
                 return false;
+            }
+
             int delta = value - scrollOffset;
             scrollOffset = value;
             InvalidateLayout();
@@ -123,7 +132,9 @@ namespace UIFramework.Components
         {
             int target = (int)Math.Round(scrollbar.FractionFromY(py) * MaxScroll);
             if (SetOffset(target))
+            {
                 UIServices.PlaySound(Theme.ScrollSound);
+            }
         }
 
         // ---------------------------------------------------------------------------------------------------------
@@ -138,7 +149,10 @@ namespace UIFramework.Components
             foreach (UIElement child in Children)
             {
                 if (!child.Visible)
+                {
                     continue;
+                }
+
                 Vector2 size = child.Measure(inner);
                 w = Math.Max(w, size.X);
                 h += size.Y;
@@ -178,9 +192,14 @@ namespace UIFramework.Components
         {
             Rectangle viewport = ViewportRect;
             if (viewport.Width > 0 && viewport.Height > 0)
+            {
                 DrawHelper.WithScissor(b, viewport, () => DrawChildren(b));
+            }
+
             if (ScrollbarVisible)
+            {
                 scrollbar.Draw(b);
+            }
         }
 
         // ---------------------------------------------------------------------------------------------------------
@@ -188,19 +207,27 @@ namespace UIFramework.Components
         // ---------------------------------------------------------------------------------------------------------
 
         /// <summary>Children are only reachable inside the viewport; the scrollbar counts as the scroll view itself.</summary>
-        public override UIElement? HitTest(int px, int py)
+        internal override UIElement? HitTest(int px, int py)
         {
             if (!Visible || !Enabled || !Bounds.Contains(px, py))
+            {
                 return null;
+            }
+
             if (ScrollbarVisible && scrollbar.Contains(px, py))
+            {
                 return this;
+            }
+
             if (ViewportRect.Contains(px, py))
             {
                 for (int i = Children.Count - 1; i >= 0; i--)
                 {
                     UIElement? hit = Children[i].HitTest(px, py);
                     if (hit != null)
+                    {
                         return hit;
+                    }
                 }
             }
             return IsHitTestVisible ? this : null;
@@ -214,11 +241,17 @@ namespace UIFramework.Components
                 {
                     case ScrollbarGadget.Part.UpArrow:
                         if (SetOffset(scrollOffset - scrollStep))
+                        {
                             UIServices.PlaySound(Theme.ScrollSound);
+                        }
+
                         return true;
                     case ScrollbarGadget.Part.DownArrow:
                         if (SetOffset(scrollOffset + scrollStep))
+                        {
                             UIServices.PlaySound(Theme.ScrollSound);
+                        }
+
                         return true;
                     case ScrollbarGadget.Part.Thumb:
                         dragging = true;
@@ -227,6 +260,8 @@ namespace UIFramework.Components
                         dragging = true;
                         SetOffsetFromY(e.Y);
                         return true;
+                    default:
+                        break;
                 }
             }
             return base.HandleClick(e);
@@ -235,7 +270,9 @@ namespace UIFramework.Components
         protected internal override void HandleClickHeld(int px, int py)
         {
             if (dragging)
+            {
                 SetOffsetFromY(py);
+            }
         }
 
         protected internal override void HandleClickRelease(int px, int py)
@@ -247,9 +284,15 @@ namespace UIFramework.Components
         protected internal override bool HandleScroll(int direction)
         {
             if (direction == 0)
+            {
                 return false;
+            }
+
             if (!SetOffset(scrollOffset + (direction > 0 ? -scrollStep : scrollStep)))
+            {
                 return false;
+            }
+
             UIServices.PlaySound(Theme.ScrollSound);
             return true;
         }

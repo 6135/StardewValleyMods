@@ -12,35 +12,44 @@ namespace UIFramework.Core
     internal sealed class ConsumerContext
     {
         /// <summary>Context used for elements that are not (yet) attached to a menu.</summary>
-        public static readonly ConsumerContext None = new("(none)");
+        internal static readonly ConsumerContext None = new("(none)");
 
         private readonly HashSet<string> muted = new();
 
-        public string ModId { get; }
+        internal string ModId { get; }
 
         /// <summary>Tooltip delay override for this consumer (null = framework config).</summary>
-        public int? TooltipDelayMs { get; set; }
+        internal int? TooltipDelayMs { get; set; }
 
         /// <summary>Default style for this consumer's elements (null = theme default).</summary>
-        public UIStyle? DefaultStyle { get; set; }
+        internal UIStyle? DefaultStyle { get; set; }
 
-        public ConsumerContext(string modId)
+        internal ConsumerContext(string modId)
         {
             ModId = modId;
         }
 
-        public int EffectiveTooltipDelay => TooltipDelayMs ?? UIServices.Config.TooltipDelayMs;
+        internal int EffectiveTooltipDelay => TooltipDelayMs ?? UIServices.Config.TooltipDelayMs;
 
         /// <summary>Run a consumer callback. Exceptions are logged once per (element, event) and the callback is then muted.</summary>
-        public void Invoke(string elementId, string eventName, Action? action)
+        internal void Invoke(string elementId, string eventName, Action? action)
         {
             if (action == null)
+            {
                 return;
+            }
+
             string key = elementId + "|" + eventName;
             if (muted.Contains(key))
+            {
                 return;
+            }
+
             if (UIServices.Config.LogCallbacks)
+            {
                 UIServices.Log($"[{ModId}] {eventName} on '{elementId}'");
+            }
+
             try
             {
                 action();
@@ -52,13 +61,19 @@ namespace UIFramework.Core
         }
 
         /// <summary>Run a consumer callback that returns a value; <paramref name="fallback"/> is returned if it faults or is muted.</summary>
-        public T Invoke<T>(string elementId, string eventName, Func<T>? func, T fallback)
+        internal T Invoke<T>(string elementId, string eventName, Func<T>? func, T fallback)
         {
             if (func == null)
+            {
                 return fallback;
+            }
+
             string key = elementId + "|" + eventName;
             if (muted.Contains(key))
+            {
                 return fallback;
+            }
+
             try
             {
                 return func();
@@ -77,6 +92,6 @@ namespace UIFramework.Core
         }
 
         /// <summary>Forget muted callbacks (e.g. when the consumer rebuilds a menu).</summary>
-        public void ResetMutes() => muted.Clear();
+        internal void ResetMutes() => muted.Clear();
     }
 }

@@ -33,7 +33,7 @@ namespace UIFramework.Core
         private bool showCloseButton = true;
         private Func<string>? title;
 
-        public UIMenu(string id, ConsumerContext consumer, MenuRegistry registry)
+        internal UIMenu(string id, ConsumerContext consumer, MenuRegistry registry)
         {
             Id = id;
             Consumer = consumer;
@@ -54,35 +54,35 @@ namespace UIFramework.Core
         // ---------------------------------------------------------------------------------------------------------
 
         public string Id { get; }
-        public ConsumerContext Consumer { get; }
-        public Stack Root { get; }
-        public FocusManager Focus { get; }
-        public OverlayLayer Overlay { get; }
-        public EventRouter Router { get; }
+        internal ConsumerContext Consumer { get; }
+        internal Stack Root { get; }
+        internal FocusManager Focus { get; }
+        internal OverlayLayer Overlay { get; }
+        internal EventRouter Router { get; }
 
         /// <summary>The game-facing menu while open.</summary>
-        public MenuHost? Host { get; private set; }
+        internal MenuHost? Host { get; private set; }
 
         IUIStack IUIMenu.Root => Root;
 
         public bool IsOpen => Host != null;
 
         /// <summary>Element under the cursor (maintained by the router).</summary>
-        public UIElement? Hovered { get; internal set; }
+        internal UIElement? Hovered { get; set; }
 
         /// <summary>When the cursor entered <see cref="Hovered"/>.</summary>
-        public double HoverStartMs { get; internal set; }
+        internal double HoverStartMs { get; set; }
 
-        public int CursorX { get; internal set; }
-        public int CursorY { get; internal set; }
+        internal int CursorX { get; set; }
+        internal int CursorY { get; set; }
 
-        public bool LayoutDirty { get; private set; } = true;
+        internal bool LayoutDirty { get; private set; } = true;
 
         // ---------------------------------------------------------------------------------------------------------
         //  Options
         // ---------------------------------------------------------------------------------------------------------
 
-        public Func<string>? TitleFunc
+        internal Func<string>? TitleFunc
         {
             get => title;
             set
@@ -181,17 +181,17 @@ namespace UIFramework.Core
 
         public Rectangle Bounds { get; private set; }
 
-        public Button? DefaultButtonElement { get; set; }
-        public Button? CancelButtonElement { get; set; }
+        internal Button? DefaultButtonElement { get; set; }
+        internal Button? CancelButtonElement { get; set; }
 
         IUIButton IUIMenu.DefaultButton { get => DefaultButtonElement!; set => DefaultButtonElement = value as Button; }
         IUIButton IUIMenu.CancelButton { get => CancelButtonElement!; set => CancelButtonElement = value as Button; }
 
-        public Action<IUIMenu>? OnOpen { get; set; }
-        public Action<IUIMenu>? OnClose { get; set; }
-        public Action<IUIMenu, double>? OnUpdate { get; set; }
-        public Func<IUIKeyEvent, bool>? OnKey { get; set; }
-        public Action<int>? OnScroll { get; set; }
+        internal Action<IUIMenu>? OnOpen { get; set; }
+        internal Action<IUIMenu>? OnClose { get; set; }
+        internal Action<IUIMenu, double>? OnUpdate { get; set; }
+        internal Func<IUIKeyEvent, bool>? OnKey { get; set; }
+        internal Action<int>? OnScroll { get; set; }
 
         Action<IUIMenu> IUIMenu.OnOpen { get => OnOpen!; set => OnOpen = value; }
         Action<IUIMenu> IUIMenu.OnClose { get => OnClose!; set => OnClose = value; }
@@ -216,16 +216,30 @@ namespace UIFramework.Core
         internal void OnElementDetached(UIElement element)
         {
             if (Focus.Focused == element)
+            {
                 Focus.ClearFocus();
+            }
+
             if (Hovered == element)
+            {
                 Hovered = null;
+            }
+
             if (Router.Captured == element)
+            {
                 Router.ClickReleased(CursorX, CursorY);
+            }
+
             Overlay.RemovePopup(element);
             if (DefaultButtonElement == element)
+            {
                 DefaultButtonElement = null;
+            }
+
             if (CancelButtonElement == element)
+            {
                 CancelButtonElement = null;
+            }
         }
 
         public void InvalidateLayout() => MarkLayoutDirty();
@@ -242,7 +256,7 @@ namespace UIFramework.Core
         private int InsetBottom => (drawBox ? BoxInsetBottom : 0) + padding;
 
         /// <summary>Measure the root, compute the menu rectangle from the size / position policy, arrange the tree.</summary>
-        public void Relayout()
+        internal void Relayout()
         {
             Point vp = UIServices.ViewportSize();
             int insetW = InsetLeft + InsetRight;
@@ -257,51 +271,60 @@ namespace UIFramework.Core
             w = Math.Clamp(w, Math.Min(insetW, vp.X), Math.Max(vp.X, 1));
             h = Math.Clamp(h, Math.Min(insetH, vp.Y), Math.Max(vp.Y, 1));
 
-            int minY = title != null && drawBox ? Math.Min(TitleReserve, Math.Max(0, vp.Y - h)) : 0;
-            int px, py;
-            switch (anchor)
-            {
-                case UIAnchor.Explicit:
-                    px = x;
-                    py = y;
-                    break;
-                default:
-                    px = anchor switch
-                    {
-                        UIAnchor.TopLeft or UIAnchor.MiddleLeft or UIAnchor.BottomLeft => 0,
-                        UIAnchor.TopRight or UIAnchor.MiddleRight or UIAnchor.BottomRight => vp.X - w,
-                        _ => (vp.X - w) / 2
-                    };
-                    py = anchor switch
-                    {
-                        UIAnchor.TopLeft or UIAnchor.TopCenter or UIAnchor.TopRight => minY,
-                        UIAnchor.BottomLeft or UIAnchor.BottomCenter or UIAnchor.BottomRight => vp.Y - h,
-                        _ => (vp.Y - h) / 2
-                    };
-                    break;
-            }
-            px = Math.Clamp(px, 0, Math.Max(0, vp.X - w));
-            py = Math.Clamp(py, minY, Math.Max(minY, vp.Y - h));
-
-            Bounds = new Rectangle(px, py, w, h);
-            Root.Arrange(new Rectangle(px + InsetLeft, py + InsetTop, Math.Max(0, w - insetW), Math.Max(0, h - insetH)));
+            Point position = ResolvePosition(vp, w, h);
+            Bounds = new Rectangle(position.X, position.Y, w, h);
+            Root.Arrange(new Rectangle(position.X + InsetLeft, position.Y + InsetTop, Math.Max(0, w - insetW), Math.Max(0, h - insetH)));
             LayoutDirty = false;
 
             Host?.SyncBounds();
             Focus.Validate();
         }
 
+        /// <summary>Top-left corner for a menu of the given size: the anchor (or explicit X/Y), clamped to the viewport and below the title banner.</summary>
+        private Point ResolvePosition(Point vp, int w, int h)
+        {
+            int minY = title != null && drawBox ? Math.Min(TitleReserve, Math.Max(0, vp.Y - h)) : 0;
+            int px, py;
+            if (anchor == UIAnchor.Explicit)
+            {
+                px = x;
+                py = y;
+            }
+            else
+            {
+                px = anchor switch
+                {
+                    UIAnchor.TopLeft or UIAnchor.MiddleLeft or UIAnchor.BottomLeft => 0,
+                    UIAnchor.TopRight or UIAnchor.MiddleRight or UIAnchor.BottomRight => vp.X - w,
+                    _ => (vp.X - w) / 2
+                };
+                py = anchor switch
+                {
+                    UIAnchor.TopLeft or UIAnchor.TopCenter or UIAnchor.TopRight => minY,
+                    UIAnchor.BottomLeft or UIAnchor.BottomCenter or UIAnchor.BottomRight => vp.Y - h,
+                    _ => (vp.Y - h) / 2
+                };
+            }
+
+            return new Point(
+                Math.Clamp(px, 0, Math.Max(0, vp.X - w)),
+                Math.Clamp(py, minY, Math.Max(minY, vp.Y - h)));
+        }
+
         /// <summary>Absolute content rectangle (inside chrome and padding).</summary>
-        public Rectangle ContentBounds => new(Bounds.X + InsetLeft, Bounds.Y + InsetTop, Math.Max(0, Bounds.Width - InsetLeft - InsetRight), Math.Max(0, Bounds.Height - InsetTop - InsetBottom));
+        internal Rectangle ContentBounds => new(Bounds.X + InsetLeft, Bounds.Y + InsetTop, Math.Max(0, Bounds.Width - InsetLeft - InsetRight), Math.Max(0, Bounds.Height - InsetTop - InsetBottom));
 
         // ---------------------------------------------------------------------------------------------------------
         //  Per-frame
         // ---------------------------------------------------------------------------------------------------------
 
-        public void Tick(double elapsedMs)
+        internal void Tick(double elapsedMs)
         {
             if (LayoutDirty)
+            {
                 Relayout();
+            }
+
             Focus.Validate();
             Root.Update(elapsedMs);
             if (OnUpdate != null)
@@ -310,28 +333,40 @@ namespace UIFramework.Core
                 Consumer.Invoke(Id, "OnUpdate", () => cb(this, elapsedMs));
             }
             if (LayoutDirty)
+            {
                 Relayout();
+            }
         }
 
-        public void Draw(SpriteBatch b)
+        internal void Draw(SpriteBatch b)
         {
             if (LayoutDirty)
+            {
                 Relayout();
+            }
 
             Point vp = UIServices.ViewportSize();
             if (DimBackground && !Game1.options.showMenuBackground)
+            {
                 b.Draw(Game1.fadeToBlackRect, new Rectangle(0, 0, vp.X, vp.Y), Color.Black * 0.4f);
+            }
 
             if (drawBox)
+            {
                 Game1.drawDialogueBox(Bounds.X, Bounds.Y, Bounds.Width, Bounds.Height, speaker: false, drawOnlyBox: true);
+            }
 
             string? titleText = title == null ? null : Consumer.Invoke(Id, "Title", title, string.Empty);
             if (!string.IsNullOrEmpty(titleText))
             {
                 if (drawBox)
+                {
                     SpriteText.drawStringWithScrollCenteredAt(b, titleText, Bounds.Center.X, Math.Max(8, Bounds.Y - 56));
+                }
                 else
-                    DrawHelper.Text(b, titleText, UIFont.Dialogue, new Vector2(Bounds.Center.X - UIServices.Text.Measure(UIFont.Dialogue, titleText, 1f).X / 2f, Bounds.Y + 8), Theme.TextColor, false, 1f);
+                {
+                    DrawHelper.Text(b, titleText, UIFont.Dialogue, new Vector2(Bounds.Center.X - (UIServices.Text.Measure(UIFont.Dialogue, titleText, 1f).X / 2f), Bounds.Y + 8), Theme.TextColor, false, 1f);
+                }
             }
 
             Root.Draw(b);
@@ -339,20 +374,30 @@ namespace UIFramework.Core
             DrawTooltip(b);
 
             if (UIServices.Config.DebugOverlay)
+            {
                 DrawHelper.DebugBounds(b, Bounds, Id, Color.Red);
+            }
         }
 
         private void DrawTooltip(SpriteBatch b)
         {
             UIElement? hovered = Hovered;
             if (hovered == null || hovered.Tooltip == null || Overlay.HasPopups)
+            {
                 return;
+            }
+
             if (UIServices.NowMs() - HoverStartMs < Consumer.EffectiveTooltipDelay)
+            {
                 return;
+            }
 
             string text = Consumer.Invoke(hovered.Id, "Tooltip", hovered.Tooltip, string.Empty);
             if (string.IsNullOrEmpty(text))
+            {
                 return;
+            }
+
             string? tooltipTitle = hovered.TooltipTitle == null ? null : Consumer.Invoke(hovered.Id, "TooltipTitle", hovered.TooltipTitle, string.Empty);
             IClickableMenu.drawHoverText(b, text, Game1.smallFont, boldTitleText: string.IsNullOrEmpty(tooltipTitle) ? null : tooltipTitle);
         }
@@ -364,7 +409,10 @@ namespace UIFramework.Core
         public void Open(bool force)
         {
             if (IsOpen)
+            {
                 return;
+            }
+
             if (!force && !Context.IsPlayerFree)
             {
                 UIServices.Log($"[{Consumer.ModId}] menu '{Id}' was not opened because the player is not free (pass force = true to override).");
@@ -377,10 +425,13 @@ namespace UIFramework.Core
 
         void IUIMenu.OpenAsChild(IUIMenu parent) => OpenAsChild(parent as UIMenu ?? throw new ArgumentException("The parent menu was not created by this framework.", nameof(parent)));
 
-        public void OpenAsChild(UIMenu parent)
+        internal void OpenAsChild(UIMenu parent)
         {
             if (IsOpen)
+            {
                 return;
+            }
+
             if (!parent.IsOpen || parent.Host == null)
             {
                 UIServices.Log($"[{Consumer.ModId}] menu '{Id}' cannot open as a child of '{parent.Id}' because the parent is not open.", LogLevel.Warn);
@@ -407,18 +458,25 @@ namespace UIFramework.Core
         {
             MenuHost? host = Host;
             if (host == null)
+            {
                 return;
+            }
             // exitThisMenu → cleanupBeforeExit → OnHostClosed
             host.exitThisMenu(playSound: false);
             if (Host == host)
+            {
                 OnHostClosed(host);
+            }
         }
 
         /// <summary>Called by the host when the game tears it down (close button, Escape, emergency shutdown) or by the registry when it vanished.</summary>
         internal void OnHostClosed(MenuHost host)
         {
             if (Host != host)
+            {
                 return;
+            }
+
             Host = null;
             Overlay.CloseAll();
             Overlay.DiscardFrame();

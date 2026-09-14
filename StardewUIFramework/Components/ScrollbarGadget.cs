@@ -16,7 +16,7 @@ namespace UIFramework.Components
     internal sealed class ScrollbarGadget
     {
         /// <summary>Which part of the scrollbar a point is over.</summary>
-        public enum Part
+        internal enum Part
         {
             None,
             UpArrow,
@@ -26,13 +26,13 @@ namespace UIFramework.Components
         }
 
         /// <summary>Width of the scrollbar column in UI pixels (the arrow sprite at 4x).</summary>
-        public const int Width = 44;
+        internal const int Width = 44;
 
         /// <summary>Gap between the content and the scrollbar column.</summary>
-        public const int Gap = 4;
+        internal const int Gap = 4;
 
         /// <summary>Horizontal space an owner reserves for the scrollbar (<see cref="Gap"/> + <see cref="Width"/>).</summary>
-        public const int ReservedWidth = Width + Gap;
+        internal const int ReservedWidth = Width + Gap;
 
         private const int ArrowHeight = 48;
         private const int TrackWidth = 24;
@@ -42,18 +42,18 @@ namespace UIFramework.Components
         private const float Scale = 4f;
 
         /// <summary>Absolute rectangle of the whole gadget (arrows + track).</summary>
-        public Rectangle Bounds { get; private set; }
+        internal Rectangle Bounds { get; private set; }
 
-        public Rectangle UpArrow { get; private set; }
-        public Rectangle DownArrow { get; private set; }
-        public Rectangle Track { get; private set; }
-        public Rectangle Thumb { get; private set; }
+        internal Rectangle UpArrow { get; private set; }
+        internal Rectangle DownArrow { get; private set; }
+        internal Rectangle Track { get; private set; }
+        internal Rectangle Thumb { get; private set; }
 
         /// <summary>Thumb position in [0, 1] (0 = top).</summary>
-        public float Fraction { get; private set; }
+        internal float Fraction { get; private set; }
 
         /// <summary>Place the gadget in a column of <see cref="Width"/> pixels at (<paramref name="x"/>, <paramref name="y"/>) spanning <paramref name="height"/> pixels.</summary>
-        public void Layout(int x, int y, int height, float fraction)
+        internal void Layout(int x, int y, int height, float fraction)
         {
             height = Math.Max(0, height);
             Bounds = new Rectangle(x, y, Width, height);
@@ -66,7 +66,7 @@ namespace UIFramework.Components
         }
 
         /// <summary>Move the thumb to <paramref name="fraction"/> of the track.</summary>
-        public void SetFraction(float fraction)
+        internal void SetFraction(float fraction)
         {
             Fraction = float.IsNaN(fraction) ? 0f : Math.Clamp(fraction, 0f, 1f);
             int range = Math.Max(0, Track.Height - ThumbHeight);
@@ -74,36 +74,53 @@ namespace UIFramework.Components
         }
 
         /// <summary>Fraction in [0, 1] that puts the thumb's center at <paramref name="py"/> (used while dragging / clicking the track).</summary>
-        public float FractionFromY(int py)
+        internal float FractionFromY(int py)
         {
             int range = Track.Height - ThumbHeight;
             if (range <= 0)
+            {
                 return 0f;
-            return Math.Clamp((py - Track.Y - ThumbHeight / 2f) / range, 0f, 1f);
+            }
+
+            return Math.Clamp((py - Track.Y - (ThumbHeight / 2f)) / range, 0f, 1f);
         }
 
         /// <summary>True if the point is anywhere in the scrollbar column.</summary>
-        public bool Contains(int px, int py) => Bounds.Contains(px, py);
+        internal bool Contains(int px, int py) => Bounds.Contains(px, py);
 
         /// <summary>Which part is under the point.</summary>
-        public Part HitTest(int px, int py)
+        internal Part HitTest(int px, int py)
         {
             if (!Bounds.Contains(px, py))
+            {
                 return Part.None;
+            }
+
             if (UpArrow.Contains(px, py))
+            {
                 return Part.UpArrow;
+            }
+
             if (DownArrow.Contains(px, py))
+            {
                 return Part.DownArrow;
+            }
+
             if (Thumb.Contains(px, py))
+            {
                 return Part.Thumb;
+            }
+
             if (Track.Contains(px, py))
+            {
                 return Part.Track;
+            }
             // the strip beside the track (between the arrows) behaves like the track so clicks there are not lost
             return py >= Track.Y && py < Track.Bottom ? Part.Track : Part.None;
         }
 
         /// <summary>Draw arrows, track and thumb with the vanilla sprites.</summary>
-        public void Draw(SpriteBatch b)
+        internal void Draw(SpriteBatch b)
         {
             Texture2D texture = Game1.mouseCursors;
             b.Draw(texture, new Vector2(UpArrow.X, UpArrow.Y), Theme.ScrollUpArrow, Color.White, 0f, Vector2.Zero, Scale, SpriteEffects.None, 0f);
@@ -112,7 +129,9 @@ namespace UIFramework.Components
             {
                 IClickableMenu.drawTextureBox(b, texture, Theme.ScrollTrack, Track.X, Track.Y, Track.Width, Track.Height, Color.White, Scale, false);
                 if (Track.Height >= ThumbHeight)
+                {
                     b.Draw(texture, new Vector2(Thumb.X, Thumb.Y), Theme.ScrollThumb, Color.White, 0f, Vector2.Zero, Scale, SpriteEffects.None, 0f);
+                }
             }
         }
     }

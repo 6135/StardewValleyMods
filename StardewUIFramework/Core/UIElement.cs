@@ -40,13 +40,13 @@ namespace UIFramework.Core
         public string Id { get; }
 
         /// <summary>Parent container, or null for a root.</summary>
-        public UIContainer? ParentElement { get; internal set; }
+        internal UIContainer? ParentElement { get; set; }
 
         /// <summary>The menu this element is attached to (null while detached).</summary>
-        public UIMenu? OwnerMenu { get; private set; }
+        internal UIMenu? OwnerMenu { get; private set; }
 
         /// <summary>Consumer that owns the menu (never null; <see cref="ConsumerContext.None"/> while detached).</summary>
-        public ConsumerContext Consumer => OwnerMenu?.Consumer ?? ConsumerContext.None;
+        internal ConsumerContext Consumer => OwnerMenu?.Consumer ?? ConsumerContext.None;
 
         IUIContainer IUIElement.Parent => ParentElement!;
         IUIMenu IUIElement.Menu => OwnerMenu!;
@@ -55,35 +55,42 @@ namespace UIFramework.Core
         internal virtual void SetOwnerMenu(UIMenu? menu)
         {
             if (OwnerMenu == menu)
+            {
                 return;
+            }
+
             OwnerMenu?.OnElementDetached(this);
             OwnerMenu = menu;
         }
 
         /// <summary>This element and every descendant, depth first.</summary>
-        public virtual IEnumerable<UIElement> SelfAndDescendants()
+        internal virtual IEnumerable<UIElement> SelfAndDescendants()
         {
             yield return this;
         }
 
         /// <summary>Find a descendant (or this element) by id.</summary>
-        public UIElement? FindById(string id)
+        internal UIElement? FindById(string id)
         {
             foreach (UIElement e in SelfAndDescendants())
             {
                 if (e.Id == id)
+                {
                     return e;
+                }
             }
             return null;
         }
 
         /// <summary>True if <paramref name="other"/> is this element or one of its ancestors.</summary>
-        public bool IsSelfOrDescendantOf(UIElement other)
+        internal bool IsSelfOrDescendantOf(UIElement other)
         {
             for (UIElement? e = this; e != null; e = e.ParentElement)
             {
                 if (e == other)
+                {
                     return true;
+                }
             }
             return false;
         }
@@ -92,7 +99,7 @@ namespace UIFramework.Core
         //  Properties
         // ---------------------------------------------------------------------------------------------------------
 
-        public Rectangle Bounds { get; protected set; }
+        public Rectangle Bounds { get; private protected set; }
 
         public bool Visible
         {
@@ -100,7 +107,10 @@ namespace UIFramework.Core
             set
             {
                 if (visible == value)
+                {
                     return;
+                }
+
                 visible = value;
                 InvalidateLayout();
             }
@@ -112,17 +122,22 @@ namespace UIFramework.Core
             set
             {
                 if (enabled == value)
+                {
                     return;
+                }
+
                 enabled = value;
                 if (!enabled && IsFocused)
+                {
                     OwnerMenu?.Focus.ClearFocus();
+                }
             }
         }
 
-        public Func<string>? Tooltip { get; set; }
-        public Func<string>? TooltipTitle { get; set; }
-        public object? Tag { get; set; }
-        public UIStyle? StyleObject { get; set; }
+        internal Func<string>? Tooltip { get; set; }
+        internal Func<string>? TooltipTitle { get; set; }
+        internal object? Tag { get; set; }
+        internal UIStyle? StyleObject { get; set; }
 
         Func<string> IUIElement.Tooltip { get => Tooltip!; set => Tooltip = value; }
         Func<string> IUIElement.TooltipTitle { get => TooltipTitle!; set => TooltipTitle = value; }
@@ -218,7 +233,10 @@ namespace UIFramework.Core
         private void SetLayoutField(ref int field, int value)
         {
             if (field == value)
+            {
                 return;
+            }
+
             field = value;
             InvalidateLayout();
         }
@@ -229,22 +247,24 @@ namespace UIFramework.Core
         public void Focus()
         {
             if (Focusable && OwnerMenu != null)
+            {
                 OwnerMenu.Focus.SetFocus(this);
+            }
         }
 
         // ---------------------------------------------------------------------------------------------------------
         //  Consumer callbacks
         // ---------------------------------------------------------------------------------------------------------
 
-        public Action<IUIClickEvent>? OnClick { get; set; }
-        public Action<IUIClickEvent>? OnRightClick { get; set; }
-        public Action<IUIElement>? OnHover { get; set; }
-        public Action<IUIElement>? OnHoverEnd { get; set; }
-        public Action<IUIElement>? OnFocus { get; set; }
-        public Action<IUIElement>? OnBlur { get; set; }
-        public Func<IUIKeyEvent, bool>? OnKey { get; set; }
-        public Action<SpriteBatch, Rectangle>? OnDrawExtra { get; set; }
-        public Action<SpriteBatch, Rectangle>? OnDrawOverlay { get; set; }
+        internal Action<IUIClickEvent>? OnClick { get; set; }
+        internal Action<IUIClickEvent>? OnRightClick { get; set; }
+        internal Action<IUIElement>? OnHover { get; set; }
+        internal Action<IUIElement>? OnHoverEnd { get; set; }
+        internal Action<IUIElement>? OnFocus { get; set; }
+        internal Action<IUIElement>? OnBlur { get; set; }
+        internal Func<IUIKeyEvent, bool>? OnKey { get; set; }
+        internal Action<SpriteBatch, Rectangle>? OnDrawExtra { get; set; }
+        internal Action<SpriteBatch, Rectangle>? OnDrawOverlay { get; set; }
 
         Action<IUIClickEvent> IUIElement.OnClick { get => OnClick!; set => OnClick = value; }
         Action<IUIClickEvent> IUIElement.OnRightClick { get => OnRightClick!; set => OnRightClick = value; }
@@ -281,21 +301,23 @@ namespace UIFramework.Core
         // ---------------------------------------------------------------------------------------------------------
 
         /// <summary>Desired size including margins, valid after <see cref="Measure"/>.</summary>
-        public Vector2 DesiredSize { get; private set; }
+        internal Vector2 DesiredSize { get; private set; }
 
         /// <summary>Set when a property affecting layout changed; cleared by <see cref="Arrange"/>.</summary>
-        public bool LayoutDirty { get; private set; } = true;
+        internal bool LayoutDirty { get; private set; } = true;
 
         public void InvalidateLayout()
         {
             LayoutDirty = true;
             ParentElement?.InvalidateLayout();
             if (ParentElement == null)
+            {
                 OwnerMenu?.MarkLayoutDirty();
+            }
         }
 
         /// <summary>Measure pass: returns the desired size (including margins) for <paramref name="available"/> (including margins).</summary>
-        public Vector2 Measure(Vector2 available)
+        internal Vector2 Measure(Vector2 available)
         {
             if (!Visible)
             {
@@ -307,15 +329,25 @@ namespace UIFramework.Core
                 Math.Max(0, available.X - marginLeft - marginRight),
                 Math.Max(0, available.Y - marginTop - marginBottom));
             if (width.HasValue)
+            {
                 inner.X = width.Value;
+            }
+
             if (height.HasValue)
+            {
                 inner.Y = height.Value;
+            }
 
             Vector2 core = MeasureCore(inner);
             if (width.HasValue)
+            {
                 core.X = width.Value;
+            }
+
             if (height.HasValue)
+            {
                 core.Y = height.Value;
+            }
 
             DesiredSize = new Vector2(
                 Math.Max(0, core.X) + marginLeft + marginRight,
@@ -327,7 +359,7 @@ namespace UIFramework.Core
         protected abstract Vector2 MeasureCore(Vector2 available);
 
         /// <summary>Arrange pass: <paramref name="slot"/> is the absolute rectangle allotted by the parent (including margins).</summary>
-        public void Arrange(Rectangle slot)
+        internal void Arrange(Rectangle slot)
         {
             if (!Visible)
             {
@@ -364,10 +396,13 @@ namespace UIFramework.Core
         //  Draw / update
         // ---------------------------------------------------------------------------------------------------------
 
-        public void Draw(SpriteBatch b)
+        internal void Draw(SpriteBatch b)
         {
             if (!Visible)
+            {
                 return;
+            }
+
             DrawCore(b);
             if (OnDrawExtra != null)
             {
@@ -382,13 +417,15 @@ namespace UIFramework.Core
                 OwnerMenu.Overlay.RegisterDraw(sb => Raise("OnDrawOverlay", () => cb(sb, bounds)));
             }
             if (UIServices.Config.DebugOverlay)
+            {
                 DrawHelper.DebugBounds(b, Bounds, Id);
+            }
         }
 
         protected abstract void DrawCore(SpriteBatch b);
 
         /// <summary>Per-tick update (caret blink, animations). Containers forward to children.</summary>
-        public virtual void Update(double elapsedMs)
+        internal virtual void Update(double elapsedMs)
         {
         }
 
@@ -399,11 +436,17 @@ namespace UIFramework.Core
         /// <summary>Whether this element can be the target of pointer events at all (spacers are not).</summary>
         protected virtual bool IsHitTestVisible => true;
 
+        /// <summary>True when a consumer attached a click / hover / tooltip handler; layout-only containers only take pointer events then.</summary>
+        protected bool HasPointerHandlers => OnClick != null || OnRightClick != null || Tooltip != null || (OnHover != null || OnHoverEnd != null);
+
         /// <summary>Return the deepest visible + enabled element under the point, or null.</summary>
-        public virtual UIElement? HitTest(int px, int py)
+        internal virtual UIElement? HitTest(int px, int py)
         {
             if (!Visible || !Enabled || !IsHitTestVisible)
+            {
                 return null;
+            }
+
             return Bounds.Contains(px, py) ? this : null;
         }
 
@@ -412,13 +455,13 @@ namespace UIFramework.Core
         // ---------------------------------------------------------------------------------------------------------
 
         /// <summary>Whether clicking gives keyboard focus.</summary>
-        public virtual bool Focusable => false;
+        internal virtual bool Focusable => false;
 
         /// <summary>Whether the element wants <see cref="StardewValley.IKeyboardSubscriber"/> text input while focused.</summary>
-        public virtual bool WantsTextInput => false;
+        internal virtual bool WantsTextInput => false;
 
         /// <summary>Whether this element acts as the target for keyboard "activate" (Enter / gamepad A) — buttons do.</summary>
-        public virtual bool ActivateOnEnter => false;
+        internal virtual bool ActivateOnEnter => false;
 
         /// <summary>Left or right click on (or bubbling through) this element. Return true to stop bubbling.</summary>
         protected internal virtual bool HandleClick(UIClickEvent e)
@@ -432,7 +475,9 @@ namespace UIFramework.Core
         {
             Action<IUIClickEvent>? cb = e.Button == UIMouseButton.Left ? OnClick : OnRightClick;
             if (cb != null)
+            {
                 Raise(e.Button == UIMouseButton.Left ? "OnClick" : "OnRightClick", () => cb(e));
+            }
         }
 
         /// <summary>Mouse button held after a click that targeted this element (drag).</summary>
@@ -449,9 +494,14 @@ namespace UIFramework.Core
         {
             string? cue = HoverSoundCue;
             if (!string.IsNullOrEmpty(cue))
+            {
                 UIServices.PlaySound(cue);
+            }
+
             if (OnHover != null)
+            {
                 Raise("OnHover", () => OnHover(this));
+            }
         }
 
         protected internal virtual void HandleHoverMove(int px, int py)
@@ -461,7 +511,9 @@ namespace UIFramework.Core
         protected internal virtual void HandleHoverLeave()
         {
             if (OnHoverEnd != null)
+            {
                 Raise("OnHoverEnd", () => OnHoverEnd(this));
+            }
         }
 
         /// <summary>Sound played when the cursor enters (null / empty = none).</summary>
@@ -480,7 +532,9 @@ namespace UIFramework.Core
             {
                 Func<IUIKeyEvent, bool> cb = OnKey;
                 if (Raise("OnKey", () => cb(e), false))
+                {
                     e.Handled = true;
+                }
             }
             return e.Handled;
         }
@@ -499,7 +553,9 @@ namespace UIFramework.Core
         protected internal virtual void HandleTextInput(string text)
         {
             foreach (char c in text)
+            {
                 HandleTextInput(c);
+            }
         }
 
         protected internal virtual void HandleCommandInput(char command)
@@ -513,13 +569,17 @@ namespace UIFramework.Core
         protected internal virtual void HandleFocusGained()
         {
             if (OnFocus != null)
+            {
                 Raise("OnFocus", () => OnFocus(this));
+            }
         }
 
         protected internal virtual void HandleFocusLost()
         {
             if (OnBlur != null)
+            {
                 Raise("OnBlur", () => OnBlur(this));
+            }
         }
 
         // ---------------------------------------------------------------------------------------------------------

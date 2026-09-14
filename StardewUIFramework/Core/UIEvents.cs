@@ -7,7 +7,7 @@ namespace UIFramework.Core
     internal abstract class UIEvent : IUIEvent
     {
         public UIEventKind Kind { get; }
-        public UIElement? Target { get; }
+        internal UIElement? Target { get; }
         public IUIElement Element => Target!;
         public string ElementId => Target?.Id ?? string.Empty;
         public bool Handled { get; set; }
@@ -25,7 +25,7 @@ namespace UIFramework.Core
         public int Y { get; }
         public UIMouseButton Button { get; }
 
-        public UIClickEvent(UIElement? target, int x, int y, UIMouseButton button)
+        internal UIClickEvent(UIElement? target, int x, int y, UIMouseButton button)
             : base(button == UIMouseButton.Left ? UIEventKind.Click : UIEventKind.RightClick, target)
         {
             X = x;
@@ -45,15 +45,15 @@ namespace UIFramework.Core
         public int OldIndex { get; init; } = -1;
         public int NewIndex { get; init; } = -1;
 
-        public UIValueEvent(UIElement target) : base(UIEventKind.ValueChanged, target) { }
+        internal UIValueEvent(UIElement target) : base(UIEventKind.ValueChanged, target) { }
 
-        public static UIValueEvent Text(UIElement target, string oldValue, string newValue) => new(target)
+        internal static UIValueEvent Text(UIElement target, string oldValue, string newValue) => new(target)
         {
             OldValue = oldValue,
             NewValue = newValue
         };
 
-        public static UIValueEvent Number(UIElement target, double oldValue, double newValue) => new(target)
+        internal static UIValueEvent Number(UIElement target, double oldValue, double newValue) => new(target)
         {
             OldNumber = oldValue,
             NewNumber = newValue,
@@ -61,7 +61,7 @@ namespace UIFramework.Core
             NewValue = newValue.ToString(System.Globalization.CultureInfo.InvariantCulture)
         };
 
-        public static UIValueEvent Bool(UIElement target, bool oldValue, bool newValue) => new(target)
+        internal static UIValueEvent Bool(UIElement target, bool oldValue, bool newValue) => new(target)
         {
             OldBool = oldValue,
             NewBool = newValue,
@@ -69,7 +69,7 @@ namespace UIFramework.Core
             NewValue = newValue.ToString()
         };
 
-        public static UIValueEvent Index(UIElement target, int oldIndex, int newIndex, string oldValue, string newValue) => new(target)
+        internal static UIValueEvent Index(UIElement target, int oldIndex, int newIndex, string oldValue, string newValue) => new(target)
         {
             OldIndex = oldIndex,
             NewIndex = newIndex,
@@ -87,7 +87,7 @@ namespace UIFramework.Core
         public bool Ctrl { get; }
         public bool Alt { get; }
 
-        public UIKeyEvent(UIElement? target, Keys key, bool shift, bool ctrl, bool alt) : base(UIEventKind.Key, target)
+        internal UIKeyEvent(UIElement? target, Keys key, bool shift, bool ctrl, bool alt) : base(UIEventKind.Key, target)
         {
             Key = key;
             Shift = shift;

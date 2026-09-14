@@ -2,3 +2,6 @@
 
 # S1244: Floating point numbers should not be tested for equality
 dotnet_diagnostic.S1244.severity = none
+
+# IDE0011: always use braces on control-flow statements (Codacy / Sonar S121)
+csharp_prefer_braces = true:warning

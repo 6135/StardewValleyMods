@@ -12,7 +12,7 @@ namespace UIFramework.Components
         private int spacing;
         private UIAlign alignment = UIAlign.Start;
 
-        public Stack(string id, bool horizontal, int spacing) : base(id)
+        internal Stack(string id, bool horizontal, int spacing) : base(id)
         {
             this.horizontal = horizontal;
             this.spacing = Math.Max(0, spacing);
@@ -24,7 +24,10 @@ namespace UIFramework.Components
             set
             {
                 if (horizontal == value)
+                {
                     return;
+                }
+
                 horizontal = value;
                 InvalidateLayout();
             }
@@ -37,7 +40,10 @@ namespace UIFramework.Components
             {
                 value = Math.Max(0, value);
                 if (spacing == value)
+                {
                     return;
+                }
+
                 spacing = value;
                 InvalidateLayout();
             }
@@ -50,14 +56,17 @@ namespace UIFramework.Components
             set
             {
                 if (alignment == value)
+                {
                     return;
+                }
+
                 alignment = value;
                 InvalidateLayout();
             }
         }
 
         // a stack is layout-only: clicks on the gaps fall through to whatever is behind it (unless it has a handler)
-        protected override bool IsHitTestVisible => OnClick != null || OnRightClick != null || Tooltip != null || OnHover != null;
+        protected override bool IsHitTestVisible => HasPointerHandlers;
 
         internal override UIAlign DefaultChildHorizontalAlign(UIElement child) => horizontal ? UIAlign.Start : alignment;
         internal override UIAlign DefaultChildVerticalAlign(UIElement child) => horizontal ? alignment : UIAlign.Start;
@@ -69,7 +78,10 @@ namespace UIFramework.Components
             foreach (UIElement child in Children)
             {
                 if (!child.Visible)
+                {
                     continue;
+                }
+
                 Vector2 size = child.Measure(available);
                 if (horizontal)
                 {
@@ -84,7 +96,10 @@ namespace UIFramework.Components
                 visible++;
             }
             if (visible > 1)
+            {
                 main += spacing * (visible - 1);
+            }
+
             return horizontal ? new Vector2(main, cross) : new Vector2(cross, main);
         }
 

@@ -18,12 +18,12 @@ namespace UIFramework.Core
         private readonly List<UIElement> popups = new();
         private readonly List<Action<SpriteBatch>> frameDraws = new();
 
-        public bool HasPopups => popups.Count > 0;
+        internal bool HasPopups => popups.Count > 0;
 
-        public IReadOnlyList<UIElement> Popups => popups;
+        internal IReadOnlyList<UIElement> Popups => popups;
 
         /// <summary>Open <paramref name="element"/>'s popup, closing any other.</summary>
-        public void OpenPopup(UIElement element)
+        internal void OpenPopup(UIElement element)
         {
             foreach (UIElement other in popups.ToArray())
             {
@@ -34,13 +34,15 @@ namespace UIFramework.Core
                 }
             }
             if (!popups.Contains(element))
+            {
                 popups.Add(element);
+            }
         }
 
         /// <summary>Forget the popup (the element already knows it is closed).</summary>
-        public void RemovePopup(UIElement element) => popups.Remove(element);
+        internal void RemovePopup(UIElement element) => popups.Remove(element);
 
-        public void CloseAll()
+        internal void CloseAll()
         {
             foreach (UIElement popup in popups.ToArray())
             {
@@ -50,36 +52,47 @@ namespace UIFramework.Core
         }
 
         /// <summary>Queue a draw callback for the overlay pass of the current frame.</summary>
-        public void RegisterDraw(Action<SpriteBatch> draw) => frameDraws.Add(draw);
+        internal void RegisterDraw(Action<SpriteBatch> draw) => frameDraws.Add(draw);
 
-        public void Draw(SpriteBatch b)
+        internal void Draw(SpriteBatch b)
         {
             for (int i = 0; i < popups.Count; i++)
+            {
                 popups[i].DrawPopup(b);
+            }
+
             for (int i = 0; i < frameDraws.Count; i++)
+            {
                 frameDraws[i](b);
+            }
+
             frameDraws.Clear();
         }
 
         /// <summary>Drop queued frame draws without drawing (menu closed mid-frame).</summary>
-        public void DiscardFrame() => frameDraws.Clear();
+        internal void DiscardFrame() => frameDraws.Clear();
 
         /// <summary>The popup under the point, if any (top-most first).</summary>
-        public UIElement? PopupAt(int x, int y)
+        internal UIElement? PopupAt(int x, int y)
         {
             for (int i = popups.Count - 1; i >= 0; i--)
             {
                 if (popups[i].PopupBounds.Contains(x, y))
+                {
                     return popups[i];
+                }
             }
             return null;
         }
 
         /// <summary>Route a click. Returns true if the overlay consumed it (hit a popup, or closed one).</summary>
-        public bool TryHandleClick(UIClickEvent e)
+        internal bool TryHandleClick(UIClickEvent e)
         {
             if (popups.Count == 0)
+            {
                 return false;
+            }
+
             UIElement? popup = PopupAt(e.X, e.Y);
             if (popup != null)
             {
@@ -93,26 +106,36 @@ namespace UIFramework.Core
             return true;
         }
 
-        public bool TryHandleHover(int x, int y)
+        internal bool TryHandleHover(int x, int y)
         {
             if (popups.Count == 0)
+            {
                 return false;
+            }
+
             UIElement? popup = PopupAt(x, y);
             if (popup == null)
+            {
                 return false;
+            }
+
             popup.HandlePopupHover(x, y);
             return true;
         }
 
-        public bool TryHandleScroll(int direction, int x, int y)
+        internal bool TryHandleScroll(int direction, int x, int y)
         {
             if (popups.Count == 0)
+            {
                 return false;
+            }
             // an open popup owns the wheel wherever the cursor is
             for (int i = popups.Count - 1; i >= 0; i--)
             {
                 if (popups[i].HandlePopupScroll(direction))
+                {
                     return true;
+                }
             }
             return false;
         }

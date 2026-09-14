@@ -14,42 +14,55 @@ namespace UIFramework.Rendering
         private static readonly RasterizerState ScissorState = new() { ScissorTestEnable = true };
 
         /// <summary>Draw a 9-slice box. <paramref name="source"/> is the 3x3 tile region in <paramref name="texture"/>.</summary>
-        public static void Box(SpriteBatch b, Texture2D texture, Rectangle source, Rectangle rect, Color color, float scale, bool shadow = false)
+        internal static void Box(SpriteBatch b, Texture2D texture, Rectangle source, Rectangle rect, Color color, float scale, bool shadow = false)
         {
             if (rect.Width <= 0 || rect.Height <= 0)
+            {
                 return;
+            }
+
             IClickableMenu.drawTextureBox(b, texture, source, rect.X, rect.Y, rect.Width, rect.Height, color, scale, shadow);
         }
 
         /// <summary>Vanilla panel box (<c>Game1.menuTexture</c>).</summary>
-        public static void PanelBox(SpriteBatch b, Rectangle rect, Color color)
+        internal static void PanelBox(SpriteBatch b, Rectangle rect, Color color)
         {
             Box(b, Game1.menuTexture, Theme.PanelBoxSource, rect, color, 1f);
         }
 
         /// <summary>Vanilla button box (<c>Game1.mouseCursors</c> 432,439).</summary>
-        public static void ButtonBox(SpriteBatch b, Rectangle rect, Color color)
+        internal static void ButtonBox(SpriteBatch b, Rectangle rect, Color color)
         {
             Box(b, Game1.mouseCursors, Theme.ButtonBoxSource, rect, color, 4f);
         }
 
         /// <summary>Draw a text string at a position (optionally with the vanilla shadow).</summary>
-        public static void Text(SpriteBatch b, string text, UIFont font, Vector2 position, Color color, bool shadow, float scale)
+        internal static void Text(SpriteBatch b, string text, UIFont font, Vector2 position, Color color, bool shadow, float scale)
         {
             if (string.IsNullOrEmpty(text))
+            {
                 return;
+            }
+
             SpriteFont spriteFont = GameTextMeasurer.GetFont(font);
             if (shadow)
+            {
                 Utility.drawTextWithShadow(b, text, spriteFont, position, color, scale);
+            }
             else
+            {
                 b.DrawString(spriteFont, text, position, color, 0f, Vector2.Zero, scale, SpriteEffects.None, 0f);
+            }
         }
 
         /// <summary>Draw text aligned inside a rectangle.</summary>
-        public static void TextInRect(SpriteBatch b, string text, UIFont font, Rectangle rect, Color color, bool shadow, float scale, UIAlign horizontal, UIAlign vertical)
+        internal static void TextInRect(SpriteBatch b, string text, UIFont font, Rectangle rect, Color color, bool shadow, float scale, UIAlign horizontal, UIAlign vertical)
         {
             if (string.IsNullOrEmpty(text))
+            {
                 return;
+            }
+
             Vector2 size = UIServices.Text.Measure(font, text, scale);
             float x = rect.X + LayoutEngine.AlignOffset(horizontal == UIAlign.Stretch ? UIAlign.Start : horizontal, rect.Width, (int)size.X);
             float y = rect.Y + LayoutEngine.AlignOffset(vertical == UIAlign.Stretch ? UIAlign.Start : vertical, rect.Height, (int)size.Y);
@@ -57,15 +70,18 @@ namespace UIFramework.Rendering
         }
 
         /// <summary>Solid rectangle (uses <c>Game1.staminaRect</c>).</summary>
-        public static void Fill(SpriteBatch b, Rectangle rect, Color color)
+        internal static void Fill(SpriteBatch b, Rectangle rect, Color color)
         {
             if (rect.Width <= 0 || rect.Height <= 0)
+            {
                 return;
+            }
+
             b.Draw(Game1.staminaRect, rect, color);
         }
 
         /// <summary>1px outline.</summary>
-        public static void Outline(SpriteBatch b, Rectangle rect, Color color, int thickness = 1)
+        internal static void Outline(SpriteBatch b, Rectangle rect, Color color, int thickness = 1)
         {
             Fill(b, new Rectangle(rect.X, rect.Y, rect.Width, thickness), color);
             Fill(b, new Rectangle(rect.X, rect.Bottom - thickness, rect.Width, thickness), color);
@@ -78,7 +94,7 @@ namespace UIFramework.Rendering
         /// outer clip). Ends the current batch and restarts it with the parameters the game uses for menus
         /// (Deferred / AlphaBlend / PointClamp), then restores them. The only place the framework calls End/Begin.
         /// </summary>
-        public static void WithScissor(SpriteBatch b, Rectangle clip, Action draw)
+        internal static void WithScissor(SpriteBatch b, Rectangle clip, Action draw)
         {
             GraphicsDevice device = b.GraphicsDevice;
             Rectangle outer = device.ScissorRectangle;
@@ -86,7 +102,9 @@ namespace UIFramework.Rendering
             Rectangle effective = outerEnabled ? Rectangle.Intersect(outer, clip) : clip;
             effective = Rectangle.Intersect(effective, device.Viewport.Bounds);
             if (effective.Width <= 0 || effective.Height <= 0)
+            {
                 return;
+            }
 
             b.End();
             device.ScissorRectangle = effective;
@@ -100,19 +118,25 @@ namespace UIFramework.Rendering
                 b.End();
                 device.ScissorRectangle = outer;
                 if (outerEnabled)
+                {
                     b.Begin(SpriteSortMode.Deferred, BlendState.AlphaBlend, SamplerState.PointClamp, null, ScissorState);
+                }
                 else
+                {
                     b.Begin(SpriteSortMode.Deferred, BlendState.AlphaBlend, SamplerState.PointClamp);
+                }
             }
         }
 
         /// <summary>Debug overlay: bounds outline plus the id in tiny text.</summary>
-        public static void DebugBounds(SpriteBatch b, Rectangle rect, string id, Color? color = null)
+        internal static void DebugBounds(SpriteBatch b, Rectangle rect, string id, Color? color = null)
         {
             Color c = color ?? Color.Lime * 0.8f;
             Outline(b, rect, c);
             if (!string.IsNullOrEmpty(id))
+            {
                 b.DrawString(Game1.tinyFont, id, new Vector2(rect.X + 2, rect.Y + 1), c, 0f, Vector2.Zero, 0.5f, SpriteEffects.None, 0f);
+            }
         }
     }
 }

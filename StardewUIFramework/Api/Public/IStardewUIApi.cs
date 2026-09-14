@@ -1,13 +1,9 @@
 // ---------------------------------------------------------------------------------------------------------------------
 //  UI Framework (6135.UIFramework) - public API.
 //
-//  Copy this file into your mod (you may change the namespace), then:
-//
-//      var ui = helper.ModRegistry.GetApi<IStardewUIApi>("6135.UIFramework");
-//
-//  and declare the dependency in your manifest.json:
-//
-//      "Dependencies": [ { "UniqueID": "6135.UIFramework", "MinimumVersion": "1.0.0", "IsRequired": true } ]
+//  Copy this file into your mod (you may change the namespace), request the API from SMAPI's mod registry with
+//  GetApi<IStardewUIApi>("6135.UIFramework") once the game has launched, and list 6135.UIFramework
+//  (MinimumVersion 1.0.0, IsRequired true) under Dependencies in your manifest.json.
 //
 //  Everything in this file is proxy-safe (SMAPI/Pintail): interfaces, enums, delegates, primitives and XNA / game types.
 //  Members are only ever added, never renamed or removed; a breaking change would ship as IStardewUIApi2.

@@ -17,22 +17,22 @@ namespace UIFramework.Components
     internal static class TextBoxDrawing
     {
         /// <summary>Width of the left / right caps of the box texture.</summary>
-        public const int CapWidth = 16;
+        internal const int CapWidth = 16;
 
         /// <summary>Text offset from the box origin (vanilla <c>TextBox</c>).</summary>
-        public const int TextOffsetX = 16;
-        public const int TextOffsetY = 12;
+        internal const int TextOffsetX = 16;
+        internal const int TextOffsetY = 12;
 
         /// <summary>Caret rectangle (vanilla <c>TextBox</c>).</summary>
-        public const int CaretOffsetY = 8;
-        public const int CaretWidth = 4;
-        public const int CaretHeight = 32;
+        internal const int CaretOffsetY = 8;
+        internal const int CaretWidth = 4;
+        internal const int CaretHeight = 32;
 
         /// <summary>Horizontal room reserved for the caps and caret when clipping text (<c>TextOption</c>'s write bar offset).</summary>
-        public const int TextInset = 26;
+        internal const int TextInset = 26;
 
         /// <summary>Height of the vanilla box; the text / caret offsets above are relative to it.</summary>
-        public const int VanillaHeight = 48;
+        internal const int VanillaHeight = 48;
 
         private static Point vanillaSize = new(192, VanillaHeight);
 
@@ -40,20 +40,23 @@ namespace UIFramework.Components
         /// Size of the vanilla text box texture. Assumed to be 192x48 until the texture is first drawn so layout
         /// never needs the game content; <see cref="Resolve"/> corrects it if a retexture changed the size.
         /// </summary>
-        public static Point DefaultSize => vanillaSize;
+        internal static Point DefaultSize => vanillaSize;
 
         /// <summary>Natural size of a box using <paramref name="custom"/> (or the vanilla texture when null).</summary>
-        public static Vector2 Measure(Texture2D? custom)
+        internal static Vector2 Measure(Texture2D? custom)
         {
             return custom != null ? new Vector2(custom.Width, custom.Height) : vanillaSize.ToVector2();
         }
 
         /// <summary>The texture to draw: <paramref name="custom"/> or the vanilla one. <paramref name="sizeChanged"/> is true when the vanilla size assumption was wrong (re-layout).</summary>
-        public static Texture2D Resolve(Texture2D? custom, out bool sizeChanged)
+        internal static Texture2D Resolve(Texture2D? custom, out bool sizeChanged)
         {
             sizeChanged = false;
             if (custom != null)
+            {
                 return custom;
+            }
+
             Texture2D tex = UIServices.TextBoxTexture;
             var size = new Point(tex.Width, tex.Height);
             if (size != vanillaSize)
@@ -65,30 +68,36 @@ namespace UIFramework.Components
         }
 
         /// <summary>Draw the box as three slices (left cap, stretched middle, right cap) into <paramref name="bounds"/>.</summary>
-        public static void DrawBox(SpriteBatch b, Texture2D texture, Rectangle bounds, Color tint)
+        internal static void DrawBox(SpriteBatch b, Texture2D texture, Rectangle bounds, Color tint)
         {
             if (bounds.Width <= 0 || bounds.Height <= 0)
+            {
                 return;
+            }
+
             int width = Math.Max(bounds.Width, 2 * CapWidth);
             int texH = texture.Height;
             b.Draw(texture, new Rectangle(bounds.X, bounds.Y, CapWidth, bounds.Height), new Rectangle(0, 0, CapWidth, texH), tint);
-            b.Draw(texture, new Rectangle(bounds.X + CapWidth, bounds.Y, width - 2 * CapWidth, bounds.Height), new Rectangle(CapWidth, 0, 4, texH), tint);
+            b.Draw(texture, new Rectangle(bounds.X + CapWidth, bounds.Y, width - (2 * CapWidth), bounds.Height), new Rectangle(CapWidth, 0, 4, texH), tint);
             b.Draw(texture, new Rectangle(bounds.X + width - CapWidth, bounds.Y, CapWidth, bounds.Height), new Rectangle(texture.Width - CapWidth, 0, CapWidth, texH), tint);
         }
 
         /// <summary>Drop characters from the left until <paramref name="text"/> fits in <paramref name="maxWidth"/> pixels.</summary>
-        public static string ClipLeft(UIFont font, string text, int maxWidth)
+        internal static string ClipLeft(UIFont font, string text, int maxWidth)
         {
             while (text.Length > 0 && UIServices.Text.Measure(font, text, 1f).X > maxWidth)
+            {
                 text = text.Substring(1);
+            }
+
             return text;
         }
 
         /// <summary>Whether the caret is in the visible half of its blink cycle.</summary>
-        public static bool CaretVisible => UIServices.NowMs() % 1000 >= 500;
+        internal static bool CaretVisible => UIServices.NowMs() % 1000 >= 500;
 
         /// <summary>Draw the (clipped) text and, when <paramref name="caret"/> is set, the blinking caret after it.</summary>
-        public static void DrawText(SpriteBatch b, Rectangle bounds, string text, UIFont font, Color color, bool shadow, bool caret)
+        internal static void DrawText(SpriteBatch b, Rectangle bounds, string text, UIFont font, Color color, bool shadow, bool caret)
         {
             int centerShift = (bounds.Height - VanillaHeight) / 2;
             string visible = ClipLeft(font, text, bounds.Width - TextInset);
@@ -100,21 +109,32 @@ namespace UIFramework.Components
                 b.Draw(Game1.staminaRect, caretRect, color);
             }
             if (visible.Length > 0)
+            {
                 DrawHelper.Text(b, visible, font, new Vector2(bounds.X + TextOffsetX, bounds.Y + TextOffsetY + centerShift), color, shadow, 1f);
+            }
         }
 
         /// <summary>
         /// Keys a text field consumes as typing (letters, digits, punctuation, space, backspace, delete). Returning
         /// true for them from <c>HandleKey</c> keeps the game's menu button from closing the menu mid-sentence.
         /// </summary>
-        public static bool IsTypingKey(Keys key)
+        internal static bool IsTypingKey(Keys key)
         {
             if (key >= Keys.A && key <= Keys.Z)
+            {
                 return true;
+            }
+
             if (key >= Keys.D0 && key <= Keys.D9)
+            {
                 return true;
+            }
+
             if (key >= Keys.NumPad0 && key <= Keys.Divide)
+            {
                 return true;
+            }
+
             switch (key)
             {
                 case Keys.Space:
@@ -152,7 +172,7 @@ namespace UIFramework.Components
         private string ownValue = string.Empty;
         private Texture2D? texture;
 
-        public TextInput(string id, Func<string>? get, Action<string>? set) : base(id)
+        internal TextInput(string id, Func<string>? get, Action<string>? set) : base(id)
         {
             this.get = get;
             this.set = set;
@@ -169,7 +189,7 @@ namespace UIFramework.Components
         }
 
         /// <summary>Text shown (dimmed) while the value is empty and the box is not focused.</summary>
-        public Func<string>? PlaceholderFunc { get; set; }
+        internal Func<string>? PlaceholderFunc { get; set; }
 
         Func<string> IUITextInput.Placeholder { get => PlaceholderFunc!; set => PlaceholderFunc = value; }
 
@@ -177,12 +197,12 @@ namespace UIFramework.Components
         public int MaxLength { get; set; }
 
         /// <summary>Called with the prospective value before it is applied; false rejects the edit silently.</summary>
-        public Func<string, bool>? ValidateFunc { get; set; }
+        internal Func<string, bool>? ValidateFunc { get; set; }
 
         Func<string, bool> IUITextInput.Validate { get => ValidateFunc!; set => ValidateFunc = value; }
 
         /// <summary>Custom box texture (null = vanilla <c>LooseSprites\textBox</c>). Changes the natural size.</summary>
-        public Texture2D? Texture
+        internal Texture2D? Texture
         {
             get => texture;
             set
@@ -194,16 +214,16 @@ namespace UIFramework.Components
 
         Texture2D IUITextInput.Texture { get => texture!; set => Texture = value; }
 
-        public Action<IUIValueEvent>? OnValueChanged { get; set; }
+        internal Action<IUIValueEvent>? OnValueChanged { get; set; }
 
         Action<IUIValueEvent> IUITextInput.OnValueChanged { get => OnValueChanged!; set => OnValueChanged = value; }
 
-        public Action<IUIElement>? OnSubmit { get; set; }
+        internal Action<IUIElement>? OnSubmit { get; set; }
 
         Action<IUIElement> IUITextInput.OnSubmit { get => OnSubmit!; set => OnSubmit = value; }
 
-        public override bool Focusable => true;
-        public override bool WantsTextInput => true;
+        internal override bool Focusable => true;
+        internal override bool WantsTextInput => true;
 
         // ---------------------------------------------------------------------------------------------------------
         //  Value pipeline
@@ -227,15 +247,23 @@ namespace UIFramework.Components
         private bool TryCommit(string newValue)
         {
             if (MaxLength > 0 && newValue.Length > MaxLength)
+            {
                 return false;
+            }
+
             string oldValue = Value;
             if (oldValue == newValue)
+            {
                 return false;
+            }
+
             if (ValidateFunc != null)
             {
                 Func<string, bool> validate = ValidateFunc;
                 if (!Raise("Validate", () => validate(newValue), false))
+                {
                     return false;
+                }
             }
             Store(newValue);
             if (OnValueChanged != null)
@@ -258,7 +286,9 @@ namespace UIFramework.Components
             ResolvedStyle style = Style;
             Texture2D tex = TextBoxDrawing.Resolve(texture, out bool sizeChanged);
             if (sizeChanged && texture == null)
+            {
                 InvalidateLayout();
+            }
 
             TextBoxDrawing.DrawBox(b, tex, Bounds, Enabled ? Color.White : Color.Gray);
 
@@ -285,11 +315,20 @@ namespace UIFramework.Components
         protected internal override void HandleTextInput(char c)
         {
             if (!Enabled)
+            {
                 return;
+            }
+
             if (c == '"')
+            {
                 return; // vanilla: never inserted, no sound
+            }
+
             if (!TryCommit(Value + c))
+            {
                 return;
+            }
+
             switch (c)
             {
                 case '$':
@@ -317,23 +356,37 @@ namespace UIFramework.Components
         protected internal override void HandleTextInput(string text)
         {
             if (!Enabled || string.IsNullOrEmpty(text))
+            {
                 return;
+            }
+
             string current = Value;
             string prospective = current + text;
             if (MaxLength > 0 && prospective.Length > MaxLength)
+            {
                 prospective = prospective.Substring(0, MaxLength);
+            }
+
             TryCommit(prospective);
         }
 
         protected internal override void HandleCommandInput(char command)
         {
             if (!Enabled || command != '\b')
+            {
                 return;
+            }
+
             string current = Value;
             if (current.Length == 0)
+            {
                 return;
+            }
+
             if (TryCommit(current.Substring(0, current.Length - 1)))
+            {
                 UIServices.PlaySound(Theme.BackspaceSound);
+            }
         }
 
         protected internal override void HandleSpecialInput(Keys key)
@@ -344,12 +397,18 @@ namespace UIFramework.Components
         protected internal override bool HandleKey(UIKeyEvent e)
         {
             if (base.HandleKey(e))
+            {
                 return true;
+            }
+
             if (e.Key == Keys.Enter)
             {
                 // with no OnSubmit, Enter falls through to the menu's DefaultButton
                 if (OnSubmit == null)
+                {
                     return false;
+                }
+
                 Action<IUIElement> cb = OnSubmit;
                 Raise("OnSubmit", () => cb(this));
                 return true;

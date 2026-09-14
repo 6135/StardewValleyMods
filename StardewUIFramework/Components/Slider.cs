@@ -25,7 +25,7 @@ namespace UIFramework.Components
         private readonly Action<double>? set;
         private double ownValue;
 
-        public Slider(string id, Func<double>? get, Action<double>? set, double min, double max) : base(id)
+        internal Slider(string id, Func<double>? get, Action<double>? set, double min, double max) : base(id)
         {
             this.get = get;
             this.set = set;
@@ -49,11 +49,11 @@ namespace UIFramework.Components
         /// <summary>Snap increment (0 = continuous).</summary>
         public double Step { get; set; }
 
-        public Action<IUIValueEvent>? OnValueChanged { get; set; }
+        internal Action<IUIValueEvent>? OnValueChanged { get; set; }
 
         Action<IUIValueEvent> IUISlider.OnValueChanged { get => OnValueChanged!; set => OnValueChanged = value; }
 
-        public override bool Focusable => true;
+        internal override bool Focusable => true;
 
         private static int KnobWidth => Theme.SliderKnob.Width * Theme.PixelScale;
         private static int KnobHeight => Theme.SliderKnob.Height * Theme.PixelScale;
@@ -86,9 +86,15 @@ namespace UIFramework.Components
         private double Normalize(double value)
         {
             if (double.IsNaN(value) || double.IsInfinity(value))
+            {
                 value = Low;
+            }
+
             if (Step > 0)
-                value = Min + Math.Round((value - Min) / Step) * Step;
+            {
+                value = Min + (Math.Round((value - Min) / Step) * Step);
+            }
+
             return Math.Clamp(value, Low, High);
         }
 
@@ -98,7 +104,10 @@ namespace UIFramework.Components
             double newValue = Normalize(value);
             double oldValue = Value;
             if (newValue == oldValue)
+            {
                 return false;
+            }
+
             Store(newValue);
             if (OnValueChanged != null)
             {
@@ -116,7 +125,10 @@ namespace UIFramework.Components
             {
                 double range = High - Low;
                 if (range <= 0)
+                {
                     return 0f;
+                }
+
                 return (float)Math.Clamp((Value - Low) / range, 0, 1);
             }
         }
@@ -125,8 +137,8 @@ namespace UIFramework.Components
         private void SetFromCursor(int px)
         {
             int travel = TrackTravel;
-            double t = Math.Clamp((px - Bounds.X - KnobWidth / 2.0) / travel, 0, 1);
-            TryCommit(Low + t * (High - Low));
+            double t = Math.Clamp((px - Bounds.X - (KnobWidth / 2.0)) / travel, 0, 1);
+            TryCommit(Low + (t * (High - Low)));
         }
 
         // ---------------------------------------------------------------------------------------------------------
@@ -138,16 +150,19 @@ namespace UIFramework.Components
         protected override void DrawCore(SpriteBatch b)
         {
             if (Bounds.Width <= 0 || Bounds.Height <= 0)
+            {
                 return;
+            }
+
             ResolvedStyle style = Style;
             bool highlighted = Enabled && (IsHovered || IsFocused);
             Color trackTint = Enabled ? Color.White : Color.Gray;
-            Color knobTint = !Enabled ? Color.Gray : highlighted ? style.HoverColor : Color.White;
+            Color knobTint = Theme.StateTint(Enabled, highlighted, style.HoverColor);
 
             IClickableMenu.drawTextureBox(b, Game1.mouseCursors, Theme.SliderTrack, Bounds.X, Bounds.Y, Bounds.Width, Bounds.Height, trackTint, Theme.PixelScale, false);
 
-            float knobX = Bounds.X + TrackTravel * Fraction;
-            float knobY = Bounds.Y + (Bounds.Height - KnobHeight) / 2f;
+            float knobX = Bounds.X + (TrackTravel * Fraction);
+            float knobY = Bounds.Y + ((Bounds.Height - KnobHeight) / 2f);
             b.Draw(Game1.mouseCursors, new Vector2((int)knobX, (int)knobY), Theme.SliderKnob, knobTint, 0f, Vector2.Zero, Theme.PixelScale, SpriteEffects.None, 0f);
         }
 
@@ -158,7 +173,10 @@ namespace UIFramework.Components
         protected internal override bool HandleClick(UIClickEvent e)
         {
             if (e.Target == this && e.Button == UIMouseButton.Left && Enabled)
+            {
                 SetFromCursor(e.X);
+            }
+
             return base.HandleClick(e);
         }
 
@@ -166,15 +184,23 @@ namespace UIFramework.Components
         protected internal override void HandleClickHeld(int px, int py)
         {
             if (Enabled)
+            {
                 SetFromCursor(px);
+            }
         }
 
         protected internal override bool HandleKey(UIKeyEvent e)
         {
             if (base.HandleKey(e))
+            {
                 return true;
+            }
+
             if (!Enabled)
+            {
                 return false;
+            }
+
             switch (e.Key)
             {
                 case Keys.Left:

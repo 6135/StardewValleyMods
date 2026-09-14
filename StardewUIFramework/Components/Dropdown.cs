@@ -23,7 +23,7 @@ namespace UIFramework.Components
     internal sealed class Dropdown : UIElement, IUIDropdown
     {
         /// <summary>Height of the closed box and of every row in the open list.</summary>
-        public const int DropdownRowHeight = 44;
+        internal const int DropdownRowHeight = 44;
 
         private const int DefaultWidth = 300;
         private const int ButtonWidth = 48;
@@ -43,7 +43,7 @@ namespace UIFramework.Components
         private int highlightIndex = -1;
         private int activePosition;
 
-        public Dropdown(string id, Func<string[]>? choices, Func<string[]>? labels, Func<string>? get, Action<string>? set) : base(id)
+        internal Dropdown(string id, Func<string[]>? choices, Func<string[]>? labels, Func<string>? get, Action<string>? set) : base(id)
         {
             choicesFunc = choices;
             labelsFunc = labels;
@@ -66,7 +66,10 @@ namespace UIFramework.Components
             get
             {
                 if (get == null)
+                {
                     return ownIndex;
+                }
+
                 string? value = Raise("get", get, string.Empty);
                 return value == null ? -1 : Array.IndexOf(choices, value);
             }
@@ -100,18 +103,21 @@ namespace UIFramework.Components
             set
             {
                 maxVisible = Math.Max(1, value);
-                ActivePosition = ActivePosition;
+                ClampActivePosition();
             }
         }
 
         /// <summary>Index of the first visible row of the open list.</summary>
-        public int ActivePosition
+        internal int ActivePosition
         {
             get => activePosition;
             set => activePosition = Math.Clamp(value, 0, MaxPosition);
         }
 
         private int MaxPosition => Math.Max(0, choices.Length - maxVisible);
+
+        /// <summary>Re-clamp the scroll position after the choice count or <see cref="MaxVisible"/> changed.</summary>
+        private void ClampActivePosition() => activePosition = Math.Clamp(activePosition, 0, MaxPosition);
 
         public bool IsOpen { get; private set; }
 
@@ -135,23 +141,25 @@ namespace UIFramework.Components
                 int found = previous.Length > 0 ? Array.IndexOf(choices, previous) : -1;
                 ownIndex = found >= 0 ? found : (choices.Length > 0 ? 0 : -1);
             }
-            ActivePosition = ActivePosition;
+            ClampActivePosition();
             if (highlightIndex >= choices.Length)
+            {
                 highlightIndex = -1;
+            }
         }
 
         // ---------------------------------------------------------------------------------------------------------
         //  Consumer callbacks
         // ---------------------------------------------------------------------------------------------------------
 
-        public Action<IUIValueEvent>? OnValueChanged { get; set; }
+        internal Action<IUIValueEvent>? OnValueChanged { get; set; }
         Action<IUIValueEvent> IUIDropdown.OnValueChanged { get => OnValueChanged!; set => OnValueChanged = value; }
 
-        public Action<int>? OnScroll { get; set; }
+        internal Action<int>? OnScroll { get; set; }
         Action<int> IUIDropdown.OnScroll { get => OnScroll!; set => OnScroll = value; }
 
-        public override bool Focusable => true;
-        public override bool ActivateOnEnter => true;
+        internal override bool Focusable => true;
+        internal override bool ActivateOnEnter => true;
 
         protected override string? HoverSoundCue => Style.HoverSound ?? Theme.HoverSound;
 
@@ -164,16 +172,23 @@ namespace UIFramework.Components
         private void Commit(int newIndex)
         {
             if (newIndex < 0 || newIndex >= choices.Length)
+            {
                 return;
+            }
+
             int oldIndex = SelectedIndex;
             if (oldIndex == newIndex)
+            {
                 return;
+            }
 
             string oldChoice = GetChoice(oldIndex);
             string newChoice = choices[newIndex];
             ownIndex = newIndex;
             if (set != null)
+            {
                 Raise("set", () => set(newChoice));
+            }
 
             if (OnValueChanged != null)
             {
@@ -191,10 +206,15 @@ namespace UIFramework.Components
         public void Open()
         {
             if (IsOpen || OwnerMenu == null || !Enabled || !Visible)
+            {
                 return;
+            }
+
             RefreshChoices();
             if (choices.Length == 0)
+            {
                 return;
+            }
 
             UIServices.PlaySound(OpenSoundCue);
             Focus();
@@ -210,7 +230,10 @@ namespace UIFramework.Components
         public void Close()
         {
             if (!IsOpen)
+            {
                 return;
+            }
+
             UIServices.PlaySound(Theme.DropdownCloseSound);
             ClosePopup();
             OwnerMenu?.Overlay.RemovePopup(this);
@@ -256,7 +279,7 @@ namespace UIFramework.Components
         {
             ResolvedStyle style = Style;
             bool highlighted = Enabled && (IsHovered || IsFocused || IsOpen);
-            Color tint = !Enabled ? Color.Gray : highlighted ? style.HoverColor : Color.White;
+            Color tint = Theme.StateTint(Enabled, highlighted, style.HoverColor);
             Color textColor = Enabled ? style.TextColor : style.TextColor * 0.5f;
 
             DrawHelper.Box(b, Game1.mouseCursors, Theme.DropdownBoxSource, new Rectangle(Bounds.X, Bounds.Y, BoxWidth, Bounds.Height), tint, SpriteScale);
@@ -267,22 +290,24 @@ namespace UIFramework.Components
         protected internal override void DrawPopup(SpriteBatch b)
         {
             if (!IsOpen || choices.Length == 0)
+            {
                 return;
+            }
 
             ResolvedStyle style = Style;
             Rectangle list = ListBounds;
             DrawHelper.Box(b, Game1.mouseCursors, Theme.DropdownBoxSource, list, Color.White, SpriteScale);
 
-            var interior = new Rectangle(list.X + HighlightInset, list.Y + HighlightInset, list.Width - 2 * HighlightInset, list.Height - 2 * HighlightInset);
+            var interior = new Rectangle(list.X + HighlightInset, list.Y + HighlightInset, list.Width - (2 * HighlightInset), list.Height - (2 * HighlightInset));
             int start = ActivePosition;
             int end = Math.Min(choices.Length, start + maxVisible);
             int highlight = highlightIndex >= 0 ? highlightIndex : SelectedIndex;
             for (int i = start; i < end; i++)
             {
-                int rowY = list.Y + (i - start) * DropdownRowHeight;
+                int rowY = list.Y + ((i - start) * DropdownRowHeight);
                 if (i == highlight)
                 {
-                    var row = new Rectangle(list.X + HighlightInset, rowY, list.Width - 2 * HighlightInset, DropdownRowHeight);
+                    var row = new Rectangle(list.X + HighlightInset, rowY, list.Width - (2 * HighlightInset), DropdownRowHeight);
                     DrawHelper.Fill(b, Rectangle.Intersect(row, interior), Color.Wheat);
                 }
                 DrawHelper.Text(b, GetLabel(i), style.Font, new Vector2(list.X + TextPadX, rowY + TextPadY), style.TextColor, style.TextShadow, 1f);
@@ -307,43 +332,61 @@ namespace UIFramework.Components
         protected internal override bool HandleActivate()
         {
             if (!Enabled || !Visible)
+            {
                 return false;
+            }
+
             if (IsOpen)
+            {
                 CommitHighlightAndClose();
+            }
             else
+            {
                 Open();
+            }
+
             return true;
         }
 
         protected internal override bool HandleKey(UIKeyEvent e)
         {
-            bool handled = false;
-            if (Enabled && choices.Length > 0)
-            {
-                switch (e.Key)
-                {
-                    case Keys.Up:
-                    case Keys.Down:
-                        int delta = e.Key == Keys.Up ? -1 : 1;
-                        if (IsOpen)
-                            MoveHighlight(delta);
-                        else
-                            Commit(Math.Clamp(SelectedIndex + delta, 0, choices.Length - 1));
-                        handled = true;
-                        break;
-
-                    case Keys.Enter:
-                    case Keys.Space:
-                        if (IsOpen)
-                        {
-                            CommitHighlightAndClose();
-                            handled = true;
-                        }
-                        break;
-                }
-            }
+            bool handled = Enabled && choices.Length > 0 && HandleNavigationKey(e.Key);
             base.HandleKey(e);
             return handled || e.Handled;
+        }
+
+        /// <summary>Up / Down move the selection (closed) or the highlight (open); Enter / Space commit the highlight while open.</summary>
+        private bool HandleNavigationKey(Keys key)
+        {
+            switch (key)
+            {
+                case Keys.Up:
+                case Keys.Down:
+                    int delta = key == Keys.Up ? -1 : 1;
+                    if (IsOpen)
+                    {
+                        MoveHighlight(delta);
+                    }
+                    else
+                    {
+                        Commit(Math.Clamp(SelectedIndex + delta, 0, choices.Length - 1));
+                    }
+
+                    return true;
+
+                case Keys.Enter:
+                case Keys.Space:
+                    if (!IsOpen)
+                    {
+                        return false;
+                    }
+
+                    CommitHighlightAndClose();
+                    return true;
+
+                default:
+                    return false;
+            }
         }
 
         /// <summary>Move the open list's highlight by <paramref name="delta"/> rows, scrolling so it stays visible.</summary>
@@ -352,9 +395,17 @@ namespace UIFramework.Components
             int current = highlightIndex >= 0 ? highlightIndex : SelectedIndex;
             highlightIndex = Math.Clamp(current + delta, 0, choices.Length - 1);
             if (highlightIndex < ActivePosition)
+            {
                 ActivePosition = highlightIndex;
+            }
             else if (highlightIndex >= ActivePosition + maxVisible)
+            {
                 ActivePosition = highlightIndex - maxVisible + 1;
+            }
+            else
+            {
+                // highlight already visible: keep the scroll position
+            }
         }
 
         /// <summary>Choice index of the list row under the point, or -1.</summary>
@@ -362,15 +413,21 @@ namespace UIFramework.Components
         {
             Rectangle list = ListBounds;
             if (!list.Contains(px, py))
+            {
                 return -1;
-            int index = ActivePosition + (py - list.Y) / DropdownRowHeight;
+            }
+
+            int index = ActivePosition + ((py - list.Y) / DropdownRowHeight);
             return index >= 0 && index < choices.Length ? index : -1;
         }
 
         protected internal override void HandlePopupClick(UIClickEvent e)
         {
             if (e.Button == UIMouseButton.Left)
+            {
                 Commit(RowAt(e.X, e.Y));
+            }
+
             Close();
         }
 
@@ -378,13 +435,18 @@ namespace UIFramework.Components
         {
             int row = RowAt(px, py);
             if (row >= 0)
+            {
                 highlightIndex = row;
+            }
         }
 
         protected internal override bool HandlePopupScroll(int direction)
         {
             if (!IsOpen)
+            {
                 return false;
+            }
+
             ActivePosition -= Math.Sign(direction);
             if (OnScroll != null)
             {
