@@ -17,17 +17,18 @@ namespace UIFramework.Core
         private sealed class KeyboardAdapter : IKeyboardSubscriber
         {
             private readonly FocusManager owner;
-            public bool Selected { get; set; }
 
-            public KeyboardAdapter(FocusManager owner)
+            internal KeyboardAdapter(FocusManager owner)
             {
                 this.owner = owner;
             }
 
-            public void RecieveTextInput(char inputChar) => owner.Focused?.HandleTextInput(inputChar);
-            public void RecieveTextInput(string text) => owner.Focused?.HandleTextInput(text);
-            public void RecieveCommandInput(char command) => owner.Focused?.HandleCommandInput(command);
-            public void RecieveSpecialInput(Keys key) => owner.Focused?.HandleSpecialInput(key);
+            bool IKeyboardSubscriber.Selected { get; set; }
+
+            void IKeyboardSubscriber.RecieveTextInput(char inputChar) => owner.Focused?.HandleTextInput(inputChar);
+            void IKeyboardSubscriber.RecieveTextInput(string text) => owner.Focused?.HandleTextInput(text);
+            void IKeyboardSubscriber.RecieveCommandInput(char command) => owner.Focused?.HandleCommandInput(command);
+            void IKeyboardSubscriber.RecieveSpecialInput(Keys key) => owner.Focused?.HandleSpecialInput(key);
         }
 
         private readonly UIMenu menu;
@@ -49,7 +50,7 @@ namespace UIFramework.Core
 
         internal void SetFocus(UIElement? element)
         {
-            if (element != null && (!element.Focusable || !element.Visible || !element.Enabled || element.OwnerMenu != menu))
+            if (element != null && !CanFocus(element))
             {
                 return;
             }
@@ -159,11 +160,27 @@ namespace UIFramework.Core
             }
 
             int index = Focused == null ? -1 : all.IndexOf(Focused);
-            int next = backwards
-                ? (index <= 0 ? all.Count - 1 : index - 1)
-                : (index < 0 || index >= all.Count - 1 ? 0 : index + 1);
-            SetFocus(all[next]);
+            SetFocus(all[NextIndex(index, all.Count, backwards)]);
             return true;
+        }
+
+        /// <summary>Whether <paramref name="element"/> can take focus in this menu right now.</summary>
+        private bool CanFocus(UIElement element)
+        {
+            bool usable = element.Visible && element.Enabled;
+            return element.Focusable && usable && element.OwnerMenu == menu;
+        }
+
+        /// <summary>The next index in a cyclic list of <paramref name="count"/> items (-1 = nothing focused yet).</summary>
+        private static int NextIndex(int index, int count, bool backwards)
+        {
+            if (backwards)
+            {
+                return index <= 0 ? count - 1 : index - 1;
+            }
+
+            bool atEnd = index < 0 || index >= count - 1;
+            return atEnd ? 0 : index + 1;
         }
 
         /// <summary>Arrow keys / d-pad: nearest focusable element in the given direction (dx, dy ∈ {-1,0,1}).</summary>

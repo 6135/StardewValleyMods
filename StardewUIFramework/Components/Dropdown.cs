@@ -138,14 +138,26 @@ namespace UIFramework.Components
 
             if (get == null)
             {
-                int found = previous.Length > 0 ? Array.IndexOf(choices, previous) : -1;
-                ownIndex = found >= 0 ? found : (choices.Length > 0 ? 0 : -1);
+                ownIndex = RestoreOwnIndex(previous);
             }
+
             ClampActivePosition();
             if (highlightIndex >= choices.Length)
             {
                 highlightIndex = -1;
             }
+        }
+
+        /// <summary>After the choices changed: keep the previously selected value if it still exists, else the first choice (or none).</summary>
+        private int RestoreOwnIndex(string previous)
+        {
+            int found = previous.Length > 0 ? Array.IndexOf(choices, previous) : -1;
+            if (found >= 0)
+            {
+                return found;
+            }
+
+            return choices.Length > 0 ? 0 : -1;
         }
 
         // ---------------------------------------------------------------------------------------------------------

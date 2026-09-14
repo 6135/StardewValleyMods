@@ -37,9 +37,9 @@ namespace UIFramework.Rendering
         }
 
         /// <summary>Draw a text string at a position (optionally with the vanilla shadow).</summary>
-        internal static void Text(SpriteBatch b, string text, UIFont font, Vector2 position, Color color, bool shadow, float scale)
+        internal static void Text(SpriteBatch b, string content, UIFont font, Vector2 position, Color color, bool shadow, float scale)
         {
-            if (string.IsNullOrEmpty(text))
+            if (string.IsNullOrEmpty(content))
             {
                 return;
             }
@@ -47,11 +47,11 @@ namespace UIFramework.Rendering
             SpriteFont spriteFont = GameTextMeasurer.GetFont(font);
             if (shadow)
             {
-                Utility.drawTextWithShadow(b, text, spriteFont, position, color, scale);
+                Utility.drawTextWithShadow(b, content, spriteFont, position, color, scale);
             }
             else
             {
-                b.DrawString(spriteFont, text, position, color, 0f, Vector2.Zero, scale, SpriteEffects.None, 0f);
+                b.DrawString(spriteFont, content, position, color, 0f, Vector2.Zero, scale, SpriteEffects.None, 0f);
             }
         }
 

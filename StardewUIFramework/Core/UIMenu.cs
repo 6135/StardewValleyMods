@@ -284,31 +284,33 @@ namespace UIFramework.Core
         private Point ResolvePosition(Point vp, int w, int h)
         {
             int minY = title != null && drawBox ? Math.Min(TitleReserve, Math.Max(0, vp.Y - h)) : 0;
-            int px, py;
-            if (anchor == UIAnchor.Explicit)
-            {
-                px = x;
-                py = y;
-            }
-            else
-            {
-                px = anchor switch
-                {
-                    UIAnchor.TopLeft or UIAnchor.MiddleLeft or UIAnchor.BottomLeft => 0,
-                    UIAnchor.TopRight or UIAnchor.MiddleRight or UIAnchor.BottomRight => vp.X - w,
-                    _ => (vp.X - w) / 2
-                };
-                py = anchor switch
-                {
-                    UIAnchor.TopLeft or UIAnchor.TopCenter or UIAnchor.TopRight => minY,
-                    UIAnchor.BottomLeft or UIAnchor.BottomCenter or UIAnchor.BottomRight => vp.Y - h,
-                    _ => (vp.Y - h) / 2
-                };
-            }
-
+            int px = anchor == UIAnchor.Explicit ? x : AnchorX(vp.X, w);
+            int py = anchor == UIAnchor.Explicit ? y : AnchorY(vp.Y, h, minY);
             return new Point(
                 Math.Clamp(px, 0, Math.Max(0, vp.X - w)),
                 Math.Clamp(py, minY, Math.Max(minY, vp.Y - h)));
+        }
+
+        /// <summary>Left edge for the anchor: left column → 0, right column → flush right, otherwise centered.</summary>
+        private int AnchorX(int viewportWidth, int w)
+        {
+            return anchor switch
+            {
+                UIAnchor.TopLeft or UIAnchor.MiddleLeft or UIAnchor.BottomLeft => 0,
+                UIAnchor.TopRight or UIAnchor.MiddleRight or UIAnchor.BottomRight => viewportWidth - w,
+                _ => (viewportWidth - w) / 2
+            };
+        }
+
+        /// <summary>Top edge for the anchor: top row → below the title reserve, bottom row → flush bottom, otherwise centered.</summary>
+        private int AnchorY(int viewportHeight, int h, int minY)
+        {
+            return anchor switch
+            {
+                UIAnchor.TopLeft or UIAnchor.TopCenter or UIAnchor.TopRight => minY,
+                UIAnchor.BottomLeft or UIAnchor.BottomCenter or UIAnchor.BottomRight => viewportHeight - h,
+                _ => (viewportHeight - h) / 2
+            };
         }
 
         /// <summary>Absolute content rectangle (inside chrome and padding).</summary>

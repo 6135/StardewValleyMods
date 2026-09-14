@@ -132,31 +132,46 @@ namespace UIFramework.Hosting
 
         public override void receiveKeyPress(Keys key)
         {
-            KeyboardState kb = Game1.GetKeyboardState();
-            bool shift = kb.IsKeyDown(Keys.LeftShift) || kb.IsKeyDown(Keys.RightShift);
-            bool ctrl = kb.IsKeyDown(Keys.LeftControl) || kb.IsKeyDown(Keys.RightControl);
-            bool alt = kb.IsKeyDown(Keys.LeftAlt) || kb.IsKeyDown(Keys.RightAlt);
-
-            if (Menu.Router.Key(key, shift, ctrl, alt))
+            (bool shift, bool ctrl, bool alt) = ReadModifiers();
+            if (Menu.Router.KeyPress(key, shift, ctrl, alt))
             {
                 return;
             }
 
             // vanilla behaviour: the menu button (E / Escape) closes, unless a text field is taking input
-            bool textFocused = Menu.Focus.Focused?.WantsTextInput == true;
-            if (!textFocused && Game1.options.doesInputListContain(Game1.options.menuButton, key))
+            if (Menu.Focus.Focused?.WantsTextInput == true)
             {
-                if (Menu.CloseOnEscape)
-                {
-                    Menu.Close();
-                }
-
                 return;
             }
 
-            if (!textFocused && Game1.options.snappyMenus && Game1.options.gamepadControls)
+            if (Game1.options.doesInputListContain(Game1.options.menuButton, key))
+            {
+                CloseIfAllowed();
+            }
+            else if (Game1.options.snappyMenus && Game1.options.gamepadControls)
             {
                 applyMovementKey(key);
+            }
+            else
+            {
+                // unbound key: nothing to do
+            }
+        }
+
+        private static (bool shift, bool ctrl, bool alt) ReadModifiers()
+        {
+            KeyboardState kb = Game1.GetKeyboardState();
+            bool shift = kb.IsKeyDown(Keys.LeftShift) || kb.IsKeyDown(Keys.RightShift);
+            bool ctrl = kb.IsKeyDown(Keys.LeftControl) || kb.IsKeyDown(Keys.RightControl);
+            bool alt = kb.IsKeyDown(Keys.LeftAlt) || kb.IsKeyDown(Keys.RightAlt);
+            return (shift, ctrl, alt);
+        }
+
+        private void CloseIfAllowed()
+        {
+            if (Menu.CloseOnEscape)
+            {
+                Menu.Close();
             }
         }
 

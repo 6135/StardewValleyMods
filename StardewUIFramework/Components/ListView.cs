@@ -334,49 +334,65 @@ namespace UIFramework.Components
 
         protected internal override bool HandleClick(UIClickEvent e)
         {
-            if (e.Button == UIMouseButton.Left)
+            if (e.Button != UIMouseButton.Left)
             {
-                if (e.Target == this && ScrollbarVisible)
-                {
-                    switch (scrollbar.HitTest(e.X, e.Y))
-                    {
-                        case ScrollbarGadget.Part.UpArrow:
-                            if (SetFirstVisible(firstVisibleIndex - 1))
-                            {
-                                UIServices.PlaySound(Theme.ScrollSound);
-                            }
-
-                            return true;
-                        case ScrollbarGadget.Part.DownArrow:
-                            if (SetFirstVisible(firstVisibleIndex + 1))
-                            {
-                                UIServices.PlaySound(Theme.ScrollSound);
-                            }
-
-                            return true;
-                        case ScrollbarGadget.Part.Thumb:
-                            dragging = true;
-                            return true;
-                        case ScrollbarGadget.Part.Track:
-                            dragging = true;
-                            SetFirstVisibleFromY(e.Y);
-                            return true;
-                        default:
-                            break;
-                    }
-                }
-
-                // a click on a row (or bubbling up from anything inside it) selects that row's item
-                if (selectable && ContentRect.Contains(e.X, e.Y))
-                {
-                    int row = (e.Y - Bounds.Y) / rowHeight;
-                    if (row >= 0 && row < rows.Count && rowItems[row] >= 0)
-                    {
-                        Select(rowItems[row]);
-                    }
-                }
+                return base.HandleClick(e);
             }
+
+            if (e.Target == this && ScrollbarVisible && HandleScrollbarClick(e.X, e.Y))
+            {
+                return true;
+            }
+
+            // a click on a row (or bubbling up from anything inside it) selects that row's item
+            if (selectable && ContentRect.Contains(e.X, e.Y))
+            {
+                SelectRowAt(e.Y);
+            }
+
             return base.HandleClick(e);
+        }
+
+        /// <summary>Arrows step one row, the thumb starts a drag, the track jumps. Returns false when no scrollbar part was hit.</summary>
+        private bool HandleScrollbarClick(int px, int py)
+        {
+            switch (scrollbar.HitTest(px, py))
+            {
+                case ScrollbarGadget.Part.UpArrow:
+                    ScrollWithSound(-1);
+                    return true;
+                case ScrollbarGadget.Part.DownArrow:
+                    ScrollWithSound(1);
+                    return true;
+                case ScrollbarGadget.Part.Thumb:
+                    dragging = true;
+                    return true;
+                case ScrollbarGadget.Part.Track:
+                    dragging = true;
+                    SetFirstVisibleFromY(py);
+                    return true;
+                default:
+                    return false;
+            }
+        }
+
+        /// <summary>Scroll by <paramref name="rows"/> rows, with the vanilla scroll sound when something moved.</summary>
+        private void ScrollWithSound(int rows)
+        {
+            if (SetFirstVisible(firstVisibleIndex + rows))
+            {
+                UIServices.PlaySound(Theme.ScrollSound);
+            }
+        }
+
+        /// <summary>Select the item shown in the row under <paramref name="py"/>, if any.</summary>
+        private void SelectRowAt(int py)
+        {
+            int row = (py - Bounds.Y) / rowHeight;
+            if (row >= 0 && row < rows.Count && rowItems[row] >= 0)
+            {
+                Select(rowItems[row]);
+            }
         }
 
         protected internal override void HandleClickHeld(int px, int py)

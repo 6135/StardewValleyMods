@@ -99,13 +99,13 @@ namespace UIFramework.Components
         }
 
         /// <summary>Normalize, then store and raise <see cref="OnValueChanged"/> if the value changed.</summary>
-        private bool TryCommit(double value)
+        private void TryCommit(double value)
         {
             double newValue = Normalize(value);
             double oldValue = Value;
-            if (newValue == oldValue)
+            if (Numbers.Same(newValue, oldValue))
             {
-                return false;
+                return;
             }
 
             Store(newValue);
@@ -115,7 +115,6 @@ namespace UIFramework.Components
                 UIValueEvent e = UIValueEvent.Number(this, oldValue, newValue);
                 Raise("OnValueChanged", () => cb(e));
             }
-            return true;
         }
 
         /// <summary>Fraction (0..1) of the track the current value sits at.</summary>

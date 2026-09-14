@@ -31,22 +31,33 @@ namespace UIFramework.Rendering
                 Font = Font, TextColor = TextColor, HoverColor = HoverColor, BoxTexture = BoxTexture, BoxSource = BoxSource,
                 BoxScale = BoxScale, Padding = Padding, TextShadow = TextShadow, ClickSound = ClickSound, HoverSound = HoverSound
             };
-            if (over == null)
+            if (over != null)
             {
-                return result;
+                result.OverlayText(over);
+                result.OverlayBox(over);
             }
 
-            result.Font = over.Font ?? result.Font;
-            result.TextColor = over.TextColor ?? result.TextColor;
-            result.HoverColor = over.HoverColor ?? result.HoverColor;
-            result.BoxTexture = over.BoxTexture ?? result.BoxTexture;
-            result.BoxSource = over.BoxSource ?? result.BoxSource;
-            result.BoxScale = over.BoxScale ?? result.BoxScale;
-            result.Padding = over.Padding ?? result.Padding;
-            result.TextShadow = over.TextShadow ?? result.TextShadow;
-            result.ClickSound = over.ClickSound ?? result.ClickSound;
-            result.HoverSound = over.HoverSound ?? result.HoverSound;
             return result;
+        }
+
+        /// <summary>Take the text / sound members that <paramref name="over"/> sets.</summary>
+        private void OverlayText(UIStyle over)
+        {
+            Font = over.Font ?? Font;
+            TextColor = over.TextColor ?? TextColor;
+            TextShadow = over.TextShadow ?? TextShadow;
+            ClickSound = over.ClickSound ?? ClickSound;
+            HoverSound = over.HoverSound ?? HoverSound;
+        }
+
+        /// <summary>Take the box members that <paramref name="over"/> sets.</summary>
+        private void OverlayBox(UIStyle over)
+        {
+            HoverColor = over.HoverColor ?? HoverColor;
+            BoxTexture = over.BoxTexture ?? BoxTexture;
+            BoxSource = over.BoxSource ?? BoxSource;
+            BoxScale = over.BoxScale ?? BoxScale;
+            Padding = over.Padding ?? Padding;
         }
     }
 

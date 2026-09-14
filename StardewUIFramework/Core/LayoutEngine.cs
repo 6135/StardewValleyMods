@@ -20,7 +20,7 @@ namespace UIFramework.Core
         }
 
         internal static GridTrack Auto => new(Kind.Auto, 0);
-        internal static GridTrack Px(float px) => new(Kind.Pixels, px);
+        internal static GridTrack Px(float pixels) => new(Kind.Pixels, pixels);
         internal static GridTrack Star(float weight) => new(Kind.Star, weight);
 
         public override string ToString() => Type switch

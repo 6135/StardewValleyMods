@@ -235,36 +235,44 @@ namespace UIFramework.Components
 
         protected internal override bool HandleClick(UIClickEvent e)
         {
-            if (e.Target == this && e.Button == UIMouseButton.Left && ScrollbarVisible)
+            if (e.Target == this && e.Button == UIMouseButton.Left && ScrollbarVisible && HandleScrollbarClick(e.X, e.Y))
             {
-                switch (scrollbar.HitTest(e.X, e.Y))
-                {
-                    case ScrollbarGadget.Part.UpArrow:
-                        if (SetOffset(scrollOffset - scrollStep))
-                        {
-                            UIServices.PlaySound(Theme.ScrollSound);
-                        }
-
-                        return true;
-                    case ScrollbarGadget.Part.DownArrow:
-                        if (SetOffset(scrollOffset + scrollStep))
-                        {
-                            UIServices.PlaySound(Theme.ScrollSound);
-                        }
-
-                        return true;
-                    case ScrollbarGadget.Part.Thumb:
-                        dragging = true;
-                        return true;
-                    case ScrollbarGadget.Part.Track:
-                        dragging = true;
-                        SetOffsetFromY(e.Y);
-                        return true;
-                    default:
-                        break;
-                }
+                return true;
             }
+
             return base.HandleClick(e);
+        }
+
+        /// <summary>Arrows step, the thumb starts a drag, the track jumps. Returns false when no scrollbar part was hit.</summary>
+        private bool HandleScrollbarClick(int px, int py)
+        {
+            switch (scrollbar.HitTest(px, py))
+            {
+                case ScrollbarGadget.Part.UpArrow:
+                    ScrollWithSound(-scrollStep);
+                    return true;
+                case ScrollbarGadget.Part.DownArrow:
+                    ScrollWithSound(scrollStep);
+                    return true;
+                case ScrollbarGadget.Part.Thumb:
+                    dragging = true;
+                    return true;
+                case ScrollbarGadget.Part.Track:
+                    dragging = true;
+                    SetOffsetFromY(py);
+                    return true;
+                default:
+                    return false;
+            }
+        }
+
+        /// <summary>Scroll by <paramref name="delta"/> pixels, with the vanilla scroll sound when something moved.</summary>
+        private void ScrollWithSound(int delta)
+        {
+            if (SetOffset(scrollOffset + delta))
+            {
+                UIServices.PlaySound(Theme.ScrollSound);
+            }
         }
 
         protected internal override void HandleClickHeld(int px, int py)

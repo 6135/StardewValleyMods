@@ -437,7 +437,11 @@ namespace UIFramework.Core
         protected virtual bool IsHitTestVisible => true;
 
         /// <summary>True when a consumer attached a click / hover / tooltip handler; layout-only containers only take pointer events then.</summary>
-        protected bool HasPointerHandlers => OnClick != null || OnRightClick != null || Tooltip != null || (OnHover != null || OnHoverEnd != null);
+        protected bool HasPointerHandlers => HasClickHandlers || HasHoverHandlers;
+
+        private bool HasClickHandlers => OnClick != null || OnRightClick != null;
+
+        private bool HasHoverHandlers => Tooltip != null || OnHover != null || OnHoverEnd != null;
 
         /// <summary>Return the deepest visible + enabled element under the point, or null.</summary>
         internal virtual UIElement? HitTest(int px, int py)

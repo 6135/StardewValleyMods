@@ -148,7 +148,7 @@ namespace UIFramework.Core
         /// Key press: focused element first, bubbling up; then menu <c>OnKey</c>; then built-in bindings
         /// (Tab traversal, arrows, Enter → default button, Escape → cancel / close). Returns true if consumed.
         /// </summary>
-        internal bool Key(Keys key, bool shift, bool ctrl, bool alt)
+        internal bool KeyPress(Keys key, bool shift, bool ctrl, bool alt)
         {
             UIElement? focused = menu.Focus.Focused;
             var e = new UIKeyEvent(focused, key, shift, ctrl, alt);

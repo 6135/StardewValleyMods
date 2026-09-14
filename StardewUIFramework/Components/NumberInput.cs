@@ -171,7 +171,7 @@ namespace UIFramework.Components
         private bool TryCommit(double newValue)
         {
             double oldValue = Value;
-            if (oldValue == newValue)
+            if (Numbers.Same(oldValue, newValue))
             {
                 return false;
             }
@@ -213,9 +213,9 @@ namespace UIFramework.Components
             }
 
             double normalized = Normalize(parsed);
-            if (normalized == Value)
+            if (Numbers.Same(normalized, Value))
             {
-                if (normalized != parsed)
+                if (!Numbers.Same(normalized, parsed))
                 {
                     SetBuffer(Trim(normalized));
                 }
@@ -227,33 +227,26 @@ namespace UIFramework.Components
                 SetBuffer(previous);
                 return;
             }
-            if (normalized != parsed)
+            if (!Numbers.Same(normalized, parsed))
             {
                 SetBuffer(Trim(normalized));
             }
         }
 
         /// <summary>Move the value by <paramref name="direction"/> steps (clamped to the range) and commit it.</summary>
-        private bool StepBy(int direction)
+        private void StepBy(int direction)
         {
             double current = Value;
             double target = Normalize(current + (direction * EffectiveStep), forceClamp: true);
-            if (target == current)
+            if (Numbers.Same(target, current) || !TryCommit(target))
             {
-                return false;
-            }
-
-            if (!TryCommit(target))
-            {
-                return false;
+                return;
             }
 
             if (buffer != null)
             {
                 SetBuffer(Trim(target));
             }
-
-            return true;
         }
 
         /// <summary>Type one character into the buffer. Returns true if it was accepted.</summary>
@@ -385,7 +378,7 @@ namespace UIFramework.Components
             bufferIsPlaceholder = false;
             double current = Value;
             double normalized = Normalize(current);
-            if (normalized != current)
+            if (!Numbers.Same(normalized, current))
             {
                 TryCommit(normalized);
             }
@@ -449,7 +442,7 @@ namespace UIFramework.Components
                 // cleared: fall back to 0 (or the nearest bound) and let the next digit replace it
                 double empty = Normalize(EmptyValue);
                 SetBuffer(Trim(empty), placeholder: true);
-                if (!TryCommit(empty) && Value != empty)
+                if (!TryCommit(empty) && !Numbers.Same(Value, empty))
                 {
                     SetBuffer(Trim(Value), placeholder: true);
                 }

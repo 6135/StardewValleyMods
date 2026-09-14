@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
@@ -120,44 +121,18 @@ namespace UIFramework.Components
         /// </summary>
         internal static bool IsTypingKey(Keys key)
         {
-            if (key >= Keys.A && key <= Keys.Z)
-            {
-                return true;
-            }
-
-            if (key >= Keys.D0 && key <= Keys.D9)
-            {
-                return true;
-            }
-
-            if (key >= Keys.NumPad0 && key <= Keys.Divide)
-            {
-                return true;
-            }
-
-            switch (key)
-            {
-                case Keys.Space:
-                case Keys.Back:
-                case Keys.Delete:
-                case Keys.OemSemicolon:
-                case Keys.OemPlus:
-                case Keys.OemComma:
-                case Keys.OemMinus:
-                case Keys.OemPeriod:
-                case Keys.OemQuestion:
-                case Keys.OemTilde:
-                case Keys.OemOpenBrackets:
-                case Keys.OemPipe:
-                case Keys.OemCloseBrackets:
-                case Keys.OemQuotes:
-                case Keys.Oem8:
-                case Keys.OemBackslash:
-                    return true;
-                default:
-                    return false;
-            }
+            bool letterOrDigit = (key >= Keys.A && key <= Keys.Z) || (key >= Keys.D0 && key <= Keys.D9);
+            bool numPad = key >= Keys.NumPad0 && key <= Keys.Divide;
+            return letterOrDigit || numPad || PunctuationKeys.Contains(key);
         }
+
+        /// <summary>Space, editing keys and the OEM punctuation keys.</summary>
+        private static readonly HashSet<Keys> PunctuationKeys = new()
+        {
+            Keys.Space, Keys.Back, Keys.Delete,
+            Keys.OemSemicolon, Keys.OemPlus, Keys.OemComma, Keys.OemMinus, Keys.OemPeriod, Keys.OemQuestion, Keys.OemTilde,
+            Keys.OemOpenBrackets, Keys.OemPipe, Keys.OemCloseBrackets, Keys.OemQuotes, Keys.Oem8, Keys.OemBackslash
+        };
     }
 
     /// <summary>
@@ -294,19 +269,19 @@ namespace UIFramework.Components
 
             string value = Value;
             bool focused = Enabled && IsFocused;
-            if (value.Length == 0 && !focused && PlaceholderFunc != null)
+            string placeholder = value.Length == 0 && !focused ? CurrentPlaceholder : string.Empty;
+            if (placeholder.Length > 0)
             {
-                string placeholder = Raise("Placeholder", PlaceholderFunc, string.Empty) ?? string.Empty;
-                if (placeholder.Length > 0)
-                {
-                    TextBoxDrawing.DrawText(b, Bounds, placeholder, style.Font, style.TextColor * 0.5f, false, false);
-                    return;
-                }
+                TextBoxDrawing.DrawText(b, Bounds, placeholder, style.Font, style.TextColor * 0.5f, false, false);
+                return;
             }
 
             Color textColor = Enabled ? style.TextColor : style.TextColor * 0.5f;
             TextBoxDrawing.DrawText(b, Bounds, value, style.Font, textColor, style.TextShadow, focused);
         }
+
+        /// <summary>The placeholder text right now (empty when none is set).</summary>
+        private string CurrentPlaceholder => PlaceholderFunc == null ? string.Empty : Raise("Placeholder", PlaceholderFunc, string.Empty) ?? string.Empty;
 
         // ---------------------------------------------------------------------------------------------------------
         //  Keyboard

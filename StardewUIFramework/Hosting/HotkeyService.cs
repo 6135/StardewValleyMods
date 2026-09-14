@@ -15,10 +15,10 @@ namespace UIFramework.Hosting
     {
         private sealed class Binding
         {
-            public KeybindList Keys = new();
-            public Action OnPressed = () => { };
-            public ConsumerContext Consumer = ConsumerContext.None;
-            public string Id = string.Empty;
+            internal KeybindList Keys = new();
+            internal Action OnPressed = () => { };
+            internal ConsumerContext Consumer = ConsumerContext.None;
+            internal string Id = string.Empty;
         }
 
         private readonly Dictionary<string, Binding> bindings = new();

@@ -15,7 +15,7 @@ namespace UIFramework.Api
     /// </summary>
     public sealed class StardewUIApi : IStardewUIApi
     {
-        public const string Version = "1.0.0";
+        public static string Version => "1.0.0";
 
         private readonly ConsumerContext consumer;
         private readonly MenuRegistry menus;
