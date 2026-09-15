@@ -9,7 +9,10 @@ namespace UIFramework.Components
     /// Wraps a consumer-implemented <see cref="IUICustomComponent"/> (architecture.md §7, tier 2) so it takes part in
     /// layout, hit-testing, focus, tooltips and event bubbling like a built-in element. Every call into the
     /// implementation crosses the API proxy and is guarded by <see cref="UIElement.Raise(string, System.Action?)"/>,
-    /// so a faulting component is logged and muted instead of crashing the game loop.
+    /// so a faulting component is logged and muted instead of crashing the game loop. The implementation's calls use
+    /// their own <c>Custom.*</c> event names so muting one never silences the element's public
+    /// <see cref="IUIElement.OnClick"/> / <see cref="IUIElement.OnHover"/> / <see cref="IUIElement.OnKey"/> callbacks
+    /// (or the reverse).
     /// </summary>
     internal sealed class CustomElementAdapter : UIElement
     {
@@ -21,34 +24,32 @@ namespace UIFramework.Components
             this.implementation = implementation;
         }
 
-        internal override bool Focusable => Raise("WantsFocus", () => implementation.WantsFocus, false);
+        internal override bool Focusable => Raise("Custom.WantsFocus", () => implementation.WantsFocus, false);
+
+        /// <summary>Overlay components draw (content + <c>OnDrawExtra</c>) and are hit-tested above the tree.</summary>
+        protected override bool DrawsInOverlay => Raise("Custom.WantsOverlay", () => implementation.WantsOverlay, false);
 
         protected override Vector2 MeasureCore(Vector2 available)
         {
-            Vector2 size = Raise("Measure", () => implementation.Measure(available), Vector2.Zero);
+            Vector2 size = Raise("Custom.Measure", () => implementation.Measure(available), Vector2.Zero);
             return new Vector2(System.Math.Max(0, size.X), System.Math.Max(0, size.Y));
         }
 
         protected override void DrawCore(SpriteBatch b)
         {
             Rectangle bounds = Bounds;
-            if (OwnerMenu != null && Raise("WantsOverlay", () => implementation.WantsOverlay, false))
-            {
-                OwnerMenu.Overlay.RegisterDraw(sb => Raise("Draw", () => implementation.Draw(sb, bounds)));
-                return;
-            }
-            Raise("Draw", () => implementation.Draw(b, bounds));
+            Raise("Custom.Draw", () => implementation.Draw(b, bounds));
         }
 
         internal override void Update(double elapsedMs)
         {
             Rectangle bounds = Bounds;
-            Raise("Update", () => implementation.Update(bounds, elapsedMs));
+            Raise("Custom.Update", () => implementation.Update(bounds, elapsedMs));
         }
 
         protected internal override bool HandleClick(UIClickEvent e)
         {
-            if (e.Target == this && Raise("OnClick", () => implementation.OnClick(e.X, e.Y, e.Button == UIMouseButton.Right), false))
+            if (e.Target == this && Raise("Custom.OnClick", () => implementation.OnClick(e.X, e.Y, e.Button == UIMouseButton.Right), false))
             {
                 e.Handled = true;
             }
@@ -59,19 +60,19 @@ namespace UIFramework.Components
         protected internal override void HandleHoverMove(int px, int py)
         {
             lastHover = new Point(px, py);
-            Raise("OnHover", () => implementation.OnHover(px, py, true));
+            Raise("Custom.OnHover", () => implementation.OnHover(px, py, true));
         }
 
         protected internal override void HandleHoverLeave()
         {
             Point at = lastHover;
-            Raise("OnHover", () => implementation.OnHover(at.X, at.Y, false));
+            Raise("Custom.OnHoverEnd", () => implementation.OnHover(at.X, at.Y, false));
             base.HandleHoverLeave();
         }
 
         protected internal override bool HandleKey(UIKeyEvent e)
         {
-            if (e.Target == this && Raise("OnKey", () => implementation.OnKey(e.Key, e.Shift, e.Ctrl), false))
+            if (e.Target == this && Raise("Custom.OnKey", () => implementation.OnKey(e.Key, e.Shift, e.Ctrl), false))
             {
                 e.Handled = true;
             }

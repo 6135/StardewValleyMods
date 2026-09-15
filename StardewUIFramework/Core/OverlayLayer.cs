@@ -11,12 +11,16 @@ namespace UIFramework.Core
     /// clicks / hover / wheel, and a click outside closes them and is swallowed. Only one popup is open at a time.</item>
     /// <item><b>Frame draws</b> are registered during the normal pass (tooltips, <c>OnDrawOverlay</c>, custom
     /// components that want overlay) and run once, after the tree, in registration order.</item>
+    /// <item><b>Overlay elements</b> (custom components with <c>WantsOverlay</c>) draw above the tree, so they are
+    /// also hit-tested before the tree; the set is rebuilt every frame from the elements that actually drew.</item>
     /// </list>
     /// </summary>
     internal sealed class OverlayLayer
     {
         private readonly List<UIElement> popups = new();
         private readonly List<Action<SpriteBatch>> frameDraws = new();
+        private readonly List<UIElement> overlayElements = new();
+        private readonly List<UIElement> pendingOverlayElements = new();
 
         internal bool HasPopups => popups.Count > 0;
 
@@ -54,6 +58,16 @@ namespace UIFramework.Core
         /// <summary>Queue a draw callback for the overlay pass of the current frame.</summary>
         internal void RegisterDraw(Action<SpriteBatch> draw) => frameDraws.Add(draw);
 
+        /// <summary>
+        /// Queue an element's own draw for the overlay pass and make it hit-testable above the tree until the next
+        /// frame (custom components with <c>WantsOverlay</c>).
+        /// </summary>
+        internal void RegisterElement(UIElement element, Action<SpriteBatch> draw)
+        {
+            pendingOverlayElements.Add(element);
+            frameDraws.Add(draw);
+        }
+
         internal void Draw(SpriteBatch b)
         {
             for (int i = 0; i < popups.Count; i++)
@@ -67,10 +81,32 @@ namespace UIFramework.Core
             }
 
             frameDraws.Clear();
+            overlayElements.Clear();
+            overlayElements.AddRange(pendingOverlayElements);
+            pendingOverlayElements.Clear();
         }
 
         /// <summary>Drop queued frame draws without drawing (menu closed mid-frame).</summary>
-        internal void DiscardFrame() => frameDraws.Clear();
+        internal void DiscardFrame()
+        {
+            frameDraws.Clear();
+            pendingOverlayElements.Clear();
+            overlayElements.Clear();
+        }
+
+        /// <summary>The top-most element drawn in the last overlay pass that contains the point, or null.</summary>
+        internal UIElement? ElementAt(int x, int y)
+        {
+            for (int i = overlayElements.Count - 1; i >= 0; i--)
+            {
+                UIElement e = overlayElements[i];
+                if (e.OwnerMenu != null && e.HitTest(x, y) == e)
+                {
+                    return e;
+                }
+            }
+            return null;
+        }
 
         /// <summary>The popup under the point, if any (top-most first).</summary>
         internal UIElement? PopupAt(int x, int y)

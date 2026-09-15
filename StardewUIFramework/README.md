@@ -326,7 +326,7 @@ you only measure, draw and react:
 | `void OnHover(int x, int y, bool entered)`        | Cursor entered (`entered` = `true`), moved inside (`true`), or left (`false`).              |
 | `bool OnKey(Keys key, bool shift, bool ctrl)`     | Key pressed while focused. Return `true` if handled.                                        |
 | `bool WantsFocus`                                 | Whether clicking gives this component keyboard focus.                                       |
-| `bool WantsOverlay`                               | Draw in the overlay pass (on top of the whole menu) instead of in tree order.               |
+| `bool WantsOverlay`                               | Draw in the overlay pass (on top of the whole menu) instead of in tree order; hit-tested before the tree. |
 
 Every call into your implementation crosses the API proxy and is guarded like any other callback. The returned
 `IUIElement` handle supports all the common properties (`Tooltip`, margins, alignment, `Visible`, `Enabled`, grid
