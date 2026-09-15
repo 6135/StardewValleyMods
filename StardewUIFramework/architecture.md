@@ -12,6 +12,34 @@ Background reading:
 
 ---
 
+## 0. Status
+
+Progress against §13. Update this table when a phase or item changes; §13 stays the plan, this is the scorecard.
+
+| Phase | State | Branch | Notes |
+|---|---|---|---|
+| 0 — Skeleton | Done | `UIFramework` | Both projects, manifests, sln entries, `GetApi(IModInfo)`; example logs the version. |
+| 1 — Core tree + host + layout | Done | `UIFramework` | `UIElement`/`UIContainer`/`UIMenu`/`MenuHost`, measure/arrange, Stack/Panel/Canvas/Spacer/Label/Image, chrome, centering. |
+| 2 — Input, focus, events | Done | `UIFramework` | `EventRouter`, `FocusManager` (single keyboard subscriber), `HotkeyService` (`KeybindList`), Button/Checkbox, callback guard, Tab/arrow traversal, gamepad `myID` snapping. |
+| 3 — Text and numbers | Done | `UIFramework` | TextInput (caret, placeholder, max length, validator, paste), NumberInput (clamp/step/wheel), Slider. |
+| 4 — Overlay, dropdown, tooltips | Done | `UIFramework` | `OverlayLayer`, Dropdown (click‑outside close + swallow, one open at a time), tooltip delay + `drawHoverText`, `OnDrawOverlay`. |
+| 5 — Grid, ScrollView, List | Done | `UIFramework` | Grid `auto/px/*` + spans, ScrollView (scissor, arrows, thumb drag, wheel), virtualized ListView with selection. |
+| 6 — Custom components + polish | Done | `UIFramework` | `IUICustomComponent` + `CustomElementAdapter` (`AddCustom`), `OnDrawExtra`, styles/theme, debug overlay (`ui_debug`), `PerScreen` open‑menu list, close‑all on title/save load. Example mod has a custom gauge. |
+| 7 — Port Profit Calculator | Built on a separate branch, awaiting in‑game parity check | `UIFramework-ProfitCalculator` (not merged here) | On that branch only: `ProfitCalculator/main/ui/framework/` (`FrameworkMainMenu`, `FrameworkResultsMenu`, `ProfitCalculatorSettings`) behind `ModConfig.UseUIFramework` (default on, optional manifest dependency, GMCM toggle); legacy screens remain the fallback and `main/ui/**` is kept until parity is confirmed. Rows reuse `CropBox`/`CropHoverBox` via `OnDrawExtra`/`OnDrawOverlay`. |
+| 8 — Docs and release | Done (Nexus upload pending) | `UIFramework` | `StardewUIFramework/README.md` (player + modder guide, full API reference), `NEXUS.md` page text, `Doxyfile` (`cd StardewUIFramework && doxygen Doxyfile` → `docs/api`, git‑ignored), root README rows + build note. ModBuildConfig already zips each mod on build. |
+
+Known gaps / follow‑ups:
+
+- Window chrome: `Game1.drawDialogueBox` still draws speaker decorations and the title banner overlaps the first row at some sizes (seen in‑game); fix pending in `UIMenu.Draw` / `BoxInsetTop`.
+- Rich tooltip builder (§9) is not built; tooltips are `Func<string>` + optional title only. Rich hover content goes through `OnDrawOverlay` or a custom component.
+- `UIFramework.Tests` (§14) not created; layout/event code is written to be testable (`ITextMeasurer`, `UIServices` hooks) but no test project exists yet.
+- In‑game acceptance (§14: UI scales 75/100/150 %, resize, gamepad reach) still to be run for the Profit Calculator port.
+- `TextInput` has no caret movement (Left/Right fall through to focus traversal; the caret is always at the end).
+- Gamepad support relies on vanilla snapping (`populateClickableComponentList` with `SNAP_AUTOMATIC`); `receiveGamePadButton` adds nothing of its own.
+- `HotkeyService` listens to `Input.ButtonsChanged` + `KeybindList.JustPressed()` rather than `Input.ButtonPressed` (§6.3); equivalent for consumers.
+
+---
+
 ## 1. Goals and non‑goals
 
 ### Goals
@@ -77,7 +105,7 @@ The framework ships a ready‑to‑copy `IStardewUIApi.cs` (plus the small set o
 - Components stored absolute screen positions and were re‑scaled on resize with ratios; layouts were separate objects that *wrote* positions into components. Layout must instead be **owned by container components** and re‑run on demand.
 - Tooltip timing, hover state and the keyboard subscriber were handled per component instead of by the host, so they fought each other.
 - The old README promised `SubMenu`, `ScrollableMenu`, `DialogMenu`, layouts, styling; roughly half was stubbed. This document scopes v1 so that everything listed is actually finished.
-- Note: `Stardew Mods.sln` still references `UIFramework\UIFramework.csproj` and `UIFrameworkExample\UIFrameworkExample.csproj`; those entries must be repointed/recreated when the new projects are added.
+- Note: `Stardew Mods.sln` used to reference stale `UIFramework\UIFramework.csproj` / `UIFrameworkExample\UIFrameworkExample.csproj` entries; they now point at `StardewUIFramework\UIFramework.csproj` and `UIFrameworkExample\UIFrameworkExample.csproj` (done).
 
 ---
 
@@ -350,7 +378,7 @@ Versioning: `ApiVersion` returns a semver string; additive changes bump minor; a
 ## 12. Project layout and repository changes
 
 ```
-UIFramework/
+StardewUIFramework/                 (folder name; the project/assembly is still UIFramework)
   UIFramework.csproj              net6.0, Pathoschild.Stardew.ModBuildConfig 4.3.2, GenerateDocumentationFile
   manifest.json                   UniqueID 6135.UIFramework, MinimumApiVersion 4.0.0 (SDV 1.6)
   ModEntry.cs                     GetApi(IModInfo) → new StardewUIApi(modInfo, services)
@@ -379,7 +407,7 @@ UIFramework.Tests/  (optional)    xUnit; layout engine + event routing are pure 
 
 Repository tasks:
 
-- Update `Stardew Mods.sln`: replace the two stale project entries with the new projects (and the test project if added).
+- Update `Stardew Mods.sln`: replace the two stale project entries with the new projects (and the test project if added). — done for the two projects.
 - Root `README.md`: add the framework to the mod list; link `architecture.md` and the API file.
 - CI (CodeFactor is already wired): ensure the new projects build with `STARDEW_GAME_DIR` documented in the README.
 

@@ -403,6 +403,27 @@ namespace UIFramework.Core
                 return;
             }
 
+            if (DrawsInOverlay && OwnerMenu != null)
+            {
+                // the whole self-draw (content, then OnDrawExtra) moves to the overlay pass so their order is kept
+                OwnerMenu.Overlay.RegisterElement(this, DrawSelf);
+            }
+            else
+            {
+                DrawSelf(b);
+            }
+
+            if (OnDrawOverlay != null && OwnerMenu != null)
+            {
+                Action<SpriteBatch, Rectangle> cb = OnDrawOverlay;
+                Rectangle bounds = Bounds;
+                OwnerMenu.Overlay.RegisterDraw(sb => Raise("OnDrawOverlay", () => cb(sb, bounds)));
+            }
+        }
+
+        /// <summary>The element's own content, then <see cref="OnDrawExtra"/>, then the debug bounds.</summary>
+        private void DrawSelf(SpriteBatch b)
+        {
             DrawCore(b);
             if (OnDrawExtra != null)
             {
@@ -410,17 +431,17 @@ namespace UIFramework.Core
                 Rectangle bounds = Bounds;
                 Raise("OnDrawExtra", () => cb(b, bounds));
             }
-            if (OnDrawOverlay != null && OwnerMenu != null)
-            {
-                Action<SpriteBatch, Rectangle> cb = OnDrawOverlay;
-                Rectangle bounds = Bounds;
-                OwnerMenu.Overlay.RegisterDraw(sb => Raise("OnDrawOverlay", () => cb(sb, bounds)));
-            }
             if (UIServices.Config.DebugOverlay)
             {
                 DrawHelper.DebugBounds(b, Bounds, Id);
             }
         }
+
+        /// <summary>
+        /// True to draw this element in the menu's overlay pass (above the whole tree) instead of in tree order; it
+        /// is then also hit-tested before the tree. Custom components opt in through <c>WantsOverlay</c>.
+        /// </summary>
+        protected virtual bool DrawsInOverlay => false;
 
         protected abstract void DrawCore(SpriteBatch b);
 

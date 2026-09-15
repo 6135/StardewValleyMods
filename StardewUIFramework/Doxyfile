@@ -1,0 +1,19 @@
+# Doxygen configuration for the UI Framework public API (Api/Public/IStardewUIApi.cs).
+# Run from this folder:  doxygen Doxyfile   (paths below are relative to the working directory).
+# Only non-default settings are listed; everything else uses Doxygen's defaults.
+
+PROJECT_NAME           = "UI Framework"
+PROJECT_NUMBER         = 6135.UIFramework
+PROJECT_BRIEF          = "Code-first UI framework for Stardew Valley SMAPI mods"
+
+INPUT                  = Api/Public
+RECURSIVE              = YES
+OUTPUT_DIRECTORY       = docs/api
+
+# C# sources: Doxygen's Java mode is the closest match, and /// <summary> comments are picked up as briefs.
+OPTIMIZE_OUTPUT_JAVA   = YES
+JAVADOC_AUTOBRIEF      = YES
+EXTRACT_ALL            = YES
+
+GENERATE_LATEX         = NO
+QUIET                  = YES
