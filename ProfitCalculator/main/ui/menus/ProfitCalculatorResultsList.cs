@@ -135,15 +135,31 @@ namespace ProfitCalculator.main.ui.menus
                 Options[currentItemIndex + i].Draw(b);
             }
 
+            DrawScrollBar(b);
+
+            b.End();
+            b.Begin(SpriteSortMode.Deferred, BlendState.AlphaBlend, SamplerState.PointClamp);
+
+            if (shouldDrawCloseButton())
+            {
+                base.draw(b);
+            }
+            if (!Game1.options.hardwareCursor)
+            {
+                b.Draw(Game1.mouseCursors, new Vector2(Game1.getMouseX(), Game1.getMouseY()), Game1.getSourceRectForStandardTileSheet(Game1.mouseCursors, Game1.options.gamepadControls ? 44 : 0, 16, 16), Color.White, 0f, Vector2.Zero, 4f + (Game1.dialogueButtonScale / 150f), SpriteEffects.None, 1f);
+            }
+        }
+
+        /// <summary> Draws the scroll arrows, the scroll bar track and the scroll bar thumb. </summary>
+        private void DrawScrollBar(SpriteBatch b)
+        {
             upArrow.draw(b, Color.White, 0.6f);
             downArrow.draw(b, Color.White, 0.6f);
 
             drawTextureBox(
                 b,
                 Game1.mouseCursors,
-
                 new Rectangle(403, 383, 6, 6),
-
                 scrollBarBounds.X,
                 scrollBarBounds.Y,
                 scrollBarBounds.Width,
@@ -158,18 +174,6 @@ namespace ProfitCalculator.main.ui.menus
                 Color.White,
                 0.65f
             );
-
-            b.End();
-            b.Begin(SpriteSortMode.Deferred, BlendState.AlphaBlend, SamplerState.PointClamp);
-
-            if (shouldDrawCloseButton())
-            {
-                base.draw(b);
-            }
-            if (!Game1.options.hardwareCursor)
-            {
-                b.Draw(Game1.mouseCursors, new Vector2(Game1.getMouseX(), Game1.getMouseY()), Game1.getSourceRectForStandardTileSheet(Game1.mouseCursors, Game1.options.gamepadControls ? 44 : 0, 16, 16), Color.White, 0f, Vector2.Zero, 4f + (Game1.dialogueButtonScale / 150f), SpriteEffects.None, 1f);
-            }
         }
 
         #endregion Draw Methods
