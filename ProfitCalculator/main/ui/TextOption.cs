@@ -31,15 +31,21 @@ namespace ProfitCalculator.main.ui
             set
             {
                 if (SelectedImpl == value)
+                {
                     return;
+                }
 
                 SelectedImpl = value;
                 if (SelectedImpl)
+                {
                     Game1.keyboardDispatcher.Subscriber = this;
+                }
                 else
                 {
                     if (Game1.keyboardDispatcher.Subscriber == this)
+                    {
                         Game1.keyboardDispatcher.Subscriber = null;
+                    }
                 }
             }
         }
@@ -98,9 +104,12 @@ namespace ProfitCalculator.main.ui
             Vector2 vector2;
             const float writeBarOffset = 26f;
             for (vector2 = Font.MeasureString(text); vector2.X > Tex.Width - writeBarOffset; vector2 = Font.MeasureString(text))
+            {
                 text = text[1..];
+            }
 
             if (DateTime.UtcNow.Millisecond % 1000 >= 500 && Selected)
+            {
                 b.Draw(
                     Game1.staminaRect,
                     new Rectangle(
@@ -116,6 +125,7 @@ namespace ProfitCalculator.main.ui
                     SpriteEffects.None,
                     0.3f
                 );
+            }
 
             b.DrawString(Font, text, Position + new Vector2(16, 12), Game1.textColor, 0, Vector2.Zero, 1f, SpriteEffects.None, 0.35f);
         }

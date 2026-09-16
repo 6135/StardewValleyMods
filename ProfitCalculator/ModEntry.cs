@@ -88,7 +88,9 @@ namespace ProfitCalculator
             //register config menu if generic mod config menu is installed
             var configMenu = Container.Instance.GetInstance<IGenericModConfigMenuApi>(UniqueID);
             if (configMenu is null)
+            {
                 return;
+            }
             // register mod
             configMenu.Register(
                 mod: this.ModManifest,
@@ -138,7 +140,9 @@ namespace ProfitCalculator
                 setValue: value =>
                 {
                     if (this.Config != null)
+                    {
                         this.Config.ToolTipDelay = value;
+                    }
                 },
                 min: 0,
                 max: 1000
@@ -266,7 +270,9 @@ namespace ProfitCalculator
         {
             // ignore if player hasn't loaded a save yet, or if the UI Framework owns the hotkey
             if (!Context.IsWorldReady || e == null || UseFrameworkUI)
+            {
                 return;
+            }
 
             //check if button pressed is button in config
             if (e.Button == (Config?.HotKey ?? SButton.None))
@@ -293,7 +299,9 @@ namespace ProfitCalculator
         private void OnMouseWheelScrolled(object? sender, MouseWheelScrolledEventArgs? e)
         {
             if (e != null)
+            {
                 DropdownOption.ActiveDropdown?.ReceiveScrollWheelAction(e.Delta);
+            }
         }
 
         /// <summary>

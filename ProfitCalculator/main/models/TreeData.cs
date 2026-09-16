@@ -59,14 +59,18 @@ namespace ProfitCalculator.main.models
             if (IsAvailableForCurrentSeason(currentSeason) || currentSeason == UtilsSeason.Greenhouse)
             {
                 if (totalAvailableDays < growingDays)
+                {
                     return 0;
+                }
                 //if the crop regrows, then the total harvest times are 1 for the first harvest and then the number of times it can regrow in the remaining days. We always need to subtract one to account for the day lost in the planting day.
                 if (daysToRegrow > 0)
                 {
                     totalHarvestTimes = (int)(1 + ((totalAvailableDays - growingDays) / (double)daysToRegrow));
                 }
                 else
+                {
                     totalHarvestTimes = totalAvailableDays / growingDays;
+                }
             }
             return totalHarvestTimes;
         }

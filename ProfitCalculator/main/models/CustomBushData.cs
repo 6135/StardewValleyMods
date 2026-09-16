@@ -283,7 +283,9 @@ namespace ProfitCalculator.main.models
             UtilsSeason season = Container.Instance.GetInstance<Calculator>(ModEntry.UniqueID)?.Season ?? UtilsSeason.Spring;
             uint day = Container.Instance.GetInstance<Calculator>(ModEntry.UniqueID)?.Day ?? 0;
             if (season == UtilsSeason.Greenhouse || Seasons.Count == 1)
+            {
                 return 1;
+            }
             else
             {
                 return (int)Math.Ceiling(TotalAvailableDays(season, (int)day) / 28.0);
@@ -325,8 +327,13 @@ namespace ProfitCalculator.main.models
             uint day = Container.Instance.GetInstance<Calculator>(ModEntry.UniqueID)?.Day ?? 0;
             FertilizerQuality fertilizerQuality = Container.Instance.GetInstance<Calculator>(ModEntry.UniqueID)?.FertilizerQuality ?? FertilizerQuality.None;
             if (RegrowDays > 0 && TotalAvailableDays(season, (int)day) > 0)
+            {
                 return 1;
-            else return TotalHarvestsWithRemainingDays(season, fertilizerQuality, (int)day);
+            }
+            else
+            {
+                return TotalHarvestsWithRemainingDays(season, fertilizerQuality, (int)day);
+            }
         }
 
         /// <inheritdoc/>
@@ -334,7 +341,9 @@ namespace ProfitCalculator.main.models
         {
             bool payForSeeds = Container.Instance.GetInstance<Calculator>(ModEntry.UniqueID)?.PayForSeeds ?? false;
             if (!payForSeeds)
+            {
                 return 0;
+            }
             int seedsNeeded = TotalSeedsNeeded();
             int seedCost = SeedPrice;
 

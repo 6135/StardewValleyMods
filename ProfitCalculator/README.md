@@ -36,7 +36,7 @@ The mod will automatically calculate the seed price based on shop stock. However
 }
 ```
 
-## Manual Crops 
+## Manual Crops
 
 If you want to add a crop that is not in the game, you can do so by adding a `crop` to the `ManualCrops.json` file in the `assets` folder. The `crop` field should be an object with the following fields (this example is for the tea bush crop):
 
@@ -69,7 +69,7 @@ If you want to add a crop that is not in the game, you can do so by adding a `cr
 1. The mod does not take into account the farming level buffs. This is because I don't know how to get the farming level buffs. If anyone knows how to get them, please let me know.
 2. The mod does not take into account the luck based chances of getting extra items.
 3. Some extra large text may be too small to read. This is because the mod lowers the size of huge text to make it fit in the crop box. If you notice this, please let me know which crop it is and from which mod it is from so I can figure out a proper fix.
-4. When changing the scale of the game, the main options menu will be scaled but the options will be in the original positions, to fix this you need to close and reopen the options menu. 
+4. When changing the scale of the game, the main options menu will be scaled but the options will be in the original positions, to fix this you need to close and reopen the options menu.
 
 ### TODO
 

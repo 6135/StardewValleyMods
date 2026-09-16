@@ -31,7 +31,6 @@ namespace ProfitCalculator.main.ui.framework
         private static readonly int MenuWidth = 632 + (IClickableMenu.borderWidth * 2) + Game1.tileSize;
 
         private readonly IStardewUIApi api;
-        private readonly IModHelper helper;
         private readonly List<CropBox> boxes = new();
         private readonly IUIMenu menu;
         private readonly IUIList list;
@@ -45,7 +44,6 @@ namespace ProfitCalculator.main.ui.framework
         public FrameworkResultsMenu(IStardewUIApi api, IModHelper helper)
         {
             this.api = api;
-            this.helper = helper;
 
             IUIMenuOptions options = api.CreateMenuOptions();
             options.Width = MenuWidth;

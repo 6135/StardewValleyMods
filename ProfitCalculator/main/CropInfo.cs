@@ -144,7 +144,9 @@ namespace ProfitCalculator.main
         public override bool Equals(object obj)
         {
             if (obj is not CropInfo cropInfo)
+            {
                 return false;
+            }
 
             static bool AreDoublesEqual(double a, double b, double tolerance) => Math.Abs(a - b) < tolerance;
 
@@ -166,7 +168,9 @@ namespace ProfitCalculator.main
             foreach (var (prop, cropProp) in doubleProperties)
             {
                 if (!AreDoublesEqual(prop, cropProp, 0.0001))
+                {
                     return false;
+                }
             }
 
             bool part1 =

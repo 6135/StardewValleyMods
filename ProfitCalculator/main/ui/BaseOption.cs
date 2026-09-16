@@ -97,7 +97,9 @@ namespace ProfitCalculator.main.ui
             BeforeReceiveLeftClick(x, y);
             //check if x and y are within the bounds of the checkbox
             if (containsPoint(x, y))
+            {
                 ExecuteClick();
+            }
         }
 
         /// <summary>
@@ -107,7 +109,9 @@ namespace ProfitCalculator.main.ui
         {
             Clicked = true;
             if (ClickedSound != null)
+            {
                 Game1.playSound(ClickedSound);
+            }
         }
 
         /// <summary>

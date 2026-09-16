@@ -653,14 +653,18 @@ namespace ProfitCalculator.main.ui
                 x = mouseX - windowWidth;
             }
             else
+            {
                 x = mouseX;
+            }
 
             if (mouseY + windowHeight > safeArea.Bottom)
             {
                 y = mouseY - windowHeight;
             }
             else
+            {
                 y = mouseY;
+            }
 
             //if the box is off the screen, move it back on
             if (x < safeArea.Left)

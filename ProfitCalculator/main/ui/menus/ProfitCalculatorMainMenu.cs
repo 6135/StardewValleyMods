@@ -398,7 +398,9 @@ namespace ProfitCalculator.main.ui.menus
             //draw bottom up
 
             if (!Game1.options.showMenuBackground)
+            {
                 b.Draw(Game1.fadeToBlackRect, Game1.graphics.GraphicsDevice.Viewport.Bounds, Color.Black * 0.4f);
+            }
             Game1.drawDialogueBox(xPositionOnScreen, yPositionOnScreen, widthOnScreen, heightOnScreen, speaker: false, drawOnlyBox: true);
 
             // Draw Labels and Options and buttons
@@ -411,8 +413,14 @@ namespace ProfitCalculator.main.ui.menus
             b.End();
             b.Begin(SpriteSortMode.Deferred, BlendState.AlphaBlend, SamplerState.PointClamp);
 
-            if (shouldDrawCloseButton()) base.draw(b);
-            if (!Game1.options.hardwareCursor) b.Draw(Game1.mouseCursors, new Vector2(Game1.getMouseX(), Game1.getMouseY()), Game1.getSourceRectForStandardTileSheet(Game1.mouseCursors, Game1.options.gamepadControls ? 44 : 0, 16, 16), Color.White, 0f, Vector2.Zero, 4f + (Game1.dialogueButtonScale / 150f), SpriteEffects.None, 1f);
+            if (shouldDrawCloseButton())
+            {
+                base.draw(b);
+            }
+            if (!Game1.options.hardwareCursor)
+            {
+                b.Draw(Game1.mouseCursors, new Vector2(Game1.getMouseX(), Game1.getMouseY()), Game1.getSourceRectForStandardTileSheet(Game1.mouseCursors, Game1.options.gamepadControls ? 44 : 0, 16, 16), Color.White, 0f, Vector2.Zero, 4f + (Game1.dialogueButtonScale / 150f), SpriteEffects.None, 1f);
+            }
         }
 
         private void DrawActions(SpriteBatch b)
@@ -550,20 +558,28 @@ namespace ProfitCalculator.main.ui.menus
             if (calculateButton.containsPoint(x, y))
             {
                 DoCalculation();
-                if (playSound) Game1.playSound("select");
+                if (playSound)
+                {
+                    Game1.playSound("select");
+                }
                 return;
             }
             if (resetButton.containsPoint(x, y))
             {
                 Reset();
-                if (playSound) Game1.playSound("dialogueCharacterClose");
+                if (playSound)
+                {
+                    Game1.playSound("dialogueCharacterClose");
+                }
                 return;
             }
             //for each option, check if it was clicked
             foreach (BaseOption option in Options)
             {
                 if (!stopSpreadingClick)
+                {
                     option.ReceiveLeftClick(x, y, () => stopSpreadingClick = !stopSpreadingClick);
+                }
                 else
                 {
                     stopSpreadingClick = !stopSpreadingClick;

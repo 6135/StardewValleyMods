@@ -102,7 +102,9 @@ namespace ProfitCalculator.main.ui.menus
             //draw bottom up
 
             if (!Game1.options.showMenuBackground)
+            {
                 b.Draw(Game1.fadeToBlackRect, Game1.graphics.GraphicsDevice.Viewport.Bounds, Color.Black * 0.4f);
+            }
 
             Game1.drawDialogueBox(xPositionOnScreen, yPositionOnScreen, widthOnScreen, heightOnScreen, speaker: false, drawOnlyBox: true);
 
@@ -113,7 +115,9 @@ namespace ProfitCalculator.main.ui.menus
             for (int i = 0; i < maxIndex; i++)
             {
                 if (currentItemIndex + i >= Options.Count)
+                {
                     break;
+                }
                 Options[currentItemIndex + i].bounds = new(
                     (int)OptionSlots[i].X,
                     (int)OptionSlots[i].Y,

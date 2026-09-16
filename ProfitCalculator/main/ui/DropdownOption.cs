@@ -72,7 +72,9 @@ namespace ProfitCalculator.main.ui
             {
                 Container.Instance.UnregisterInstance<DropdownOption>(ModEntry.UniqueID);
                 if (value != null)
+                {
                     Container.Instance.RegisterInstance(value, ModEntry.UniqueID);
+                }
             }
         }
 
@@ -151,7 +153,9 @@ namespace ProfitCalculator.main.ui
             else
             {
                 if (ActiveDropdown == this)
+                {
                     ActiveDropdown = null;
+                }
                 ActivePosition = Math.Min(ActiveChoice, Choices.Length - MaxValuesAtOnce);
             }
         }
@@ -163,9 +167,13 @@ namespace ProfitCalculator.main.ui
         public void ReceiveScrollWheelAction(int direction)
         {
             if (Dropped)
+            {
                 ActivePosition = Math.Min(Math.Max(ActivePosition - (direction / 120), 0), Choices.Length - MaxValuesAtOnce);
+            }
             else
+            {
                 ActiveDropdown = null;
+            }
         }
 
         /// <inheritdoc/>
@@ -227,6 +235,7 @@ namespace ProfitCalculator.main.ui
                 for (int i = start; i < end; ++i)
                 {
                     if (i == ActiveChoice)
+                    {
                         b.Draw(
                             Game1.staminaRect,
                             new Rectangle((int)Position.X + 4,
@@ -239,6 +248,7 @@ namespace ProfitCalculator.main.ui
                             SpriteEffects.None,
                             0.65f
                         ); // Selected option
+                    }
                     b.DrawString(
                         Game1.smallFont,
                         Labels[i],

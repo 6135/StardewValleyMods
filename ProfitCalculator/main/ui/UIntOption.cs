@@ -94,7 +94,9 @@ namespace ProfitCalculator.main.ui
                 }
             }
             if (!valid)
+            {
                 return;
+            }
             //if the parsed string equals to utin 0 then set to 0, this should allow for easy clearing of the uintbox by typing 0 and being able to type a new number after that
             if (uint.Parse(ValueGetter() + str) == 0)
             {
@@ -121,9 +123,13 @@ namespace ProfitCalculator.main.ui
                 Game1.playSound("tinyWhip");
                 //if length is 1 then set to 0 or if multiple 0s then set to 0, else remove last char
                 if (ValueGetter().Length == 1 || ValueGetter().All(c => c == '0'))
+                {
                     ValueSetter("0");
+                }
                 else
+                {
                     ValueSetter(ValueGetter()[..^1]);
+                }
             }
         }
 
@@ -147,6 +153,7 @@ namespace ProfitCalculator.main.ui
         {
             base.BeforeReceiveLeftClick(x, y);
             if (!Selected && EnableClamping)
+            {
                 ValueSetter(
                     Math.Clamp(
                         uint.Parse(ValueGetter()),
@@ -154,6 +161,7 @@ namespace ProfitCalculator.main.ui
                         Max()
                     ).ToString()
                 );
+            }
         }
     }
 }
