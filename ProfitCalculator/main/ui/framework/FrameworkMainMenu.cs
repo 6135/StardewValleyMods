@@ -182,15 +182,15 @@ namespace ProfitCalculator.main.ui.framework
         /// <summary>What the legacy <c>DoCalculation</c> did: push the settings to the calculator, retrieve the crop infos and open the results as a child menu.</summary>
         private void Calculate()
         {
-            Calculator? calculator = Container.Instance.GetInstance<Calculator>(ModEntry.UniqueID);
+            Calculator? calculator = Container.Instance.Resolve<Calculator>(ModEntry.UniqueID);
             if (calculator is null)
             {
                 monitor.Log("Calculator is null", LogLevel.Error);
                 return;
             }
-            calculator.SetSettings(settings.Day, settings.MaxDay, settings.MinDay, settings.Season, settings.ProduceType, settings.FertilizerQuality, settings.PayForSeeds, settings.PayForFertilizer, settings.MaxMoney, settings.UseBaseStats);
+            calculator.SetSettings(settings);
             monitor.Log("Doing Calculation", LogLevel.Debug);
-            List<CropInfo> cropInfos = calculator.RetrieveCropInfos();
+            IReadOnlyList<CropInfo> cropInfos = calculator.RetrieveCropInfos();
             results.Show(cropInfos, Menu);
         }
 

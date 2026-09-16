@@ -24,7 +24,7 @@ namespace ProfitCalculator.main.builders
         {
             Dictionary<string, StardewValley.GameData.Crops.CropData> loadedCrops = DataLoader.Crops(Game1.content);
             Dictionary<string, PlantData> crops = new();
-            var Monitor = Container.Instance.GetInstance<IMonitor>(ModEntry.UniqueID);
+            var Monitor = Container.Instance.Resolve<IMonitor>(ModEntry.UniqueID);
             Monitor?.Log($"Crops loaded: {loadedCrops.Count}", LogLevel.Debug);
             foreach (var crop in loadedCrops)
             {

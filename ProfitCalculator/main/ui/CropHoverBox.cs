@@ -23,7 +23,13 @@ namespace ProfitCalculator.main.ui
         private Rectangle drawBox;
         private readonly CropInfo cropInfo;
         private readonly SpriteFont font;
-        private readonly IModHelper Helper = Container.Instance.GetInstance<IModHelper>(ModEntry.UniqueID);
+        private readonly IModHelper Helper = Container.Instance.Resolve<IModHelper>(ModEntry.UniqueID);
+
+        /// <summary> Extra space left between two groups of rows. </summary>
+        private const int GroupSpacing = 16;
+
+        /// <summary> Where the next row of a panel is drawn: X is the left edge of the labels, Y the top of the row, Z the right edge the values end at. </summary>
+        private Vector3 currentTextPosition;
 
         /// <summary>
         /// Creates a new CropHoverBox.
@@ -71,565 +77,147 @@ namespace ProfitCalculator.main.ui
             {
                 hoverDelay--;
             }
+            else
+            {
+                // closed: nothing to draw
+            }
         }
 
+        /// <summary>
+        /// Draws a panel background of the box and sets <see cref="currentTextPosition"/> to its first row.
+        /// </summary>
+        /// <param name="b"> The SpriteBatch to draw to</param>
+        /// <param name="top"> The y position of the panel</param>
+        /// <param name="height"> The height of the panel</param>
+        /// <param name="drawLayer"> The layer depth the panel is drawn at</param>
+        private void DrawPanel(SpriteBatch b, int top, int height, float drawLayer)
+        {
+            IClickableMenu.drawTextureBox(
+                b,
+                Game1.menuTexture,
+                new Rectangle(0, 256, 60, 60),
+                drawBox.X,
+                top,
+                windowWidth,
+                height,
+                Color.White,
+                1f,
+                draw_layer: drawLayer
+            );
+            currentTextPosition = new(
+                drawBox.X + ((float)Game1.tileSize / 4),
+                top + ((float)Game1.tileSize / 4),
+                drawBox.X + drawBox.Width - (Game1.tileSize / 4));
+        }
+
+        /// <summary>
+        /// Draws a row at <see cref="currentTextPosition"/>: the translated label on the left (with a colon after it) and the value right aligned, then moves the position to the next row.
+        /// </summary>
+        /// <param name="b"> The SpriteBatch to draw to</param>
+        /// <param name="key"> The translation key of the label</param>
+        /// <param name="value"> The text on the right</param>
+        private void DrawRow(SpriteBatch b, string key, string value)
+        {
+            string label = $"{Helper.Translation.Get(key)}:";
+            b.DrawString(
+                font,
+                label,
+                new Vector2(
+                    currentTextPosition.X,
+                    currentTextPosition.Y
+                ),
+                Color.Black,
+                0f,
+                Vector2.Zero,
+                1f,
+                SpriteEffects.None,
+                0.75f
+            );
+            b.DrawString(
+                font,
+                value,
+                new Vector2(
+                    currentTextPosition.Z - font.MeasureString(value).X,
+                    currentTextPosition.Y),
+                Color.Black,
+                0f,
+                Vector2.Zero,
+                1f,
+                SpriteEffects.None,
+                0.75f
+            );
+            currentTextPosition.Y += font.MeasureString(label).Y;
+        }
+
+        /// <summary> Draws a row whose value is a number of days. </summary>
+        private void DrawDaysRow(SpriteBatch b, string key, int days) => DrawRow(b, key, $"{days} {Helper.Translation.Get("days")}");
+
+        /// <summary> Draws a row whose value is an amount of gold. </summary>
+        private void DrawGoldRow(SpriteBatch b, string key, double gold) => DrawRow(b, key, $"{Math.Round(gold)} {Helper.Translation.Get("g")}");
+
+        /// <summary> Draws a row whose value is an amount of gold per day. </summary>
+        private void DrawGoldPerDayRow(SpriteBatch b, string key, double goldPerDay) => DrawRow(b, key, $"{goldPerDay:0.00} {Helper.Translation.Get("g")}/{Helper.Translation.Get("day")}");
+
+        /// <summary> Draws a row whose value is a count. </summary>
+        private void DrawCountRow(SpriteBatch b, string key, object count) => DrawRow(b, key, $"#{count}");
+
+        /// <summary> Draws a row whose value is a chance, as a percentage with the given number format. </summary>
+        private void DrawChanceRow(SpriteBatch b, string key, double chance, string format = "0.00") => DrawRow(b, key, $"{(chance * 100).ToString(format)}%");
+
+        /// <summary> Top panel: profit, seed loss and growth details. </summary>
         private void DrawMainBox(SpriteBatch b)
         {
-            IClickableMenu.drawTextureBox(
-                b,
-                Game1.menuTexture,
-                new Rectangle(0, 256, 60, 60),
-                drawBox.X,
-                drawBox.Y,
-                windowWidth,
-                windowHeight / 2,
-                Color.White,
-                1f,
-                draw_layer: 0.7f
-            );
-            Vector3 currentTextPosition = new(drawBox.X, drawBox.Y, drawBox.X + drawBox.Width - (Game1.tileSize / 4));
-
-            #region Crop Value
+            DrawPanel(b, drawBox.Y, windowHeight / 2, 0.7f);
 
             //Total profit: Total Profit
             //Total Profit Per Day: P/D
-            string totalProfit = $"{Helper.Translation.Get("total-p")}:";
-            string totalProfitValue = $"{Math.Round(cropInfo.TotalProfit)} {Helper.Translation.Get("g")}";
+            DrawGoldRow(b, "total-p", cropInfo.TotalProfit);
+            DrawGoldPerDayRow(b, "total-p-day", cropInfo.ProfitPerDay);
 
-            currentTextPosition.X += (float)Game1.tileSize / 4;
-            currentTextPosition.Y += (float)Game1.tileSize / 4;
-            b.DrawString(
-                font,
-                totalProfit,
-                new Vector2(
-                    currentTextPosition.X,
-                    currentTextPosition.Y),
-                Color.Black,
-                0f,
-                Vector2.Zero,
-                1f,
-                SpriteEffects.None,
-                0.75f
-            );
-            b.DrawString(
-                font,
-                totalProfitValue,
-                new Vector2(
-                    currentTextPosition.Z - font.MeasureString(totalProfitValue).X,
-                    currentTextPosition.Y),
-                Color.Black,
-                0f,
-                Vector2.Zero,
-                1f,
-                SpriteEffects.None,
-                0.75f
-            );
+            currentTextPosition.Y += GroupSpacing;
+            DrawGoldRow(b, "total-s-loss", cropInfo.TotalSeedLoss);
+            DrawGoldPerDayRow(b, "total-s-loss-day", cropInfo.SeedLossPerDay);
 
-            string pricePerDay = $"{Helper.Translation.Get("total-p-day")}:";
-            string pricePerDayValue = $"{cropInfo.ProfitPerDay:0.00} {Helper.Translation.Get("g")}/{Helper.Translation.Get("day")}";
-
-            currentTextPosition.Y += font.MeasureString(totalProfit).Y;
-            b.DrawString(
-                font,
-                pricePerDay,
-                new Vector2(
-                    currentTextPosition.X,
-                    currentTextPosition.Y
-                ),
-                Color.Black,
-                0f,
-                Vector2.Zero,
-                1f,
-                SpriteEffects.None,
-                0.75f
-            );
-            b.DrawString(
-                font,
-                pricePerDayValue,
-                new Vector2(
-                    currentTextPosition.Z - font.MeasureString(pricePerDayValue).X,
-                    currentTextPosition.Y),
-                Color.Black,
-                0f,
-                Vector2.Zero,
-                1f,
-                SpriteEffects.None,
-                0.75f
-            );
-
-            #endregion Crop Value
-
-            #region Seed Loss
-
-            string totalSeedLoss = $"{Helper.Translation.Get("total-s-loss")}:";
-            string totalSeedLossValue = $"{Math.Round(cropInfo.TotalSeedLoss)} {Helper.Translation.Get("g")}";
-
-            currentTextPosition.Y += font.MeasureString(pricePerDay).Y + 16;
-            b.DrawString(
-                font,
-                totalSeedLoss,
-                new Vector2(
-                    currentTextPosition.X,
-                    currentTextPosition.Y
-                ),
-                Color.Black,
-                0f,
-                Vector2.Zero,
-                1f,
-                SpriteEffects.None,
-                0.75f
-            );
-            b.DrawString(
-                font,
-                totalSeedLossValue,
-                new Vector2(
-                    currentTextPosition.Z - font.MeasureString(totalSeedLossValue).X,
-                    currentTextPosition.Y),
-                Color.Black,
-                0f,
-                Vector2.Zero,
-                1f,
-                SpriteEffects.None,
-                0.75f
-            );
-
-            string seedLossPerDay = $"{Helper.Translation.Get("total-s-loss-day")}:";
-            string seedLossPerDayValue = $"{cropInfo.SeedLossPerDay:0.00} {Helper.Translation.Get("g")}/{Helper.Translation.Get("day")}";
-
-            currentTextPosition.Y += font.MeasureString(totalSeedLoss).Y;
-            b.DrawString(
-                font,
-                seedLossPerDay,
-                new Vector2(
-                    currentTextPosition.X,
-                    currentTextPosition.Y
-                ),
-                Color.Black,
-                0f,
-                Vector2.Zero,
-                1f,
-                SpriteEffects.None,
-                0.75f
-            );
-            b.DrawString(
-                font,
-                seedLossPerDayValue,
-                new Vector2(
-                    currentTextPosition.Z - font.MeasureString(seedLossPerDayValue).X,
-                    currentTextPosition.Y),
-                Color.Black,
-                0f,
-                Vector2.Zero,
-                1f,
-                SpriteEffects.None,
-                0.75f
-            );
-
-            #endregion Seed Loss
-
-            #region Crop details
-
-            string grow = $"{Helper.Translation.Get("grow-time")}:";
-            string growValue = $"{cropInfo.GrowthTime} {Helper.Translation.Get("days")}";
-            currentTextPosition.Y += font.MeasureString(seedLossPerDay).Y + 16;
-            b.DrawString(
-                font,
-                grow,
-                new Vector2(
-                    currentTextPosition.X,
-                    currentTextPosition.Y
-                ),
-                Color.Black,
-                0f,
-                Vector2.Zero,
-                1f,
-                SpriteEffects.None,
-                0.75f
-            );
-            b.DrawString(
-                font,
-                growValue,
-                new Vector2(
-                    currentTextPosition.Z - font.MeasureString(growValue).X,
-                    currentTextPosition.Y),
-                Color.Black,
-                0f,
-                Vector2.Zero,
-                1f,
-                SpriteEffects.None,
-                0.75f
-            );
-
-            string reGrow = $"{Helper.Translation.Get("regrow-time")}:";
-            string reGrowValue = $"{cropInfo.RegrowthTime} {Helper.Translation.Get("days")}";
+            currentTextPosition.Y += GroupSpacing;
+            DrawDaysRow(b, "grow-time", cropInfo.GrowthTime);
             if (cropInfo.RegrowthTime <= 0)
             {
-                reGrowValue = Helper.Translation.Get("no");
+                DrawRow(b, "regrow-time", Helper.Translation.Get("no"));
             }
-            currentTextPosition.Y += font.MeasureString(seedLossPerDay).Y;
-            b.DrawString(
-                font,
-                reGrow,
-                new Vector2(
-                    currentTextPosition.X,
-                    currentTextPosition.Y
-                ),
-                Color.Black,
-                0f,
-                Vector2.Zero,
-                1f,
-                SpriteEffects.None,
-                0.75f
-            );
-            b.DrawString(
-                font,
-                reGrowValue,
-                new Vector2(
-                    currentTextPosition.Z - font.MeasureString(reGrowValue).X,
-                    currentTextPosition.Y),
-                Color.Black,
-                0f,
-                Vector2.Zero,
-                1f,
-                SpriteEffects.None,
-                0.75f
-            );
-
-            string harvests = $"{Helper.Translation.Get("harvest-count")}:";
-            string harvestsValue = $"#{cropInfo.TotalHarvests}";
-            currentTextPosition.Y += font.MeasureString(seedLossPerDay).Y;
-            b.DrawString(
-                font,
-                harvests,
-                new Vector2(
-                    currentTextPosition.X,
-                    currentTextPosition.Y
-                ),
-                Color.Black,
-                0f,
-                Vector2.Zero,
-                1f,
-                SpriteEffects.None,
-                0.75f
-            );
-            b.DrawString(
-                font,
-                harvestsValue,
-                new Vector2(
-                    currentTextPosition.Z - font.MeasureString(harvestsValue).X,
-                    currentTextPosition.Y),
-                Color.Black,
-                0f,
-                Vector2.Zero,
-                1f,
-                SpriteEffects.None,
-                0.75f
-            );
-
-            #endregion Crop details
+            else
+            {
+                DrawDaysRow(b, "regrow-time", cropInfo.RegrowthTime);
+            }
+            DrawCountRow(b, "harvest-count", cropInfo.TotalHarvests);
         }
 
+        /// <summary> Bottom panel: harvest amounts and quality chances. </summary>
         private void DrawSecondaryBox(SpriteBatch b)
         {
-            IClickableMenu.drawTextureBox(
-                b,
-                Game1.menuTexture,
-                new Rectangle(0, 256, 60, 60),
-                drawBox.X,
-                drawBox.Y + (windowHeight / 2) - (Game1.tileSize / 4),
-                windowWidth,
-                windowHeight - (windowHeight / 2),
-                Color.White,
-                1f,
-                draw_layer: 0.71f
-            );
+            DrawPanel(b, drawBox.Y + (windowHeight / 2) - (Game1.tileSize / 4), windowHeight - (windowHeight / 2), 0.71f);
 
-            Vector3 currentTextPosition = new(
-                drawBox.X,
-                drawBox.Y + +(windowHeight / 2) - (Game1.tileSize / 4),
-                drawBox.X + drawBox.Width - (Game1.tileSize / 4));
-
-            #region Crop Value
-
-            //Total profit: Total Profit
-            //Total Profit Per Day: P/D
-            string minHarvest = $"{Helper.Translation.Get("min-harvests")}:";
-            string minHarvestValue = $"#{cropInfo.Crop.MinHarvests}";
-            currentTextPosition.X += (float)Game1.tileSize / 4;
-            currentTextPosition.Y += (float)Game1.tileSize / 4;
-            b.DrawString(
-                font,
-                minHarvest,
-                new Vector2(
-                    currentTextPosition.X,
-                    currentTextPosition.Y
-                ),
-                Color.Black,
-                0f,
-                Vector2.Zero,
-                1f,
-                SpriteEffects.None,
-                0.75f
-            );
-            b.DrawString(
-                font,
-                minHarvestValue,
-                new Vector2(
-                    currentTextPosition.Z - font.MeasureString(minHarvestValue).X,
-                    currentTextPosition.Y),
-                Color.Black,
-                0f,
-                Vector2.Zero,
-                1f,
-                SpriteEffects.None,
-                0.75f
-            );
-
-            string maxHarvest = $"{Helper.Translation.Get("max-harvests")}:";
-            string maxHarvestValue = $"#{cropInfo.Crop.MaxHarvests}";
-
-            currentTextPosition.Y += font.MeasureString(maxHarvest).Y;
-
-            b.DrawString(
-                font,
-                maxHarvest,
-                new Vector2(
-                    currentTextPosition.X,
-                    currentTextPosition.Y
-                ),
-                Color.Black,
-                0f,
-                Vector2.Zero,
-                1f,
-                SpriteEffects.None,
-                0.75f
-            );
-            b.DrawString(
-                font,
-                maxHarvestValue,
-                new Vector2(
-                    currentTextPosition.Z - font.MeasureString(maxHarvestValue).X,
-                    currentTextPosition.Y),
-                Color.Black,
-                0f,
-                Vector2.Zero,
-                1f,
-                SpriteEffects.None,
-                0.75f
-            );
-
+            DrawCountRow(b, "min-harvests", cropInfo.Crop.MinHarvests);
+            DrawCountRow(b, "max-harvests", cropInfo.Crop.MaxHarvests);
             if (cropInfo.Crop.MaxHarvestIncreasePerFarmingLevel != 0)
             {
-                string maxHarvestIncLevl = $"{Helper.Translation.Get("max-harvests-level")}:";
-                string maxHarvestIncLevlValue = $"#{cropInfo.Crop.MaxHarvestIncreasePerFarmingLevel}";
-
-                currentTextPosition.Y += font.MeasureString(maxHarvestIncLevl).Y;
-
-                b.DrawString(
-                    font,
-                    maxHarvestIncLevl,
-                    new Vector2(
-                        currentTextPosition.X,
-                        currentTextPosition.Y
-                    ),
-                    Color.Black,
-                    0f,
-                    Vector2.Zero,
-                    1f,
-                    SpriteEffects.None,
-                    0.75f
-                );
-                b.DrawString(
-                    font,
-                    maxHarvestIncLevlValue,
-                    new Vector2(
-                        currentTextPosition.Z - font.MeasureString(maxHarvestIncLevlValue).X,
-                        currentTextPosition.Y),
-                    Color.Black,
-                    0f,
-                    Vector2.Zero,
-                    1f,
-                    SpriteEffects.None,
-                    0.75f
-                );
+                DrawCountRow(b, "max-harvests-level", cropInfo.Crop.MaxHarvestIncreasePerFarmingLevel);
             }
             if (cropInfo.Crop.ChanceForExtraCrops != 0)
             {
-                string extraChance = $"{Helper.Translation.Get("extra-harvest-chance")}:";
-                string extraChanceValue = $"{cropInfo.Crop.ChanceForExtraCrops * 100}%";
-
-                currentTextPosition.Y += font.MeasureString(extraChance).Y;
-
-                b.DrawString(
-                    font,
-                    extraChance,
-                    new Vector2(
-                        currentTextPosition.X,
-                        currentTextPosition.Y
-                    ),
-                    Color.Black,
-                    0f,
-                    Vector2.Zero,
-                    1f,
-                    SpriteEffects.None,
-                    0.75f
-                );
-                b.DrawString(
-                    font,
-                    extraChanceValue,
-                    new Vector2(
-                        currentTextPosition.Z - font.MeasureString(extraChanceValue).X,
-                        currentTextPosition.Y),
-                    Color.Black,
-                    0f,
-                    Vector2.Zero,
-                    1f,
-                    SpriteEffects.None,
-                    0.75f
-                );
+                DrawRow(b, "extra-harvest-chance", $"{cropInfo.Crop.ChanceForExtraCrops * 100}%");
             }
-
-            #endregion Crop Value
-
-            #region Probabilities
 
             currentTextPosition.Y += 8;
-
-            string chanceOf = $"{Helper.Translation.Get("value-normal")}:";
-            string chanceOfValue = $"{cropInfo.ChanceOfNormalQuality * 100:0.00}%";
             if (cropInfo.ChanceOfNormalQuality != 0)
             {
-                currentTextPosition.Y += font.MeasureString(chanceOf).Y;
-
-                b.DrawString(
-                    font,
-                    chanceOf,
-                    new Vector2(
-                        currentTextPosition.X,
-                        currentTextPosition.Y
-                    ),
-                    Color.Black,
-                    0f,
-                    Vector2.Zero,
-                    1f,
-                    SpriteEffects.None,
-                    0.75f
-                );
-                b.DrawString(
-                    font,
-                    chanceOfValue,
-                    new Vector2(
-                        currentTextPosition.Z - font.MeasureString(chanceOfValue).X,
-                        currentTextPosition.Y),
-                    Color.Black,
-                    0f,
-                    Vector2.Zero,
-                    1f,
-                    SpriteEffects.None,
-                    0.75f
-                );
+                DrawChanceRow(b, "value-normal", cropInfo.ChanceOfNormalQuality);
             }
-            chanceOf = $"{Helper.Translation.Get("value-silver")}:";
-            chanceOfValue = $"{cropInfo.ChanceOfSilverQuality * 100:0.00}%";
-
-            currentTextPosition.Y += font.MeasureString(chanceOf).Y;
-
-            b.DrawString(
-                font,
-                chanceOf,
-                new Vector2(
-                    currentTextPosition.X,
-                    currentTextPosition.Y
-                ),
-                Color.Black,
-                0f,
-                Vector2.Zero,
-                1f,
-                SpriteEffects.None,
-                0.75f
-            );
-            b.DrawString(
-                font,
-                chanceOfValue,
-                new Vector2(
-                    currentTextPosition.Z - font.MeasureString(chanceOfValue).X,
-                    currentTextPosition.Y),
-                Color.Black,
-                0f,
-                Vector2.Zero,
-                1f,
-                SpriteEffects.None,
-                0.75f
-            );
-            chanceOf = $"{Helper.Translation.Get("value-gold")}:";
-            chanceOfValue = $"{cropInfo.ChanceOfGoldQuality * 100:0.00}%";
-
-            currentTextPosition.Y += font.MeasureString(chanceOf).Y;
-
-            b.DrawString(
-                font,
-                chanceOf,
-                new Vector2(
-                    currentTextPosition.X,
-                    currentTextPosition.Y
-                ),
-                Color.Black,
-                0f,
-                Vector2.Zero,
-                1f,
-                SpriteEffects.None,
-                0.75f
-            );
-            b.DrawString(
-                font,
-                chanceOfValue,
-                new Vector2(
-                    currentTextPosition.Z - font.MeasureString(chanceOfValue).X,
-                    currentTextPosition.Y),
-                Color.Black,
-                0f,
-                Vector2.Zero,
-                1f,
-                SpriteEffects.None,
-                0.75f
-            );
-            chanceOf = $"{Helper.Translation.Get("value-iridium")}:";
-            chanceOfValue = $"{cropInfo.ChanceOfIridiumQuality * 100:0.0}%";
-
+            DrawChanceRow(b, "value-silver", cropInfo.ChanceOfSilverQuality);
+            DrawChanceRow(b, "value-gold", cropInfo.ChanceOfGoldQuality);
             if (cropInfo.ChanceOfIridiumQuality != 0)
             {
-                currentTextPosition.Y += font.MeasureString(chanceOf).Y;
-
-                b.DrawString(
-                    font,
-                    chanceOf,
-                    new Vector2(
-                        currentTextPosition.X,
-                        currentTextPosition.Y
-                    ),
-                    Color.Black,
-                    0f,
-                    Vector2.Zero,
-                    1f,
-                    SpriteEffects.None,
-                    0.75f
-                );
-                b.DrawString(
-                    font,
-                    chanceOfValue,
-                    new Vector2(
-                        currentTextPosition.Z - font.MeasureString(chanceOfValue).X,
-                        currentTextPosition.Y),
-                    Color.Black,
-                    0f,
-                    Vector2.Zero,
-                    1f,
-                    SpriteEffects.None,
-                    0.75f
-                );
+                DrawChanceRow(b, "value-iridium", cropInfo.ChanceOfIridiumQuality, "0.0");
             }
-
-            #endregion Probabilities
         }
 
         /// <inheritdoc/>

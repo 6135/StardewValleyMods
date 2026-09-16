@@ -108,7 +108,9 @@ namespace ProfitCalculator.main.ui
                 text = text[1..];
             }
 
-            if (DateTime.UtcNow.Millisecond % 1000 >= 500 && Selected)
+            // blink the caret twice a second, on the game clock so it pauses with the game
+            double gameMilliseconds = Game1.currentGameTime?.TotalGameTime.TotalMilliseconds ?? 0;
+            if (Selected && gameMilliseconds % 1000 >= 500)
             {
                 b.Draw(
                     Game1.staminaRect,

@@ -11,14 +11,17 @@ namespace ProfitCalculator.main.ui
     /// </summary>
     public class CropBox : BaseOption
     {
-        /// <summary> The crop info to display. <see cref="CropInfo"/> </summary>
-        public readonly CropInfo cropInfo;
+        /// <summary> The crop info to display. <see cref="main.CropInfo"/> </summary>
+        public CropInfo CropInfo { get; }
 
         /// <summary> The hover box to display when the mouse is over the box. <see cref="CropHoverBox"/> </summary>
-        public readonly CropHoverBox cropHoverBox;
+        public CropHoverBox HoverBox { get; }
 
         private readonly SpriteFont Font = Game1.smallFont;
         private readonly string mainText;
+
+        /// <summary> The x position (from the box's left) the right-aligned profit texts end at. </summary>
+        private float ProfitRightEdge => Position.X + (69 * (Game1.tileSize / 8));
 
         /// <summary>
         /// Creates a new CropBox
@@ -27,7 +30,7 @@ namespace ProfitCalculator.main.ui
         /// <param name="y"> The y position of the box</param>
         /// <param name="w"> The width of the box</param>
         /// <param name="h"> The height of the box</param>
-        /// <param name="crop"> The cropInfo to display. <see cref="CropInfo"/> </param>
+        /// <param name="crop"> The cropInfo to display. <see cref="main.CropInfo"/> </param>
         public CropBox(int x, int y, int w, int h, CropInfo crop) : base(x, y, w, h, () => crop.Crop.DisplayName, () => crop.Crop.DisplayName, () => crop.Crop.DisplayName)
         {
             mainText = crop.Crop.DisplayName;
@@ -35,8 +38,8 @@ namespace ProfitCalculator.main.ui
             {
                 mainText = "PlaceHolder";
             }
-            cropInfo = crop;
-            cropHoverBox = new CropHoverBox(cropInfo);
+            CropInfo = crop;
+            HoverBox = new CropHoverBox(CropInfo);
         }
 
         /// <summary>
@@ -53,7 +56,7 @@ namespace ProfitCalculator.main.ui
         public override void Draw(SpriteBatch b)
         {
             DrawContent(b);
-            cropHoverBox.Draw(b);
+            HoverBox.Draw(b);
         }
 
         /// <summary>
@@ -69,6 +72,14 @@ namespace ProfitCalculator.main.ui
 
         private void DrawContent(SpriteBatch b)
         {
+            DrawBoxAndSprite(b);
+            DrawName(b);
+            DrawProfit(b);
+        }
+
+        /// <summary> Draws the box background and the crop sprite in the middle of the box, aligned to the left. </summary>
+        private void DrawBoxAndSprite(SpriteBatch b)
+        {
             IClickableMenu.drawTextureBox(
                 b,
                 Game1.menuTexture,
@@ -82,33 +93,37 @@ namespace ProfitCalculator.main.ui
                 false,
                 0.5f
              );
-            //draw crop sprite in the middle of the box aligned to the left
             const int spriteSize = 16;
             const int spriteDisplaySize = (int)(spriteSize * 3.25f);
 
             b.Draw(
-                cropInfo.Crop.Sprite.Item1,
+                CropInfo.Crop.Sprite.Item1,
                 new Rectangle(
                     (int)Position.X + (3 * Game1.tileSize / 8),
                     (int)Position.Y + (bounds.Height / 2) - (Game1.tileSize / 2) + 6,
                     spriteDisplaySize,
                     spriteDisplaySize
                 ),
-                cropInfo.Crop.Sprite.Item2,
+                CropInfo.Crop.Sprite.Item2,
                 Color.White,
                 0f,
                 Vector2.Zero,
                 SpriteEffects.None,
                 0.6f
             );
+        }
 
-            //draw string in middle of box, aligned to the left with a spacing of 2xtilesize from the left
-            //But if string size is too big, draw, reduce font size, and draw again
+        /// <summary>
+        /// Draws the crop name in the middle of the box, aligned to the left with a spacing of 2xtilesize from the left.
+        /// If the name is too wide for the space left of the profit texts, the font size is reduced until it fits.
+        /// </summary>
+        private void DrawName(SpriteBatch b)
+        {
             float fontSizeModifier = 1.3f;
 
             float fontSize = Font.MeasureString(mainText).X * fontSizeModifier;
 
-            float rightSideTextMaxSize = Font.MeasureString(cropInfo.ProfitPerDay.ToString("0.00")).X + Font.MeasureString($" {Helper.Translation.Get("g")}/{Helper.Translation.Get("day")}").X;
+            float rightSideTextMaxSize = Font.MeasureString(CropInfo.ProfitPerDay.ToString("0.00")).X + Font.MeasureString($" {Helper.Translation.Get("g")}/{Helper.Translation.Get("day")}").X;
             rightSideTextMaxSize *= 1.8f;
 
             float boxWidth = bounds.Width - (3 * Game1.tileSize / 8) - rightSideTextMaxSize;
@@ -133,57 +148,38 @@ namespace ProfitCalculator.main.ui
                 SpriteEffects.None,
                 0.6f
             );
+        }
 
-            string price = Math.Round(cropInfo.TotalProfit).ToString();
+        /// <summary>
+        /// Draws the total profit (rounded) above the middle of the box and the profit per day (two decimals) below it, both right aligned
+        /// with their unit after them and in red when the crop loses money.
+        /// </summary>
+        private void DrawProfit(SpriteBatch b)
+        {
+            Color color = CropInfo.TotalProfit < 0 ? Color.Red : Color.DarkGreen;
+            float middle = Position.Y + (bounds.Height / 2) + 3;
+
+            string price = Math.Round(CropInfo.TotalProfit).ToString();
             string g = $" {Helper.Translation.Get("g")}";
-            Color color;
-            if (cropInfo.TotalProfit < 0)
-            {
-                color = Color.Red;
-            }
-            else
-            {
-                color = Color.DarkGreen;
-            }
-            b.DrawString(
-                Font,
-                price,
-                new Vector2(
-                    Position.X + (69 * (Game1.tileSize / 8)) - Font.MeasureString(price).X - Font.MeasureString(g).X,
-                    Position.Y + (bounds.Height / 2) + 3 - Font.MeasureString(price).Y
-                ),
-                color,
-                0f,
-                Vector2.Zero,
-                1f,
-                SpriteEffects.None,
-                0.6f
-            );
-            b.DrawString(
-                Font,
-                g,
-                new Vector2(
-                    Position.X + (69 * (Game1.tileSize / 8)) - Font.MeasureString(g).X,
-                    Position.Y + (bounds.Height / 2) + 3 - Font.MeasureString(g).Y
-                ),
-                Color.Black,
-                0f,
-                Vector2.Zero,
-                1f,
-                SpriteEffects.None,
-                0.6f
-            );
-            //further left, draw the price per day of the crop in the box, rounded to the nearest two decimal places, with G/Day at the end
-            string pricePerDay = cropInfo.ProfitPerDay.ToString("0.00");
+            DrawValueWithUnit(b, price, g, middle, true, color);
+
+            string pricePerDay = CropInfo.ProfitPerDay.ToString("0.00");
             string ppd = $" {Helper.Translation.Get("g")}/{Helper.Translation.Get("day")}";
+            DrawValueWithUnit(b, pricePerDay, ppd, middle, false, color);
+        }
+
+        /// <summary>
+        /// Draws <paramref name="unit"/> ending at <see cref="ProfitRightEdge"/> and <paramref name="value"/> right before it,
+        /// either sitting on <paramref name="middle"/> (<paramref name="above"/>) or hanging from it.
+        /// </summary>
+        private void DrawValueWithUnit(SpriteBatch b, string value, string unit, float middle, bool above, Color valueColor)
+        {
+            float unitWidth = Font.MeasureString(unit).X;
             b.DrawString(
                 Font,
-                pricePerDay,
-                new Vector2(
-                    Position.X + (69 * (Game1.tileSize / 8)) - Font.MeasureString(pricePerDay).X - Font.MeasureString(ppd).X,
-                    Position.Y + (bounds.Height / 2) + 3
-                ),
-                color,
+                value,
+                new Vector2(ProfitRightEdge - Font.MeasureString(value).X - unitWidth, above ? middle - Font.MeasureString(value).Y : middle),
+                valueColor,
                 0f,
                 Vector2.Zero,
                 1f,
@@ -192,11 +188,8 @@ namespace ProfitCalculator.main.ui
             );
             b.DrawString(
                 Font,
-                ppd,
-                new Vector2(
-                    Position.X + (69 * (Game1.tileSize / 8)) - Font.MeasureString(ppd).X,
-                    Position.Y + (bounds.Height / 2) + 3
-                ),
+                unit,
+                new Vector2(ProfitRightEdge - unitWidth, above ? middle - Font.MeasureString(unit).Y : middle),
                 Color.Black,
                 0f,
                 Vector2.Zero,
@@ -220,12 +213,12 @@ namespace ProfitCalculator.main.ui
             base.PerformHoverAction(x, y);
             if (containsPoint(x, y))
             {
-                cropHoverBox.Update();
-                cropHoverBox.Open(true);
+                HoverBox.Update();
+                HoverBox.Open(true);
             }
             else
             {
-                cropHoverBox.Open(false);
+                HoverBox.Open(false);
             }
         }
     }

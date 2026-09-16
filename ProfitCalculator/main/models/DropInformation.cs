@@ -80,14 +80,10 @@ namespace ProfitCalculator.main.models
         /// <param name="items">List of items that can be dropped.</param>
         /// <param name="quantity">List of quantities of the items that can be dropped.</param>
         /// <param name="chances">List of chances of the items that can be dropped.</param>
-        public DropInformation(string name, List<Item> items, List<int> quantity, List<double> chances)
+        public DropInformation(string name, IReadOnlyList<Item> items, IReadOnlyList<int> quantity, IReadOnlyList<double> chances)
         {
             Name = name;
-            Drops = new List<Drop>();
-            for (int i = 0; i < items.Count; i++)
-            {
-                Drops.Add(new Drop(items[i], quantity[i], chances[i]));
-            }
+            AddRange(items, quantity, chances);
         }
 
         /// <summary>
@@ -96,17 +92,18 @@ namespace ProfitCalculator.main.models
         public DropInformation()
         {
             // Initialize empty
-            Drops = new();
             Name = "";
         }
 
         /// <summary> String that names the dropInfo</summary>
         public string Name { get; set; }
 
+        private readonly List<Drop> drops = new();
+
         /// <summary>
         /// List of items that can be dropped
         /// </summary>
-        public List<Drop> Drops { get; set; }
+        public IReadOnlyList<Drop> Drops => drops;
 
         /// <summary>
         /// Add an item to the drop
@@ -116,7 +113,16 @@ namespace ProfitCalculator.main.models
         /// <param name="chance">Chance for the item to drop</param>
         public void AddItem(Item item, int quantity, double chance)
         {
-            Drops.Add(new Drop(item, quantity, chance));
+            drops.Add(new Drop(item, quantity, chance));
+        }
+
+        /// <summary>
+        /// Add a drop
+        /// </summary>
+        /// <param name="drop">Drop to add</param>
+        public void AddItem(Drop drop)
+        {
+            drops.Add(drop);
         }
 
         /// <summary>
@@ -125,11 +131,11 @@ namespace ProfitCalculator.main.models
         /// <param name="items">List of items to add</param>
         /// <param name="quantity">List of quantities of the items to add</param>
         /// <param name="chances">List of drop chances of the items to add</param>
-        public void AddRange(List<Item> items, List<int> quantity, List<double> chances)
+        public void AddRange(IReadOnlyList<Item> items, IReadOnlyList<int> quantity, IReadOnlyList<double> chances)
         {
             for (int i = 0; i < items.Count; i++)
             {
-                Drops.Add(new Drop(items[i], quantity[i], chances[i]));
+                drops.Add(new Drop(items[i], quantity[i], chances[i]));
             }
         }
 
@@ -139,7 +145,7 @@ namespace ProfitCalculator.main.models
         /// <param name="item">Item to remove</param>
         public void RemoveItem(Item item)
         {
-            Drops.RemoveAll(drop => drop.Item == item);
+            drops.RemoveAll(drop => drop.Item == item);
         }
 
         /// <summary>
@@ -148,7 +154,7 @@ namespace ProfitCalculator.main.models
         /// <param name="index">Index of the item to remove</param>
         public void RemoveItem(int index)
         {
-            Drops.RemoveAt(index);
+            drops.RemoveAt(index);
         }
 
         /// <summary>
@@ -156,7 +162,7 @@ namespace ProfitCalculator.main.models
         /// </summary>
         public void Clear()
         {
-            Drops.Clear();
+            drops.Clear();
         }
 
         /// <summary>
@@ -168,7 +174,7 @@ namespace ProfitCalculator.main.models
         /// <param name="newItem">New item to replace the old one, if null, the old item is kept</param>
         public void UpdateItem(Item oldItem, int quantity, double chance, Item? newItem)
         {
-            int index = Drops.FindIndex(drop => drop.Item == oldItem);
+            int index = drops.FindIndex(drop => drop.Item == oldItem);
             Drops[index].Quantity = quantity;
             Drops[index].Chance = chance;
             if (newItem != null)

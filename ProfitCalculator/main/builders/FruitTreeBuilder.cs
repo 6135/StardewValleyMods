@@ -18,7 +18,7 @@ namespace ProfitCalculator.main.builders
         {
             Dictionary<string, FruitTreeData> loadedTrees = DataLoader.FruitTrees(Game1.content);
             Dictionary<string, PlantData> trees = new();
-            var Monitor = Container.Instance.GetInstance<IMonitor>(ModEntry.UniqueID);
+            var Monitor = Container.Instance.Resolve<IMonitor>(ModEntry.UniqueID);
             Monitor?.Log($"Trees loaded: {loadedTrees.Count}", LogLevel.Debug);
             foreach (var tree in loadedTrees)
             {
@@ -48,7 +48,7 @@ namespace ProfitCalculator.main.builders
                     unQualifiedId = unQualifiedId.Remove(firstParenthesis, lastParenthesis - firstParenthesis + 1);
                 }
 
-                dropInformation.Drops.Add(
+                dropInformation.AddItem(
                     new DropInformation.Drop(
                         new SObject(
                             unQualifiedId,

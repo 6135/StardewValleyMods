@@ -53,7 +53,7 @@ namespace ProfitCalculator
             helper.Events.Input.ButtonPressed += OnButtonPressed;
             helper.Events.GameLoop.GameLaunched += OnGameLaunchedAPIs;
             helper.Events.GameLoop.GameLaunched += OnGameLaunchedAddGenericModConfigMenu;
-            helper.Events.GameLoop.GameLaunched += OnGameLaunchedUIFramework;
+            helper.Events.GameLoop.GameLaunched += (_, _) => OnGameLaunchedUIFramework();
             helper.Events.GameLoop.SaveLoaded += OnSaveGameLoaded;
             helper.Events.Input.MouseWheelScrolled += this.OnMouseWheelScrolled;
             helper.Events.GameLoop.DayStarted += OnDayStartedResetCache;
@@ -66,7 +66,7 @@ namespace ProfitCalculator
         [EventPriority(EventPriority.Low - 9999)]
         private void OnDayStartedResetCache(object? sender, DayStartedEventArgs? e)
         {
-            Container.Instance.GetInstance<ShopAccessor>(ModEntry.UniqueID)?.ForceRebuildCache();
+            Container.Instance.Resolve<ShopAccessor>(ModEntry.UniqueID)?.ForceRebuildCache();
         }
 
         private void OnGameLaunchedAPIs(object? sender, GameLaunchedEventArgs? e)
@@ -86,7 +86,7 @@ namespace ProfitCalculator
         private void OnGameLaunchedAddGenericModConfigMenu(object? sender, GameLaunchedEventArgs? e)
         {
             //register config menu if generic mod config menu is installed
-            var configMenu = Container.Instance.GetInstance<IGenericModConfigMenuApi>(UniqueID);
+            var configMenu = Container.Instance.Resolve<IGenericModConfigMenuApi>(UniqueID);
             if (configMenu is null)
             {
                 return;
@@ -102,7 +102,13 @@ namespace ProfitCalculator
                 }
             );
 
-            // add keybinding setting
+            AddHotKeyOption(configMenu);
+            AddUseUIFrameworkOption(configMenu);
+            AddToolTipDelayOption(configMenu);
+        }
+
+        private void AddHotKeyOption(IGenericModConfigMenuApi configMenu)
+        {
             configMenu.AddKeybind(
                 mod: this.ModManifest,
                 getValue: () => this.Config?.HotKey ?? SButton.F8,
@@ -117,7 +123,10 @@ namespace ProfitCalculator
                 name: () => (this.Helper.Translation.Get("open") + " " + this.Helper.Translation.Get("app-name")).ToString(),
                 tooltip: () => this.Helper.Translation.Get("hot-key-tooltip")
             );
+        }
 
+        private void AddUseUIFrameworkOption(IGenericModConfigMenuApi configMenu)
+        {
             configMenu.AddBoolOption(
                 mod: this.ModManifest,
                 getValue: () => this.Config?.UseUIFramework ?? true,
@@ -131,7 +140,10 @@ namespace ProfitCalculator
                 name: () => this.Helper.Translation.Get("use-ui-framework"),
                 tooltip: () => this.Helper.Translation.Get("use-ui-framework-desc")
             );
+        }
 
+        private void AddToolTipDelayOption(IGenericModConfigMenuApi configMenu)
+        {
             configMenu.AddNumberOption(
                 mod: this.ModManifest,
                 name: () => this.Helper.Translation.Get("tooltip-delay"),
@@ -151,7 +163,7 @@ namespace ProfitCalculator
 
         #region UI Framework
 
-        private void OnGameLaunchedUIFramework(object? sender, GameLaunchedEventArgs? e)
+        private void OnGameLaunchedUIFramework()
         {
             uiApi = Helper.ModRegistry.GetApi<IStardewUIApi>(UIFrameworkId);
             ApplyUIChoice();
@@ -171,6 +183,10 @@ namespace ProfitCalculator
             else if (!wantFramework && UseFrameworkUI)
             {
                 DisableFrameworkUI(uiApi!);
+            }
+            else
+            {
+                // the wanted UI is already the active one
             }
             BindFrameworkHotkey();
             Monitor.Log(DescribeUIChoice(), LogLevel.Info);
@@ -233,7 +249,7 @@ namespace ProfitCalculator
                 mainMenu = new ProfitCalculatorMainMenu();
                 frameworkSettings?.Reset();
             }
-            var Calculator = Container.Instance.GetInstance<Calculator>(ModEntry.UniqueID);
+            var Calculator = Container.Instance.Resolve<Calculator>(ModEntry.UniqueID);
             if (Calculator is null)
             {
                 Monitor.Log("Calculator is null", LogLevel.Error);
@@ -244,10 +260,7 @@ namespace ProfitCalculator
                 new CropBuilder(),
                 new FruitTreeBuilder(),
             };
-            /*if (CustomBushAPI != null)
-            {
-                builder.Add(new CustomBushBuilder());
-            }*/
+            // the CustomBushBuilder is not added yet: the Custom Bush integration is unfinished
             //linq for each builder, call build crops and add to calculator
             builder.ForEach(b =>
             {
@@ -269,7 +282,7 @@ namespace ProfitCalculator
         private void OnButtonPressed(object? sender, ButtonPressedEventArgs? e)
         {
             // ignore if player hasn't loaded a save yet, or if the UI Framework owns the hotkey
-            if (!Context.IsWorldReady || e == null || UseFrameworkUI)
+            if (!Context.IsWorldReady || e == null || UseFrameworkUI || mainMenu is null)
             {
                 return;
             }
@@ -277,22 +290,28 @@ namespace ProfitCalculator
             //check if button pressed is button in config
             if (e.Button == (Config?.HotKey ?? SButton.None))
             {
-                //open menu if not already open else close
-                if (mainMenu?.IsProfitCalculatorOpen != null && !mainMenu.IsProfitCalculatorOpen)
-                {
-                    mainMenu.IsProfitCalculatorOpen = true;
-                    mainMenu.UpdateMenu();
-                    Game1.activeClickableMenu = mainMenu;
-                    Game1.playSound("bigSelect");
-                }
-                else if (mainMenu?.IsProfitCalculatorOpen != null)
-                {
-                    mainMenu.IsProfitCalculatorOpen = false;
-                    mainMenu.UpdateMenu();
-                    DropdownOption.ActiveDropdown = null;
-                    Game1.activeClickableMenu = null;
-                    Game1.playSound("bigDeSelect");
-                }
+                ToggleMainMenu(mainMenu);
+            }
+        }
+
+        /// <summary>Open the built-in main menu if it is closed, else close it.</summary>
+        /// <param name="menu">The built-in main menu.</param>
+        private static void ToggleMainMenu(ProfitCalculatorMainMenu menu)
+        {
+            if (!menu.IsProfitCalculatorOpen)
+            {
+                menu.IsProfitCalculatorOpen = true;
+                menu.UpdateMenu();
+                Game1.activeClickableMenu = menu;
+                Game1.playSound("bigSelect");
+            }
+            else
+            {
+                menu.IsProfitCalculatorOpen = false;
+                menu.UpdateMenu();
+                DropdownOption.ActiveDropdown = null;
+                Game1.activeClickableMenu = null;
+                Game1.playSound("bigDeSelect");
             }
         }
 
@@ -311,7 +330,7 @@ namespace ProfitCalculator
         /// <param name="crop"> The crop to add. <see cref="CropData"/> </param>
         public static void AddCrop(string id, CropData crop)
         {
-            var Calculator = Container.Instance.GetInstance<Calculator>(UniqueID);
+            var Calculator = Container.Instance.Resolve<Calculator>(UniqueID);
             Calculator?.AddCrop(id, crop);
         }
     }

@@ -5,10 +5,6 @@ namespace ProfitCalculator.main.accessors
 {
     public class MachineAccessor
     {
-        public MachineAccessor()
-        {
-        }
-
         private static Dictionary<string, Dictionary<ISalable, ItemStockInformation>> BuildCache()
         {
             return new();

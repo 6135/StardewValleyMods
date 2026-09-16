@@ -1,7 +1,6 @@
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using ProfitCalculator.main.accessors;
-using ProfitCalculator.main.memory;
 using StardewModdingAPI;
 using StardewValley;
 using StardewValley.GameData.FruitTrees;
@@ -26,21 +25,12 @@ namespace ProfitCalculator.main.models
         /// <param name="_seed" >Seed Item</param>
         /// <param name="dropInformation">Drop Information for the crop</param>
         public TreeData(FruitTreeData _cropData, Item _seed, DropInformation dropInformation)
-            : base(
-                  28,
-                  1,
-                  1,
-                  1,
-                  0f,
-                  0f,
-                  dropInformation.Drops[0].Item.DisplayName,
-                  _cropData.Seasons,
-                  _seed,
-                  false,
-                  false,
-                  dropInformation
-                  )
+            : base(dropInformation.Drops[0].Item.DisplayName, _cropData.Seasons, _seed, dropInformation)
         {
+            Days = 28;
+            RegrowDays = 1;
+            MinHarvests = 1;
+            MaxHarvests = 1;
         }
 
         /// <summary>
@@ -84,10 +74,10 @@ namespace ProfitCalculator.main.models
         /// <inheritdoc/>
         public override double TotalCropProfit()
         {
-            UtilsSeason season = Container.Instance.GetInstance<Calculator>(ModEntry.UniqueID)?.Season ?? UtilsSeason.Spring;
-            bool UseBaseStats = Container.Instance.GetInstance<Calculator>(ModEntry.UniqueID)?.UseBaseStats ?? false;
-            FertilizerQuality fertilizerQuality = Container.Instance.GetInstance<Calculator>(ModEntry.UniqueID)?.FertilizerQuality ?? FertilizerQuality.None;
-            uint day = Container.Instance.GetInstance<Calculator>(ModEntry.UniqueID)?.Day ?? 0;
+            UtilsSeason season = Settings.Season;
+            bool UseBaseStats = Settings.UseBaseStats;
+            FertilizerQuality fertilizerQuality = Settings.FertilizerQuality;
+            uint day = Settings.Day;
             double totalProfitFromFirstProduce = DropInformation.AveragePrice(season); //Price(season) already returns the average value of produced items for 1 harvest.
 
             if (!UseBaseStats && Game1.player.professions.Contains(Farmer.tiller))

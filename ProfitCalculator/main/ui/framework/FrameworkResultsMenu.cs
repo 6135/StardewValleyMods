@@ -88,14 +88,14 @@ namespace ProfitCalculator.main.ui.framework
                 return;
             }
             CropBox box = boxes[index];
-            box.cropHoverBox.Open(false);
+            box.HoverBox.Open(false);
             IUIPanel panel = api.AddPanel(row, $"crop{index}", false, 0);
             panel.HorizontalAlign = UIAlign.Stretch;
             panel.VerticalAlign = UIAlign.Stretch;
             panel.OnDrawExtra = box.Draw;
-            panel.OnHover = _ => box.cropHoverBox.Open(true);
-            panel.OnHoverEnd = _ => box.cropHoverBox.Open(false);
-            panel.OnDrawOverlay = (b, _) => DrawHoverBox(b, panel, box.cropHoverBox);
+            panel.OnHover = _ => box.HoverBox.Open(true);
+            panel.OnHoverEnd = _ => box.HoverBox.Open(false);
+            panel.OnDrawOverlay = (b, _) => DrawHoverBox(b, panel, box.HoverBox);
         }
 
         /// <summary>Position the hover box next to the cursor and draw it (it handles its own open state and delay) while the row is hovered.</summary>

@@ -100,7 +100,7 @@ namespace ProfitCalculator
         {
             //convert string to lowercase
             str = str.ToLower();
-            var Helper = Container.Instance.GetInstance<IModHelper>(ModEntry.UniqueID);
+            var Helper = Container.Instance.Resolve<IModHelper>(ModEntry.UniqueID);
             return Helper?.Translation.Get(str) ?? "Error";
         }
 

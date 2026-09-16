@@ -5,11 +5,12 @@ using static ProfitCalculator.Utils;
 
 #nullable enable
 
-namespace ProfitCalculator.main.ui.framework
+namespace ProfitCalculator.main
 {
     /// <summary>
-    /// The values edited on the UI Framework main screen. Mirrors the settings properties of the legacy
-    /// <see cref="menus.ProfitCalculatorMainMenu"/>; the framework controls read and write it through delegates.
+    /// The settings a calculation runs with (see <see cref="Calculator.SetSettings(ProfitCalculatorSettings)"/>). The UI Framework
+    /// main screen edits an instance of it through delegates; the legacy <see cref="ui.menus.ProfitCalculatorMainMenu"/> mirrors
+    /// the same properties and builds one when it calculates.
     /// </summary>
     public class ProfitCalculatorSettings
     {
