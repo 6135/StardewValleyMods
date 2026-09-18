@@ -95,6 +95,13 @@ namespace UIFramework.Core
             }
         }
 
+        // COMPOSITES
+        /// <summary>
+        /// The mod that fills this container through its own API instance (a composite's defining mod), or null.
+        /// That mod may add children below this container even though the menu belongs to another mod.
+        /// </summary>
+        internal virtual ConsumerContext? ComponentOwner => null;
+
         /// <summary>Default horizontal alignment for a child that did not set its own (stacks use this for the cross axis).</summary>
         internal virtual UIAlign DefaultChildHorizontalAlign(UIElement child) => UIAlign.Start;
 

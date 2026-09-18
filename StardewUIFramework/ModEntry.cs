@@ -11,6 +11,7 @@ namespace UIFramework
     public class ModEntry : Mod
     {
         private readonly MenuRegistry menus = new();
+        private readonly CompositeRegistry composites = new();
         private HotkeyService hotkeys = null!;
         private ModConfig config = new();
 
@@ -48,6 +49,11 @@ namespace UIFramework
             // END SLOTS entry
 
             // BEGIN COMPOSITES entry
+            helper.ConsoleCommands.Add("ui_composites", "List the composite components defined through the UI Framework.", (_, _) =>
+            {
+                string[] names = composites.List();
+                Monitor.Log(names.Length == 0 ? "No composites are defined." : $"Composites:\n  {string.Join("\n  ", names)}", LogLevel.Info);
+            });
             // END COMPOSITES entry
 
             // BEGIN RICHTEXT entry
@@ -71,7 +77,7 @@ namespace UIFramework
         {
             var consumer = new ConsumerContext(mod.Manifest.UniqueID);
             Monitor.Log($"API requested by {mod.Manifest.UniqueID}.", LogLevel.Trace);
-            return new StardewUIApi(consumer, menus, hotkeys);
+            return new StardewUIApi(consumer, menus, hotkeys, composites);
         }
 
         private void OnUpdateTicked(object? sender, UpdateTickedEventArgs e)

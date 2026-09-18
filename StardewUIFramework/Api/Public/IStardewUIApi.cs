@@ -744,6 +744,39 @@ namespace UIFramework.Api
         // END SLOTS members
 
         // BEGIN COMPOSITES members
+
+        /// <summary>Create an empty argument bag for <see cref="AddComposite"/>.</summary>
+        IUICompositeArgs CreateCompositeArgs();
+
+        /// <summary>
+        /// Register a reusable composite under a global name (convention: <c>"&lt;ModId&gt;.&lt;Name&gt;"</c>). Any mod can
+        /// then instantiate it with <see cref="AddComposite"/>. Defining an existing name replaces it.
+        /// </summary>
+        void DefineComposite(string name, Action<IUICompositeHost, IUICompositeArgs> build);
+
+        /// <summary>Whether a composite with that name is defined (by any mod).</summary>
+        bool HasComposite(string name);
+
+        /// <summary>Names of every defined composite.</summary>
+        string[] ListComposites();
+
+        /// <summary>Remove a composite this mod defined (definitions of other mods are left alone).</summary>
+        void UndefineComposite(string name);
+
+        /// <summary>
+        /// Instantiate a composite: a host container is added under <paramref name="parent"/> and the composite's
+        /// builder fills it. When no composite has that name yet the host stays empty (logged) until
+        /// <see cref="IUIComposite.Rebuild"/> is called after it was defined.
+        /// </summary>
+        IUIComposite AddComposite(IUIContainer parent, string id, string compositeName, IUICompositeArgs args);
+
+        /// <summary>
+        /// A custom component that embeds built-in elements: <paramref name="build"/> is called once with a container
+        /// (<c>"&lt;id&gt;.host"</c>) the component owns. The implementation draws first (its chrome), then the host's
+        /// children; the element measures as the larger of the two (the host alone when the implementation reports no size).
+        /// </summary>
+        IUIElement AddCustom(IUIContainer parent, string id, IUICustomComponent implementation, Action<IUIContainer> build);
+
         // END COMPOSITES members
 
         // BEGIN RICHTEXT members
@@ -773,6 +806,98 @@ namespace UIFramework.Api
     // END SLOTS types
 
     // BEGIN COMPOSITES types
+
+    /// <summary>
+    /// String-keyed bag of proxy-safe values handed to a composite's builder. Getters return a default
+    /// (<c>""</c>, 0, false, null) when the key is missing or holds a value of another type.
+    /// </summary>
+    public interface IUICompositeArgs
+    {
+        void SetString(string key, string value);
+        void SetNumber(string key, double value);
+        void SetBool(string key, bool value);
+        void SetAction(string key, Action value);
+        void SetGetter(string key, Func<string> value);
+        void SetSetter(string key, Action<string> value);
+        void SetNumberGetter(string key, Func<double> value);
+        void SetNumberSetter(string key, Action<double> value);
+
+        /// <summary>Store any object; it crosses the API unproxied, so only share types both mods know.</summary>
+        void SetObject(string key, object value);
+
+        string GetString(string key);
+        double GetNumber(string key);
+        bool GetBool(string key);
+        Action GetAction(string key);
+        Func<string> GetGetter(string key);
+        Action<string> GetSetter(string key);
+        Func<double> GetNumberGetter(string key);
+        Action<double> GetNumberSetter(string key);
+        object GetObject(string key);
+
+        /// <summary>Whether any value is stored under <paramref name="key"/>.</summary>
+        bool Has(string key);
+
+        /// <summary>Every stored key.</summary>
+        string[] Keys { get; }
+    }
+
+    /// <summary>
+    /// The container a composite builder fills (see <see cref="IStardewUIApi.DefineComposite"/>). Children are laid
+    /// out in a column. What the builder exposes here is what the composite's user reaches through <see cref="IUIComposite"/>.
+    /// </summary>
+    public interface IUICompositeHost : IUIContainer
+    {
+        /// <summary>Publish a read-only string value under <paramref name="key"/>.</summary>
+        void Expose(string key, Func<string> value);
+
+        /// <summary>Publish a read-only number under <paramref name="key"/>.</summary>
+        void ExposeNumber(string key, Func<double> value);
+
+        /// <summary>Publish a read-only boolean under <paramref name="key"/>.</summary>
+        void ExposeBool(string key, Func<bool> value);
+
+        /// <summary>Publish a command the user can run with <see cref="IUIComposite.Invoke"/>.</summary>
+        void ExposeCommand(string key, Action command);
+
+        /// <summary>Notify every <see cref="IUIComposite.Subscribe"/> handler of <paramref name="eventName"/>.</summary>
+        void Publish(string eventName);
+    }
+
+    /// <summary>
+    /// An instance of a composite (see <see cref="IStardewUIApi.AddComposite"/>). It is the same container the
+    /// builder filled, plus the values, commands and events the builder exposed.
+    /// </summary>
+    public interface IUIComposite : IUIContainer
+    {
+        /// <summary>The global name it was created from.</summary>
+        string CompositeName { get; }
+
+        /// <summary>The arguments it was created with (edit them and <see cref="Rebuild"/> to apply).</summary>
+        IUICompositeArgs Args { get; }
+
+        /// <summary>Clear the children and run the builder again.</summary>
+        void Rebuild();
+
+        /// <summary>Read an exposed string value (empty when not exposed).</summary>
+        string GetValue(string key);
+
+        /// <summary>Read an exposed number (0 when not exposed).</summary>
+        double GetNumber(string key);
+
+        /// <summary>Read an exposed boolean (false when not exposed).</summary>
+        bool GetBool(string key);
+
+        /// <summary>Run an exposed command (no-op when not exposed).</summary>
+        void Invoke(string command);
+
+        /// <summary>Whether the builder exposed <paramref name="command"/>.</summary>
+        bool HasCommand(string command);
+
+        /// <summary>Run <paramref name="handler"/> whenever the composite publishes <paramref name="eventName"/>.</summary>
+        void Subscribe(string eventName, Action handler);
+    }
+
     // END COMPOSITES types
 
     // BEGIN RICHTEXT types

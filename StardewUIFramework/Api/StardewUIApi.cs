@@ -20,12 +20,14 @@ namespace UIFramework.Api
         private readonly ConsumerContext consumer;
         private readonly MenuRegistry menus;
         private readonly HotkeyService hotkeys;
+        private readonly CompositeRegistry composites;
 
-        internal StardewUIApi(ConsumerContext consumer, MenuRegistry menus, HotkeyService hotkeys)
+        internal StardewUIApi(ConsumerContext consumer, MenuRegistry menus, HotkeyService hotkeys, CompositeRegistry composites)
         {
             this.consumer = consumer;
             this.menus = menus;
             this.hotkeys = hotkeys;
+            this.composites = composites;
         }
 
         public string ApiVersion => Version;
@@ -271,6 +273,59 @@ namespace UIFramework.Api
         // END SLOTS facade
 
         // BEGIN COMPOSITES facade
+
+        public IUICompositeArgs CreateCompositeArgs() => new CompositeArgs();
+
+        public void DefineComposite(string name, Action<IUICompositeHost, IUICompositeArgs> build)
+        {
+            ArgumentNullException.ThrowIfNull(build);
+
+            composites.Define(consumer, RequireId(name), build);
+        }
+
+        public bool HasComposite(string name) => composites.Has(name ?? string.Empty);
+
+        public string[] ListComposites() => composites.List();
+
+        public void UndefineComposite(string name) => composites.Undefine(consumer, name ?? string.Empty);
+
+        public IUIComposite AddComposite(IUIContainer parent, string id, string compositeName, IUICompositeArgs args)
+        {
+            RequireId(compositeName);
+            CompositeArgs bag = args switch
+            {
+                null => new CompositeArgs(),
+                CompositeArgs own => own,
+                _ => throw new ArgumentException("The arguments were not created by CreateCompositeArgs().", nameof(args))
+            };
+            Composite composite = Attach(parent, new Composite(RequireId(id), compositeName, bag, composites));
+            composite.Build();
+            return composite;
+        }
+
+        public IUIElement AddCustom(IUIContainer parent, string id, IUICustomComponent implementation, Action<IUIContainer> build)
+        {
+            ArgumentNullException.ThrowIfNull(implementation);
+            ArgumentNullException.ThrowIfNull(build);
+
+            CustomHostAdapter adapter = Attach(parent, new CustomHostAdapter(RequireId(id), implementation));
+            adapter.Build(build);
+            return adapter;
+        }
+
+        /// <summary>True when this consumer defined the composite that <paramref name="container"/> (or an ancestor) hosts.</summary>
+        private bool FillsComponentOf(UIContainer container)
+        {
+            for (UIElement? e = container; e != null; e = e.ParentElement)
+            {
+                if (e is UIContainer c && c.ComponentOwner?.ModId == consumer.ModId)
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
         // END COMPOSITES facade
 
         // BEGIN RICHTEXT facade
@@ -314,7 +369,7 @@ namespace UIFramework.Api
                 throw new ArgumentException("The parent container was not created by this framework.", nameof(parent));
             }
 
-            if (container.OwnerMenu != null && container.OwnerMenu.Consumer != consumer)
+            if (container.OwnerMenu != null && container.OwnerMenu.Consumer != consumer && !FillsComponentOf(container))
             {
                 throw new InvalidOperationException($"'{container.Id}' belongs to another mod's menu.");
             }

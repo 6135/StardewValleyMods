@@ -12,6 +12,9 @@ namespace UIFrameworkExample
     /// </summary>
     public class ModEntry : Mod
     {
+        /// <summary>Global name of the composite this mod defines (convention: mod id + name).</summary>
+        private const string MoneyFieldName = "6135.UIFrameworkExample.MoneyField";
+
         private IUIMenu? menu;
 
         // state edited by the form (values live here, the framework reads/writes them through delegates)
@@ -20,6 +23,9 @@ namespace UIFrameworkExample
         private string season = "spring";
         private bool payForSeeds = true;
         private double volume = 50;
+        private double money = 500;
+        private bool showTips = true;
+        private bool playSounds;
         private int clicks;
         private int selectedRow = -1;
 
@@ -59,6 +65,7 @@ namespace UIFrameworkExample
 
             BuildList(api, demo.Root);
             BuildButtons(api, demo);
+            BuildComposites(api, demo);
             return demo;
         }
 
@@ -143,6 +150,61 @@ namespace UIFrameworkExample
             ok.Tooltip = () => "Enter also triggers this button.";
             api.AddButton(buttons, "close", () => "Close", _ => demo.Close());
             demo.DefaultButton = ok;
+        }
+
+        /// <summary>
+        /// v1.1 composites: a reusable "money field" (label + number input + "g") defined once under a global name
+        /// and instantiated into the form like any element, plus a custom-drawn frame that embeds built-in checkboxes.
+        /// </summary>
+        private void BuildComposites(IStardewUIApi api, IUIMenu demo)
+        {
+            api.DefineComposite(MoneyFieldName, (host, args) => BuildMoneyField(api, host, args));
+
+            if (demo.Find("form") is not IUIGrid form)
+            {
+                return;
+            }
+
+            IUICompositeArgs args = api.CreateCompositeArgs();
+            args.SetString("label", "Money:");
+            args.SetNumberGetter("get", () => money);
+            args.SetNumberSetter("set", v => money = v);
+            args.SetNumber("max", 99999);
+            IUIComposite moneyField = api.AddComposite(form, "money", MoneyFieldName, args);
+            moneyField.Row = 6;
+            moneyField.ColumnSpan = 2;
+            moneyField.Tooltip = () => $"Composite '{moneyField.CompositeName}': value = {moneyField.GetNumber("value"):0}";
+            moneyField.Subscribe("changed", () => Monitor.Log($"Money → {money:0}g", LogLevel.Debug));
+
+            // a hand-drawn frame (IUICustomComponent) around a column of built-in checkboxes
+            IUIElement framed = api.AddCustom(form, "options", new FrameBox(), host =>
+            {
+                host.SetMargin(16);
+                api.AddCheckbox(host, "options.tips", () => showTips, v => showTips = v).Label = () => "Show tips";
+                api.AddCheckbox(host, "options.sounds", () => playSounds, v => playSounds = v).Label = () => "Play sounds";
+            });
+            framed.Row = 7;
+            framed.ColumnSpan = 2;
+            framed.Tooltip = () => "AddCustom + build: the frame is drawn by the mod, the checkboxes are built-ins.";
+        }
+
+        /// <summary>The composite's builder: runs once per instance (and again on <see cref="IUIComposite.Rebuild"/>).</summary>
+        private static void BuildMoneyField(IStardewUIApi api, IUICompositeHost host, IUICompositeArgs args)
+        {
+            Func<double> get = args.GetNumberGetter("get") ?? (() => 0);
+            Action<double> set = args.GetNumberSetter("set") ?? (_ => { });
+            double max = args.Has("max") ? args.GetNumber("max") : 1000;
+
+            IUIStack row = api.AddStack(host, host.Id + ".row", true, 8);
+            row.Alignment = UIAlign.Center;
+            api.AddLabel(row, host.Id + ".caption", () => args.GetString("label"));
+            IUINumberInput input = api.AddNumberInput(row, host.Id + ".input", get, set, 0, max, 10, true);
+            input.Width = 160;
+            input.OnValueChanged = _ => host.Publish("changed");
+            api.AddLabel(row, host.Id + ".suffix", () => "g");
+
+            host.ExposeNumber("value", get);
+            host.ExposeCommand("reset", () => set(0));
         }
     }
 }
