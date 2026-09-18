@@ -45,8 +45,17 @@ namespace UIFramework.Core
         /// <summary>The menu this element is attached to (null while detached).</summary>
         internal UIMenu? OwnerMenu { get; private set; }
 
-        /// <summary>Consumer that owns the menu (never null; <see cref="ConsumerContext.None"/> while detached).</summary>
-        internal ConsumerContext Consumer => OwnerMenu?.Consumer ?? ConsumerContext.None;
+        /// <summary>
+        /// Consumer whose callbacks this element raises (never null; <see cref="ConsumerContext.None"/> while detached):
+        /// the slot contributor when the element sits under a contributor container, otherwise the menu's owner.
+        /// </summary>
+        internal ConsumerContext Consumer => Sealing.ContributorOf(this) ?? OwnerMenu?.Consumer ?? ConsumerContext.None;
+
+        /// <summary>Set on the container a slot contribution builds into: everything below it is attributed to that mod (v2 slots).</summary>
+        internal ConsumerContext? Contributor { get; set; }
+
+        /// <summary>Opt out of modification by other mods; <see cref="Sealing"/> enforces it on lookup and tree edits.</summary>
+        public bool Sealed { get; set; }
 
         IUIContainer IUIElement.Parent => ParentElement!;
         IUIMenu IUIElement.Menu => OwnerMenu!;

@@ -286,6 +286,19 @@ namespace UIFramework.Api
 
         /// <summary>Called in the overlay pass (on top of everything else in the menu), with the element's absolute bounds.</summary>
         Action<SpriteBatch, Rectangle> OnDrawOverlay { get; set; }
+
+        // SLOTS
+        /// <summary>
+        /// Opt this element (and its descendants) out of modification by other mods (see architecture.md §16.1).
+        /// The framework cannot attribute a property setter to a caller, so sealing is enforced on lookup and tree
+        /// edits instead: <see cref="IUIMenu.Find"/> while a slot contribution or <see cref="IStardewUIApi.OnScreenBuilt"/>
+        /// decorator of another mod is running, and <see cref="IStardewUIApi.Find"/> from another mod's API instance,
+        /// return null for a sealed element and everything below it; <see cref="IStardewUIApi.Remove"/> of, and any
+        /// <c>Add*</c> into, a sealed subtree from another mod's API instance throw <see cref="InvalidOperationException"/>.
+        /// A slot contributor keeps full access to the container it was handed, even under a sealed ancestor. The owner
+        /// of the menu is never restricted.
+        /// </summary>
+        bool Sealed { get; set; }
     }
 
     /// <summary>An element that holds children.</summary>
@@ -741,6 +754,59 @@ namespace UIFramework.Api
         // ---- v1.1 additions (additive; consumers may copy a subset) ----
 
         // BEGIN SLOTS members
+
+        // ---- Extension slots (architecture.md §16.1) ----
+
+        /// <summary>
+        /// Declare an extension slot in one of your menus: a container other mods can contribute elements to through
+        /// <see cref="ContributeTo(string, string, string, Action{IUIContainer, IUIScreenContext})"/>. Slot ids are
+        /// unique per menu; other mods address the slot as (your mod id, menu id, slot id). The slot is emptied and
+        /// rebuilt from the registered contributions every time the menu opens, before layout.
+        /// </summary>
+        IUISlot AddSlot(IUIContainer parent, string id);
+
+        /// <summary>Every slot declared by <paramref name="ownerModId"/>'s menus, with their layout hints (empty array if none).</summary>
+        IUISlotInfo[] ListSlots(string ownerModId);
+
+        /// <summary>
+        /// Contribute elements to another mod's slot (or one of your own) with priority 0. <paramref name="build"/> runs
+        /// every time the owning menu opens: it receives a container of its own inside the slot (id
+        /// <c>"&lt;slotId&gt;.&lt;yourModId&gt;"</c>) to add elements to through this API instance, and the owner's
+        /// <see cref="IUIScreenContext"/>. One contribution per (mod, slot): calling again replaces it. The registration
+        /// is kept even if the owner's menu does not exist yet. A build callback that throws is logged and muted.
+        /// </summary>
+        void ContributeTo(string ownerModId, string menuId, string slotId, Action<IUIContainer, IUIScreenContext> build);
+
+        /// <summary>Like <see cref="ContributeTo(string, string, string, Action{IUIContainer, IUIScreenContext})"/>; contributions are ordered by ascending <paramref name="priority"/>, then by mod id.</summary>
+        void ContributeTo(string ownerModId, string menuId, string slotId, int priority, Action<IUIContainer, IUIScreenContext> build);
+
+        /// <summary>Remove your contribution to a slot (takes effect the next time the menu opens).</summary>
+        void RemoveContribution(string ownerModId, string menuId, string slotId);
+
+        /// <summary>Expose a string value of one of your menus to contributors (<see cref="IUIScreenContext.GetString"/>). Calling again replaces it; null removes it.</summary>
+        void Expose(IUIMenu menu, string key, Func<string> value);
+
+        /// <summary>Expose a numeric value of one of your menus to contributors (<see cref="IUIScreenContext.GetNumber"/>).</summary>
+        void ExposeNumber(IUIMenu menu, string key, Func<double> value);
+
+        /// <summary>Expose a boolean value of one of your menus to contributors (<see cref="IUIScreenContext.GetBool"/>).</summary>
+        void ExposeBool(IUIMenu menu, string key, Func<bool> value);
+
+        /// <summary>Expose a command of one of your menus to contributors (<see cref="IUIScreenContext.Invoke"/>). Calling again replaces it; null removes it.</summary>
+        void ExposeCommand(IUIMenu menu, string key, Action command);
+
+        /// <summary>Raise an event of one of your menus to every contributor that subscribed to it (<see cref="IUIScreenContext.Subscribe"/>); each handler is guarded.</summary>
+        void Publish(IUIMenu menu, string eventName);
+
+        /// <summary>
+        /// Inspect and adjust another mod's menu (or one of your own) after it is built: <paramref name="decorate"/> runs
+        /// every time the menu opens, after all slot contributions and before layout, so it sees the final tree. Use
+        /// <see cref="IUIMenu.Find"/> to reach elements; sealed elements (<see cref="IUIElement.Sealed"/>) are hidden from
+        /// it. Registering makes your API instance a decorator of that menu, allowed to add elements outside sealed
+        /// subtrees. One decorator per (mod, menu): calling again replaces it; null removes it.
+        /// </summary>
+        void OnScreenBuilt(string ownerModId, string menuId, Action<IUIMenu> decorate);
+
         // END SLOTS members
 
         // BEGIN COMPOSITES members
@@ -770,6 +836,82 @@ namespace UIFramework.Api
     // =================================================================================================================
 
     // BEGIN SLOTS types
+
+    /// <summary>
+    /// An extension slot (<see cref="IStardewUIApi.AddSlot"/>): a stack-like container the framework fills with one
+    /// child container per contributing mod whenever the menu opens. The framework manages
+    /// <see cref="IUIElement.Visible"/>: the slot is shown while it has contributions and <see cref="VisiblePredicate"/>
+    /// (if any) returns true.
+    /// </summary>
+    public interface IUISlot : IUIContainer
+    {
+        /// <summary>Layout hint: lay contributions out in a row instead of a column (default false).</summary>
+        bool Horizontal { get; set; }
+
+        /// <summary>Layout hint: cap the slot's measured height in UI pixels (null = unlimited).</summary>
+        int? MaxHeight { get; set; }
+
+        /// <summary>Evaluated every tick; false hides the slot (null = always visible).</summary>
+        Func<bool> VisiblePredicate { get; set; }
+
+        /// <summary>Most contributions accepted, in priority order (0 = unlimited).</summary>
+        int MaxContributions { get; set; }
+
+        /// <summary>Mod ids whose contributions are skipped (null = none).</summary>
+        string[] VetoedContributors { get; set; }
+    }
+
+    /// <summary>A declared slot as reported by <see cref="IStardewUIApi.ListSlots"/>.</summary>
+    public interface IUISlotInfo
+    {
+        string OwnerModId { get; }
+        string MenuId { get; }
+        string SlotId { get; }
+        bool Horizontal { get; }
+        int? MaxHeight { get; }
+    }
+
+    /// <summary>
+    /// What a menu owner chose to share with contributors: values, commands and events published through the
+    /// <c>Expose*</c> / <c>Publish</c> members of <see cref="IStardewUIApi"/>. Nothing else of the owner is reachable.
+    /// Values are read live (the owner's delegate runs on every call).
+    /// </summary>
+    public interface IUIScreenContext
+    {
+        /// <summary>Mod that owns the menu.</summary>
+        string OwnerModId { get; }
+
+        /// <summary>Id of the menu (unique within the owner).</summary>
+        string MenuId { get; }
+
+        /// <summary>Keys of every exposed value (string, number and bool).</summary>
+        string[] Keys { get; }
+
+        /// <summary>Whether a value (of any kind) is exposed under <paramref name="key"/>.</summary>
+        bool HasValue(string key);
+
+        /// <summary>Exposed string value; numbers and bools are converted (invariant culture). Empty string when unknown.</summary>
+        string GetString(string key);
+
+        /// <summary>Exposed number; strings are parsed (invariant culture) and bools map to 1 / 0. 0 when unknown.</summary>
+        double GetNumber(string key);
+
+        /// <summary>Exposed bool; strings are parsed and numbers are true when non-zero. False when unknown.</summary>
+        bool GetBool(string key);
+
+        /// <summary>Whether the owner exposed <paramref name="command"/>.</summary>
+        bool HasCommand(string command);
+
+        /// <summary>Run an exposed command (no-op when unknown; a faulting command is logged against the owner and muted).</summary>
+        void Invoke(string command);
+
+        /// <summary>Run <paramref name="handler"/> whenever the owner publishes <paramref name="eventName"/>.</summary>
+        void Subscribe(string eventName, Action handler);
+
+        /// <summary>Stop a handler registered through <see cref="Subscribe"/>.</summary>
+        void Unsubscribe(string eventName, Action handler);
+    }
+
     // END SLOTS types
 
     // BEGIN COMPOSITES types

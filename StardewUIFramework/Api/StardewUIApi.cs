@@ -20,12 +20,14 @@ namespace UIFramework.Api
         private readonly ConsumerContext consumer;
         private readonly MenuRegistry menus;
         private readonly HotkeyService hotkeys;
+        private readonly ExtensionRegistry extensions;
 
-        internal StardewUIApi(ConsumerContext consumer, MenuRegistry menus, HotkeyService hotkeys)
+        internal StardewUIApi(ConsumerContext consumer, MenuRegistry menus, HotkeyService hotkeys, ExtensionRegistry extensions)
         {
             this.consumer = consumer;
             this.menus = menus;
             this.hotkeys = hotkeys;
+            this.extensions = extensions;
         }
 
         public string ApiVersion => Version;
@@ -196,12 +198,14 @@ namespace UIFramework.Api
                 throw new ArgumentException("The menu was not created by this framework.", nameof(menu));
             }
 
-            return m.Root.FindById(id ?? string.Empty)!;
+            // another mod's menu: sealed subtrees are hidden (see Sealing)
+            return (m.Consumer.ModId == consumer.ModId ? m.Root.FindById(id ?? string.Empty) : Sealing.FindReachable(m.Root, id ?? string.Empty, consumer))!;
         }
 
         public void Remove(IUIElement element)
         {
             UIElement e = UIContainer.Unwrap(element);
+            RequireWriteAccess(e);
             e.ParentElement?.Remove(e);
         }
 
@@ -268,6 +272,61 @@ namespace UIFramework.Api
         // ---------------------------------------------------------------------------------------------------------
 
         // BEGIN SLOTS facade
+
+        public IUISlot AddSlot(IUIContainer parent, string id)
+        {
+            return Attach(parent, new Slot(RequireId(id)));
+        }
+
+        public IUISlotInfo[] ListSlots(string ownerModId) => extensions.ListSlots(ownerModId ?? string.Empty);
+
+        public void ContributeTo(string ownerModId, string menuId, string slotId, Action<IUIContainer, IUIScreenContext> build)
+        {
+            ContributeTo(ownerModId, menuId, slotId, 0, build);
+        }
+
+        public void ContributeTo(string ownerModId, string menuId, string slotId, int priority, Action<IUIContainer, IUIScreenContext> build)
+        {
+            ArgumentNullException.ThrowIfNull(build);
+
+            extensions.Contribute(consumer, RequireId(ownerModId), RequireId(menuId), RequireId(slotId), priority, build);
+        }
+
+        public void RemoveContribution(string ownerModId, string menuId, string slotId)
+        {
+            extensions.RemoveContribution(consumer, ownerModId ?? string.Empty, menuId ?? string.Empty, slotId ?? string.Empty);
+        }
+
+        public void Expose(IUIMenu menu, string key, Func<string> value)
+        {
+            extensions.ExposuresOf(RequireOwnMenu(menu)).SetString(RequireId(key), value);
+        }
+
+        public void ExposeNumber(IUIMenu menu, string key, Func<double> value)
+        {
+            extensions.ExposuresOf(RequireOwnMenu(menu)).SetNumber(RequireId(key), value);
+        }
+
+        public void ExposeBool(IUIMenu menu, string key, Func<bool> value)
+        {
+            extensions.ExposuresOf(RequireOwnMenu(menu)).SetBool(RequireId(key), value);
+        }
+
+        public void ExposeCommand(IUIMenu menu, string key, Action command)
+        {
+            extensions.ExposuresOf(RequireOwnMenu(menu)).SetCommand(RequireId(key), command);
+        }
+
+        public void Publish(IUIMenu menu, string eventName)
+        {
+            extensions.ExposuresOf(RequireOwnMenu(menu)).Publish(RequireId(eventName));
+        }
+
+        public void OnScreenBuilt(string ownerModId, string menuId, Action<IUIMenu> decorate)
+        {
+            extensions.SetDecorator(consumer, RequireId(ownerModId), RequireId(menuId), decorate);
+        }
+
         // END SLOTS facade
 
         // BEGIN COMPOSITES facade
@@ -314,11 +373,7 @@ namespace UIFramework.Api
                 throw new ArgumentException("The parent container was not created by this framework.", nameof(parent));
             }
 
-            if (container.OwnerMenu != null && container.OwnerMenu.Consumer != consumer)
-            {
-                throw new InvalidOperationException($"'{container.Id}' belongs to another mod's menu.");
-            }
-
+            RequireWriteAccess(container);
             if (container.OwnerMenu != null && container.OwnerMenu.Root.FindById(element.Id) != null)
             {
                 UIServices.Log($"[{consumer.ModId}] element id '{element.Id}' is already used in menu '{container.OwnerMenu.Id}'; Find() will return the first one.", LogLevel.Debug);
@@ -326,6 +381,28 @@ namespace UIFramework.Api
 
             container.Add(element);
             return element;
+        }
+
+        /// <summary>Owner, contributor (inside its container) or decorator (outside sealed subtrees) may edit; see <see cref="Sealing"/>.</summary>
+        private void RequireWriteAccess(UIElement element)
+        {
+            Sealing.RequireWriteAccess(element, consumer, element.OwnerMenu != null && extensions.IsDecorator(consumer, element.OwnerMenu));
+        }
+
+        /// <summary>A menu of this consumer, unwrapped.</summary>
+        private UIMenu RequireOwnMenu(IUIMenu menu)
+        {
+            if (menu is not UIMenu m)
+            {
+                throw new ArgumentException("The menu was not created by this framework.", nameof(menu));
+            }
+
+            if (m.Consumer.ModId != consumer.ModId)
+            {
+                throw new InvalidOperationException($"Menu '{m.Id}' belongs to another mod ({m.Consumer.ModId}).");
+            }
+
+            return m;
         }
     }
 }

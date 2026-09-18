@@ -59,6 +59,7 @@ namespace UIFrameworkExample
 
             BuildList(api, demo.Root);
             BuildButtons(api, demo);
+            BuildSlotDemo(api, demo);
             return demo;
         }
 
@@ -143,6 +144,35 @@ namespace UIFrameworkExample
             ok.Tooltip = () => "Enter also triggers this button.";
             api.AddButton(buttons, "close", () => "Close", _ => demo.Close());
             demo.DefaultButton = ok;
+        }
+
+        /// <summary>
+        /// Extension slots (v2): the demo menu declares a footer slot and shares two values and a command; then this
+        /// same mod contributes to that slot exactly the way another mod would (a contributor only sees what the owner
+        /// exposed through <see cref="IUIScreenContext"/>). Contributions are rebuilt every time the menu opens.
+        /// </summary>
+        private void BuildSlotDemo(IStardewUIApi api, IUIMenu demo)
+        {
+            IUISlot footer = api.AddSlot(demo.Root, "demo.footer");
+            footer.Horizontal = true;
+            footer.MaxContributions = 4;
+            api.Expose(demo, "name", () => name);
+            api.ExposeNumber(demo, "volume", () => volume);
+            api.ExposeCommand(demo, "log", () => Monitor.Log($"Command 'log' invoked from the footer slot: name={name} volume={volume}", LogLevel.Info));
+
+            string ownerModId = ModManifest.UniqueID;
+            api.ContributeTo(ownerModId, "demo", "demo.footer", (slot, ctx) =>
+            {
+                IUILabel info = api.AddLabel(slot, "footer.info", () => $"Contributed: name={ctx.GetString("name")} volume={ctx.GetNumber("volume"):0}");
+                info.VerticalAlign = UIAlign.Center;
+                info.Tooltip = () => $"Values exposed by {ctx.OwnerModId}/{ctx.MenuId}: {string.Join(", ", ctx.Keys)}";
+                api.AddButton(slot, "footer.log", () => "Log", _ => ctx.Invoke("log"));
+            });
+
+            foreach (IUISlotInfo slot in api.ListSlots(ownerModId))
+            {
+                Monitor.Log($"Slot {slot.OwnerModId}/{slot.MenuId}/{slot.SlotId} ({(slot.Horizontal ? "row" : "column")}).", LogLevel.Debug);
+            }
         }
     }
 }

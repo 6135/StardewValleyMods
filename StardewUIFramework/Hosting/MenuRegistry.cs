@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using StardewModdingAPI.Utilities;
 using UIFramework.Core;
@@ -45,6 +46,11 @@ namespace UIFramework.Hosting
         {
             return menusByConsumer.TryGetValue(consumerId, out var menus) ? menus.Values : System.Array.Empty<UIMenu>();
         }
+
+        /// <summary>Raised when a menu is about to lay out for the first time after opening (tree built, before layout); the extension registry rebuilds slots here.</summary>
+        internal event Action<UIMenu>? MenuOpening;
+
+        internal void NotifyOpening(UIMenu menu) => MenuOpening?.Invoke(menu);
 
         internal void NotifyOpened(UIMenu menu)
         {

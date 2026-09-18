@@ -6,7 +6,7 @@ using UIFramework.Core;
 namespace UIFramework.Components
 {
     /// <summary>Lays children out in a column (default) or a row with fixed spacing.</summary>
-    internal sealed class Stack : UIContainer, IUIStack
+    internal class Stack : UIContainer, IUIStack
     {
         private bool horizontal;
         private int spacing;
