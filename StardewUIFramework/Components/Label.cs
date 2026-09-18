@@ -7,15 +7,21 @@ using UIFramework.Rendering;
 
 namespace UIFramework.Components
 {
-    /// <summary>Text. The text delegate is re-evaluated every frame; a change in size re-flows the layout.</summary>
+    /// <summary>
+    /// Text. The text delegate is re-evaluated every frame; a change in size re-flows the layout. With
+    /// <see cref="RichText"/> on, the text is parsed as markup (colors, bold, item icons, links) and laid out by
+    /// <see cref="Rendering.RichText"/>; clicks on a link span raise <see cref="OnLink"/>.
+    /// </summary>
     internal sealed class Label : UIElement, IUILabel
     {
         private Func<string>? text;
         private UIFont? font;
         private bool wrap;
+        private bool richText;
         private float scale = 1f;
         private string measuredText = string.Empty;
         private string displayText = string.Empty;
+        private RichLayout? richLayout;
         private int wrapWidth = -1;
 
         internal Label(string id, Func<string>? text) : base(id)
@@ -76,41 +82,116 @@ namespace UIFramework.Components
             }
         }
 
-        /// <summary>Current (unwrapped) text.</summary>
-        internal string CurrentText => Raise("Text", text, string.Empty) ?? string.Empty;
+        public bool RichText
+        {
+            get => richText;
+            set
+            {
+                if (richText == value)
+                {
+                    return;
+                }
+
+                richText = value;
+                richLayout = null;
+                InvalidateLayout();
+            }
+        }
+
+        internal Action<string>? OnLink { get; set; }
+
+        Action<string> IUILabel.OnLink { get => OnLink!; set => OnLink = value; }
+
+        /// <summary>Current (unwrapped) text; pseudo-localized here for plain labels, by the parser for rich ones.</summary>
+        internal string CurrentText
+        {
+            get
+            {
+                string raw = Raise("Text", text, string.Empty) ?? string.Empty;
+                return richText ? raw : Pseudo.Transform(raw);
+            }
+        }
 
         // labels only take clicks / hover when they have a reason to
-        protected override bool IsHitTestVisible => HasPointerHandlers;
+        protected override bool IsHitTestVisible => HasPointerHandlers || (richText && OnLink != null && richLayout?.Document.HasLinks == true);
+
+        // ---------------------------------------------------------------------------------------------------------
+        //  Layout / draw
+        // ---------------------------------------------------------------------------------------------------------
 
         protected override Vector2 MeasureCore(Vector2 available)
         {
             measuredText = CurrentText;
+            wrapWidth = wrap ? (int)Math.Floor(available.X) : -1;
+            return Reflow(measuredText);
+        }
+
+        /// <summary>Wrap / lay out <paramref name="current"/> for the last wrap width and return its size.</summary>
+        private Vector2 Reflow(string current)
+        {
             UIFont f = Font;
-            if (wrap)
+            if (richText)
             {
-                wrapWidth = (int)Math.Floor(available.X);
-                displayText = wrapWidth > 0 ? UIServices.Text.Wrap(f, measuredText, (int)(wrapWidth / scale)) : measuredText;
+                richLayout = Rendering.RichText.Layout(Rendering.RichText.Parse(current), f, scale, wrapWidth);
+                return richLayout.Size;
             }
-            else
-            {
-                wrapWidth = -1;
-                displayText = measuredText;
-            }
+
+            displayText = wrapWidth > 0 ? UIServices.Text.Wrap(f, current, (int)(wrapWidth / scale)) : current;
             return UIServices.Text.Measure(f, displayText, scale);
         }
 
         protected override void DrawCore(SpriteBatch b)
         {
             string current = CurrentText;
-            if (current != measuredText)
+            if (current != measuredText || (richText && richLayout == null))
             {
                 // bound text changed since layout: draw the new text now, re-flow next frame
                 measuredText = current;
-                displayText = wrap && wrapWidth > 0 ? UIServices.Text.Wrap(Font, current, (int)(wrapWidth / scale)) : current;
+                Reflow(current);
                 InvalidateLayout();
             }
+
             ResolvedStyle style = Style;
-            DrawHelper.TextInRect(b, displayText, Font, Bounds, Color ?? style.TextColor, Shadow || style.TextShadow, scale, TextAlign);
+            Color color = Color ?? style.TextColor;
+            bool shadow = Shadow || style.TextShadow;
+            if (richText && richLayout != null)
+            {
+                Rendering.RichText.Draw(b, richLayout, Bounds, color, shadow, TextAlign, HoveredLink());
+                return;
+            }
+
+            DrawHelper.TextInRect(b, displayText, Font, Bounds, color, shadow, scale, TextAlign);
+        }
+
+        /// <summary>The link under the cursor while hovered, or null.</summary>
+        private string? HoveredLink()
+        {
+            if (!IsHovered || OwnerMenu == null || richLayout == null)
+            {
+                return null;
+            }
+
+            return richLayout.LinkAt(Bounds, TextAlign, OwnerMenu.CursorX, OwnerMenu.CursorY);
+        }
+
+        // ---------------------------------------------------------------------------------------------------------
+        //  Input
+        // ---------------------------------------------------------------------------------------------------------
+
+        protected internal override bool HandleClick(UIClickEvent e)
+        {
+            if (e.Target == this && e.Button == UIMouseButton.Left && richText && OnLink != null && richLayout != null)
+            {
+                string? link = richLayout.LinkAt(Bounds, TextAlign, e.X, e.Y);
+                if (link != null)
+                {
+                    Action<string> cb = OnLink;
+                    Raise("OnLink", () => cb(link));
+                    e.Handled = true;
+                }
+            }
+
+            return base.HandleClick(e);
         }
     }
 }

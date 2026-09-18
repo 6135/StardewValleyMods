@@ -281,7 +281,7 @@ namespace UIFramework.Components
         }
 
         /// <summary>The placeholder text right now (empty when none is setter).</summary>
-        private string CurrentPlaceholder => PlaceholderFunc == null ? string.Empty : Raise("Placeholder", PlaceholderFunc, string.Empty) ?? string.Empty;
+        private string CurrentPlaceholder => PlaceholderFunc == null ? string.Empty : Pseudo.Transform(Raise("Placeholder", PlaceholderFunc, string.Empty));
 
         // ---------------------------------------------------------------------------------------------------------
         //  Keyboard

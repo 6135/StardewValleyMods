@@ -15,6 +15,8 @@ namespace UIFramework
         // v1.1 settings (one region per feature; see architecture.md §16)
 
         // BEGIN RICHTEXT config
+        /// <summary>Accent and pad every framework-drawn string (e.g. <c>[Çálçúláté~~~]</c>) to catch layout overflow before translating.</summary>
+        public bool PseudoLocalize { get; set; }
         // END RICHTEXT config
 
         // BEGIN THEME config

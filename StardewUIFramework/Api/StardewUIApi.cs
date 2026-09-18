@@ -274,6 +274,7 @@ namespace UIFramework.Api
         // END COMPOSITES facade
 
         // BEGIN RICHTEXT facade
+        public IUITooltip CreateTooltip() => new RichTooltip();
         // END RICHTEXT facade
 
         // BEGIN THEME facade

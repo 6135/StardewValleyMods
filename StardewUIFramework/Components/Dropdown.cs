@@ -295,7 +295,7 @@ namespace UIFramework.Components
             Color textColor = Enabled ? style.TextColor : style.TextColor * 0.5f;
 
             DrawHelper.Box(b, Game1.mouseCursors, Theme.DropdownBoxSource, new Rectangle(Bounds.X, Bounds.Y, BoxWidth, Bounds.Height), tint, SpriteScale);
-            DrawHelper.Text(b, GetLabel(SelectedIndex), style.Font, new Vector2(Bounds.X + TextPadX, Bounds.Y + TextPadY), textColor, style.TextShadow, 1f);
+            DrawHelper.Text(b, Pseudo.Transform(GetLabel(SelectedIndex)), style.Font, new Vector2(Bounds.X + TextPadX, Bounds.Y + TextPadY), textColor, style.TextShadow, 1f);
             b.Draw(Game1.mouseCursors, new Vector2(Bounds.X + Bounds.Width - ButtonWidth, Bounds.Y), Theme.DropdownButtonSource, tint, 0f, Vector2.Zero, SpriteScale, SpriteEffects.None, 0f);
         }
 
@@ -322,7 +322,7 @@ namespace UIFramework.Components
                     var row = new Rectangle(list.X + HighlightInset, rowY, list.Width - (2 * HighlightInset), DropdownRowHeight);
                     DrawHelper.Fill(b, Rectangle.Intersect(row, interior), Color.Wheat);
                 }
-                DrawHelper.Text(b, GetLabel(i), style.Font, new Vector2(list.X + TextPadX, rowY + TextPadY), style.TextColor, style.TextShadow, 1f);
+                DrawHelper.Text(b, Pseudo.Transform(GetLabel(i)), style.Font, new Vector2(list.X + TextPadX, rowY + TextPadY), style.TextColor, style.TextShadow, 1f);
             }
         }
 
