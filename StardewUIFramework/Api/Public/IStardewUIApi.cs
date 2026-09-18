@@ -753,6 +753,14 @@ namespace UIFramework.Api
         // END THEME members
 
         // BEGIN DATAGRID members
+
+        /// <summary>
+        /// A virtualized table: add columns with <see cref="IUIDataGrid.AddColumn"/>, then each column reads its cell
+        /// text for a row index through <see cref="IUIDataGridColumn.Text"/>. <paramref name="rowCount"/> is re-queried
+        /// every tick and on <see cref="IUIDataGrid.Refresh"/>.
+        /// </summary>
+        IUIDataGrid AddDataGrid(IUIContainer parent, string id, int rowHeight, int visibleRows, Func<int> rowCount);
+
         // END DATAGRID members
 
         // BEGIN SIGNALS members
@@ -782,6 +790,142 @@ namespace UIFramework.Api
     // END THEME types
 
     // BEGIN DATAGRID types
+
+    /// <summary>Click on a data grid row (see <see cref="IUIDataGrid.OnRowClick"/>).</summary>
+    public interface IUIRowEvent : IUIClickEvent
+    {
+        /// <summary>Underlying row index (the index handed to the column delegates), not the display position.</summary>
+        int Row { get; }
+    }
+
+    /// <summary>One column of an <see cref="IUIDataGrid"/>. Every row delegate receives the underlying row index.</summary>
+    public interface IUIDataGridColumn
+    {
+        /// <summary>Id given to <see cref="IUIDataGrid.AddColumn"/>.</summary>
+        string Id { get; }
+
+        /// <summary>Header text, evaluated every frame.</summary>
+        Func<string> Header { get; set; }
+
+        /// <summary>Track width: <c>auto</c>, <c>120px</c>, <c>*</c> or <c>2*</c> (star columns share the leftover width). A drag resize turns it into pixels.</summary>
+        string Width { get; set; }
+
+        /// <summary>Clicking the header sorts by this column (toggles ascending / descending).</summary>
+        bool Sortable { get; set; }
+
+        /// <summary>The divider right of the header can be dragged to resize the column.</summary>
+        bool Resizable { get; set; }
+
+        /// <summary>Smallest width in UI pixels (resize floor, also applied to the resolved track).</summary>
+        int MinWidth { get; set; }
+
+        /// <summary>Horizontal alignment of the header and of the default text cells.</summary>
+        UIAlign Align { get; set; }
+
+        /// <summary>Cell text for a row index (used when <see cref="BuildCell"/> is null; also the default sort key).</summary>
+        Func<int, string> Text { get; set; }
+
+        /// <summary>String sort key for a row index (null = sort by <see cref="Text"/>). Ignored when <see cref="SortNumber"/> is set.</summary>
+        Func<int, string> SortKey { get; set; }
+
+        /// <summary>Numeric sort key for a row index; when set the column sorts numerically.</summary>
+        Func<int, double> SortNumber { get; set; }
+
+        /// <summary>Custom cell renderer: build elements into the cell container instead of a text label.</summary>
+        Action<int, IUIContainer> BuildCell { get; set; }
+
+        /// <summary>Tooltip for a cell (null = none; an empty string hides the tooltip for that row).</summary>
+        Func<int, string> CellTooltip { get; set; }
+    }
+
+    /// <summary>
+    /// Virtualized table with a header row, sortable / resizable columns, filtering, row selection and keyboard
+    /// navigation. Rows are addressed by their <b>underlying</b> index (0 .. rowCount - 1, as the data source knows
+    /// them); sorting and filtering only change the display order. Only the visible rows exist as elements.
+    /// </summary>
+    public interface IUIDataGrid : IUIContainer
+    {
+        int RowHeight { get; set; }
+        int VisibleRows { get; set; }
+
+        /// <summary>Display position (after filter / sort) of the first visible row.</summary>
+        int FirstVisibleIndex { get; set; }
+
+        /// <summary>Number of rows shown after filtering (at the last refresh).</summary>
+        int RowCount { get; }
+
+        // ---- columns ----
+
+        /// <summary>Append a column; <paramref name="width"/> uses the track syntax (<c>auto</c>, <c>120px</c>, <c>*</c>, <c>2*</c>).</summary>
+        IUIDataGridColumn AddColumn(string id, Func<string> header, string width);
+
+        /// <summary>Remove a column by id (no-op when unknown).</summary>
+        void RemoveColumn(string columnId);
+
+        int ColumnCount { get; }
+        IUIDataGridColumn GetColumn(int index);
+
+        /// <summary>Find a column by id, or null.</summary>
+        IUIDataGridColumn FindColumn(string columnId);
+
+        /// <summary>Raised after a drag resize with the column id and its new width in pixels.</summary>
+        Action<string, int> OnColumnResized { get; set; }
+
+        // ---- sorting / filtering ----
+
+        /// <summary>Id of the column the rows are sorted by, or an empty string.</summary>
+        string SortColumn { get; }
+
+        bool SortDescending { get; }
+
+        /// <summary>Sort by a column (an unknown id clears the sort).</summary>
+        void Sort(string columnId, bool descending);
+
+        void ClearSort();
+
+        /// <summary>Row predicate (underlying index); null shows every row. Call <see cref="Refresh"/> after changing what it returns.</summary>
+        Func<int, bool> Filter { get; set; }
+
+        /// <summary>Re-query the row count, re-run the filter and sort, rebuild the visible rows. Selection is kept by underlying index.</summary>
+        void Refresh();
+
+        // ---- selection ----
+
+        bool Selectable { get; set; }
+
+        /// <summary>Ctrl-click toggles a row, Shift-click selects a range.</summary>
+        bool MultiSelect { get; set; }
+
+        /// <summary>Primary selected row (underlying index) or -1. Setting it replaces the selection without raising events.</summary>
+        int SelectedRow { get; set; }
+
+        /// <summary>Every selected row (underlying indices) in display order. Setting it replaces the selection without raising events.</summary>
+        int[] SelectedRows { get; set; }
+
+        void ClearSelection();
+
+        /// <summary>Raised when the user changes the selection (<see cref="IUIValueEvent.OldIndex"/> / <see cref="IUIValueEvent.NewIndex"/> are underlying indices of the primary row).</summary>
+        Action<IUIValueEvent> OnValueChanged { get; set; }
+
+        /// <summary>Raised for every click on a row (left or right), after selection was applied.</summary>
+        Action<IUIRowEvent> OnRowClick { get; set; }
+
+        /// <summary>Raised on a double-click on a row or Enter with a selected row; the argument is the underlying index.</summary>
+        Action<int> OnRowActivated { get; set; }
+
+        /// <summary>Raised after scrolling; argument is the row delta.</summary>
+        Action<int> OnScroll { get; set; }
+
+        /// <summary>Scroll so the underlying row is visible (no-op when it is filtered out).</summary>
+        void ScrollToRow(int row);
+
+        // ---- sounds (null = default, empty = silent) ----
+
+        string ScrollSound { get; set; }
+        string SelectSound { get; set; }
+        string SortSound { get; set; }
+    }
+
     // END DATAGRID types
 
     // BEGIN SIGNALS types
