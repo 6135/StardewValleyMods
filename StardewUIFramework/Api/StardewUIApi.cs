@@ -181,8 +181,8 @@ namespace UIFramework.Api
         public IUIElement AddCustom(IUIContainer parent, string id, IUICustomComponent implementation)
         {
             ArgumentNullException.ThrowIfNull(implementation);
-            // custom components (architecture.md §7 / phase 6) are not implemented yet; fail loudly rather than add a blank element
-            throw new NotSupportedException($"[{consumer.ModId}] AddCustom('{id}'): custom components are not supported by UI Framework {Version} yet.");
+
+            return Attach(parent, new CustomElementAdapter(RequireId(id), implementation));
         }
 
         // ---------------------------------------------------------------------------------------------------------

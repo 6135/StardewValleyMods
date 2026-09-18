@@ -65,7 +65,7 @@ namespace UIFrameworkExample
         /// <summary>Label / control rows in a two-column grid, one of every input type.</summary>
         private void BuildForm(IStardewUIApi api, IUIContainer parent)
         {
-            IUIGrid form = api.AddGrid(parent, "form", "auto,*", "auto,auto,auto,auto,auto");
+            IUIGrid form = api.AddGrid(parent, "form", "auto,*", "auto,auto,auto,auto,auto,auto");
             form.ColumnSpacing = 24;
             form.RowSpacing = 12;
 
@@ -94,6 +94,11 @@ namespace UIFrameworkExample
             slider.Step = 5;
             slider.VerticalAlign = UIAlign.Center;
             AddFormRow(api, form, 4, () => $"Volume ({volume:0}):", slider);
+
+            // a consumer-drawn component: shares the slider's value, click or Left/Right to change it
+            IUIElement gauge = api.AddCustom(form, "gauge", new VolumeGauge(() => volume, v => volume = v));
+            gauge.Tooltip = () => "Custom component (IUICustomComponent): click to set, Left/Right to nudge.";
+            AddFormRow(api, form, 5, "Gauge:", gauge);
         }
 
         private static void AddFormRow(IStardewUIApi api, IUIGrid form, int row, string label, IUIElement control)

@@ -571,7 +571,7 @@ namespace UIFramework.Api
         /// <summary>Whether clicking gives this component keyboard focus.</summary>
         bool WantsFocus { get; }
 
-        /// <summary>Draw in the overlay pass (on top of the whole menu) instead of in tree order.</summary>
+        /// <summary>Draw in the overlay pass (on top of the whole menu) instead of in tree order; the component is then also hit-tested before the tree.</summary>
         bool WantsOverlay { get; }
     }
 
