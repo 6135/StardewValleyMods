@@ -67,6 +67,7 @@ namespace UIFrameworkExample
             BuildButtons(api, demo);
             BuildComposites(api, demo);
             BuildSlotDemo(api, demo);
+            BuildDataGrid(api, demo.Root);
             return demo;
         }
 
@@ -136,6 +137,41 @@ namespace UIFrameworkExample
             });
             list.Selectable = true;
             list.OnValueChanged = e => selectedRow = e.NewIndex;
+        }
+
+        /// <summary>A sortable / resizable data grid over generated rows; single select logs the underlying row.</summary>
+        private void BuildDataGrid(IStardewUIApi api, IUIContainer parent)
+        {
+            string[] names = { "Parsnip", "Cauliflower", "Potato", "Kale", "Melon", "Blueberry", "Pumpkin", "Cranberries" };
+            int count = 40;
+            IUIDataGrid grid = api.AddDataGrid(parent, "grid", 40, 5, () => count);
+            grid.MarginTop = 8;
+            grid.Selectable = true;
+
+            IUIDataGridColumn item = grid.AddColumn("item", () => "Item", "*");
+            item.Text = row => $"{names[row % names.Length]} #{row + 1}";
+            item.Sortable = true;
+            item.Resizable = true;
+            item.MinWidth = 120;
+
+            IUIDataGridColumn qty = grid.AddColumn("qty", () => "Qty", "110px");
+            qty.Text = row => ((row * 7) % 23 + 1).ToString();
+            qty.SortNumber = row => (row * 7) % 23 + 1;
+            qty.Align = UIAlign.End;
+            qty.Sortable = true;
+            qty.Resizable = true;
+            qty.MinWidth = 60;
+
+            IUIDataGridColumn price = grid.AddColumn("price", () => "Price", "140px");
+            price.Text = row => $"{(row * 37) % 500 + 25}g";
+            price.SortNumber = row => (row * 37) % 500 + 25;
+            price.Align = UIAlign.End;
+            price.Sortable = true;
+            price.CellTooltip = row => $"Row {row}: {names[row % names.Length]}";
+
+            grid.OnValueChanged = e => Monitor.Log($"Grid row selected: {e.NewIndex} (was {e.OldIndex})", LogLevel.Info);
+            grid.OnRowActivated = row => Monitor.Log($"Grid row activated: {row}", LogLevel.Info);
+            grid.OnColumnResized = (id, width) => Monitor.Log($"Grid column '{id}' resized to {width}px", LogLevel.Debug);
         }
 
         /// <summary>OK (also the Enter default) and Close.</summary>

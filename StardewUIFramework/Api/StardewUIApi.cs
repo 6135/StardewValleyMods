@@ -394,6 +394,14 @@ namespace UIFramework.Api
         // END THEME facade
 
         // BEGIN DATAGRID facade
+
+        public IUIDataGrid AddDataGrid(IUIContainer parent, string id, int rowHeight, int visibleRows, Func<int> rowCount)
+        {
+            ArgumentNullException.ThrowIfNull(rowCount);
+
+            return Attach(parent, new DataGrid(RequireId(id), rowHeight, visibleRows, rowCount));
+        }
+
         // END DATAGRID facade
 
         // BEGIN SIGNALS facade
