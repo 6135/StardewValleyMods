@@ -211,7 +211,13 @@ namespace UIFramework.Core
         //  Tree
         // ---------------------------------------------------------------------------------------------------------
 
-        public IUIElement Find(string id) => Root.FindById(id)!;
+        /// <summary>
+        /// Set while a slot contribution or decorator of another mod runs against this menu, so <see cref="Find"/>
+        /// hides sealed subtrees from it (see <see cref="Sealing"/>).
+        /// </summary>
+        internal ConsumerContext? ExternalConsumer { get; set; }
+
+        public IUIElement Find(string id) => (ExternalConsumer == null ? Root.FindById(id) : Sealing.FindReachable(Root, id, ExternalConsumer))!;
 
         internal void OnElementDetached(UIElement element)
         {
@@ -446,6 +452,7 @@ namespace UIFramework.Core
 
         private void AfterOpened()
         {
+            registry.NotifyOpening(this);
             LayoutDirty = true;
             Relayout();
             registry.NotifyOpened(this);

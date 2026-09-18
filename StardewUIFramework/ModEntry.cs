@@ -13,6 +13,7 @@ namespace UIFramework
         private readonly MenuRegistry menus = new();
         private readonly CompositeRegistry composites = new();
         private HotkeyService hotkeys = null!;
+        private ExtensionRegistry extensions = null!;
         private ModConfig config = new();
 
         public override void Entry(IModHelper helper)
@@ -46,6 +47,11 @@ namespace UIFramework
             // v1.1 wiring (one region per feature; see architecture.md §16)
 
             // BEGIN SLOTS entry
+            extensions = new ExtensionRegistry(menus);
+            helper.ConsoleCommands.Add("ui_slots", "Print the extension slots of every open UI Framework menu (hints and contributors).", (_, _) =>
+            {
+                Monitor.Log(extensions.DescribeOpenMenus(), LogLevel.Info);
+            });
             // END SLOTS entry
 
             // BEGIN COMPOSITES entry
@@ -77,7 +83,7 @@ namespace UIFramework
         {
             var consumer = new ConsumerContext(mod.Manifest.UniqueID);
             Monitor.Log($"API requested by {mod.Manifest.UniqueID}.", LogLevel.Trace);
-            return new StardewUIApi(consumer, menus, hotkeys, composites);
+            return new StardewUIApi(consumer, menus, hotkeys, composites, extensions);
         }
 
         private void OnUpdateTicked(object? sender, UpdateTickedEventArgs e)
