@@ -264,6 +264,34 @@ namespace UIFramework.Api
         public void SetDefaultStyle(IUIStyle style) => consumer.DefaultStyle = style as UIStyle;
 
         // ---------------------------------------------------------------------------------------------------------
+        //  v1.1 features (one region per feature; see architecture.md §16)
+        // ---------------------------------------------------------------------------------------------------------
+
+        // BEGIN SLOTS facade
+        // END SLOTS facade
+
+        // BEGIN COMPOSITES facade
+        // END COMPOSITES facade
+
+        // BEGIN RICHTEXT facade
+        // END RICHTEXT facade
+
+        // BEGIN THEME facade
+        // END THEME facade
+
+        // BEGIN DATAGRID facade
+        // END DATAGRID facade
+
+        // BEGIN SIGNALS facade
+        // END SIGNALS facade
+
+        // BEGIN HUD facade
+        // END HUD facade
+
+        // BEGIN TOOLS facade
+        // END TOOLS facade
+
+        // ---------------------------------------------------------------------------------------------------------
         //  Helpers
         // ---------------------------------------------------------------------------------------------------------
 

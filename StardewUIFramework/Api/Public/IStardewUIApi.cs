@@ -737,5 +737,59 @@ namespace UIFramework.Api
         void SetTooltipDelay(int milliseconds);
         IUIStyle CreateStyle();
         void SetDefaultStyle(IUIStyle style);
+
+        // ---- v1.1 additions (additive; consumers may copy a subset) ----
+
+        // BEGIN SLOTS members
+        // END SLOTS members
+
+        // BEGIN COMPOSITES members
+        // END COMPOSITES members
+
+        // BEGIN RICHTEXT members
+        // END RICHTEXT members
+
+        // BEGIN THEME members
+        // END THEME members
+
+        // BEGIN DATAGRID members
+        // END DATAGRID members
+
+        // BEGIN SIGNALS members
+        // END SIGNALS members
+
+        // BEGIN HUD members
+        // END HUD members
+
+        // BEGIN TOOLS members
+        // END TOOLS members
     }
+
+    // =================================================================================================================
+    //  v1.1 types (one region per feature; see architecture.md §16)
+    // =================================================================================================================
+
+    // BEGIN SLOTS types
+    // END SLOTS types
+
+    // BEGIN COMPOSITES types
+    // END COMPOSITES types
+
+    // BEGIN RICHTEXT types
+    // END RICHTEXT types
+
+    // BEGIN THEME types
+    // END THEME types
+
+    // BEGIN DATAGRID types
+    // END DATAGRID types
+
+    // BEGIN SIGNALS types
+    // END SIGNALS types
+
+    // BEGIN HUD types
+    // END HUD types
+
+    // BEGIN TOOLS types
+    // END TOOLS types
 }

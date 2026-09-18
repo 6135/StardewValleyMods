@@ -41,6 +41,29 @@ namespace UIFramework
                 string list = string.Join("\n", menus.OpenMenus.Select(m => $"  {m}"));
                 Monitor.Log(menus.OpenMenus.Count == 0 ? "No framework menus are open." : $"Open menus:\n{list}", LogLevel.Info);
             });
+
+            // v1.1 wiring (one region per feature; see architecture.md §16)
+
+            // BEGIN SLOTS entry
+            // END SLOTS entry
+
+            // BEGIN COMPOSITES entry
+            // END COMPOSITES entry
+
+            // BEGIN RICHTEXT entry
+            // END RICHTEXT entry
+
+            // BEGIN THEME entry
+            // END THEME entry
+
+            // BEGIN SIGNALS entry
+            // END SIGNALS entry
+
+            // BEGIN HUD entry
+            // END HUD entry
+
+            // BEGIN TOOLS entry
+            // END TOOLS entry
         }
 
         /// <summary>One API instance per consumer so ids, hotkeys and styles are namespaced and can be torn down together.</summary>
@@ -83,6 +106,18 @@ namespace UIFramework
                 name: () => Helper.Translation.Get("config.log-callbacks"),
                 tooltip: () => Helper.Translation.Get("config.log-callbacks.desc"),
                 fieldId: null);
+
+            // BEGIN RICHTEXT gmcm
+            // END RICHTEXT gmcm
+
+            // BEGIN THEME gmcm
+            // END THEME gmcm
+
+            // BEGIN HUD gmcm
+            // END HUD gmcm
+
+            // BEGIN TOOLS gmcm
+            // END TOOLS gmcm
         }
     }
 }

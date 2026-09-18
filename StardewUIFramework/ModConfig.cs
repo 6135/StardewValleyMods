@@ -11,5 +11,19 @@ namespace UIFramework
 
         /// <summary>Trace-log every consumer callback invocation.</summary>
         public bool LogCallbacks { get; set; }
+
+        // v1.1 settings (one region per feature; see architecture.md §16)
+
+        // BEGIN RICHTEXT config
+        // END RICHTEXT config
+
+        // BEGIN THEME config
+        // END THEME config
+
+        // BEGIN HUD config
+        // END HUD config
+
+        // BEGIN TOOLS config
+        // END TOOLS config
     }
 }
