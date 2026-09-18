@@ -65,7 +65,7 @@ namespace UIFramework.Components
         internal override bool Focusable => true;
         internal override bool ActivateOnEnter => true;
 
-        private string CurrentLabel => Raise("Label", label, string.Empty) ?? string.Empty;
+        private string CurrentLabel => Pseudo.Transform(Raise("Label", label, string.Empty));
 
         // ---------------------------------------------------------------------------------------------------------
         //  Value pipeline

@@ -63,6 +63,11 @@ namespace UIFramework
             // END COMPOSITES entry
 
             // BEGIN RICHTEXT entry
+            helper.ConsoleCommands.Add("ui_pseudoloc", "Toggle UI Framework pseudo-localization (accented, padded strings in every framework menu).", (_, _) =>
+            {
+                config.PseudoLocalize = !config.PseudoLocalize;
+                Monitor.Log($"Pseudo-localization {(config.PseudoLocalize ? "enabled" : "disabled")}.", LogLevel.Info);
+            });
             // END RICHTEXT entry
 
             // BEGIN THEME entry
@@ -120,6 +125,12 @@ namespace UIFramework
                 fieldId: null);
 
             // BEGIN RICHTEXT gmcm
+            gmcm.AddBoolOption(ModManifest,
+                getValue: () => config.PseudoLocalize,
+                setValue: v => config.PseudoLocalize = v,
+                name: () => Helper.Translation.Get("config.pseudo-localize"),
+                tooltip: () => Helper.Translation.Get("config.pseudo-localize.desc"),
+                fieldId: null);
             // END RICHTEXT gmcm
 
             // BEGIN THEME gmcm

@@ -5,5 +5,7 @@
   "config.debug-overlay": "Debug overlay",
   "config.debug-overlay.desc": "Draw the bounds and ids of every element in framework menus.",
   "config.log-callbacks": "Log callbacks",
-  "config.log-callbacks.desc": "Write a trace log line every time a consumer callback is invoked."
+  "config.log-callbacks.desc": "Write a trace log line every time a consumer callback is invoked.",
+  "config.pseudo-localize": "Pseudo-localization",
+  "config.pseudo-localize.desc": "Accent and pad every string drawn by framework menus (e.g. [Çálçúláté~~~]) to catch layout overflow before translating."
 }

@@ -68,6 +68,7 @@ namespace UIFrameworkExample
             BuildComposites(api, demo);
             BuildSlotDemo(api, demo);
             BuildDataGrid(api, demo.Root);
+            BuildRichText(api, demo);
             return demo;
         }
 
@@ -271,6 +272,31 @@ namespace UIFrameworkExample
             {
                 Monitor.Log($"Slot {slot.OwnerModId}/{slot.MenuId}/{slot.SlotId} ({(slot.Horizontal ? "row" : "column")}).", LogLevel.Debug);
             }
+        }
+
+        /// <summary>
+        /// Rich text demo: a markup label (bold, colored span, clickable link) above the list, and a rich tooltip
+        /// (title, parsnip item row, money, colored line) on the OK button.
+        /// </summary>
+        private void BuildRichText(IStardewUIApi api, IUIMenu demo)
+        {
+            IUILabel header = api.AddLabel(demo.Root, "list.header", () => "[b]Items[/b] — [color=green]30[/color] rows, [link=help]help[/link]");
+            header.RichText = true;
+            header.OnLink = link => Monitor.Log($"Link clicked: {link}", LogLevel.Info);
+
+            // Add() re-parents, so re-adding the list and the button row moves them below the new header
+            demo.Root.Add(demo.Find("list"));
+            demo.Root.Add(demo.Find("buttons"));
+
+            IUIElement ok = demo.Find("ok");
+            ok.RichTooltip = api.CreateTooltip()
+                .Title(() => "Submit")
+                .Line(() => "Enter also triggers this button.")
+                .Divider()
+                .Item("(O)24")
+                .Money(() => 35 * (clicks + 1))
+                .Line(() => $"Clicked [b]{clicks}[/b] times", Microsoft.Xna.Framework.Color.DarkGreen)
+                .MaxWidth(360);
         }
     }
 }

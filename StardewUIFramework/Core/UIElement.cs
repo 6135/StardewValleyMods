@@ -145,11 +145,15 @@ namespace UIFramework.Core
 
         internal Func<string>? Tooltip { get; set; }
         internal Func<string>? TooltipTitle { get; set; }
+
+        /// <summary>Rich tooltip (replaces <see cref="Tooltip"/> / <see cref="TooltipTitle"/> when set).</summary>
+        internal RichTooltip? RichTooltip { get; set; }
         internal object? Tag { get; set; }
         internal UIStyle? StyleObject { get; set; }
 
         Func<string> IUIElement.Tooltip { get => Tooltip!; set => Tooltip = value; }
         Func<string> IUIElement.TooltipTitle { get => TooltipTitle!; set => TooltipTitle = value; }
+        IUITooltip IUIElement.RichTooltip { get => RichTooltip!; set => RichTooltip = value as RichTooltip; }
         object IUIElement.Tag { get => Tag!; set => Tag = value; }
 
         IUIStyle IUIElement.Style
@@ -471,7 +475,7 @@ namespace UIFramework.Core
 
         private bool HasClickHandlers => OnClick != null || OnRightClick != null;
 
-        private bool HasHoverHandlers => Tooltip != null || OnHover != null || OnHoverEnd != null;
+        private bool HasHoverHandlers => Tooltip != null || RichTooltip != null || OnHover != null || OnHoverEnd != null;
 
         /// <summary>Return the deepest visible + enabled element under the point, or null.</summary>
         internal virtual UIElement? HitTest(int px, int py)

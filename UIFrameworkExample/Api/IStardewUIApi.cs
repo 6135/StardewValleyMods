@@ -299,6 +299,12 @@ namespace UIFramework.Api
         /// of the menu is never restricted.
         /// </summary>
         bool Sealed { get; set; }
+        // RICHTEXT
+        /// <summary>
+        /// Rich tooltip (title, lines, icons, items, money) built with <see cref="IStardewUIApi.CreateTooltip"/>.
+        /// When set it replaces <see cref="Tooltip"/> / <see cref="TooltipTitle"/>; null shows the plain tooltip.
+        /// </summary>
+        IUITooltip RichTooltip { get; set; }
     }
 
     /// <summary>An element that holds children.</summary>
@@ -425,6 +431,16 @@ namespace UIFramework.Api
         UIAlign TextAlign { get; set; }
 
         float Scale { get; set; }
+
+        // RICHTEXT
+        /// <summary>
+        /// Parse markup in <see cref="Text"/>: <c>[color=#RRGGBB]…[/color]</c> (or <c>red</c>, <c>green</c>, <c>blue</c>, <c>gray</c>),
+        /// <c>[b]…[/b]</c>, <c>[icon=(O)24]</c>, <c>[link=name]…[/link]</c>; <c>[[</c> / <c>]]</c> are literal brackets. Default false.
+        /// </summary>
+        bool RichText { get; set; }
+
+        /// <summary>Raised with the link name when a <c>[link=name]</c> span is clicked (<see cref="RichText"/> only).</summary>
+        Action<string> OnLink { get; set; }
     }
 
     /// <summary>A texture (or a region of one).</summary>
@@ -453,6 +469,10 @@ namespace UIFramework.Api
 
         /// <summary>Draw the 9-slice box behind the content.</summary>
         bool DrawBox { get; set; }
+
+        // RICHTEXT
+        /// <summary>Parse markup in <see cref="Text"/> (same syntax as <see cref="IUILabel.RichText"/>; links are not clickable on buttons). Default false.</summary>
+        bool RichText { get; set; }
     }
 
     /// <summary>A boolean toggle.</summary>
@@ -846,6 +866,8 @@ namespace UIFramework.Api
         // END COMPOSITES members
 
         // BEGIN RICHTEXT members
+        /// <summary>Create an empty rich tooltip builder; assign it to <see cref="IUIElement.RichTooltip"/>.</summary>
+        IUITooltip CreateTooltip();
         // END RICHTEXT members
 
         // BEGIN THEME members
@@ -1051,6 +1073,41 @@ namespace UIFramework.Api
     // END COMPOSITES types
 
     // BEGIN RICHTEXT types
+
+    /// <summary>
+    /// A tooltip built from blocks, drawn in a vanilla box sized to its content. Every method returns the builder so
+    /// calls chain; line text supports the <see cref="IUILabel.RichText"/> markup. Delegates are evaluated each frame the
+    /// tooltip is visible.
+    /// </summary>
+    public interface IUITooltip
+    {
+        /// <summary>Bold title drawn in the dialogue font.</summary>
+        IUITooltip Title(Func<string> title);
+
+        /// <summary>A line of (rich) text in the default text color.</summary>
+        IUITooltip Line(Func<string> text);
+
+        /// <summary>A line of (rich) text in <paramref name="color"/>.</summary>
+        IUITooltip Line(Func<string> text, Color color);
+
+        /// <summary>A block icon drawn on its own row.</summary>
+        IUITooltip Icon(Texture2D texture, Rectangle? source, float scale);
+
+        /// <summary>A vanilla item's sprite and display name on one row (qualified id, e.g. <c>(O)24</c>).</summary>
+        IUITooltip Item(string qualifiedItemId);
+
+        /// <summary>A horizontal rule.</summary>
+        IUITooltip Divider();
+
+        /// <summary>A coin icon followed by the amount, like vanilla shop tooltips.</summary>
+        IUITooltip Money(Func<int> amount);
+
+        /// <summary>Wrap lines wider than this many UI pixels (0 = only the screen limits the width).</summary>
+        IUITooltip MaxWidth(int px);
+
+        /// <summary>Remove every block.</summary>
+        IUITooltip Clear();
+    }
     // END RICHTEXT types
 
     // BEGIN THEME types

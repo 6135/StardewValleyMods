@@ -364,7 +364,7 @@ namespace UIFramework.Core
                 Game1.drawDialogueBox(Bounds.X, Bounds.Y, Bounds.Width, Bounds.Height, speaker: false, drawOnlyBox: true);
             }
 
-            string? titleText = title == null ? null : Consumer.Invoke(Id, "Title", title, string.Empty);
+            string? titleText = title == null ? null : Pseudo.Transform(Consumer.Invoke(Id, "Title", title, string.Empty));
             if (!string.IsNullOrEmpty(titleText))
             {
                 if (drawBox)
@@ -390,7 +390,7 @@ namespace UIFramework.Core
         private void DrawTooltip(SpriteBatch b)
         {
             UIElement? hovered = Hovered;
-            if (hovered == null || hovered.Tooltip == null || Overlay.HasPopups)
+            if (hovered == null || (hovered.Tooltip == null && hovered.RichTooltip == null) || Overlay.HasPopups)
             {
                 return;
             }
@@ -400,13 +400,19 @@ namespace UIFramework.Core
                 return;
             }
 
-            string text = Consumer.Invoke(hovered.Id, "Tooltip", hovered.Tooltip, string.Empty);
+            if (hovered.RichTooltip != null)
+            {
+                TooltipRenderer.Draw(b, this, hovered, hovered.RichTooltip);
+                return;
+            }
+
+            string text = Pseudo.Transform(Consumer.Invoke(hovered.Id, "Tooltip", hovered.Tooltip, string.Empty));
             if (string.IsNullOrEmpty(text))
             {
                 return;
             }
 
-            string? tooltipTitle = hovered.TooltipTitle == null ? null : Consumer.Invoke(hovered.Id, "TooltipTitle", hovered.TooltipTitle, string.Empty);
+            string? tooltipTitle = hovered.TooltipTitle == null ? null : Pseudo.Transform(Consumer.Invoke(hovered.Id, "TooltipTitle", hovered.TooltipTitle, string.Empty));
             IClickableMenu.drawHoverText(b, text, Game1.smallFont, boldTitleText: string.IsNullOrEmpty(tooltipTitle) ? null : tooltipTitle);
         }
 
