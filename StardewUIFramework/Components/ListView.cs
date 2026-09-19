@@ -18,14 +18,15 @@ namespace UIFramework.Components
     /// </summary>
     internal sealed class ListView : UIContainer, IUIList
     {
-        private static readonly Color SelectionColor = Color.Wheat * 0.5f;
-
         private readonly Func<int>? itemCount;
         private readonly Action<int, IUIContainer>? buildRow;
         private readonly List<Panel> rows = new();
         private readonly List<int> rowItems = new();
         private readonly ScrollbarGadget scrollbar = new();
         private int rowHeight;
+
+        /// <summary>The row height actually laid out: <see cref="RowHeight"/> grown with the text scale.</summary>
+        private int EffectiveRowHeight => Theme.ScaleForText(rowHeight);
         private int visibleRows;
         private int firstVisibleIndex;
         private int lastCount;
@@ -113,6 +114,23 @@ namespace UIFramework.Components
         Action<int> IUIList.OnScroll { get => OnScroll!; set => OnScroll = value; }
 
         public void ScrollTo(int firstIndex) => SetFirstVisible(firstIndex);
+
+        internal override string AccessibleDescription
+        {
+            get
+            {
+                string items = Accessibility.Text("list-items", "{{count}} items").Replace("{{count}}", lastCount.ToString());
+                return Accessibility.Compose(Accessibility.Text("list", "List"), items, selectedIndex >= 0 ? RowDescription(selectedIndex) : null);
+            }
+        }
+
+        /// <summary>"Row n of count: &lt;row text&gt;" for an item, using the row container's labels when it is on screen.</summary>
+        private string RowDescription(int item)
+        {
+            string row = Accessibility.Text("row", "Row {{index}} of {{count}}").Replace("{{index}}", (item + 1).ToString()).Replace("{{count}}", lastCount.ToString());
+            int slot = rowItems.IndexOf(item);
+            return Accessibility.Compose(row, slot >= 0 ? Accessibility.TextOf(rows[slot]) : null);
+        }
 
         // rows fill their slot exactly
         internal override UIAlign DefaultChildHorizontalAlign(UIElement child) => UIAlign.Stretch;
@@ -246,6 +264,10 @@ namespace UIFramework.Components
                 UIValueEvent e = UIValueEvent.Index(this, old, item, old.ToString(), item.ToString());
                 Raise("OnValueChanged", () => cb(e));
             }
+            if (Accessibility.Enabled)
+            {
+                Accessibility.Announce(RowDescription(item));
+            }
         }
 
         // ---------------------------------------------------------------------------------------------------------
@@ -258,7 +280,7 @@ namespace UIFramework.Components
         protected override Vector2 MeasureCore(Vector2 available)
         {
             const int reserved = ScrollbarGadget.ReservedWidth;
-            var rowAvailable = new Vector2(Math.Max(0, available.X - reserved), rowHeight);
+            var rowAvailable = new Vector2(Math.Max(0, available.X - reserved), EffectiveRowHeight);
             float maxRowWidth = 0;
             foreach (UIElement child in Children)
             {
@@ -271,7 +293,7 @@ namespace UIFramework.Components
             }
             // fill the available width so rows are wide; size to content only when the width is unbounded
             float width = float.IsInfinity(available.X) || float.IsNaN(available.X) ? maxRowWidth + reserved : Math.Max(available.X, maxRowWidth + reserved);
-            return new Vector2(width, visibleRows * rowHeight);
+            return new Vector2(width, visibleRows * EffectiveRowHeight);
         }
 
         protected override void ArrangeCore()
@@ -279,7 +301,7 @@ namespace UIFramework.Components
             Rectangle content = ContentRect;
             for (int i = 0; i < rows.Count; i++)
             {
-                rows[i].Arrange(new Rectangle(content.X, content.Y + (i * rowHeight), content.Width, rowHeight));
+                rows[i].Arrange(new Rectangle(content.X, content.Y + (i * EffectiveRowHeight), content.Width, EffectiveRowHeight));
             }
             // any other child a consumer added directly overlaps the content area
             foreach (UIElement child in Children)
@@ -313,11 +335,12 @@ namespace UIFramework.Components
         {
             if (selectable && selectedIndex >= 0)
             {
+                Color selection = Style.HoverColor * 0.5f;
                 for (int i = 0; i < rows.Count; i++)
                 {
                     if (rowItems[i] == selectedIndex && rows[i].Visible)
                     {
-                        DrawHelper.Fill(b, rows[i].Bounds, SelectionColor);
+                        DrawHelper.Fill(b, rows[i].Bounds, selection);
                     }
                 }
             }
@@ -388,7 +411,7 @@ namespace UIFramework.Components
         /// <summary>Select the item shown in the row under <paramref name="py"/>, if any.</summary>
         private void SelectRowAt(int py)
         {
-            int row = (py - Bounds.Y) / rowHeight;
+            int row = (py - Bounds.Y) / EffectiveRowHeight;
             if (row >= 0 && row < rows.Count && rowItems[row] >= 0)
             {
                 Select(rowItems[row]);

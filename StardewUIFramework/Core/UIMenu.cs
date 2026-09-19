@@ -21,9 +21,9 @@ namespace UIFramework.Core
     {
         // chrome insets when DrawBox is on (vanilla dialogue box border + breathing room)
         private const int BoxInsetSide = 56; // IClickableMenu.spaceToClearSideBorder + borderWidth
-        private const int BoxInsetTop = 80;
+        private const int BoxInsetTop = 56;
         private const int BoxInsetBottom = 56;
-        private const int TitleReserve = 72;
+        private const int TitleReserve = 80; // the title scroll is 72 px tall and drawn 64 px above the box
 
         private readonly MenuRegistry registry;
         private int? width, height;
@@ -31,7 +31,10 @@ namespace UIFramework.Core
         private int x, y, padding;
         private bool drawBox = true;
         private bool showCloseButton = true;
+        private bool collapsed;
+        private Point anchorOffset;
         private Func<string>? title;
+        private UIElement? announcedHover;
 
         internal UIMenu(string id, ConsumerContext consumer, MenuRegistry registry)
         {
@@ -46,8 +49,22 @@ namespace UIFramework.Core
                 HorizontalAlign = UIAlign.Stretch,
                 VerticalAlign = UIAlign.Stretch
             };
-            Root.SetOwnerMenu(this);
+            Viewport = new ScrollView(id + ".viewport", 0)
+            {
+                FitContent = true,
+                HorizontalAlign = UIAlign.Stretch,
+                VerticalAlign = UIAlign.Stretch
+            };
+            Viewport.Add(Root);
+            Viewport.SetOwnerMenu(this);
         }
+
+        /// <summary>
+        /// The element that hosts <see cref="Root"/>: a fit-content <see cref="ScrollView"/> that is invisible while the
+        /// content fits and scrolls it (scrollbar, wheel, clipping) when the window cannot be tall enough. It is part of
+        /// the tree (inspector, dumps, hit-testing) but not exposed as the root's parent through the API.
+        /// </summary>
+        internal ScrollView Viewport { get; }
 
         // ---------------------------------------------------------------------------------------------------------
         //  Identity / services
@@ -179,6 +196,52 @@ namespace UIFramework.Core
 
         public bool CloseOnEscape { get; set; } = true;
 
+        // HUD: player-owned layout
+        public bool PlayerLayout { get; set; } = true;
+
+        /// <summary>Collapsed by the player: only the window's title strip is drawn and the tree takes no input.</summary>
+        internal bool Collapsed
+        {
+            get => collapsed;
+            set
+            {
+                if (collapsed == value)
+                {
+                    return;
+                }
+
+                collapsed = value;
+                Focus.ClearFocus();
+                Overlay.CloseAll();
+                MarkLayoutDirty();
+            }
+        }
+
+        /// <summary>Offset added to the anchor position for non-explicit anchors (HUD widgets).</summary>
+        internal Point AnchorOffset
+        {
+            get => anchorOffset;
+            set
+            {
+                anchorOffset = value;
+                MarkLayoutDirty();
+            }
+        }
+
+        /// <summary>The consumer's own placement, captured before a player layout was applied (null = none applied yet).</summary>
+        internal WindowLayout? ConsumerLayout { get; set; }
+
+        /// <summary>Whether the player may resize the window: both dimensions are fixed.</summary>
+        internal bool IsResizable => width.HasValue && height.HasValue;
+
+        /// <summary>Smallest size the player may resize to: the content's width plus chrome, and enough height for the viewport to scroll a few rows.</summary>
+        internal Point MinimumSize => new(
+            (int)Math.Ceiling(Viewport.DesiredSize.X) + InsetLeft + InsetRight,
+            Math.Min((int)Math.Ceiling(Viewport.DesiredSize.Y), MinimumViewportHeight) + InsetTop + InsetBottom);
+
+        /// <summary>Height below which a resized window is not useful (three rows + scrollbar arrows).</summary>
+        private const int MinimumViewportHeight = 160;
+
         public Rectangle Bounds { get; private set; }
 
         internal Button? DefaultButtonElement { get; set; }
@@ -211,7 +274,13 @@ namespace UIFramework.Core
         //  Tree
         // ---------------------------------------------------------------------------------------------------------
 
-        public IUIElement Find(string id) => Root.FindById(id)!;
+        /// <summary>
+        /// Set while a slot contribution or decorator of another mod runs against this menu, so <see cref="Find"/>
+        /// hides sealed subtrees from it (see <see cref="Sealing"/>).
+        /// </summary>
+        internal ConsumerContext? ExternalConsumer { get; set; }
+
+        public IUIElement Find(string id) => (ExternalConsumer == null ? Root.FindById(id) : Sealing.FindReachable(Root, id, ExternalConsumer))!;
 
         internal void OnElementDetached(UIElement element)
         {
@@ -240,6 +309,8 @@ namespace UIFramework.Core
             {
                 CancelButtonElement = null;
             }
+
+            Consumer.Bindings.Drop(element); // SIGNALS
         }
 
         public void InvalidateLayout() => MarkLayoutDirty();
@@ -250,30 +321,37 @@ namespace UIFramework.Core
         //  Layout
         // ---------------------------------------------------------------------------------------------------------
 
-        private int InsetLeft => (drawBox ? BoxInsetSide : 0) + padding;
-        private int InsetRight => (drawBox ? BoxInsetSide : 0) + padding;
-        private int InsetTop => (drawBox ? BoxInsetTop : 0) + padding;
-        private int InsetBottom => (drawBox ? BoxInsetBottom : 0) + padding;
+        private int InsetLeft => (drawBox ? BoxInsetSide : 0) + Theme.Space(padding);
+        private int InsetRight => (drawBox ? BoxInsetSide : 0) + Theme.Space(padding);
+        private int InsetTop => (drawBox ? BoxInsetTop : 0) + Theme.Space(padding);
+        private int InsetBottom => (drawBox ? BoxInsetBottom : 0) + Theme.Space(padding);
 
         /// <summary>Measure the root, compute the menu rectangle from the size / position policy, arrange the tree.</summary>
         internal void Relayout()
         {
+            using PerfCounters.Scope perf = PerfCounters.Begin(this, PerfCounters.Phase.Layout);
             Point vp = UIServices.ViewportSize();
             int insetW = InsetLeft + InsetRight;
             int insetH = InsetTop + InsetBottom;
 
+            // the title banner sits above the box, so a tall window must leave room for it
+            int maxH = Math.Max(1, vp.Y - (title != null && drawBox ? TitleReserve : 0));
             float availW = (width ?? vp.X) - insetW;
-            float availH = (height ?? vp.Y) - insetH;
-            Root.Measure(new Vector2(Math.Max(0, availW), Math.Max(0, availH)));
+            float availH = Math.Min(height ?? maxH, maxH) - insetH;
+            Viewport.Measure(new Vector2(Math.Max(0, availW), Math.Max(0, availH)));
 
-            int w = width ?? (int)Math.Ceiling(Root.DesiredSize.X) + insetW;
-            int h = height ?? (int)Math.Ceiling(Root.DesiredSize.Y) + insetH;
+            int w = width ?? (int)Math.Ceiling(Viewport.DesiredSize.X) + insetW;
+            int h = collapsed ? insetH : height ?? (int)Math.Ceiling(Viewport.DesiredSize.Y) + insetH;
             w = Math.Clamp(w, Math.Min(insetW, vp.X), Math.Max(vp.X, 1));
-            h = Math.Clamp(h, Math.Min(insetH, vp.Y), Math.Max(vp.Y, 1));
+            h = Math.Clamp(h, Math.Min(insetH, maxH), maxH);
 
             Point position = ResolvePosition(vp, w, h);
             Bounds = new Rectangle(position.X, position.Y, w, h);
-            Root.Arrange(new Rectangle(position.X + InsetLeft, position.Y + InsetTop, Math.Max(0, w - insetW), Math.Max(0, h - insetH)));
+            if (!collapsed)
+            {
+                // a collapsed window keeps the last arrangement; it is re-arranged when expanded
+                Viewport.Arrange(new Rectangle(position.X + InsetLeft, position.Y + InsetTop, Math.Max(0, w - insetW), Math.Max(0, h - insetH)));
+            }
             LayoutDirty = false;
 
             Host?.SyncBounds();
@@ -284,8 +362,8 @@ namespace UIFramework.Core
         private Point ResolvePosition(Point vp, int w, int h)
         {
             int minY = title != null && drawBox ? Math.Min(TitleReserve, Math.Max(0, vp.Y - h)) : 0;
-            int px = anchor == UIAnchor.Explicit ? x : AnchorX(vp.X, w);
-            int py = anchor == UIAnchor.Explicit ? y : AnchorY(vp.Y, h, minY);
+            int px = anchor == UIAnchor.Explicit ? x : AnchorX(vp.X, w) + anchorOffset.X;
+            int py = anchor == UIAnchor.Explicit ? y : AnchorY(vp.Y, h, minY) + anchorOffset.Y;
             return new Point(
                 Math.Clamp(px, 0, Math.Max(0, vp.X - w)),
                 Math.Clamp(py, minY, Math.Max(minY, vp.Y - h)));
@@ -313,6 +391,16 @@ namespace UIFramework.Core
             };
         }
 
+        /// <summary>The title banner plus the top border of the box: the strip the player drags the window by (HUD).</summary>
+        internal Rectangle TitleStrip
+        {
+            get
+            {
+                int banner = title != null && drawBox ? TitleReserve : 0;
+                return new Rectangle(Bounds.X, Bounds.Y - banner, Bounds.Width, banner + InsetTop);
+            }
+        }
+
         /// <summary>Absolute content rectangle (inside chrome and padding).</summary>
         internal Rectangle ContentBounds => new(Bounds.X + InsetLeft, Bounds.Y + InsetTop, Math.Max(0, Bounds.Width - InsetLeft - InsetRight), Math.Max(0, Bounds.Height - InsetTop - InsetBottom));
 
@@ -322,6 +410,7 @@ namespace UIFramework.Core
 
         internal void Tick(double elapsedMs)
         {
+            using PerfCounters.Scope perf = PerfCounters.Begin(this, PerfCounters.Phase.Update);
             if (LayoutDirty)
             {
                 Relayout();
@@ -329,6 +418,7 @@ namespace UIFramework.Core
 
             Focus.Validate();
             Root.Update(elapsedMs);
+            AnnounceRestingHover();
             if (OnUpdate != null)
             {
                 Action<IUIMenu, double> cb = OnUpdate;
@@ -342,6 +432,7 @@ namespace UIFramework.Core
 
         internal void Draw(SpriteBatch b)
         {
+            using PerfCounters.Scope perf = PerfCounters.Begin(this, PerfCounters.Phase.Draw, endsFrame: true);
             if (LayoutDirty)
             {
                 Relayout();
@@ -355,15 +446,16 @@ namespace UIFramework.Core
 
             if (drawBox)
             {
-                Game1.drawDialogueBox(Bounds.X, Bounds.Y, Bounds.Width, Bounds.Height, speaker: false, drawOnlyBox: true);
+                DrawChrome(b);
             }
 
-            string? titleText = title == null ? null : Consumer.Invoke(Id, "Title", title, string.Empty);
+            string? titleText = title == null ? null : Pseudo.Transform(Consumer.Invoke(Id, "Title", title, string.Empty));
             if (!string.IsNullOrEmpty(titleText))
             {
                 if (drawBox)
                 {
-                    SpriteText.drawStringWithScrollCenteredAt(b, titleText, Bounds.Center.X, Math.Max(8, Bounds.Y - 56));
+                    // the scroll graphic spans [y - 12, y + 60]; keep it just above the frame
+                    SpriteText.drawStringWithScrollCenteredAt(b, titleText, Bounds.Center.X, Math.Max(12, Bounds.Y - 68));
                 }
                 else
                 {
@@ -371,9 +463,17 @@ namespace UIFramework.Core
                 }
             }
 
-            Root.Draw(b);
-            Overlay.Draw(b);
-            DrawTooltip(b);
+            if (collapsed)
+            {
+                Overlay.DiscardFrame();
+            }
+            else
+            {
+                Viewport.Draw(b);
+                InspectorRenderer.Draw(this, b);
+                Overlay.Draw(b);
+                DrawTooltip(b);
+            }
 
             if (UIServices.Config.DebugOverlay)
             {
@@ -381,10 +481,47 @@ namespace UIFramework.Core
             }
         }
 
-        private void DrawTooltip(SpriteBatch b)
+        /// <summary>The vanilla dialogue box, or the theme's panel box when the theme restyles boxes (tint, texture or solid fill).</summary>
+        private void DrawChrome(SpriteBatch b)
+        {
+            if (Theme.IsVanillaChrome)
+            {
+                // drawDialogueBox draws its frame 64 px below the y it is given (and 64 px shorter), so offset the call
+                // to make the visible frame exactly Bounds
+                Game1.drawDialogueBox(Bounds.X, Bounds.Y - 64, Bounds.Width, Bounds.Height + 64, speaker: false, drawOnlyBox: true);
+                return;
+            }
+
+            DrawHelper.ThemedBox(b, Theme.PanelTexture, Theme.PanelBoxSource, Bounds, Color.White, 1f);
+        }
+
+        /// <summary>Screen reader: describe the hovered element once the cursor rested on it for the tooltip delay.</summary>
+        private void AnnounceRestingHover()
         {
             UIElement? hovered = Hovered;
-            if (hovered == null || hovered.Tooltip == null || Overlay.HasPopups)
+            if (hovered == null || hovered == announcedHover || !Accessibility.Enabled)
+            {
+                announcedHover = hovered;
+                return;
+            }
+
+            if (UIServices.NowMs() - HoverStartMs < Consumer.EffectiveTooltipDelay)
+            {
+                return;
+            }
+
+            announcedHover = hovered;
+            if (!hovered.IsFocused)
+            {
+                Accessibility.AnnounceElement(hovered);
+            }
+        }
+
+        /// <summary>Draw the hovered element's tooltip once the delay elapsed (also used by HUD widgets).</summary>
+        internal void DrawTooltip(SpriteBatch b)
+        {
+            UIElement? hovered = Hovered;
+            if (hovered == null || (hovered.Tooltip == null && hovered.RichTooltip == null) || Overlay.HasPopups)
             {
                 return;
             }
@@ -394,13 +531,19 @@ namespace UIFramework.Core
                 return;
             }
 
-            string text = Consumer.Invoke(hovered.Id, "Tooltip", hovered.Tooltip, string.Empty);
+            if (hovered.RichTooltip != null)
+            {
+                TooltipRenderer.Draw(b, this, hovered, hovered.RichTooltip);
+                return;
+            }
+
+            string text = Pseudo.Transform(Consumer.Invoke(hovered.Id, "Tooltip", hovered.Tooltip, string.Empty));
             if (string.IsNullOrEmpty(text))
             {
                 return;
             }
 
-            string? tooltipTitle = hovered.TooltipTitle == null ? null : Consumer.Invoke(hovered.Id, "TooltipTitle", hovered.TooltipTitle, string.Empty);
+            string? tooltipTitle = hovered.TooltipTitle == null ? null : Pseudo.Transform(Consumer.Invoke(hovered.Id, "TooltipTitle", hovered.TooltipTitle, string.Empty));
             IClickableMenu.drawHoverText(b, text, Game1.smallFont, boldTitleText: string.IsNullOrEmpty(tooltipTitle) ? null : tooltipTitle);
         }
 
@@ -446,9 +589,16 @@ namespace UIFramework.Core
 
         private void AfterOpened()
         {
+            registry.NotifyOpening(this);
             LayoutDirty = true;
             Relayout();
             registry.NotifyOpened(this);
+            announcedHover = null;
+            if (Accessibility.Enabled)
+            {
+                string titleText = title == null ? string.Empty : Consumer.Invoke(Id, "Title", title, string.Empty) ?? string.Empty;
+                Accessibility.Announce(Accessibility.Compose(Accessibility.Text("menu", "Menu"), titleText.Length > 0 ? titleText : Id));
+            }
             if (OnOpen != null)
             {
                 Action<IUIMenu> cb = OnOpen;

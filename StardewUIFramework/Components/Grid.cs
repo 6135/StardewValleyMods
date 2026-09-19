@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using Microsoft.Xna.Framework;
 using UIFramework.Api;
 using UIFramework.Core;
+using UIFramework.Rendering;
 
 namespace UIFramework.Components
 {
@@ -32,6 +33,8 @@ namespace UIFramework.Components
         private List<GridTrack> effectiveRows;
         private float[] columnAuto = Array.Empty<float>();
         private float[] rowAuto = Array.Empty<float>();
+        private float[] columnSizes = Array.Empty<float>();
+        private float[] rowSizes = Array.Empty<float>();
 
         internal Grid(string id, string columns, string rows) : base(id)
         {
@@ -111,8 +114,19 @@ namespace UIFramework.Components
             }
         }
 
+        /// <summary>Spacing actually used (theme scaled).</summary>
+        private int ColSpace => Theme.Space(columnSpacing);
+
+        private int RowSpace => Theme.Space(rowSpacing);
+
         // a grid is layout-only: clicks on the gaps fall through unless it has a handler / tooltip
         protected override bool IsHitTestVisible => HasPointerHandlers;
+
+        /// <summary>Resolved column widths from the last arrange (inspector overlay).</summary>
+        internal float[] ColumnSizes => columnSizes;
+
+        /// <summary>Resolved row heights from the last arrange (inspector overlay).</summary>
+        internal float[] RowSizes => rowSizes;
 
         // ---------------------------------------------------------------------------------------------------------
         //  Tracks
@@ -232,8 +246,8 @@ namespace UIFramework.Components
             ComputeAutoSizes();
 
             // resolve against the available size (star tracks share what is left)
-            float colSpacingTotal = columnSpacing * Math.Max(0, effectiveColumns.Count - 1);
-            float rowSpacingTotal = rowSpacing * Math.Max(0, effectiveRows.Count - 1);
+            float colSpacingTotal = ColSpace * Math.Max(0, effectiveColumns.Count - 1);
+            float rowSpacingTotal = RowSpace * Math.Max(0, effectiveRows.Count - 1);
             float[] colSizes = LayoutEngine.ResolveTracks(effectiveColumns, columnAuto, available.X - colSpacingTotal);
             float[] rowSizes = LayoutEngine.ResolveTracks(effectiveRows, rowAuto, available.Y - rowSpacingTotal);
             return new Vector2(Sum(colSizes) + colSpacingTotal, Sum(rowSizes) + rowSpacingTotal);
@@ -288,8 +302,8 @@ namespace UIFramework.Components
             {
                 ColumnCell(child, colCount, out int col, out int colSpan);
                 RowCell(child, rowCount, out int row, out int rowSpan);
-                float cellW = AllPixels(effectiveColumns, col, colSpan) ? PixelSpan(effectiveColumns, col, colSpan, columnSpacing) : available.X;
-                float cellH = AllPixels(effectiveRows, row, rowSpan) ? PixelSpan(effectiveRows, row, rowSpan, rowSpacing) : available.Y;
+                float cellW = AllPixels(effectiveColumns, col, colSpan) ? PixelSpan(effectiveColumns, col, colSpan, ColSpace) : available.X;
+                float cellH = AllPixels(effectiveRows, row, rowSpan) ? PixelSpan(effectiveRows, row, rowSpan, RowSpace) : available.Y;
                 child.Measure(new Vector2(cellW, cellH));
             }
         }
@@ -320,12 +334,12 @@ namespace UIFramework.Components
                 RowCell(child, rowCount, out int row, out int rowSpan);
                 if (colSpan > 1)
                 {
-                    DistributeSpan(effectiveColumns, columnAuto, col, colSpan, columnSpacing, child.DesiredSize.X);
+                    DistributeSpan(effectiveColumns, columnAuto, col, colSpan, ColSpace, child.DesiredSize.X);
                 }
 
                 if (rowSpan > 1)
                 {
-                    DistributeSpan(effectiveRows, rowAuto, row, rowSpan, rowSpacing, child.DesiredSize.Y);
+                    DistributeSpan(effectiveRows, rowAuto, row, rowSpan, RowSpace, child.DesiredSize.Y);
                 }
             }
         }
@@ -341,10 +355,12 @@ namespace UIFramework.Components
                 rowAuto = new float[rowCount];
             }
 
-            float colSpacingTotal = columnSpacing * Math.Max(0, colCount - 1);
-            float rowSpacingTotal = rowSpacing * Math.Max(0, rowCount - 1);
+            float colSpacingTotal = ColSpace * Math.Max(0, colCount - 1);
+            float rowSpacingTotal = RowSpace * Math.Max(0, rowCount - 1);
             float[] colSizes = LayoutEngine.ResolveTracks(effectiveColumns, columnAuto, Bounds.Width - colSpacingTotal);
             float[] rowSizes = LayoutEngine.ResolveTracks(effectiveRows, rowAuto, Bounds.Height - rowSpacingTotal);
+            columnSizes = colSizes;
+            this.rowSizes = rowSizes;
 
             foreach (UIElement child in Children)
             {
@@ -356,10 +372,10 @@ namespace UIFramework.Components
                 ColumnCell(child, colCount, out int col, out int colSpan);
                 RowCell(child, rowCount, out int row, out int rowSpan);
 
-                float x0 = LayoutEngine.TrackOffset(colSizes, col, columnSpacing);
-                float y0 = LayoutEngine.TrackOffset(rowSizes, row, rowSpacing);
-                float x1 = x0 + LayoutEngine.SpanSize(colSizes, col, colSpan, columnSpacing);
-                float y1 = y0 + LayoutEngine.SpanSize(rowSizes, row, rowSpan, rowSpacing);
+                float x0 = LayoutEngine.TrackOffset(colSizes, col, ColSpace);
+                float y0 = LayoutEngine.TrackOffset(rowSizes, row, RowSpace);
+                float x1 = x0 + LayoutEngine.SpanSize(colSizes, col, colSpan, ColSpace);
+                float y1 = y0 + LayoutEngine.SpanSize(rowSizes, row, rowSpan, RowSpace);
 
                 int left = Bounds.X + (int)Math.Round(x0);
                 int top = Bounds.Y + (int)Math.Round(y0);

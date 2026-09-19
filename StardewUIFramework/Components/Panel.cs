@@ -1,7 +1,6 @@
 using System;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
-using StardewValley;
 using UIFramework.Api;
 using UIFramework.Core;
 using UIFramework.Rendering;
@@ -42,8 +41,8 @@ namespace UIFramework.Components
             }
         }
 
-        /// <summary>Effective padding: the explicit value, or the style's padding when none was given.</summary>
-        private int EffectivePadding => padding > 0 ? padding : Style.Padding ?? 0;
+        /// <summary>Effective padding: the explicit value, or the style's padding when none was given, scaled by the theme.</summary>
+        private int EffectivePadding => Theme.Space(padding > 0 ? padding : Style.Padding ?? 0);
 
         // a bare panel (no box, no handlers) lets clicks fall through so empty space clears focus
         protected override bool IsHitTestVisible => drawBox || HasPointerHandlers;
@@ -85,10 +84,7 @@ namespace UIFramework.Components
         {
             if (drawBox)
             {
-                ResolvedStyle style = Style;
-                Texture2D texture = style.BoxTexture ?? Game1.menuTexture;
-                Rectangle source = style.BoxSource ?? (style.BoxTexture == null ? Theme.PanelBoxSource : texture.Bounds);
-                DrawHelper.Box(b, texture, source, Bounds, Color.White, style.BoxScale ?? 1f);
+                DrawHelper.StyledBox(b, Style, button: false, Bounds, Color.White);
             }
             DrawChildren(b);
         }

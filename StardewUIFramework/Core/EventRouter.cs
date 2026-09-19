@@ -37,8 +37,8 @@ namespace UIFramework.Core
                 return true;
             }
 
-            // 2. hit-test
-            UIElement? target = menu.Root.HitTest(x, y);
+            // 2. hit-test (elements drawn in the overlay pass sit above the tree)
+            UIElement? target = HitTest(x, y);
 
             // 3. focus + capture (left button only)
             if (button == UIMouseButton.Left)
@@ -102,7 +102,7 @@ namespace UIFramework.Core
                 return;
             }
 
-            UIElement? target = menu.Root.HitTest(x, y);
+            UIElement? target = HitTest(x, y);
             SetHovered(target);
             target?.HandleHoverMove(x, y);
         }
@@ -119,6 +119,18 @@ namespace UIFramework.Core
             menu.HoverStartMs = UIServices.NowMs();
             old?.HandleHoverLeave();
             target?.HandleHoverEnter();
+        }
+
+        /// <summary>Deepest element under the point: elements drawn in the overlay pass first, then the tree.</summary>
+        private UIElement? HitTest(int x, int y)
+        {
+            UIElement? overlay = menu.Overlay.ElementAt(x, y);
+            if (overlay != null)
+            {
+                return overlay;
+            }
+
+            return menu.Viewport.HitTest(x, y);
         }
 
         /// <summary>Scroll wheel: popup → hovered element chain → menu.</summary>

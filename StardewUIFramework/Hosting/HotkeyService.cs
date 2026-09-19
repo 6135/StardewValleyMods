@@ -28,6 +28,14 @@ namespace UIFramework.Hosting
             events.Input.ButtonsChanged += OnButtonsChanged;
         }
 
+        /// <summary>A service that is not wired to the game's input (headless tests).</summary>
+        internal HotkeyService()
+        {
+        }
+
+        /// <summary>Number of registered bindings (all consumers).</summary>
+        internal int Count => bindings.Count;
+
         /// <summary>Parse a keybind list string; returns false (and logs) if it is invalid.</summary>
         internal static bool TryParse(string? keybindList, ConsumerContext consumer, out KeybindList keys)
         {

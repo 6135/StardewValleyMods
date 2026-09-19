@@ -22,6 +22,7 @@ namespace UIFramework.Components
         private bool showScrollbar = true;
         private int contentHeight;
         private bool dragging;
+        private bool overflowing;
 
         internal ScrollView(string id, int viewportHeight) : base(id)
         {
@@ -31,6 +32,16 @@ namespace UIFramework.Components
         // ---------------------------------------------------------------------------------------------------------
         //  Properties
         // ---------------------------------------------------------------------------------------------------------
+
+        /// <summary>
+        /// Fit-content mode (the menu's own viewport around <see cref="UIMenu.Root"/>): the viewport is as tall as its
+        /// content up to the available height, the scrollbar column exists only while the content overflows, and
+        /// children are measured with the finite available height so star grids keep working.
+        /// </summary>
+        internal bool FitContent { get; init; }
+
+        /// <summary>Whether the content is taller than the viewport (valid after layout).</summary>
+        internal bool Overflowing => overflowing;
 
         /// <summary>Visible height in UI pixels; an explicit <see cref="UIElement.Height"/> overrides it.</summary>
         public int ViewportHeight
@@ -95,7 +106,7 @@ namespace UIFramework.Components
         /// <summary>Height of the viewport: the arranged height once laid out, otherwise the configured one.</summary>
         private int EffectiveViewportHeight => Bounds.Height > 0 ? Bounds.Height : Height ?? viewportHeight;
 
-        private int ReservedWidth => showScrollbar ? ScrollbarGadget.ReservedWidth : 0;
+        private int ReservedWidth => showScrollbar && (!FitContent || overflowing) ? ScrollbarGadget.ReservedWidth : 0;
 
         /// <summary>Whether the scrollbar is drawn / interactive.</summary>
         private bool ScrollbarVisible => showScrollbar && MaxScroll > 0;
@@ -127,6 +138,24 @@ namespace UIFramework.Components
             return true;
         }
 
+        /// <summary>Scroll the minimum amount that brings <paramref name="bounds"/> (absolute) fully into the viewport.</summary>
+        internal void ScrollIntoView(Rectangle bounds)
+        {
+            Rectangle viewport = ViewportRect;
+            if (bounds.Y < viewport.Y)
+            {
+                SetOffset(scrollOffset + bounds.Y - viewport.Y);
+            }
+            else if (bounds.Bottom > viewport.Bottom)
+            {
+                SetOffset(scrollOffset + bounds.Bottom - viewport.Bottom);
+            }
+            else
+            {
+                // already visible
+            }
+        }
+
         /// <summary>Scroll so the thumb's center follows the cursor (thumb drag / track click).</summary>
         private void SetOffsetFromY(int py)
         {
@@ -143,8 +172,35 @@ namespace UIFramework.Components
 
         protected override Vector2 MeasureCore(Vector2 available)
         {
+            if (FitContent)
+            {
+                return MeasureFitContent(available);
+            }
+
             int reserved = ReservedWidth;
-            var inner = new Vector2(Math.Max(0, available.X - reserved), float.PositiveInfinity);
+            Vector2 content = MeasureContent(new Vector2(Math.Max(0, available.X - reserved), float.PositiveInfinity));
+            return new Vector2(content.X + reserved, viewportHeight);
+        }
+
+        /// <summary>Fit-content: try without a scrollbar; if the content is taller than the available height, measure again beside one.</summary>
+        private Vector2 MeasureFitContent(Vector2 available)
+        {
+            overflowing = false;
+            Vector2 content = MeasureContent(available);
+            if (content.Y <= available.Y)
+            {
+                return content;
+            }
+
+            overflowing = true;
+            int reserved = ReservedWidth;
+            content = MeasureContent(new Vector2(Math.Max(0, available.X - reserved), Math.Max(available.Y, content.Y)));
+            return new Vector2(content.X + reserved, available.Y);
+        }
+
+        /// <summary>Measure the children stacked vertically inside <paramref name="inner"/>; records the content height.</summary>
+        private Vector2 MeasureContent(Vector2 inner)
+        {
             float w = 0, h = 0;
             foreach (UIElement child in Children)
             {
@@ -158,7 +214,7 @@ namespace UIFramework.Components
                 h += size.Y;
             }
             contentHeight = (int)Math.Ceiling(h);
-            return new Vector2(w + reserved, viewportHeight);
+            return new Vector2(w, h);
         }
 
         protected override void ArrangeCore()
