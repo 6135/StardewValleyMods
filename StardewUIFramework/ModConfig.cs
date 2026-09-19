@@ -32,9 +32,6 @@ namespace UIFramework
 
         // END THEME config
 
-        // BEGIN HUD config
-        // END HUD config
-
         // BEGIN TOOLS config
 
         /// <summary>Keybind list that toggles the in-game inspector (empty = none).</summary>

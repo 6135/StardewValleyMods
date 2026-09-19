@@ -437,7 +437,7 @@ namespace UIFramework.Api
 
         // RICHTEXT
         /// <summary>
-        /// Parse markup in <see cref="Text"/>: <c>[color=#RRGGBB]…[/color]</c> (or <c>red</c>, <c>green</c>, <c>blue</c>, <c>gray</c>),
+        /// Parse markup in <see cref="Text"/>: <c>[color=#RRGGBB]…[/color]</c> (or a name: <c>red</c>, <c>green</c>, <c>blue</c>, <c>gray</c>/<c>grey</c>, <c>white</c>, <c>black</c>, <c>yellow</c>, <c>orange</c>, <c>purple</c>),
         /// <c>[b]…[/b]</c>, <c>[icon=(O)24]</c>, <c>[link=name]…[/link]</c>; <c>[[</c> / <c>]]</c> are literal brackets. Default false.
         /// </summary>
         bool RichText { get; set; }
@@ -781,7 +781,7 @@ namespace UIFramework.Api
 
         // ---- Style / config ----
 
-        /// <summary>Tooltip delay for this consumer's menus (null-equivalent: pass a negative value to reset to the framework default).</summary>
+        /// <summary>Tooltip delay for this consumer's menus (pass a negative value to reset to the framework default).</summary>
         void SetTooltipDelay(int milliseconds);
         IUIStyle CreateStyle();
         void SetDefaultStyle(IUIStyle style);
@@ -955,7 +955,7 @@ namespace UIFramework.Api
         /// <summary>Drive <see cref="IUIElement.Enabled"/> from the computed's <see cref="IUIComputed.Flag"/>.</summary>
         void BindEnabled(IUIElement element, IUIComputed source);
 
-        /// <summary>Two-way: the input shows the signal and writes it when edited (the setter it was created with is still called).</summary>
+        /// <summary>Two-way: the input reads the signal instead of its original getter and writes it when edited (the setter it was created with is still called).</summary>
         void BindValue(IUITextInput input, IUISignal signal);
 
         /// <summary>Two-way: the input shows the signal's <see cref="IUISignal.Number"/> and writes it when edited.</summary>
@@ -1014,8 +1014,6 @@ namespace UIFramework.Api
 
         // END HUD members
 
-        // BEGIN TOOLS members
-        // END TOOLS members
     }
 
     // =================================================================================================================
@@ -1233,9 +1231,6 @@ namespace UIFramework.Api
         IUITooltip Clear();
     }
     // END RICHTEXT types
-
-    // BEGIN THEME types
-    // END THEME types
 
     // BEGIN DATAGRID types
 
@@ -1520,6 +1515,4 @@ namespace UIFramework.Api
 
     // END HUD types
 
-    // BEGIN TOOLS types
-    // END TOOLS types
 }

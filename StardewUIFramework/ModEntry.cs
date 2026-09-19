@@ -79,9 +79,6 @@ namespace UIFramework
             helper.ConsoleCommands.Add("ui_theme", "Switch the UI Framework theme: ui_theme <name> (no argument lists the themes).", OnThemeCommand);
             // END THEME entry
 
-            // BEGIN SIGNALS entry
-            // END SIGNALS entry
-
             // BEGIN HUD entry
             var layouts = new WindowLayoutStore(helper.Data);
             var hud = new HudService(helper, menus);
@@ -183,9 +180,6 @@ namespace UIFramework
             }
             Helper.Events.GameLoop.UpdateTicked += AddThemeOptionsWhenReady;
             // END THEME gmcm
-
-            // BEGIN HUD gmcm
-            // END HUD gmcm
 
             // BEGIN TOOLS gmcm
             gmcm.AddKeybindList(ModManifest,
