@@ -25,7 +25,6 @@ namespace ProfitCalculator.main.ui.framework
         public const string MenuId = "main";
 
         private static readonly int MenuWidth = 632 + (IClickableMenu.borderWidth * 2);
-        private static readonly int ButtonWidth = Game1.tileSize * 2;
         private static readonly int ButtonHeight = Game1.tileSize;
         private static readonly int ButtonSpacing = Game1.tileSize / 4;
 
@@ -168,12 +167,10 @@ namespace ProfitCalculator.main.ui.framework
 
             IUIButton calculate = api.AddButton(buttons, "calculate", () => helper.Translation.Get("calculate"), _ => Calculate());
             calculate.ClickSound = "select";
-            calculate.Width = ButtonWidth;
             calculate.Height = ButtonHeight;
 
             IUIButton reset = api.AddButton(buttons, "reset", () => helper.Translation.Get("reset"), _ => settings.Reset());
             reset.ClickSound = "dialogueCharacterClose";
-            reset.Width = ButtonWidth;
             reset.Height = ButtonHeight;
 
             menu.DefaultButton = calculate;

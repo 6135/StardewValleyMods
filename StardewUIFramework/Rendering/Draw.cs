@@ -116,7 +116,7 @@ namespace UIFramework.Rendering
             Text(b, text, font, new Vector2((int)x, rect.Y), color, shadow, scale);
         }
 
-        /// <summary>Smallest scale <see cref="FitText"/> shrinks to before it starts cutting characters.</summary>
+        /// <summary>Smallest scale <c>FitText</c> shrinks to before it starts cutting characters.</summary>
         private const float MinFitScale = 0.7f;
 
         /// <summary>
@@ -126,9 +126,18 @@ namespace UIFramework.Rendering
         /// </summary>
         internal static void FitText(SpriteBatch b, string text, UIFont font, Rectangle rect, Color color, bool shadow, float scale, UIAlign horizontal)
         {
+            FitText(b, text, font, rect, color, shadow, scale, horizontal, bold: false);
+        }
+
+        /// <summary>
+        /// <see cref="FitText(SpriteBatch, string, UIFont, Rectangle, Color, bool, float, UIAlign)"/> with an optional bold face
+        /// (<c>Utility.drawBoldText</c>). Returns the width the text was drawn with (0 when nothing was drawn).
+        /// </summary>
+        internal static float FitText(SpriteBatch b, string text, UIFont font, Rectangle rect, Color color, bool shadow, float scale, UIAlign horizontal, bool bold)
+        {
             if (string.IsNullOrEmpty(text) || rect.Width <= 0)
             {
-                return;
+                return 0;
             }
 
             float fullHeight = UIServices.Text.Measure(font, text, scale).Y;
@@ -139,9 +148,18 @@ namespace UIFramework.Rendering
             }
 
             string shown = UIServices.Text.Measure(font, text, fitScale).X > rect.Width ? Truncate(text, font, fitScale, rect.Width) : text;
-            float shownHeight = UIServices.Text.Measure(font, shown, fitScale).Y;
-            var line = new Rectangle(rect.X, rect.Y + (int)((fullHeight - shownHeight) / 2f), rect.Width, rect.Height);
-            TextInRect(b, shown, font, line, color, shadow, fitScale, horizontal);
+            Vector2 shownSize = UIServices.Text.Measure(font, shown, fitScale);
+            var line = new Rectangle(rect.X, rect.Y + (int)((fullHeight - shownSize.Y) / 2f), rect.Width, rect.Height);
+            if (bold)
+            {
+                float x = line.X + LayoutEngine.AlignOffset(horizontal == UIAlign.Stretch ? UIAlign.Start : horizontal, line.Width, (int)shownSize.X);
+                Utility.drawBoldText(b, shown, GameTextMeasurer.GetFont(font), new Vector2((int)x, line.Y), color, fitScale * Theme.FontScale);
+            }
+            else
+            {
+                TextInRect(b, shown, font, line, color, shadow, fitScale, horizontal);
+            }
+            return shownSize.X;
         }
 
         /// <summary>The longest prefix of <paramref name="text"/> + "..." that fits in <paramref name="width"/> (may be just "...").</summary>

@@ -687,18 +687,21 @@ namespace UIFramework.Components
             Vector2 size = UIServices.Text.Measure(UIFont.Small, text, 1f);
             int available = Math.Max(0, cell.Width - (2 * CellPadX) - arrowWidth);
             UIAlign align = column.Align == UIAlign.Stretch ? UIAlign.Start : column.Align;
-            int textX = cell.X + CellPadX + LayoutEngine.AlignOffset(align, available, (int)size.X);
             int textY = cell.Y + ((cell.Height - (int)size.Y) / 2);
+            float drawnWidth = Math.Min(size.X, available);
             if (text.Length > 0)
             {
-                Utility.drawBoldText(b, text, Game1.smallFont, new Vector2(textX, textY), style.TextColor, Theme.FontScale);
+                // titles wider than their column shrink, then truncate, instead of running into the next header
+                var textRect = new Rectangle(cell.X + CellPadX, textY, available, (int)size.Y);
+                drawnWidth = DrawHelper.FitText(b, text, UIFont.Small, textRect, style.TextColor, false, 1f, align, bold: true);
             }
 
             if (sorted)
             {
+                int textX = cell.X + CellPadX + LayoutEngine.AlignOffset(align, available, (int)drawnWidth);
                 Rectangle arrow = sortDescending ? Theme.ScrollDownArrow : Theme.ScrollUpArrow;
                 int arrowY = cell.Y + ((cell.Height - (arrow.Height * ArrowScale)) / 2);
-                b.Draw(Game1.mouseCursors, new Vector2(textX + size.X + ArrowGap, arrowY), arrow, Color.White, 0f, Vector2.Zero, ArrowScale, SpriteEffects.None, 0f);
+                b.Draw(Game1.mouseCursors, new Vector2(textX + drawnWidth + ArrowGap, arrowY), arrow, Color.White, 0f, Vector2.Zero, ArrowScale, SpriteEffects.None, 0f);
             }
         }
 

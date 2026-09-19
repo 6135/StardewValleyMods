@@ -25,7 +25,7 @@ namespace ProfitCalculator.main.ui.framework
         private const int VisibleRows = 8;
         private const int RowHeight = 56;
         private const int SpriteSize = 16;
-        private const int MenuWidth = 900;
+        private const int MenuWidth = 1000;
 
         private readonly IStardewUIApi api;
         private readonly IModHelper helper;
@@ -87,7 +87,7 @@ namespace ProfitCalculator.main.ui.framework
             name.Text = row => crops[row].Crop.DisplayName;
             name.BuildCell = BuildCropCell;
             name.Sortable = true;
-            name.MinWidth = 160;
+            name.MinWidth = 180;
 
             AddNumberColumn("profit", "total-p", row => crops[row].TotalProfit, true);
             AddNumberColumn("profit-day", "total-p-day", row => crops[row].ProfitPerDay, true);
@@ -101,7 +101,7 @@ namespace ProfitCalculator.main.ui.framework
 
         private void AddNumberColumn(string id, string headerKey, Func<int, double> value, bool money)
         {
-            IUIDataGridColumn column = grid.AddColumn(id, () => helper.Translation.Get(headerKey), money ? "130px" : "100px");
+            IUIDataGridColumn column = grid.AddColumn(id, () => helper.Translation.Get(headerKey), money ? "120px" : "90px");
             column.Text = row => money ? Money(value(row)) : value(row).ToString("0", CultureInfo.CurrentCulture);
             column.SortNumber = value;
             column.Sortable = true;
