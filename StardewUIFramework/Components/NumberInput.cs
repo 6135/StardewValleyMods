@@ -20,8 +20,8 @@ namespace UIFramework.Components
     {
         private static readonly CultureInfo Culture = CultureInfo.InvariantCulture;
 
-        private readonly Func<double>? getter;
-        private readonly Action<double>? setter;
+        private Func<double>? getter;
+        private Action<double>? setter;
         private double ownValue;
         private int decimals;
         private Texture2D? texture;
@@ -60,6 +60,18 @@ namespace UIFramework.Components
             {
                 SetBuffer(Trim(value));
             }
+        }
+
+        /// <summary>The value delegates the element currently reads / writes through (null = own value).</summary>
+        internal Func<double>? BoundGetter => getter;
+
+        internal Action<double>? BoundSetter => setter;
+
+        /// <summary>Swap the value delegates after construction (signal bindings); the own value is kept as the fallback.</summary>
+        internal void Rebind(Func<double>? newGetter, Action<double>? newSetter)
+        {
+            getter = newGetter;
+            setter = newSetter;
         }
 
         public double Min { get; set; }
@@ -514,7 +526,8 @@ namespace UIFramework.Components
                 return true;
             }
 
-            return TextBoxDrawing.IsTypingKey(e.Key);
+            // Ctrl shortcuts (Ctrl+Z undo in a form) are not typing: let them bubble
+            return !e.Ctrl && TextBoxDrawing.IsTypingKey(e.Key);
         }
     }
 }

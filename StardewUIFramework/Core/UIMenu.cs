@@ -240,6 +240,8 @@ namespace UIFramework.Core
             {
                 CancelButtonElement = null;
             }
+
+            Consumer.Bindings.Drop(element); // SIGNALS
         }
 
         public void InvalidateLayout() => MarkLayoutDirty();

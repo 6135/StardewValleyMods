@@ -142,8 +142,8 @@ namespace UIFramework.Components
     /// </summary>
     internal sealed class TextInput : UIElement, IUITextInput
     {
-        private readonly Func<string>? getter;
-        private readonly Action<string>? setter;
+        private Func<string>? getter;
+        private Action<string>? setter;
         private string ownValue = string.Empty;
         private Texture2D? texture;
 
@@ -161,6 +161,18 @@ namespace UIFramework.Components
         {
             get => getter != null ? Raise("get", getter, ownValue) ?? string.Empty : ownValue;
             set => Store(value ?? string.Empty);
+        }
+
+        /// <summary>The value delegates the element currently reads / writes through (null = own value).</summary>
+        internal Func<string>? BoundGetter => getter;
+
+        internal Action<string>? BoundSetter => setter;
+
+        /// <summary>Swap the value delegates after construction (signal bindings); the own value is kept as the fallback.</summary>
+        internal void Rebind(Func<string>? newGetter, Action<string>? newSetter)
+        {
+            getter = newGetter;
+            setter = newSetter;
         }
 
         /// <summary>Text shown (dimmed) while the value is empty and the box is not focused.</summary>
@@ -388,8 +400,9 @@ namespace UIFramework.Components
                 Raise("OnSubmit", () => cb(this));
                 return true;
             }
-            // typing keys are consumed so the game's menu button (E) does not close the menu; Tab / Escape / arrows fall through
-            return TextBoxDrawing.IsTypingKey(e.Key);
+            // typing keys are consumed so the game's menu button (E) does not close the menu; Tab / Escape / arrows and
+            // Ctrl shortcuts (Ctrl+Z undo in a form) fall through
+            return !e.Ctrl && TextBoxDrawing.IsTypingKey(e.Key);
         }
     }
 }

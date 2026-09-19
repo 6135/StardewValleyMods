@@ -737,5 +737,203 @@ namespace UIFramework.Api
         void SetTooltipDelay(int milliseconds);
         IUIStyle CreateStyle();
         void SetDefaultStyle(IUIStyle style);
+
+        // ---- v1.1 additions (additive; consumers may copy a subset) ----
+
+        // BEGIN SLOTS members
+        // END SLOTS members
+
+        // BEGIN COMPOSITES members
+        // END COMPOSITES members
+
+        // BEGIN RICHTEXT members
+        // END RICHTEXT members
+
+        // BEGIN THEME members
+        // END THEME members
+
+        // BEGIN DATAGRID members
+        // END DATAGRID members
+
+        // BEGIN SIGNALS members
+
+        // ---- Signals (architecture.md §16.2): reactive values with automatic dependency tracking ----
+
+        /// <summary>Create a signal holding a string (it can also be read / written as a number or a flag).</summary>
+        IUISignal Signal(string initial);
+
+        /// <summary>Create a signal holding a number.</summary>
+        IUISignal SignalNumber(double initial);
+
+        /// <summary>Create a signal holding a flag.</summary>
+        IUISignal SignalBool(bool initial);
+
+        /// <summary>
+        /// Create a lazy, cached value derived from other signals / computeds. Every signal read while
+        /// <paramref name="compute"/> runs becomes a dependency; the computed is invalidated when any of them changes.
+        /// </summary>
+        IUIComputed Computed(Func<string> compute);
+
+        /// <summary>Numeric variant of <see cref="Computed"/>.</summary>
+        IUIComputed ComputedNumber(Func<double> compute);
+
+        /// <summary>Boolean variant of <see cref="Computed"/>.</summary>
+        IUIComputed ComputedBool(Func<bool> compute);
+
+        /// <summary>Show <paramref name="source"/> in the label; the label only re-flows when the computed's version changes.</summary>
+        void BindText(IUILabel label, IUIComputed source);
+
+        /// <summary>Show <paramref name="source"/> in the label; the label only re-flows when the signal's version changes.</summary>
+        void BindText(IUILabel label, IUISignal source);
+
+        /// <summary>Drive <see cref="IUIElement.Visible"/> from the computed's <see cref="IUIComputed.Flag"/>.</summary>
+        void BindVisible(IUIElement element, IUIComputed source);
+
+        /// <summary>Drive <see cref="IUIElement.Enabled"/> from the computed's <see cref="IUIComputed.Flag"/>.</summary>
+        void BindEnabled(IUIElement element, IUIComputed source);
+
+        /// <summary>Two-way: the input shows the signal and writes it when edited (the setter it was created with is still called).</summary>
+        void BindValue(IUITextInput input, IUISignal signal);
+
+        /// <summary>Two-way: the input shows the signal's <see cref="IUISignal.Number"/> and writes it when edited.</summary>
+        void BindValue(IUINumberInput input, IUISignal signal);
+
+        /// <summary>Two-way: the checkbox shows the signal's <see cref="IUISignal.Flag"/> and writes it when toggled.</summary>
+        void BindValue(IUICheckbox input, IUISignal signal);
+
+        /// <summary>Two-way: the slider shows the signal's <see cref="IUISignal.Number"/> and writes it when moved.</summary>
+        void BindValue(IUISlider input, IUISignal signal);
+
+        /// <summary>Two-way: the dropdown selects the choice equal to the signal's <see cref="IUISignal.Value"/> and writes it when changed.</summary>
+        void BindValue(IUIDropdown input, IUISignal signal);
+
+        /// <summary>Drop every binding on <paramref name="element"/> (restoring the original value delegates). Bindings are also dropped when the element leaves its menu.</summary>
+        void Unbind(IUIElement element);
+
+        // ---- Auto-forms (architecture.md §16.2): a Save / Cancel / Undo / Redo form generated from a plain object ----
+
+        /// <summary>
+        /// Generate a two-column form from the public read / write properties of <paramref name="model"/> (in declaration
+        /// order): <c>bool</c> → checkbox, numbers → number input, <c>string</c> → text input (or dropdown with a
+        /// <c>[Choices]</c> attribute), enums → dropdown; other types are skipped. Attributes are matched by name so you
+        /// can declare your own: <c>Range(min, max)</c>, <c>Choices(string[] Values / string Csv)</c>, <c>Section(title)</c>,
+        /// <c>Tooltip(text)</c>, <c>DisplayName</c> / <c>Display(Name)</c>, <c>ReadOnly</c>. A method <c>Validate&lt;Property&gt;()</c>
+        /// returning <c>bool</c> or an error <c>string</c> (optionally taking the prospective value) runs before each write.
+        /// </summary>
+        IUIForm AddForm(IUIContainer parent, string id, object model);
+
+        // END SIGNALS members
+
+        // BEGIN HUD members
+        // END HUD members
+
+        // BEGIN TOOLS members
+        // END TOOLS members
     }
+
+    // =================================================================================================================
+    //  v1.1 types (one region per feature; see architecture.md §16)
+    // =================================================================================================================
+
+    // BEGIN SLOTS types
+    // END SLOTS types
+
+    // BEGIN COMPOSITES types
+    // END COMPOSITES types
+
+    // BEGIN RICHTEXT types
+    // END RICHTEXT types
+
+    // BEGIN THEME types
+    // END THEME types
+
+    // BEGIN DATAGRID types
+    // END DATAGRID types
+
+    // BEGIN SIGNALS types
+
+    /// <summary>
+    /// A reactive value. One stored value is exposed through three typed views; the setter used last decides the
+    /// "kind" and the other views convert from it (a number reads as its invariant text and as <c>true</c> when
+    /// non-zero, text reads as a number when it parses, a flag reads as <c>True</c> / <c>False</c> and 1 / 0).
+    /// Reading a signal while a <see cref="IUIComputed"/> is computing registers it as a dependency.
+    /// </summary>
+    public interface IUISignal
+    {
+        string Value { get; set; }
+        double Number { get; set; }
+        bool Flag { get; set; }
+
+        /// <summary>Incremented on every change; bound elements re-render only when it moves.</summary>
+        int Version { get; }
+
+        /// <summary>Run <paramref name="handler"/> after the value changed (once per change, after the write completed).</summary>
+        void Subscribe(Action handler);
+
+        void Unsubscribe(Action handler);
+    }
+
+    /// <summary>
+    /// A value derived from signals (and other computeds) with automatic dependency tracking. Lazy and cached: it is
+    /// recomputed on the next read after a dependency changed. A dependency cycle is logged and the stale value kept.
+    /// </summary>
+    public interface IUIComputed
+    {
+        string Value { get; }
+        double Number { get; }
+        bool Flag { get; }
+
+        /// <summary>Incremented whenever the computed is invalidated by a dependency.</summary>
+        int Version { get; }
+
+        /// <summary>Run <paramref name="handler"/> after the computed was invalidated (once per batch of changes).</summary>
+        void Subscribe(Action handler);
+
+        void Unsubscribe(Action handler);
+    }
+
+    /// <summary>
+    /// A form generated by <see cref="IStardewUIApi.AddForm"/>. Edits write straight into the model; the form keeps a
+    /// snapshot for <see cref="Cancel"/> and an undo / redo history of every committed change. Ctrl+Z / Ctrl+Y while a
+    /// field is focused undo / redo.
+    /// </summary>
+    public interface IUIForm : IUIContainer
+    {
+        /// <summary>True while any property differs from the last <see cref="Save"/> (or the initial snapshot).</summary>
+        bool IsDirty { get; }
+
+        bool CanUndo { get; }
+        bool CanRedo { get; }
+        void Undo();
+        void Redo();
+
+        /// <summary>Accept the current values: clears the dirty state and the history, raises <see cref="OnSaved"/>.</summary>
+        void Save();
+
+        /// <summary>Restore the snapshot into the model, refresh the controls, raise <see cref="OnCancelled"/>.</summary>
+        void Cancel();
+
+        /// <summary>Re-read the model into the controls (after changing it from code) and clear validation messages.</summary>
+        void Refresh();
+
+        Action<IUIForm> OnSaved { get; set; }
+        Action<IUIForm> OnCancelled { get; set; }
+
+        /// <summary>Raised after every committed edit, undo, redo or cancel.</summary>
+        Action<IUIForm> OnChanged { get; set; }
+
+        /// <summary>Show the Save / Cancel / Undo / Redo button row (default true).</summary>
+        bool ShowButtons { get; set; }
+
+        /// <summary>The input element generated for a property, or null.</summary>
+        IUIElement FieldFor(string propertyName);
+    }
+
+    // END SIGNALS types
+
+    // BEGIN HUD types
+    // END HUD types
+
+    // BEGIN TOOLS types
+    // END TOOLS types
 }

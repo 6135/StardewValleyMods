@@ -38,6 +38,7 @@ namespace UIFramework.Hosting
             if (menusByConsumer.TryGetValue(consumerId, out var menus) && menus.Remove(menuId, out UIMenu? menu))
             {
                 menu.Close();
+                menu.Consumer.Bindings.DropMenu(menu); // SIGNALS
             }
         }
 

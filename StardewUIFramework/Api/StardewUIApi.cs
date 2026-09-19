@@ -283,6 +283,123 @@ namespace UIFramework.Api
         // END DATAGRID facade
 
         // BEGIN SIGNALS facade
+
+        public IUISignal Signal(string initial) => new Signal(consumer, ReactiveValue.FromText(initial));
+
+        public IUISignal SignalNumber(double initial) => new Signal(consumer, ReactiveValue.FromNumber(initial));
+
+        public IUISignal SignalBool(bool initial) => new Signal(consumer, ReactiveValue.FromFlag(initial));
+
+        public IUIComputed Computed(Func<string> compute)
+        {
+            ArgumentNullException.ThrowIfNull(compute);
+
+            return new Computed(consumer, () => ReactiveValue.FromText(compute()), ReactiveValue.FromText(string.Empty));
+        }
+
+        public IUIComputed ComputedNumber(Func<double> compute)
+        {
+            ArgumentNullException.ThrowIfNull(compute);
+
+            return new Computed(consumer, () => ReactiveValue.FromNumber(compute()), ReactiveValue.FromNumber(0));
+        }
+
+        public IUIComputed ComputedBool(Func<bool> compute)
+        {
+            ArgumentNullException.ThrowIfNull(compute);
+
+            return new Computed(consumer, () => ReactiveValue.FromFlag(compute()), ReactiveValue.FromFlag(false));
+        }
+
+        public void BindText(IUILabel label, IUIComputed source) => BindText(label, RequireReactive(source));
+
+        public void BindText(IUILabel label, IUISignal source) => BindText(label, RequireReactive(source));
+
+        private void BindText(IUILabel label, Reactive source)
+        {
+            Label target = RequireElement<Label>(label);
+            consumer.Bindings.Add(target, SignalBindings.TextKind, new TextBinding(target, source));
+        }
+
+        public void BindVisible(IUIElement element, IUIComputed source)
+        {
+            UIElement target = RequireElement<UIElement>(element);
+            consumer.Bindings.Add(target, SignalBindings.VisibleKind, new FlagBinding(target, RequireReactive(source), (e, flag) => e.Visible = flag));
+        }
+
+        public void BindEnabled(IUIElement element, IUIComputed source)
+        {
+            UIElement target = RequireElement<UIElement>(element);
+            consumer.Bindings.Add(target, SignalBindings.EnabledKind, new FlagBinding(target, RequireReactive(source), (e, flag) => e.Enabled = flag));
+        }
+
+        public void BindValue(IUITextInput input, IUISignal signal)
+        {
+            TextInput target = RequireElement<TextInput>(input);
+            Signal source = RequireSignal(signal);
+            BindValue(target, new ValueBinding<string>(target.BoundGetter, target.BoundSetter, target.Rebind, () => source.Value, v => source.Value = v));
+        }
+
+        public void BindValue(IUINumberInput input, IUISignal signal)
+        {
+            NumberInput target = RequireElement<NumberInput>(input);
+            Signal source = RequireSignal(signal);
+            BindValue(target, new ValueBinding<double>(target.BoundGetter, target.BoundSetter, target.Rebind, () => source.Number, v => source.Number = v));
+        }
+
+        public void BindValue(IUICheckbox input, IUISignal signal)
+        {
+            Checkbox target = RequireElement<Checkbox>(input);
+            Signal source = RequireSignal(signal);
+            BindValue(target, new ValueBinding<bool>(target.BoundGetter, target.BoundSetter, target.Rebind, () => source.Flag, v => source.Flag = v));
+        }
+
+        public void BindValue(IUISlider input, IUISignal signal)
+        {
+            Slider target = RequireElement<Slider>(input);
+            Signal source = RequireSignal(signal);
+            BindValue(target, new ValueBinding<double>(target.BoundGetter, target.BoundSetter, target.Rebind, () => source.Number, v => source.Number = v));
+        }
+
+        public void BindValue(IUIDropdown input, IUISignal signal)
+        {
+            Dropdown target = RequireElement<Dropdown>(input);
+            Signal source = RequireSignal(signal);
+            BindValue(target, new ValueBinding<string>(target.BoundGetter, target.BoundSetter, target.Rebind, () => source.Value, v => source.Value = v));
+        }
+
+        private void BindValue(UIElement target, SignalBinding binding) => consumer.Bindings.Add(target, SignalBindings.ValueKind, binding);
+
+        public void Unbind(IUIElement element) => consumer.Bindings.Drop(RequireElement<UIElement>(element));
+
+        public IUIForm AddForm(IUIContainer parent, string id, object model)
+        {
+            ArgumentNullException.ThrowIfNull(model);
+
+            return Attach(parent, new AutoForm(RequireId(id), model, consumer));
+        }
+
+        private static T RequireElement<T>(IUIElement element) where T : UIElement
+        {
+            ArgumentNullException.ThrowIfNull(element);
+
+            return element as T ?? throw new ArgumentException("The element was not created by this framework (or is not the expected kind).", nameof(element));
+        }
+
+        private static Reactive RequireReactive(object source)
+        {
+            ArgumentNullException.ThrowIfNull(source);
+
+            return source as Reactive ?? throw new ArgumentException("The signal / computed was not created by this framework.", nameof(source));
+        }
+
+        private static Signal RequireSignal(IUISignal signal)
+        {
+            ArgumentNullException.ThrowIfNull(signal);
+
+            return signal as Signal ?? throw new ArgumentException("The signal was not created by this framework.", nameof(signal));
+        }
+
         // END SIGNALS facade
 
         // BEGIN HUD facade

@@ -34,8 +34,8 @@ namespace UIFramework.Components
 
         private readonly Func<string[]>? choicesFunc;
         private readonly Func<string[]>? labelsFunc;
-        private readonly Func<string>? getter;
-        private readonly Action<string>? setter;
+        private Func<string>? getter;
+        private Action<string>? setter;
         private string[] choices = Array.Empty<string>();
         private string[] labels = Array.Empty<string>();
         private int ownIndex = -1;
@@ -89,6 +89,18 @@ namespace UIFramework.Components
                     ownIndex = -1;
                 }
             }
+        }
+
+        /// <summary>The value delegates the element currently reads / writes through (null = own value).</summary>
+        internal Func<string>? BoundGetter => getter;
+
+        internal Action<string>? BoundSetter => setter;
+
+        /// <summary>Swap the value delegates after construction (signal bindings); the own value is kept as the fallback.</summary>
+        internal void Rebind(Func<string>? newGetter, Action<string>? newSetter)
+        {
+            getter = newGetter;
+            setter = newSetter;
         }
 
         public string SelectedValue
