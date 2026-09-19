@@ -19,5 +19,8 @@ namespace UIFramework.Api
         public bool DrawBox { get; set; } = true;
         public int Padding { get; set; }
         public bool CloseOnEscape { get; set; } = true;
+
+        // HUD
+        public bool PlayerLayout { get; set; } = true;
     }
 }

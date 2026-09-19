@@ -31,6 +31,8 @@ namespace UIFramework.Core
         private int x, y, padding;
         private bool drawBox = true;
         private bool showCloseButton = true;
+        private bool collapsed;
+        private Point anchorOffset;
         private Func<string>? title;
 
         internal UIMenu(string id, ConsumerContext consumer, MenuRegistry registry)
@@ -179,6 +181,49 @@ namespace UIFramework.Core
 
         public bool CloseOnEscape { get; set; } = true;
 
+        // HUD: player-owned layout
+        public bool PlayerLayout { get; set; } = true;
+
+        /// <summary>Collapsed by the player: only the window's title strip is drawn and the tree takes no input.</summary>
+        internal bool Collapsed
+        {
+            get => collapsed;
+            set
+            {
+                if (collapsed == value)
+                {
+                    return;
+                }
+
+                collapsed = value;
+                Focus.ClearFocus();
+                Overlay.CloseAll();
+                MarkLayoutDirty();
+            }
+        }
+
+        /// <summary>Offset added to the anchor position for non-explicit anchors (HUD widgets).</summary>
+        internal Point AnchorOffset
+        {
+            get => anchorOffset;
+            set
+            {
+                anchorOffset = value;
+                MarkLayoutDirty();
+            }
+        }
+
+        /// <summary>The consumer's own placement, captured before a player layout was applied (null = none applied yet).</summary>
+        internal WindowLayout? ConsumerLayout { get; set; }
+
+        /// <summary>Whether the player may resize the window: both dimensions are fixed.</summary>
+        internal bool IsResizable => width.HasValue && height.HasValue;
+
+        /// <summary>Smallest size the player may resize to: the content's desired size plus chrome.</summary>
+        internal Point MinimumSize => new(
+            (int)Math.Ceiling(Root.DesiredSize.X) + InsetLeft + InsetRight,
+            (int)Math.Ceiling(Root.DesiredSize.Y) + InsetTop + InsetBottom);
+
         public Rectangle Bounds { get; private set; }
 
         internal Button? DefaultButtonElement { get; set; }
@@ -275,13 +320,17 @@ namespace UIFramework.Core
             Root.Measure(new Vector2(Math.Max(0, availW), Math.Max(0, availH)));
 
             int w = width ?? (int)Math.Ceiling(Root.DesiredSize.X) + insetW;
-            int h = height ?? (int)Math.Ceiling(Root.DesiredSize.Y) + insetH;
+            int h = collapsed ? insetH : height ?? (int)Math.Ceiling(Root.DesiredSize.Y) + insetH;
             w = Math.Clamp(w, Math.Min(insetW, vp.X), Math.Max(vp.X, 1));
             h = Math.Clamp(h, Math.Min(insetH, vp.Y), Math.Max(vp.Y, 1));
 
             Point position = ResolvePosition(vp, w, h);
             Bounds = new Rectangle(position.X, position.Y, w, h);
-            Root.Arrange(new Rectangle(position.X + InsetLeft, position.Y + InsetTop, Math.Max(0, w - insetW), Math.Max(0, h - insetH)));
+            if (!collapsed)
+            {
+                // a collapsed window keeps the last arrangement; it is re-arranged when expanded
+                Root.Arrange(new Rectangle(position.X + InsetLeft, position.Y + InsetTop, Math.Max(0, w - insetW), Math.Max(0, h - insetH)));
+            }
             LayoutDirty = false;
 
             Host?.SyncBounds();
@@ -292,8 +341,8 @@ namespace UIFramework.Core
         private Point ResolvePosition(Point vp, int w, int h)
         {
             int minY = title != null && drawBox ? Math.Min(TitleReserve, Math.Max(0, vp.Y - h)) : 0;
-            int px = anchor == UIAnchor.Explicit ? x : AnchorX(vp.X, w);
-            int py = anchor == UIAnchor.Explicit ? y : AnchorY(vp.Y, h, minY);
+            int px = anchor == UIAnchor.Explicit ? x : AnchorX(vp.X, w) + anchorOffset.X;
+            int py = anchor == UIAnchor.Explicit ? y : AnchorY(vp.Y, h, minY) + anchorOffset.Y;
             return new Point(
                 Math.Clamp(px, 0, Math.Max(0, vp.X - w)),
                 Math.Clamp(py, minY, Math.Max(minY, vp.Y - h)));
@@ -319,6 +368,16 @@ namespace UIFramework.Core
                 UIAnchor.BottomLeft or UIAnchor.BottomCenter or UIAnchor.BottomRight => viewportHeight - h,
                 _ => (viewportHeight - h) / 2
             };
+        }
+
+        /// <summary>The title banner plus the top border of the box: the strip the player drags the window by (HUD).</summary>
+        internal Rectangle TitleStrip
+        {
+            get
+            {
+                int banner = title != null && drawBox ? TitleReserve : 0;
+                return new Rectangle(Bounds.X, Bounds.Y - banner, Bounds.Width, banner + InsetTop);
+            }
         }
 
         /// <summary>Absolute content rectangle (inside chrome and padding).</summary>
@@ -379,9 +438,16 @@ namespace UIFramework.Core
                 }
             }
 
-            Root.Draw(b);
-            Overlay.Draw(b);
-            DrawTooltip(b);
+            if (collapsed)
+            {
+                Overlay.DiscardFrame();
+            }
+            else
+            {
+                Root.Draw(b);
+                Overlay.Draw(b);
+                DrawTooltip(b);
+            }
 
             if (UIServices.Config.DebugOverlay)
             {
@@ -389,7 +455,8 @@ namespace UIFramework.Core
             }
         }
 
-        private void DrawTooltip(SpriteBatch b)
+        /// <summary>Draw the hovered element's tooltip once the delay elapsed (also used by HUD widgets).</summary>
+        internal void DrawTooltip(SpriteBatch b)
         {
             UIElement? hovered = Hovered;
             if (hovered == null || (hovered.Tooltip == null && hovered.RichTooltip == null) || Overlay.HasPopups)
