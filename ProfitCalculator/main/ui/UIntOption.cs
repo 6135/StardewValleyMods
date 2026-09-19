@@ -16,14 +16,14 @@ namespace ProfitCalculator.main.ui
         /// <summary> The minimum value of the uintbox. </summary>
         protected readonly Func<uint> Min;
 
-        /// <summary> Whether the uintbox should clamp the value to the min and max. </summary>
-        protected readonly bool EnableClamping;
+        /// <summary> Whether the uintbox should clamp the value to the min and max. Enabled by default. </summary>
+        public bool EnableClamping { get; init; } = true;
 
         /// <summary> Whether the option is Valid. </summary>
         public bool IsValid => int.TryParse(ValueGetter(), out _);
 
         /// <summary>
-        /// Creates a new uint option. Clamping is enabled by default.
+        /// Creates a new uint option. Clamping is enabled by default, see <see cref="EnableClamping"/>.
         /// </summary>
         /// <param name="x"> The x position of the option. </param>
         /// <param name="y"> The y position of the option. </param>
@@ -46,36 +46,6 @@ namespace ProfitCalculator.main.ui
         {
             Max = max;
             Min = min;
-            EnableClamping = true;
-        }
-
-        /// <summary>
-        /// Creates a new uint option. Clamping is not by default.
-        /// </summary>
-        /// <param name="x"> The x position of the option. </param>
-        /// <param name="y"> The y position of the option. </param>
-        /// <param name="name"> The name of the option. </param>
-        /// <param name="label"> The label of the option. </param>
-        /// <param name="valueGetter"> The function to get the value of the option. </param>
-        /// <param name="max"> The function to get the maximum value of the option. </param>
-        /// <param name="min"> The function to get the minimum value of the option. </param>
-        /// <param name="valueSetter"> The function to set the value of the option. </param>
-        /// <param name="enableClamping"> Whether the uintbox should clamp the value to the min and max. </param>
-        public UIntOption(
-            int x,
-            int y,
-            Func<string> name,
-            Func<string> label,
-            Func<uint> valueGetter,
-            Func<uint> max,
-            Func<uint> min,
-            Action<string> valueSetter,
-            bool enableClamping
-        ) : base(x, y, name, label, () => valueGetter().ToString(), valueSetter)
-        {
-            Max = max;
-            Min = min;
-            EnableClamping = enableClamping;
         }
 
         /// <inheritdoc />
@@ -94,7 +64,9 @@ namespace ProfitCalculator.main.ui
                 }
             }
             if (!valid)
+            {
                 return;
+            }
             //if the parsed string equals to utin 0 then set to 0, this should allow for easy clearing of the uintbox by typing 0 and being able to type a new number after that
             if (uint.Parse(ValueGetter() + str) == 0)
             {
@@ -121,9 +93,13 @@ namespace ProfitCalculator.main.ui
                 Game1.playSound("tinyWhip");
                 //if length is 1 then set to 0 or if multiple 0s then set to 0, else remove last char
                 if (ValueGetter().Length == 1 || ValueGetter().All(c => c == '0'))
+                {
                     ValueSetter("0");
+                }
                 else
+                {
                     ValueSetter(ValueGetter()[..^1]);
+                }
             }
         }
 
@@ -140,6 +116,10 @@ namespace ProfitCalculator.main.ui
                 uint val = Math.Clamp(uint.Parse(ValueGetter()) - 1, Min(), Max());
                 ValueSetter(val.ToString());
             }
+            else
+            {
+                // other keys are not handled
+            }
         }
 
         /// <inheritdoc />
@@ -147,6 +127,7 @@ namespace ProfitCalculator.main.ui
         {
             base.BeforeReceiveLeftClick(x, y);
             if (!Selected && EnableClamping)
+            {
                 ValueSetter(
                     Math.Clamp(
                         uint.Parse(ValueGetter()),
@@ -154,6 +135,7 @@ namespace ProfitCalculator.main.ui
                         Max()
                     ).ToString()
                 );
+            }
         }
     }
 }

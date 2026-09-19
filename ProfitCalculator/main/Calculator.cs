@@ -19,7 +19,7 @@ namespace ProfitCalculator.main
         /// <summary>
         /// List of all crops in the game
         /// </summary>
-        public Dictionary<string, PlantData> Crops { get; set; }
+        public Dictionary<string, PlantData> Crops { get; }
 
         /// <summary>
         /// Day of the Season
@@ -100,31 +100,22 @@ namespace ProfitCalculator.main
         /// <summary>
         /// Sets the settings for the calculator to use when calculating profits.
         /// </summary>
-        /// <param name="day"><see cref="Day"/></param>
-        /// <param name="maxDay"><see cref="MaxDay"/></param>
-        /// <param name="minDay"><see cref="MinDay"/></param>
-        /// <param name="_season"><see cref="StardewValley.Season"/></param>
-        /// <param name="produceType"><see cref="ProduceType"/></param>
-        /// <param name="fertilizerQuality"> <see cref="FertilizerQuality"/></param>
-        /// <param name="payForSeeds"> <see cref="PayForSeeds"/></param>
-        /// <param name="payForFertilizer"> <see cref="PayForFertilizer"/></param>
-        /// <param name="maxMoney"> <see cref="MaxMoney"/></param>
-        /// <param name="useBaseStats"> <see cref="UseBaseStats"/></param>
-        /// <param name="crossSeason"> <see cref="CrossSeason"/></param>
-        public void SetSettings(uint day, uint maxDay, uint minDay, UtilsSeason _season, ProduceType produceType, FertilizerQuality fertilizerQuality, bool payForSeeds, bool payForFertilizer, uint maxMoney, bool useBaseStats, bool crossSeason)
+        /// <param name="settings"> The settings to calculate with. </param>
+        /// <param name="crossSeason"><see cref="CrossSeason"/></param>
+        public void SetSettings(ProfitCalculatorSettings settings, bool crossSeason)
         {
-            Day = day;
-            MaxDay = maxDay;
-            MinDay = minDay;
-            Season = _season;
-            ProduceType = produceType;
-            FertilizerQuality = fertilizerQuality;
-            PayForSeeds = payForSeeds;
-            PayForFertilizer = payForFertilizer;
-            MaxMoney = maxMoney;
-            UseBaseStats = useBaseStats;
+            Day = settings.Day;
+            MaxDay = settings.MaxDay;
+            MinDay = settings.MinDay;
+            Season = settings.Season;
+            ProduceType = settings.ProduceType;
+            FertilizerQuality = settings.FertilizerQuality;
+            PayForSeeds = settings.PayForSeeds;
+            PayForFertilizer = settings.PayForFertilizer;
+            MaxMoney = settings.MaxMoney;
+            UseBaseStats = settings.UseBaseStats;
             CrossSeason = crossSeason;
-            if (useBaseStats)
+            if (settings.UseBaseStats)
             {
                 FarmingLevel = 0;
             }
@@ -135,19 +126,10 @@ namespace ProfitCalculator.main
         }
 
         /// <summary>
-        /// Sets the settings for the calculator to use when calculating profits.
+        /// Sets the settings for the calculator to use when calculating profits, with <see cref="CrossSeason"/> enabled.
         /// </summary>
-        /// <param name="day"><see cref="Day"/></param>
-        /// <param name="maxDay"><see cref="MaxDay"/></param>
-        /// <param name="minDay"><see cref="MinDay"/></param>
-        /// <param name="_season"><see cref="StardewValley.Season"/></param>
-        /// <param name="produceType"><see cref="ProduceType"/></param>
-        /// <param name="fertilizerQuality"> <see cref="FertilizerQuality"/></param>
-        /// <param name="payForSeeds"> <see cref="PayForSeeds"/></param>
-        /// <param name="payForFertilizer"> <see cref="PayForFertilizer"/></param>
-        /// <param name="maxMoney"> <seex cref="MaxMoney"/></param>
-        /// <param name="useBaseStats"> <see cref="UseBaseStats"/></param>
-        public void SetSettings(uint day, uint maxDay, uint minDay, UtilsSeason _season, ProduceType produceType, FertilizerQuality fertilizerQuality, bool payForSeeds, bool payForFertilizer, uint maxMoney, bool useBaseStats) => SetSettings(day, maxDay, minDay, _season, produceType, fertilizerQuality, payForSeeds, payForFertilizer, maxMoney, useBaseStats, true);
+        /// <param name="settings"> The settings to calculate with. </param>
+        public void SetSettings(ProfitCalculatorSettings settings) => SetSettings(settings, true);
 
         /// <summary>
         /// Clears the list of crops.
@@ -161,7 +143,7 @@ namespace ProfitCalculator.main
         /// Retrieves the list of crops as an ordered list by profit.
         /// </summary>
         /// <returns> List of crops ordered by profit </returns>
-        public List<PlantData> RetrieveCropsAsOrderderList()
+        public IReadOnlyList<PlantData> RetrieveCropsAsOrderderList()
         {
             // sort crops by profit
             // return list
@@ -178,7 +160,7 @@ namespace ProfitCalculator.main
         /// Retrieves the list of <see cref="CropInfo"/> as an ordered list by profit.
         /// </summary>
         /// <returns> List of <see cref="CropInfo"/> ordered by profit </returns>
-        public List<CropInfo> RetrieveCropInfos()
+        public IReadOnlyList<CropInfo> RetrieveCropInfos()
         {
             List<CropInfo> cropInfos = new();
             foreach (PlantData crop in Crops.Values)
@@ -197,36 +179,13 @@ namespace ProfitCalculator.main
         }
 
         /// <summary>
-        /// Retrieves the <see cref="CropInfo"/> for a specific crop. Uses information obtained by calling internal functions to calculate the values and build the object.
+        /// Retrieves the <see cref="CropInfo"/> for a specific crop, calculated with the current settings.
         /// </summary>
         /// <param name="crop"> CropDataExpanded to retrieve <see cref="CropInfo"/> for </param>
         /// <returns> <see cref="CropInfo"/> for the crop </returns>
         private CropInfo RetrieveCropInfo(PlantData crop)
         {
-            double totalProfit = crop.TotalCropProfit();
-            double profitPerDay = crop.TotalCropProfitPerDay();
-            double totalSeedLoss = crop.TotalSeedsCost();
-            double seedLossPerDay = crop.TotalSeedsCostPerDay();
-            double totalFertilizerLoss = crop.TotalFertilizerCost();
-            double fertilizerLossPerDay = crop.TotalFertilzerCostPerDay();
-            ProduceType produceType = ProduceType;
-            int duration = crop.TotalAvailableDays(Season, (int)Day);
-            int totalHarvests = crop.TotalHarvestsWithRemainingDays(Season, FertilizerQuality, (int)Day);
-
-            float averageGrowthSpeedValueForCrop = crop.GetAverageGrowthSpeedValueForCrop(FertilizerQuality);
-            int daysToRemove = (int)Math.Ceiling((float)crop.Days * averageGrowthSpeedValueForCrop);
-            int growingDays = Math.Max(crop.Days - daysToRemove, 1);
-
-            int growthTime = growingDays;
-            int regrowthTime = crop.RegrowDays;
-            int productCount = crop.MinHarvests;
-            double chanceOfExtraProduct = crop.AverageExtraCropsFromRandomness();
-            double chanceOfNormalQuality = crop.GetCropBaseQualityChance();
-            double chanceOfSilverQuality = crop.GetCropSilverQualityChance();
-            double chanceOfGoldQuality = crop.GetCropGoldQualityChance();
-            double chanceOfIridiumQuality = crop.GetCropIridiumQualityChance();
-
-            return new CropInfo(crop, totalProfit, profitPerDay, totalSeedLoss, seedLossPerDay, totalFertilizerLoss, fertilizerLossPerDay, produceType, duration, totalHarvests, growthTime, regrowthTime, productCount, chanceOfExtraProduct, chanceOfNormalQuality, chanceOfSilverQuality, chanceOfGoldQuality, chanceOfIridiumQuality);
+            return new CropInfo(crop, this);
         }
 
         /// <summary>
@@ -245,7 +204,7 @@ namespace ProfitCalculator.main
                 }
                 catch (Exception)
                 {
-                    Container.Instance.GetInstance<IMonitor>(ModEntry.UniqueID)?.Log("Failed to add\n" + crop.ToString(), LogLevel.Debug);
+                    Container.Instance.Resolve<IMonitor>(ModEntry.UniqueID)?.Log("Failed to add\n" + crop.ToString(), LogLevel.Debug);
                 }
             }
         }

@@ -28,12 +28,12 @@ namespace ProfitCalculator.main.memory
         public static Container Instance => _instance.Value;
 
         /// <summary>
-        /// Retrieves an instance of the specified type <typeparamref name="T"/> from the container.
+        /// Resolves the registered instance of the specified type <typeparamref name="T"/> from the container.
         /// </summary>
         /// <typeparam name="T">The type of the instance to retrieve.</typeparam>
         /// <param name="key">The unique key associated with the instance.</param>
         /// <returns>The instance of type <typeparamref name="T"/> if found; otherwise, the default value for type <typeparamref name="T"/>.</returns>
-        public T? GetInstance<T>(string key)
+        public T? Resolve<T>(string key)
         {
             var typeKey = GetTypeKey<T>(key);
             lock (_lock)

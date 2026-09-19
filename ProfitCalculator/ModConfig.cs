@@ -13,6 +13,9 @@ namespace ProfitCalculator
         /// <summary> The delay in frames before the tooltip is shown. </summary>
         public int ToolTipDelay { get; set; }
 
+        /// <summary> Use the UI Framework screens when 6135.UIFramework is installed; otherwise the built-in screens are used. </summary>
+        public bool UseUIFramework { get; set; } = true;
+
         /// <summary>
         ///  Creates a new mod config with default values.
         /// </summary>

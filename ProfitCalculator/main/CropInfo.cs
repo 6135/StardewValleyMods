@@ -1,4 +1,4 @@
-﻿using ProfitCalculator.main.models;
+using ProfitCalculator.main.models;
 using System;
 using System.Collections.Generic;
 
@@ -10,100 +10,88 @@ namespace ProfitCalculator.main
     public class CropInfo
     {
         ///<summary> The crop. </summary>
-        public readonly PlantData Crop;
+        public PlantData Crop { get; }
 
-        /// <summary> The total profit. </summary>
-        public readonly double TotalProfit;
+        /// <summary> The total profit. Calculated from <c>totalProfit = totalProfit - (totalSeedLoss + totalFertilizerLoss)</c> </summary>
+        public double TotalProfit { get; }
 
         /// <summary> The profit per day. </summary>
-        public readonly double ProfitPerDay;
+        public double ProfitPerDay { get; }
 
         /// <summary> The total seed loss. </summary>
-        public readonly double TotalSeedLoss;
+        public double TotalSeedLoss { get; }
 
         /// <summary> The seed loss per day. </summary>
-        public readonly double SeedLossPerDay;
+        public double SeedLossPerDay { get; }
 
         /// <summary> The total fertilizer loss. </summary>
-        public readonly double TotalFertilizerLoss;
+        public double TotalFertilizerLoss { get; }
 
         /// <summary> The fertilizer loss per day. </summary>
-        public readonly double FertilizerLossPerDay;
+        public double FertilizerLossPerDay { get; }
 
         /// <summary> The produce type. </summary>
-        public readonly Utils.ProduceType ProduceType;
+        public Utils.ProduceType ProduceType { get; }
 
         /// <summary> The duration. </summary>
-        public readonly int Duration;
+        public int Duration { get; }
 
         /// <summary> The total harvests. </summary>
-        public readonly int TotalHarvests;
+        public int TotalHarvests { get; }
 
         /// <summary> The growth time. </summary>
-        public readonly int GrowthTime;
+        public int GrowthTime { get; }
 
         /// <summary> The regrowth time. </summary>
-        public readonly int RegrowthTime;
+        public int RegrowthTime { get; }
 
         /// <summary> The product count. </summary>
-        public readonly int ProductCount;
+        public int ProductCount { get; }
 
         /// <summary> The chance of extra product. </summary>
-        public readonly double ChanceOfExtraProduct;
+        public double ChanceOfExtraProduct { get; }
 
         /// <summary> The chance of normal quality. </summary>
-        public readonly double ChanceOfNormalQuality;
+        public double ChanceOfNormalQuality { get; }
 
         /// <summary> The chance of silver quality. </summary>
-        public readonly double ChanceOfSilverQuality;
+        public double ChanceOfSilverQuality { get; }
 
         /// <summary> The chance of gold quality. </summary>
-        public readonly double ChanceOfGoldQuality;
+        public double ChanceOfGoldQuality { get; }
 
         /// <summary> The chance of iridium quality. </summary>
-        public readonly double ChanceOfIridiumQuality;
+        public double ChanceOfIridiumQuality { get; }
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="CropInfo"/> class.
+        /// Initializes a new instance of the <see cref="CropInfo"/> class, calculating every value for the crop with the settings of <paramref name="calculator"/>.
         /// </summary>
         /// <param name="crop"> The crop. </param>
-        /// <param name="totalProfit"> The total profit. Calculated from <c>totalProfit = totalProfit - (totalSeedLoss + totalFertilizerLoss)</c> </param>
-        /// <param name="profitPerDay"> The profit per day. </param>
-        /// <param name="totalSeedLoss"> The total seed loss. </param>
-        /// <param name="seedLossPerDay"> The seed loss per day. </param>
-        /// <param name="totalFertilizerLoss"> The total fertilizer loss. </param>
-        /// <param name="fertilizerLossPerDay"> The fertilizer loss per day. </param>
-        /// <param name="produceType"> The produce type. </param>
-        /// <param name="duration"> The duration. </param>
-        /// <param name="totalHarvests"> The total harvests. </param>
-        /// <param name="growthTime"> The growth time. </param>
-        /// <param name="regrowthTime"> The regrowth time. </param>
-        /// <param name="productCount"> The product count. </param>
-        /// <param name="chanceOfExtraProduct"> The chance of extra product. </param>
-        /// <param name="chanceOfNormalQuality"> The chance of normal quality. </param>
-        /// <param name="chanceOfSilverQuality"> The chance of silver quality. </param>
-        /// <param name="chanceOfGoldQuality"> The chance of gold quality. </param>
-        /// <param name="chanceOfIridiumQuality"> The chance of iridium quality. </param>
-        public CropInfo(PlantData crop, double totalProfit, double profitPerDay, double totalSeedLoss, double seedLossPerDay, double totalFertilizerLoss, double fertilizerLossPerDay, Utils.ProduceType produceType, int duration, int totalHarvests, int growthTime, int regrowthTime, int productCount, double chanceOfExtraProduct, double chanceOfNormalQuality, double chanceOfSilverQuality, double chanceOfGoldQuality, double chanceOfIridiumQuality)
+        /// <param name="calculator"> The calculator whose settings (season, day, fertilizer, ...) the values are calculated with. </param>
+        public CropInfo(PlantData crop, Calculator calculator)
         {
             Crop = crop;
-            TotalProfit = totalProfit - totalSeedLoss - totalFertilizerLoss;
-            ProfitPerDay = profitPerDay - seedLossPerDay - fertilizerLossPerDay;
-            TotalSeedLoss = totalSeedLoss;
-            SeedLossPerDay = seedLossPerDay;
-            TotalFertilizerLoss = totalFertilizerLoss;
-            FertilizerLossPerDay = fertilizerLossPerDay;
-            ProduceType = produceType;
-            Duration = duration;
-            TotalHarvests = totalHarvests;
-            GrowthTime = growthTime;
-            RegrowthTime = regrowthTime;
-            ProductCount = productCount;
-            ChanceOfExtraProduct = chanceOfExtraProduct;
-            ChanceOfNormalQuality = chanceOfNormalQuality;
-            ChanceOfSilverQuality = chanceOfSilverQuality;
-            ChanceOfGoldQuality = chanceOfGoldQuality;
-            ChanceOfIridiumQuality = chanceOfIridiumQuality;
+            TotalSeedLoss = crop.TotalSeedsCost();
+            SeedLossPerDay = crop.TotalSeedsCostPerDay();
+            TotalFertilizerLoss = crop.TotalFertilizerCost();
+            FertilizerLossPerDay = crop.TotalFertilzerCostPerDay();
+            TotalProfit = crop.TotalCropProfit() - TotalSeedLoss - TotalFertilizerLoss;
+            ProfitPerDay = crop.TotalCropProfitPerDay() - SeedLossPerDay - FertilizerLossPerDay;
+            ProduceType = calculator.ProduceType;
+            Duration = crop.TotalAvailableDays(calculator.Season, (int)calculator.Day);
+            TotalHarvests = crop.TotalHarvestsWithRemainingDays(calculator.Season, calculator.FertilizerQuality, (int)calculator.Day);
+
+            float averageGrowthSpeedValueForCrop = crop.GetAverageGrowthSpeedValueForCrop(calculator.FertilizerQuality);
+            int daysToRemove = (int)Math.Ceiling((float)crop.Days * averageGrowthSpeedValueForCrop);
+            GrowthTime = Math.Max(crop.Days - daysToRemove, 1);
+
+            RegrowthTime = crop.RegrowDays;
+            ProductCount = crop.MinHarvests;
+            ChanceOfExtraProduct = crop.AverageExtraCropsFromRandomness();
+            ChanceOfNormalQuality = crop.GetCropBaseQualityChance();
+            ChanceOfSilverQuality = crop.GetCropSilverQualityChance();
+            ChanceOfGoldQuality = crop.GetCropGoldQualityChance();
+            ChanceOfIridiumQuality = crop.GetCropIridiumQualityChance();
         }
 
         #region Overloads and Overrides
@@ -144,7 +132,9 @@ namespace ProfitCalculator.main
         public override bool Equals(object obj)
         {
             if (obj is not CropInfo cropInfo)
+            {
                 return false;
+            }
 
             static bool AreDoublesEqual(double a, double b, double tolerance) => Math.Abs(a - b) < tolerance;
 
@@ -166,7 +156,9 @@ namespace ProfitCalculator.main
             foreach (var (prop, cropProp) in doubleProperties)
             {
                 if (!AreDoublesEqual(prop, cropProp, 0.0001))
+                {
                     return false;
+                }
             }
 
             bool part1 =

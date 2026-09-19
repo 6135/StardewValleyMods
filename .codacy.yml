@@ -1,0 +1,13 @@
+---
+# Codacy configuration.
+#
+# ProfitCalculator/apis/ holds verbatim copies of API contracts owned by other
+# projects (Generic Mod Config Menu, and StardewUIFramework/Api/Public/IStardewUIApi.cs).
+# They are duplicated on purpose so each mod compiles standalone, must not be
+# edited here, and are already analysed at their source, so analysing the copies
+# only reports the same findings twice and inflates the duplication metric.
+exclude_paths:
+  - 'ProfitCalculator/apis/**'
+  - 'StardewUIFramework/docs/**'
+  - '**/bin/**'
+  - '**/obj/**'

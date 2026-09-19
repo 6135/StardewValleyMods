@@ -5,5 +5,5 @@
 
 using System.Diagnostics.CodeAnalysis;
 
-[assembly: SuppressMessage("Major Bug", "S1244:Floating point numbers should not be tested for equality", Justification = "<Pending>", Scope = "member", Target = "~M:ProfitCalculator.main.ui.menus.ProfitCalculatorMainMenu.DrawActions(Microsoft.Xna.Framework.Graphics.SpriteBatch)")]
+[assembly: SuppressMessage("Major Bug", "S1244:Floating point numbers should not be tested for equality", Justification = "<Pending>", Scope = "member", Target = "~M:ProfitCalculator.main.ui.menus.ProfitCalculatorMainMenu.DrawButton(Microsoft.Xna.Framework.Graphics.SpriteBatch,StardewValley.Menus.ClickableComponent)")]
 [assembly: SuppressMessage("Major Bug", "S1244:Floating point numbers should not be tested for equality", Justification = "<Pending>", Scope = "member", Target = "~M:ProfitCalculator.main.ui.CropHoverBox.DrawSecondaryBox(Microsoft.Xna.Framework.Graphics.SpriteBatch)")]

@@ -37,27 +37,21 @@ namespace ProfitCalculator.main.models
             DropInformation _dropInformation,
             bool _affectedByQuality,
             bool _affectedByFertilizer
-            ) : base
-            (
-                _cropData.DaysInPhase.Sum(),
-                _cropData.RegrowDays,
-                _cropData.HarvestMinStack,
-                _cropData.HarvestMinStack,
-                _cropData.HarvestMaxIncreasePerFarmingLevel,
-                _cropData.ExtraHarvestChance,
-                _dropInformation.Drops[0].Item.DisplayName,
-                _cropData.Seasons,
-                _seed,
-                _affectedByQuality,
-                _affectedByFertilizer,
-                _dropInformation
-            )
+            ) : base(_dropInformation.Drops[0].Item.DisplayName, _cropData.Seasons, _seed, _dropInformation)
         {
+            Days = _cropData.DaysInPhase.Sum();
+            RegrowDays = _cropData.RegrowDays;
+            MinHarvests = _cropData.HarvestMinStack;
+            MaxHarvests = _cropData.HarvestMinStack;
+            MaxHarvestIncreasePerFarmingLevel = _cropData.HarvestMaxIncreasePerFarmingLevel;
+            ChanceForExtraCrops = _cropData.ExtraHarvestChance;
+            AffectByQuality = _affectedByQuality;
+            AffectByFertilizer = _affectedByFertilizer;
             IsPaddyCrop = _cropData.IsPaddyCrop;
         }
 
         /// <summary>
-        /// Constructor for <c>CropDataExpanded</c> class. It's used to create a new instance of the class.
+        /// Constructor for <c>CropDataExpanded</c> class. It's used to create a new instance of the class. The crop is affected by fertilizer and by quality.
         /// </summary>
         /// <param name="_cropData">Crop's full Data</param>
         /// <param name="_seed" >Seed Item</param>
@@ -66,23 +60,8 @@ namespace ProfitCalculator.main.models
             SCropData _cropData,
             Item _seed,
             DropInformation _dropInformation
-            ) : base
-            (
-                _cropData.DaysInPhase.Sum(),
-                _cropData.RegrowDays,
-                _cropData.HarvestMinStack,
-                _cropData.HarvestMinStack,
-                _cropData.HarvestMaxIncreasePerFarmingLevel,
-                _cropData.ExtraHarvestChance,
-                _dropInformation.Drops[0].Item.DisplayName,
-                _cropData.Seasons,
-                _seed,
-                true,
-                true,
-                _dropInformation
-            )
+            ) : this(_cropData, _seed, _dropInformation, true, true)
         {
-            IsPaddyCrop = _cropData.IsPaddyCrop;
         }
 
         /// <summary>

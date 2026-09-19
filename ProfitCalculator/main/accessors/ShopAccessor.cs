@@ -29,7 +29,7 @@ namespace ProfitCalculator.main.accessors
         /// </summary>
         public ShopAccessor()
         {
-            var Helper = Container.Instance.GetInstance<IModHelper>(ModEntry.UniqueID);
+            var Helper = Container.Instance.Resolve<IModHelper>(ModEntry.UniqueID);
             // Initialize seed price cache with data from SeedPrices.json
             seedPriceCache = new(
                     () => Helper?.ModContent.Load<Dictionary<string, int>>(Path.Combine("assets", "SeedPrices.json"))
@@ -62,10 +62,13 @@ namespace ProfitCalculator.main.accessors
         /// <returns>A dictionary containing the stock information for the shop.</returns>
         public static Dictionary<ISalable, ItemStockInformation> GetShopStock(string shopId, ShopData shop)
         {
-            IMonitor Monitor = Container.Instance.GetInstance<IMonitor>(ModEntry.UniqueID);
+            IMonitor Monitor = Container.Instance.Resolve<IMonitor>(ModEntry.UniqueID);
             Dictionary<ISalable, ItemStockInformation> stock = new();
             List<ShopItemData> items = shop.Items;
-            if (items == null || items.Count == 0) return stock;
+            if (items == null || items.Count == 0)
+            {
+                return stock;
+            }
 
             Random shopRandom = Utility.CreateDaySaveRandom();
             HashSet<string> stockedItemIds = new();
@@ -90,7 +93,7 @@ namespace ProfitCalculator.main.accessors
 
         private static IList<ItemQueryResult>? TryResolve(ShopItemData itemData, ItemQueryContext itemQueryContext, HashSet<string> stockedItemIds, String shopId, Dictionary<ISalable, ItemStockInformation> stock)
         {
-            IMonitor Monitor = Container.Instance.GetInstance<IMonitor>(ModEntry.UniqueID);
+            IMonitor Monitor = Container.Instance.Resolve<IMonitor>(ModEntry.UniqueID);
             try
             {
                 IList<ItemQueryResult> list = ItemQueryResolver.TryResolve(
@@ -126,14 +129,7 @@ namespace ProfitCalculator.main.accessors
                 float price = GetItemPrice(shopItem, shop, itemData, item, shopRandom);
                 int availableStock = GetAvailableStock(shopItem, itemData, item, shopRandom);
                 LimitedStockMode availableStockLimit = itemData.AvailableStockLimit;
-                string tradeItemId = shopItem.OverrideTradeItemId ?? itemData.TradeItemId;
-                int? tradeItemAmount = shopItem.OverrideTradeItemAmount > 0 ? shopItem.OverrideTradeItemAmount : itemData.TradeItemAmount;
-
-                if (tradeItemId == null || tradeItemAmount < 0)
-                {
-                    tradeItemId = null;
-                    tradeItemAmount = null;
-                }
+                (string tradeItemId, int? tradeItemAmount) = GetTradeItem(shopItem, itemData);
 
                 if (itemData.IsRecipe)
                 {
@@ -168,6 +164,21 @@ namespace ProfitCalculator.main.accessors
                     ));
                 }
             }
+        }
+
+        /// <summary>
+        /// Gets the item (and amount) the shop trades <paramref name="itemData"/> for, or <c>(null, null)</c> when it is sold for money.
+        /// </summary>
+        private static (string tradeItemId, int? tradeItemAmount) GetTradeItem(ItemQueryResult shopItem, ShopItemData itemData)
+        {
+            string tradeItemId = shopItem.OverrideTradeItemId ?? itemData.TradeItemId;
+            int? tradeItemAmount = shopItem.OverrideTradeItemAmount > 0 ? shopItem.OverrideTradeItemAmount : itemData.TradeItemAmount;
+
+            if (tradeItemId == null || tradeItemAmount < 0)
+            {
+                return (null, null);
+            }
+            return (tradeItemId, tradeItemAmount);
         }
 
         private static float GetItemPrice(ItemQueryResult shopItem, ShopData shop, ShopItemData itemData, ISalable item, Random shopRandom)
