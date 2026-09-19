@@ -29,6 +29,11 @@ namespace UIFrameworkExample
         private int clicks;
         private int selectedRow = -1;
 
+        // the Day / Season inputs of the form, bound to signals by the signals demo
+        private IUINumberInput? dayInput;
+        private IUIDropdown? seasonDropdown;
+        private readonly DemoSettings settings = new();
+
         public override void Entry(IModHelper helper)
         {
             helper.Events.GameLoop.GameLaunched += OnGameLaunched;
@@ -69,7 +74,37 @@ namespace UIFrameworkExample
             BuildSlotDemo(api, demo);
             BuildDataGrid(api, demo.Root);
             BuildRichText(api, demo);
+            BuildSignalsDemo(api, demo);
             return demo;
+        }
+
+        /// <summary>
+        /// Signals and auto-forms (architecture.md §16.2): a computed label that only re-renders when the Day / Season
+        /// inputs above change, and a complete Save / Cancel / Undo / Redo form generated from <see cref="DemoSettings"/>.
+        /// </summary>
+        private void BuildSignalsDemo(IStardewUIApi api, IUIMenu demo)
+        {
+            IUISpacer divider = api.AddSpacer(demo.Root, "signals.divider", 0, 8);
+            divider.Line = true;
+
+            // two-way: the inputs now read / write the signals (their original setters still update the fields above)
+            IUISignal daySignal = api.SignalNumber(day);
+            IUISignal seasonSignal = api.Signal(season);
+            api.BindValue(dayInput!, daySignal);
+            api.BindValue(seasonDropdown!, seasonSignal);
+
+            // the computed tracks whatever signals it reads; the label re-flows only when its version changes
+            IUIComputed summary = api.Computed(() => $"Day {daySignal.Number:0} of {seasonSignal.Value}");
+            IUILabel summaryLabel = api.AddLabel(demo.Root, "signals.summary", () => string.Empty);
+            summaryLabel.Font = UIFont.Dialogue;
+            api.BindText(summaryLabel, summary);
+            summary.Subscribe(() => Monitor.Log($"Summary changed (v{summary.Version}): {summary.Value}", LogLevel.Trace));
+
+            // a form generated from a POCO: attributes drive sections, ranges, choices and tooltips; Ctrl+Z / Ctrl+Y undo / redo
+            IUIForm form = api.AddForm(demo.Root, "settings", settings);
+            form.OnSaved = _ => Monitor.Log($"Settings saved: {settings.FarmName}, day {settings.Day} of {settings.Season}, pets={settings.Pets}, volume={settings.Volume}, {settings.Difficulty}", LogLevel.Info);
+            form.OnCancelled = _ => Monitor.Log("Settings cancelled.", LogLevel.Info);
+            form.OnChanged = f => Monitor.Log($"Settings changed (dirty={f.IsDirty}, undo={f.CanUndo}, redo={f.CanRedo}).", LogLevel.Trace);
         }
 
         /// <summary>Label / control rows in a two-column grid, one of every input type.</summary>
@@ -85,12 +120,12 @@ namespace UIFrameworkExample
             nameInput.Validate = v => v.Length == 0 || char.IsLetter(v[^1]) || v[^1] == ' ';
             AddFormRow(api, form, 0, "Name:", nameInput);
 
-            IUINumberInput dayInput = api.AddNumberInput(form, "day", () => day, v => day = v, 1, 28, 1, true);
+            dayInput = api.AddNumberInput(form, "day", () => day, v => day = v, 1, 28, 1, true);
             dayInput.Width = 120;
             dayInput.Tooltip = () => "1-28, Up/Down or wheel to step.";
             AddFormRow(api, form, 1, "Day:", dayInput);
 
-            IUIDropdown seasonDropdown = api.AddDropdown(form, "season",
+            seasonDropdown = api.AddDropdown(form, "season",
                 () => new[] { "spring", "summer", "fall", "winter" },
                 () => new[] { "Spring", "Summer", "Fall", "Winter" },
                 () => season, v => season = v);

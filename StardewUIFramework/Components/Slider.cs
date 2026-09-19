@@ -21,8 +21,8 @@ namespace UIFramework.Components
         private const int DefaultWidth = 192;
         private const int DefaultHeight = 24;
 
-        private readonly Func<double>? getter;
-        private readonly Action<double>? setter;
+        private Func<double>? getter;
+        private Action<double>? setter;
         private double ownValue;
 
         internal Slider(string id, Func<double>? getter, Action<double>? setter, double min, double max) : base(id)
@@ -41,6 +41,18 @@ namespace UIFramework.Components
         {
             get => getter != null ? Raise("get", getter, ownValue) : ownValue;
             set => Store(value);
+        }
+
+        /// <summary>The value delegates the element currently reads / writes through (null = own value).</summary>
+        internal Func<double>? BoundGetter => getter;
+
+        internal Action<double>? BoundSetter => setter;
+
+        /// <summary>Swap the value delegates after construction (signal bindings); the own value is kept as the fallback.</summary>
+        internal void Rebind(Func<double>? newGetter, Action<double>? newSetter)
+        {
+            getter = newGetter;
+            setter = newSetter;
         }
 
         public double Min { get; set; }

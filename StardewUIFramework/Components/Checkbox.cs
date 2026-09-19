@@ -16,8 +16,8 @@ namespace UIFramework.Components
     {
         private const int LabelGap = 8;
 
-        private readonly Func<bool>? getter;
-        private readonly Action<bool>? setter;
+        private Func<bool>? getter;
+        private Action<bool>? setter;
         private bool ownValue;
         private Func<string>? label;
         private string measuredLabel = string.Empty;
@@ -39,6 +39,18 @@ namespace UIFramework.Components
         {
             get => getter != null ? Raise("get", getter, ownValue) : ownValue;
             set => Store(value);
+        }
+
+        /// <summary>The value delegates the element currently reads / writes through (null = own value).</summary>
+        internal Func<bool>? BoundGetter => getter;
+
+        internal Action<bool>? BoundSetter => setter;
+
+        /// <summary>Swap the value delegates after construction (signal bindings); the own value is kept as the fallback.</summary>
+        internal void Rebind(Func<bool>? newGetter, Action<bool>? newSetter)
+        {
+            getter = newGetter;
+            setter = newSetter;
         }
 
         internal Func<string>? LabelFunc
