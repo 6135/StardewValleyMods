@@ -1,0 +1,15 @@
+﻿{
+  "Name": "Profit Calculator Vintage",
+  "Author": "6135",
+  "Version": "1.0.0",
+  "Description": "Vintange Profit Calculator",
+  "UniqueID": "6135.ProfitCalculatorVintage",
+  "MinimumApiVersion": "3.0.0",
+  "UpdateKeys": [],
+  "Dependencies": [
+    {
+      "UniqueID": "6135.ProfitCalculator",
+      "IsRequired": true
+    }
+  ]
+}
