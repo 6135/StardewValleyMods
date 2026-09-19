@@ -316,7 +316,8 @@ namespace UIFramework.Components
             Color textColor = Enabled ? style.TextColor : style.DisabledTextColor;
 
             DrawHelper.ThemedBox(b, Game1.mouseCursors, Theme.DropdownBoxSource, new Rectangle(Bounds.X, Bounds.Y, BoxWidth, Bounds.Height), tint, SpriteScale);
-            DrawHelper.Text(b, Pseudo.Transform(GetLabel(SelectedIndex)), style.Font, new Vector2(Bounds.X + TextPadX, Bounds.Y + TextPadY), textColor, style.TextShadow, 1f);
+            var textRect = new Rectangle(Bounds.X + TextPadX, Bounds.Y + TextPadY, Math.Max(0, BoxWidth - (2 * TextPadX)), Bounds.Height);
+            DrawHelper.FitText(b, Pseudo.Transform(GetLabel(SelectedIndex)), style.Font, textRect, textColor, style.TextShadow, 1f, UIAlign.Start);
             b.Draw(Game1.mouseCursors, new Vector2(Bounds.X + Bounds.Width - ButtonWidth, Bounds.Y), Theme.DropdownButtonSource, tint, 0f, Vector2.Zero, SpriteScale, SpriteEffects.None, 0f);
         }
 

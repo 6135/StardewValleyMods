@@ -600,17 +600,19 @@ namespace UIFramework.Rendering
 
         private static void DrawFragment(SpriteBatch b, SpriteFont font, RichFragment f, Vector2 pos, Color color, bool shadow, RichLayout layout)
         {
+            // the layout was measured through UIServices.Text, which applies the theme / accessibility text scale
+            float scale = layout.Scale * Theme.FontScale;
             if (f.Run.Bold)
             {
-                Utility.drawBoldText(b, f.Text, font, pos + new Vector2(1, 0), color, layout.Scale);
+                Utility.drawBoldText(b, f.Text, font, pos + new Vector2(1, 0), color, scale);
             }
             else if (shadow)
             {
-                Utility.drawTextWithShadow(b, f.Text, font, pos, color, layout.Scale);
+                Utility.drawTextWithShadow(b, f.Text, font, pos, color, scale);
             }
             else
             {
-                b.DrawString(font, f.Text, pos, color, 0f, Vector2.Zero, layout.Scale, SpriteEffects.None, 0f);
+                b.DrawString(font, f.Text, pos, color, 0f, Vector2.Zero, scale, SpriteEffects.None, 0f);
             }
 
             if (f.Run.Link != null)

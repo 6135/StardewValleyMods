@@ -163,7 +163,7 @@ namespace UIFramework.Core
                 DrawHelper.PanelBox(b, Inner.Bounds, Color.White * opacity);
             }
 
-            Inner.Root.Draw(b);
+            Inner.Viewport.Draw(b);
             Inner.Overlay.Draw(b);
             if (Interactive)
             {

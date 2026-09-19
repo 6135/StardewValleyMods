@@ -468,7 +468,7 @@ namespace UIFramework.Api
 
         public void BindText(IUILabel label, IUIComputed source) => BindText(label, RequireReactive(source));
 
-        public void BindText(IUILabel label, IUISignal source) => BindText(label, RequireReactive(source));
+        public void BindTextToSignal(IUILabel label, IUISignal source) => BindText(label, RequireReactive(source));
 
         private void BindText(IUILabel label, Reactive source)
         {
@@ -488,35 +488,35 @@ namespace UIFramework.Api
             consumer.Bindings.Add(target, SignalBindings.EnabledKind, new FlagBinding(target, RequireReactive(source), (e, flag) => e.Enabled = flag));
         }
 
-        public void BindValue(IUITextInput input, IUISignal signal)
+        public void BindTextInput(IUITextInput input, IUISignal signal)
         {
             TextInput target = RequireElement<TextInput>(input);
             Signal source = RequireSignal(signal);
             BindValue(target, new ValueBinding<string>(target.BoundGetter, target.BoundSetter, target.Rebind, () => source.Value, v => source.Value = v));
         }
 
-        public void BindValue(IUINumberInput input, IUISignal signal)
+        public void BindNumberInput(IUINumberInput input, IUISignal signal)
         {
             NumberInput target = RequireElement<NumberInput>(input);
             Signal source = RequireSignal(signal);
             BindValue(target, new ValueBinding<double>(target.BoundGetter, target.BoundSetter, target.Rebind, () => source.Number, v => source.Number = v));
         }
 
-        public void BindValue(IUICheckbox input, IUISignal signal)
+        public void BindCheckbox(IUICheckbox input, IUISignal signal)
         {
             Checkbox target = RequireElement<Checkbox>(input);
             Signal source = RequireSignal(signal);
             BindValue(target, new ValueBinding<bool>(target.BoundGetter, target.BoundSetter, target.Rebind, () => source.Flag, v => source.Flag = v));
         }
 
-        public void BindValue(IUISlider input, IUISignal signal)
+        public void BindSlider(IUISlider input, IUISignal signal)
         {
             Slider target = RequireElement<Slider>(input);
             Signal source = RequireSignal(signal);
             BindValue(target, new ValueBinding<double>(target.BoundGetter, target.BoundSetter, target.Rebind, () => source.Number, v => source.Number = v));
         }
 
-        public void BindValue(IUIDropdown input, IUISignal signal)
+        public void BindDropdown(IUIDropdown input, IUISignal signal)
         {
             Dropdown target = RequireElement<Dropdown>(input);
             Signal source = RequireSignal(signal);

@@ -37,7 +37,7 @@ namespace UIFramework.Hosting
         internal static string ExportDirectory { get; set; } = string.Empty;
 
         /// <summary>Key help shown at the bottom of the info panel.</summary>
-        internal const string KeyHelp = "arrows: margin (Shift x8)  +/-: width (Shift: height, Ctrl x8)  V: visible  P: pin  E: export  Esc: off";
+        internal const string KeyHelp = "arrows: margin (Shift x8)   +/-: width (Shift: height, Ctrl x8)\nV: visible   U: unhide all   P: pin   E: export   Esc: off";
 
         internal static void Toggle() => SetEnabled(!Enabled);
 
@@ -82,7 +82,7 @@ namespace UIFramework.Hosting
                 return Pinned;
             }
 
-            return Pick(menu.Root, menu.CursorX, menu.CursorY);
+            return Pick(menu.Viewport, menu.CursorX, menu.CursorY);
         }
 
         /// <summary>
@@ -142,6 +142,9 @@ namespace UIFramework.Hosting
                 case Keys.P:
                     TogglePin(menu);
                     return;
+                case Keys.U:
+                    Unhide(menu);
+                    return;
                 default:
                     break;
             }
@@ -153,7 +156,7 @@ namespace UIFramework.Hosting
             }
         }
 
-        /// <summary>Arrows nudge the margins, +/- resize, V toggles visibility.</summary>
+        /// <summary>Arrows nudge the margins, +/- resize.</summary>
         private static void Edit(UIElement element, Keys key, bool shift, bool ctrl)
         {
             int nudge = shift ? LargeStep : SmallStep;
@@ -203,7 +206,7 @@ namespace UIFramework.Hosting
 
         private static void TogglePin(UIMenu menu)
         {
-            Pinned = Pinned != null && Pinned.OwnerMenu == menu ? null : Pick(menu.Root, menu.CursorX, menu.CursorY);
+            Pinned = Pinned != null && Pinned.OwnerMenu == menu ? null : Pick(menu.Viewport, menu.CursorX, menu.CursorY);
         }
 
         // ---------------------------------------------------------------------------------------------------------
@@ -218,7 +221,7 @@ namespace UIFramework.Hosting
                 $"{e.GetType().Name} '{e.Id}'{(Pinned == e ? "  (pinned)" : string.Empty)}",
                 $"bounds: {e.Bounds.X},{e.Bounds.Y} {e.Bounds.Width}x{e.Bounds.Height}   desired: {Fmt(e.DesiredSize.X)}x{Fmt(e.DesiredSize.Y)}",
                 $"margin: {e.MarginLeft} {e.MarginTop} {e.MarginRight} {e.MarginBottom}   size: {SizeText(e.Width)} x {SizeText(e.Height)}",
-                $"align: {e.ResolvedHorizontalAlign}{(e.HorizontalAlignSet ? string.Empty : "*")} / {e.ResolvedVerticalAlign}{(e.VerticalAlignSet ? string.Empty : "*")}   (* = parent default)"
+                $"align: {e.ResolvedHorizontalAlign}{(e.HorizontalAlignSet ? string.Empty : "~")} / {e.ResolvedVerticalAlign}{(e.VerticalAlignSet ? string.Empty : "~")}   (~ = parent default)"
             };
             if (e.ParentElement is Grid)
             {
@@ -233,6 +236,10 @@ namespace UIFramework.Hosting
             lines.Add("style: " + (e.StyleObject == null ? "(inherited)" : DescribeStyle(e.StyleObject)));
             lines.Add($"state: {(e.Visible ? "visible" : "hidden")}, {(e.Enabled ? "enabled" : "disabled")}{(e.Focusable ? ", focusable" : string.Empty)}{(e.IsFocused ? ", focused" : string.Empty)}");
             lines.Add("parent: " + ParentChain(e));
+            if (e is ScrollView view)
+            {
+                lines.Add($"scroll: {view.ScrollOffset}/{view.MaxScroll} px{(view.FitContent ? "  (menu viewport, fit-content)" : string.Empty)}");
+            }
             lines.Add(KeyHelp);
             return lines.ToArray();
         }
@@ -303,6 +310,25 @@ namespace UIFramework.Hosting
             string? path = WriteExportFile(menu, code);
             bool clipboard = TryCopyToClipboard(code);
             UIServices.Log($"Export written to {path ?? "the log only"}{(clipboard ? " and copied to the clipboard" : string.Empty)}.", LogLevel.Info);
+        }
+        // ---------------------------------------------------------------------------------------------------------
+        //  Unhide
+        // ---------------------------------------------------------------------------------------------------------
+
+        /// <summary>Makes visible all the elements in the menu.</summary>
+        internal static void Unhide(UIMenu menu)
+        {
+            int count = 0;
+            foreach (UIElement e in menu.Root.SelfAndDescendants())
+            {
+                if (!e.Visible)
+                {
+                    e.Visible = true;
+                    count++;
+                }
+            }
+            UIServices.Log($"Unhid {count} elements in menu '{menu.Id}' of {menu.Consumer.ModId}.", LogLevel.Info);
+
         }
 
         private static string? WriteExportFile(UIMenu menu, string code)

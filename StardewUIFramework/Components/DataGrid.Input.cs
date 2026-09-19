@@ -282,7 +282,7 @@ namespace UIFramework.Components
                 return -1;
             }
 
-            int slot = (py - RowsRect.Y) / rowHeight;
+            int slot = (py - RowsRect.Y) / EffectiveRowHeight;
             return slot >= 0 && slot < rows.Count ? rows[slot].Item : -1;
         }
 

@@ -184,6 +184,10 @@ namespace UIFramework.Components
             Vector2 textSize = MeasureText(current);
             Vector2 iconSize = IconSize;
             float gap = textSize.X > 0 && iconSize.X > 0 ? Theme.Space(IconGap) : 0;
+            // text wider than the box (fixed Width, or squeezed by the parent) is shrunk / truncated to what is left
+            int pad = DrawBox ? Theme.Space(PadX) : 0;
+            float maxText = Math.Max(0, Bounds.Width - (2 * pad) - iconSize.X - gap);
+            textSize.X = Math.Min(textSize.X, maxText);
             float x = Bounds.X + ((Bounds.Width - (textSize.X + iconSize.X + gap)) / 2f);
 
             if (icon != null)
@@ -207,7 +211,7 @@ namespace UIFramework.Components
             }
             else
             {
-                DrawHelper.Text(b, current, Font, new Vector2((int)x, textY), textColor, style.TextShadow, 1f);
+                DrawHelper.FitText(b, current, Font, new Rectangle((int)x, textY, (int)Math.Ceiling(textSize.X), (int)Math.Ceiling(textSize.Y)), textColor, style.TextShadow, 1f, UIAlign.Start);
             }
         }
 

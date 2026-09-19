@@ -57,7 +57,7 @@ namespace UIFramework.Core
         /// <summary>Opt out of modification by other mods; <see cref="Sealing"/> enforces it on lookup and tree edits.</summary>
         public bool Sealed { get; set; }
 
-        IUIContainer IUIElement.Parent => ParentElement!;
+        IUIContainer IUIElement.Parent => ParentElement is Components.ScrollView { FitContent: true } ? null! : ParentElement!;
         IUIMenu IUIElement.Menu => OwnerMenu!;
 
         /// <summary>Called when the element is attached to / detached from a menu tree.</summary>
@@ -471,6 +471,7 @@ namespace UIFramework.Core
             {
                 DrawHelper.DebugBounds(b, Bounds, Id);
             }
+            InspectorRenderer.DrawElement(b, this);
         }
 
         /// <summary>

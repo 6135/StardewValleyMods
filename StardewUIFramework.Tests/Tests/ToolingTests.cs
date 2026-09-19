@@ -173,7 +173,7 @@ namespace StardewUIFramework.Tests.Tests
 
                 string[] info = Inspector.Describe((UIElement)label);
                 Assert.StartsWith("Label 'l'  (pinned)", info[0]);
-                Assert.Contains("parent: m.root > row", info);
+                Assert.Contains("parent: m.viewport > m.root > row", info);
                 Assert.Equal(Inspector.KeyHelp, info[^1]);
 
                 Inspector.HandleKey(model, Keys.Escape, shift: false, ctrl: false);

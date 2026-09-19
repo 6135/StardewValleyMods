@@ -100,8 +100,8 @@ namespace UIFrameworkExample
             // two-way: the inputs now read / write the signals (their original setters still update the fields above)
             IUISignal daySignal = api.SignalNumber(day);
             IUISignal seasonSignal = api.Signal(season);
-            api.BindValue(dayInput!, daySignal);
-            api.BindValue(seasonDropdown!, seasonSignal);
+            api.BindNumberInput(dayInput!, daySignal);
+            api.BindDropdown(seasonDropdown!, seasonSignal);
 
             // the computed tracks whatever signals it reads; the label re-flows only when its version changes
             IUIComputed summary = api.Computed(() => $"Day {daySignal.Number:0} of {seasonSignal.Value}");
@@ -271,8 +271,23 @@ namespace UIFrameworkExample
                 api.ShowToastWithIcon($"OK pressed {clicks} time(s).", Game1.mouseCursors, new Microsoft.Xna.Framework.Rectangle(128, 256, 16, 16), 3000);
             });
             ok.Tooltip = () => "Enter also triggers this button.";
+            IUIMenu about = BuildAboutMenu(api);
+            api.AddButton(buttons, "about", () => "About...", _ => about.OpenAsChild(demo));
             api.AddButton(buttons, "close", () => "Close", _ => demo.Close());
             demo.DefaultButton = ok;
+        }
+
+        /// <summary>A second, minimal menu opened from the demo as a child: a line of text and a button that closes it.</summary>
+        private IUIMenu BuildAboutMenu(IStardewUIApi api)
+        {
+            IUIMenuOptions options = api.CreateMenuOptions();
+            options.Title = () => "About";
+            IUIMenu about = api.CreateMenu("about", options);
+            api.AddLabel(about.Root, "about.text", () => $"UI Framework example, API {api.ApiVersion}.");
+            IUIButton back = api.AddButton(about.Root, "about.back", () => "Back", _ => about.Close());
+            back.HorizontalAlign = UIAlign.Center;
+            about.DefaultButton = back;
+            return about;
         }
 
         /// <summary>
@@ -347,10 +362,12 @@ namespace UIFrameworkExample
             string ownerModId = ModManifest.UniqueID;
             api.ContributeTo(ownerModId, "demo", "demo.footer", (slot, ctx) =>
             {
-                IUILabel info = api.AddLabel(slot, "footer.info", () => $"Contributed: name={ctx.GetString("name")} volume={ctx.GetNumber("volume"):0}");
+                // the button first so the label is measured with what is left and wraps instead of pushing it out
+                api.AddButton(slot, "footer.log", () => "Log", _ => ctx.Invoke("log"));
+                IUILabel info = api.AddLabel(slot, "footer.info", () => $"Contributed: name: {ctx.GetString("name")}, volume: {ctx.GetNumber("volume"):0}");
+                info.Wrap = true;
                 info.VerticalAlign = UIAlign.Center;
                 info.Tooltip = () => $"Values exposed by {ctx.OwnerModId}/{ctx.MenuId}: {string.Join(", ", ctx.Keys)}";
-                api.AddButton(slot, "footer.log", () => "Log", _ => ctx.Invoke("log"));
             });
 
             foreach (IUISlotInfo slot in api.ListSlots(ownerModId))

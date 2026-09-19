@@ -72,7 +72,6 @@ namespace UIFramework
             // BEGIN THEME entry
             UIServices.SaveConfig = () => Helper.WriteConfig(config);
             ThemeSwitcher.Menus = menus;
-            helper.Events.GameLoop.GameLaunched += (_, _) => ConnectScreenReader();
             helper.Events.Content.AssetRequested += OnAssetRequested;
             helper.Events.Content.AssetsInvalidated += (_, e) => RefreshThemeIf(e.NamesWithoutLocale.Any(n => n.IsEquivalentTo(Theme.AssetName)));
             helper.Events.Content.AssetReady += (_, e) => RefreshThemeIf(e.NameWithoutLocale.IsEquivalentTo(Theme.AssetName));
@@ -260,19 +259,6 @@ namespace UIFramework
             }
 
             ThemeSwitcher.Apply(args[0], ModManifest.UniqueID);
-        }
-
-        /// <summary>Route announcements to Stardew Access when it is installed.</summary>
-        private void ConnectScreenReader()
-        {
-            IStardewAccessApi? reader = Helper.ModRegistry.GetApi<IStardewAccessApi>("shoaib.stardewaccess");
-            if (reader == null)
-            {
-                return;
-            }
-
-            UIServices.Announcer = text => reader.Say(text, interrupt: true);
-            Monitor.Log("Stardew Access detected; framework menus will announce titles, focus and value changes.", LogLevel.Info);
         }
     }
 }

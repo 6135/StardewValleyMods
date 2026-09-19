@@ -11,7 +11,8 @@ namespace UIFramework.Rendering
     /// <summary>
     /// Draws the <see cref="Inspector"/> overlay for a menu: every element's bounds (containers blue, leaves green,
     /// the inspected element orange with a translucent fill), margins as tinted bands, grid tracks as dotted lines,
-    /// and — in the overlay pass — the info panel, placed on the side of the screen away from the cursor.
+    /// and — in the overlay pass — the info panel, placed on the side of the screen away from the cursor. The per-element
+    /// part is drawn by each element itself (<see cref="DrawElement"/>); only the panel is drawn from here.
     /// </summary>
     internal static class InspectorRenderer
     {
@@ -27,7 +28,7 @@ namespace UIFramework.Rendering
         private static readonly Color MarginColor = Color.Gold * 0.25f;
         private static readonly Color TrackColor = Color.MediumPurple * 0.9f;
 
-        /// <summary>Called by <see cref="UIMenu.Draw"/> after the tree and before the overlay pass. No-op unless the inspector is on.</summary>
+        /// <summary>Called by <see cref="UIMenu.Draw"/> after the tree: queues the info panel for the overlay pass. No-op unless the inspector is on.</summary>
         internal static void Draw(UIMenu menu, SpriteBatch b)
         {
             if (!Inspector.Enabled)
@@ -36,22 +37,24 @@ namespace UIFramework.Rendering
             }
 
             UIElement? subject = Inspector.Subject(menu);
-            foreach (UIElement element in menu.Root.SelfAndDescendants())
-            {
-                if (element.Visible)
-                {
-                    DrawElement(b, element, element == subject);
-                }
-            }
-
             if (subject != null)
             {
                 menu.Overlay.RegisterDraw(sb => DrawInfoPanel(sb, menu, subject));
             }
         }
 
-        private static void DrawElement(SpriteBatch b, UIElement element, bool subject)
+        /// <summary>
+        /// Called by every element at the end of its own draw, so the overlays are clipped, ordered and virtualized exactly
+        /// like the content (nothing is painted for elements scrolled out of a viewport). No-op unless the inspector is on.
+        /// </summary>
+        internal static void DrawElement(SpriteBatch b, UIElement element)
         {
+            if (!Inspector.Enabled || element.OwnerMenu == null)
+            {
+                return;
+            }
+
+            bool subject = Inspector.Subject(element.OwnerMenu) == element;
             DrawMargins(b, element);
             if (element is Grid grid)
             {
@@ -121,7 +124,7 @@ namespace UIFramework.Rendering
 
         private static void DrawInfoPanel(SpriteBatch b, UIMenu menu, UIElement subject)
         {
-            string[] lines = Inspector.Describe(subject);
+            string[] lines = string.Join('\n', Inspector.Describe(subject)).Split('\n');
             float lineHeight = UIServices.Text.LineHeight(UIFont.Small) + LineGap;
             int width = 0;
             foreach (string line in lines)
@@ -135,22 +138,36 @@ namespace UIFramework.Rendering
             float y = panel.Y + PanelPadding;
             for (int i = 0; i < lines.Length; i++)
             {
-                Color color = i == 0 ? SubjectColor : (i == lines.Length - 1 ? Theme.TextColor * 0.6f : Theme.TextColor);
+                Color color = i == 0 ? SubjectColor : (i >= lines.Length - 2 ? Theme.TextColor * 0.6f : Theme.TextColor);
                 DrawHelper.Text(b, lines[i], UIFont.Small, new Vector2(panel.X + PanelPadding, (int)y), color, false, 1f);
                 y += lineHeight;
             }
         }
 
-        /// <summary>Place the panel on the horizontal half of the screen opposite to the cursor, clamped to the viewport.</summary>
+        /// <summary>
+        /// Place the panel beside the menu (right, then left) so it never covers what is being inspected; when neither
+        /// side has room, fall back to the horizontal half of the screen opposite to the cursor. Clamped to the viewport.
+        /// </summary>
         private static Rectangle PanelRect(UIMenu menu, int width, int height)
         {
             Point vp = UIServices.ViewportSize();
             width = Math.Min(width, Math.Max(0, vp.X - (2 * PanelMargin)));
             height = Math.Min(height, Math.Max(0, vp.Y - (2 * PanelMargin)));
-            bool cursorLeft = menu.CursorX < vp.X / 2;
-            int x = cursorLeft ? vp.X - PanelMargin - width : PanelMargin;
             int y = Math.Clamp(menu.CursorY - (height / 2), PanelMargin, Math.Max(PanelMargin, vp.Y - PanelMargin - height));
-            return new Rectangle(x, y, width, height);
+
+            Rectangle window = menu.Bounds;
+            if (window.Right + PanelMargin + width + PanelMargin <= vp.X)
+            {
+                return new Rectangle(window.Right + PanelMargin, y, width, height);
+            }
+
+            if (window.X - PanelMargin - width >= PanelMargin)
+            {
+                return new Rectangle(window.X - PanelMargin - width, y, width, height);
+            }
+
+            bool cursorLeft = menu.CursorX < vp.X / 2;
+            return new Rectangle(cursorLeft ? vp.X - PanelMargin - width : PanelMargin, y, width, height);
         }
     }
 }

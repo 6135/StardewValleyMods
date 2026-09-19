@@ -47,6 +47,7 @@ namespace UIFramework.Components
         internal static Vector2 Measure(Texture2D? custom, UIFont font)
         {
             Vector2 size = custom != null ? new Vector2(custom.Width, custom.Height) : vanillaSize.ToVector2();
+            size.X = Theme.ScaleForText((int)size.X);
             size.Y += Theme.ExtraTextHeight(font);
             return size;
         }

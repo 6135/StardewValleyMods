@@ -7,6 +7,8 @@
 //
 //  Everything in this file is proxy-safe (SMAPI/Pintail): interfaces, enums, delegates, primitives and XNA / game types.
 //  Members are only ever added, never renamed or removed; a breaking change would ship as IStardewUIApi2.
+//  Overloads must differ by parameter count, never only by interface type: Pintail resolves overloads by trying to
+//  proxy each interface parameter and throws (instead of moving on) when two interfaces do not match.
 // ---------------------------------------------------------------------------------------------------------------------
 
 using System;
@@ -947,7 +949,7 @@ namespace UIFramework.Api
         void BindText(IUILabel label, IUIComputed source);
 
         /// <summary>Show <paramref name="source"/> in the label; the label only re-flows when the signal's version changes.</summary>
-        void BindText(IUILabel label, IUISignal source);
+        void BindTextToSignal(IUILabel label, IUISignal source);
 
         /// <summary>Drive <see cref="IUIElement.Visible"/> from the computed's <see cref="IUIComputed.Flag"/>.</summary>
         void BindVisible(IUIElement element, IUIComputed source);
@@ -956,19 +958,19 @@ namespace UIFramework.Api
         void BindEnabled(IUIElement element, IUIComputed source);
 
         /// <summary>Two-way: the input reads the signal instead of its original getter and writes it when edited (the setter it was created with is still called).</summary>
-        void BindValue(IUITextInput input, IUISignal signal);
+        void BindTextInput(IUITextInput input, IUISignal signal);
 
         /// <summary>Two-way: the input shows the signal's <see cref="IUISignal.Number"/> and writes it when edited.</summary>
-        void BindValue(IUINumberInput input, IUISignal signal);
+        void BindNumberInput(IUINumberInput input, IUISignal signal);
 
         /// <summary>Two-way: the checkbox shows the signal's <see cref="IUISignal.Flag"/> and writes it when toggled.</summary>
-        void BindValue(IUICheckbox input, IUISignal signal);
+        void BindCheckbox(IUICheckbox input, IUISignal signal);
 
         /// <summary>Two-way: the slider shows the signal's <see cref="IUISignal.Number"/> and writes it when moved.</summary>
-        void BindValue(IUISlider input, IUISignal signal);
+        void BindSlider(IUISlider input, IUISignal signal);
 
         /// <summary>Two-way: the dropdown selects the choice equal to the signal's <see cref="IUISignal.Value"/> and writes it when changed.</summary>
-        void BindValue(IUIDropdown input, IUISignal signal);
+        void BindDropdown(IUIDropdown input, IUISignal signal);
 
         /// <summary>Drop every binding on <paramref name="element"/> (restoring the original value delegates). Bindings are also dropped when the element leaves its menu.</summary>
         void Unbind(IUIElement element);

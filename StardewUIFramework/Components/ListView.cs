@@ -24,6 +24,9 @@ namespace UIFramework.Components
         private readonly List<int> rowItems = new();
         private readonly ScrollbarGadget scrollbar = new();
         private int rowHeight;
+
+        /// <summary>The row height actually laid out: <see cref="RowHeight"/> grown with the text scale.</summary>
+        private int EffectiveRowHeight => Theme.ScaleForText(rowHeight);
         private int visibleRows;
         private int firstVisibleIndex;
         private int lastCount;
@@ -277,7 +280,7 @@ namespace UIFramework.Components
         protected override Vector2 MeasureCore(Vector2 available)
         {
             const int reserved = ScrollbarGadget.ReservedWidth;
-            var rowAvailable = new Vector2(Math.Max(0, available.X - reserved), rowHeight);
+            var rowAvailable = new Vector2(Math.Max(0, available.X - reserved), EffectiveRowHeight);
             float maxRowWidth = 0;
             foreach (UIElement child in Children)
             {
@@ -290,7 +293,7 @@ namespace UIFramework.Components
             }
             // fill the available width so rows are wide; size to content only when the width is unbounded
             float width = float.IsInfinity(available.X) || float.IsNaN(available.X) ? maxRowWidth + reserved : Math.Max(available.X, maxRowWidth + reserved);
-            return new Vector2(width, visibleRows * rowHeight);
+            return new Vector2(width, visibleRows * EffectiveRowHeight);
         }
 
         protected override void ArrangeCore()
@@ -298,7 +301,7 @@ namespace UIFramework.Components
             Rectangle content = ContentRect;
             for (int i = 0; i < rows.Count; i++)
             {
-                rows[i].Arrange(new Rectangle(content.X, content.Y + (i * rowHeight), content.Width, rowHeight));
+                rows[i].Arrange(new Rectangle(content.X, content.Y + (i * EffectiveRowHeight), content.Width, EffectiveRowHeight));
             }
             // any other child a consumer added directly overlaps the content area
             foreach (UIElement child in Children)
@@ -408,7 +411,7 @@ namespace UIFramework.Components
         /// <summary>Select the item shown in the row under <paramref name="py"/>, if any.</summary>
         private void SelectRowAt(int py)
         {
-            int row = (py - Bounds.Y) / rowHeight;
+            int row = (py - Bounds.Y) / EffectiveRowHeight;
             if (row >= 0 && row < rows.Count && rowItems[row] >= 0)
             {
                 Select(rowItems[row]);

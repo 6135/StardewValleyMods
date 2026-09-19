@@ -21,9 +21,9 @@ namespace UIFramework.Core
     {
         // chrome insets when DrawBox is on (vanilla dialogue box border + breathing room)
         private const int BoxInsetSide = 56; // IClickableMenu.spaceToClearSideBorder + borderWidth
-        private const int BoxInsetTop = 80;
+        private const int BoxInsetTop = 56;
         private const int BoxInsetBottom = 56;
-        private const int TitleReserve = 72;
+        private const int TitleReserve = 80; // the title scroll is 72 px tall and drawn 64 px above the box
 
         private readonly MenuRegistry registry;
         private int? width, height;
@@ -49,8 +49,22 @@ namespace UIFramework.Core
                 HorizontalAlign = UIAlign.Stretch,
                 VerticalAlign = UIAlign.Stretch
             };
-            Root.SetOwnerMenu(this);
+            Viewport = new ScrollView(id + ".viewport", 0)
+            {
+                FitContent = true,
+                HorizontalAlign = UIAlign.Stretch,
+                VerticalAlign = UIAlign.Stretch
+            };
+            Viewport.Add(Root);
+            Viewport.SetOwnerMenu(this);
         }
+
+        /// <summary>
+        /// The element that hosts <see cref="Root"/>: a fit-content <see cref="ScrollView"/> that is invisible while the
+        /// content fits and scrolls it (scrollbar, wheel, clipping) when the window cannot be tall enough. It is part of
+        /// the tree (inspector, dumps, hit-testing) but not exposed as the root's parent through the API.
+        /// </summary>
+        internal ScrollView Viewport { get; }
 
         // ---------------------------------------------------------------------------------------------------------
         //  Identity / services
@@ -220,10 +234,13 @@ namespace UIFramework.Core
         /// <summary>Whether the player may resize the window: both dimensions are fixed.</summary>
         internal bool IsResizable => width.HasValue && height.HasValue;
 
-        /// <summary>Smallest size the player may resize to: the content's desired size plus chrome.</summary>
+        /// <summary>Smallest size the player may resize to: the content's width plus chrome, and enough height for the viewport to scroll a few rows.</summary>
         internal Point MinimumSize => new(
-            (int)Math.Ceiling(Root.DesiredSize.X) + InsetLeft + InsetRight,
-            (int)Math.Ceiling(Root.DesiredSize.Y) + InsetTop + InsetBottom);
+            (int)Math.Ceiling(Viewport.DesiredSize.X) + InsetLeft + InsetRight,
+            Math.Min((int)Math.Ceiling(Viewport.DesiredSize.Y), MinimumViewportHeight) + InsetTop + InsetBottom);
+
+        /// <summary>Height below which a resized window is not useful (three rows + scrollbar arrows).</summary>
+        private const int MinimumViewportHeight = 160;
 
         public Rectangle Bounds { get; private set; }
 
@@ -317,21 +334,23 @@ namespace UIFramework.Core
             int insetW = InsetLeft + InsetRight;
             int insetH = InsetTop + InsetBottom;
 
+            // the title banner sits above the box, so a tall window must leave room for it
+            int maxH = Math.Max(1, vp.Y - (title != null && drawBox ? TitleReserve : 0));
             float availW = (width ?? vp.X) - insetW;
-            float availH = (height ?? vp.Y) - insetH;
-            Root.Measure(new Vector2(Math.Max(0, availW), Math.Max(0, availH)));
+            float availH = Math.Min(height ?? maxH, maxH) - insetH;
+            Viewport.Measure(new Vector2(Math.Max(0, availW), Math.Max(0, availH)));
 
-            int w = width ?? (int)Math.Ceiling(Root.DesiredSize.X) + insetW;
-            int h = collapsed ? insetH : height ?? (int)Math.Ceiling(Root.DesiredSize.Y) + insetH;
+            int w = width ?? (int)Math.Ceiling(Viewport.DesiredSize.X) + insetW;
+            int h = collapsed ? insetH : height ?? (int)Math.Ceiling(Viewport.DesiredSize.Y) + insetH;
             w = Math.Clamp(w, Math.Min(insetW, vp.X), Math.Max(vp.X, 1));
-            h = Math.Clamp(h, Math.Min(insetH, vp.Y), Math.Max(vp.Y, 1));
+            h = Math.Clamp(h, Math.Min(insetH, maxH), maxH);
 
             Point position = ResolvePosition(vp, w, h);
             Bounds = new Rectangle(position.X, position.Y, w, h);
             if (!collapsed)
             {
                 // a collapsed window keeps the last arrangement; it is re-arranged when expanded
-                Root.Arrange(new Rectangle(position.X + InsetLeft, position.Y + InsetTop, Math.Max(0, w - insetW), Math.Max(0, h - insetH)));
+                Viewport.Arrange(new Rectangle(position.X + InsetLeft, position.Y + InsetTop, Math.Max(0, w - insetW), Math.Max(0, h - insetH)));
             }
             LayoutDirty = false;
 
@@ -435,7 +454,8 @@ namespace UIFramework.Core
             {
                 if (drawBox)
                 {
-                    SpriteText.drawStringWithScrollCenteredAt(b, titleText, Bounds.Center.X, Math.Max(8, Bounds.Y - 56));
+                    // the scroll graphic spans [y - 12, y + 60]; keep it just above the frame
+                    SpriteText.drawStringWithScrollCenteredAt(b, titleText, Bounds.Center.X, Math.Max(12, Bounds.Y - 68));
                 }
                 else
                 {
@@ -449,7 +469,7 @@ namespace UIFramework.Core
             }
             else
             {
-                Root.Draw(b);
+                Viewport.Draw(b);
                 InspectorRenderer.Draw(this, b);
                 Overlay.Draw(b);
                 DrawTooltip(b);
@@ -466,7 +486,9 @@ namespace UIFramework.Core
         {
             if (Theme.IsVanillaChrome)
             {
-                Game1.drawDialogueBox(Bounds.X, Bounds.Y, Bounds.Width, Bounds.Height, speaker: false, drawOnlyBox: true);
+                // drawDialogueBox draws its frame 64 px below the y it is given (and 64 px shorter), so offset the call
+                // to make the visible frame exactly Bounds
+                Game1.drawDialogueBox(Bounds.X, Bounds.Y - 64, Bounds.Width, Bounds.Height + 64, speaker: false, drawOnlyBox: true);
                 return;
             }
 

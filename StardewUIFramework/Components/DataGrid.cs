@@ -49,6 +49,9 @@ namespace UIFramework.Components
         private int[] position = Array.Empty<int>();
 
         private int rowHeight;
+
+        /// <summary>The row height actually laid out: <see cref="RowHeight"/> grown with the text scale.</summary>
+        private int EffectiveRowHeight => Theme.ScaleForText(rowHeight);
         private int visibleRows;
         private int firstVisible;
         private int lastCount;
@@ -510,7 +513,7 @@ namespace UIFramework.Components
 
         private Rectangle HeaderRect => new(Bounds.X, Bounds.Y, ContentRect.Width, headerHeight);
 
-        private Rectangle RowsRect => new(Bounds.X, Bounds.Y + headerHeight, ContentRect.Width, visibleRows * rowHeight);
+        private Rectangle RowsRect => new(Bounds.X, Bounds.Y + headerHeight, ContentRect.Width, visibleRows * EffectiveRowHeight);
 
         /// <summary>Width available to a cell's content (column width minus the cell padding).</summary>
         internal int CellContentWidth(int column) => Math.Max(0, columns[column].ResolvedWidth - (2 * CellPadX));
@@ -528,14 +531,14 @@ namespace UIFramework.Components
             bool unbounded = float.IsInfinity(available.X) || float.IsNaN(available.X);
             float contentWidth = unbounded ? float.PositiveInfinity : Math.Max(0, available.X - reserved);
             float total = ResolveColumns(contentWidth);
-            var rowAvailable = new Vector2(total, rowHeight);
+            var rowAvailable = new Vector2(total, EffectiveRowHeight);
             foreach (DataGridRow row in rows)
             {
                 row.Measure(rowAvailable);
             }
 
             float width = unbounded ? total + reserved : Math.Max(available.X, total + reserved);
-            return new Vector2(width, headerHeight + (visibleRows * rowHeight));
+            return new Vector2(width, headerHeight + (visibleRows * EffectiveRowHeight));
         }
 
         /// <summary>Resolve every column's width against <paramref name="contentWidth"/> (star columns absorb the rest); returns the total.</summary>
@@ -569,7 +572,7 @@ namespace UIFramework.Components
                 width += ArrowGap + (Theme.ScrollUpArrow.Width * ArrowScale);
             }
 
-            var unbounded = new Vector2(float.PositiveInfinity, rowHeight);
+            var unbounded = new Vector2(float.PositiveInfinity, EffectiveRowHeight);
             foreach (DataGridRow row in rows)
             {
                 if (row.Visible && column < row.Cells.Count)
@@ -591,7 +594,7 @@ namespace UIFramework.Components
                 x += column.ResolvedWidth;
             }
             // the final widths can differ from the measure pass (stretch); re-measure the cells at their real width
-            var rowAvailable = new Vector2(total, rowHeight);
+            var rowAvailable = new Vector2(total, EffectiveRowHeight);
             foreach (DataGridRow row in rows)
             {
                 row.Measure(rowAvailable);
@@ -600,7 +603,7 @@ namespace UIFramework.Components
             int y = content.Y + headerHeight;
             for (int i = 0; i < rows.Count; i++)
             {
-                rows[i].Arrange(new Rectangle(content.X, y + (i * rowHeight), content.Width, rowHeight));
+                rows[i].Arrange(new Rectangle(content.X, y + (i * EffectiveRowHeight), content.Width, EffectiveRowHeight));
             }
             // any other child a consumer added directly overlaps the rows area
             foreach (UIElement child in Children)
@@ -685,7 +688,7 @@ namespace UIFramework.Components
             int textY = cell.Y + ((cell.Height - (int)size.Y) / 2);
             if (text.Length > 0)
             {
-                Utility.drawBoldText(b, text, Game1.smallFont, new Vector2(textX, textY), style.TextColor);
+                Utility.drawBoldText(b, text, Game1.smallFont, new Vector2(textX, textY), style.TextColor, Theme.FontScale);
             }
 
             if (sorted)
@@ -732,7 +735,7 @@ namespace UIFramework.Components
         private void DrawDividers(SpriteBatch b)
         {
             int top = Bounds.Y + 4;
-            int height = headerHeight + (visibleRows * rowHeight) - 8;
+            int height = headerHeight + (visibleRows * EffectiveRowHeight) - 8;
             int active = resizingColumn >= 0 ? resizingColumn : (IsHovered && HeaderRect.Contains(CursorX, CursorY) ? ResizeColumnAt(CursorX) : -1);
             for (int j = 0; j < columns.Count - 1; j++)
             {

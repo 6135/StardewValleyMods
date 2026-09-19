@@ -156,8 +156,9 @@ namespace UIFramework.Components
 
             Vector2 textSize = UIServices.Text.Measure(style.Font, current, 1f);
             Color textColor = Enabled ? style.TextColor : style.DisabledTextColor;
-            var textPos = new Vector2(Bounds.X + box + Theme.Space(LabelGap), (int)(Bounds.Y + ((Bounds.Height - textSize.Y) / 2f)));
-            DrawHelper.Text(b, current, style.Font, textPos, textColor, style.TextShadow, 1f);
+            int textX = Bounds.X + box + Theme.Space(LabelGap);
+            var textRect = new Rectangle(textX, (int)(Bounds.Y + ((Bounds.Height - textSize.Y) / 2f)), Math.Max(0, Bounds.Right - textX), (int)textSize.Y);
+            DrawHelper.FitText(b, current, style.Font, textRect, textColor, style.TextShadow, 1f, UIAlign.Start);
         }
 
         // ---------------------------------------------------------------------------------------------------------

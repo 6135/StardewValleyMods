@@ -162,7 +162,14 @@ namespace UIFramework.Components
                 return;
             }
 
-            DrawHelper.TextInRect(b, displayText, Font, Bounds, color, shadow, scale, TextAlign);
+            if (Wrap)
+            {
+                DrawHelper.TextInRect(b, displayText, Font, Bounds, color, shadow, scale, TextAlign);
+                return;
+            }
+
+            // a single line that got less width than it wanted shrinks a little, then truncates
+            DrawHelper.FitText(b, displayText, Font, Bounds, color, shadow, scale, TextAlign);
         }
 
         /// <summary>The link under the cursor while hovered, or null.</summary>

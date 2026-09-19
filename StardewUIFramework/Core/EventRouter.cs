@@ -122,7 +122,16 @@ namespace UIFramework.Core
         }
 
         /// <summary>Deepest element under the point: elements drawn in the overlay pass first, then the tree.</summary>
-        private UIElement? HitTest(int x, int y) => menu.Overlay.ElementAt(x, y) ?? menu.Root.HitTest(x, y);
+        private UIElement? HitTest(int x, int y)
+        {
+            UIElement? overlay = menu.Overlay.ElementAt(x, y);
+            if (overlay != null)
+            {
+                return overlay;
+            }
+
+            return menu.Viewport.HitTest(x, y);
+        }
 
         /// <summary>Scroll wheel: popup → hovered element chain → menu.</summary>
         internal bool Scroll(int direction)

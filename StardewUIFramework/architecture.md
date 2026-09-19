@@ -38,7 +38,7 @@ Progress against §13. Update this table when a phase or item changes; §13 stay
 
 Known gaps / follow‑ups:
 
-- Window chrome: `Game1.drawDialogueBox` still draws speaker decorations and the title banner overlaps the first row at some sizes (seen in‑game); fix pending in `UIMenu.Draw` / `BoxInsetTop`.
+- Window chrome (fixed): `Game1.drawDialogueBox` draws its frame 64 px below the `y` it is given, so `UIMenu.DrawChrome` offsets the call and the top inset is 56 px like the sides; tall windows reserve the title banner and scroll their content: `UIMenu.Viewport` is a fit‑content `ScrollView` that hosts `Root` (a real tree element — inspector, dumps, hit‑testing — but not the root's API `Parent`), invisible while the content fits.
 - `StardewUIFramework.Tests` (§14, xUnit, `v2/tools`) covers layout, routing, inputs and the tools headlessly through the `Testing/` harness (`TestHost`, `InputDriver`, `TreeSnapshot`); it is listed in `Stardew Mods.sln`. Menus are never opened as `IClickableMenu`s in tests (`Game1.activeClickableMenu`'s setter needs `Game1.player`).
 - In‑game acceptance (§14: UI scales 75/100/150 %, resize, gamepad reach) still to be run for the Profit Calculator port, and none of the v1.1 features has been exercised in game yet (built and unit‑tested headlessly only).
 - `TextInput` has no caret movement (Left/Right fall through to focus traversal; the caret is always at the end).

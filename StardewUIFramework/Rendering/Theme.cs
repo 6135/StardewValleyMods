@@ -340,6 +340,9 @@ namespace UIFramework.Rendering
             return (int)Math.Round(pixels * scale);
         }
 
+        /// <summary>A consumer-given row height (or text box width) grown with the text scale so scaled text still fits; never smaller than the given value.</summary>
+        internal static int ScaleForText(int pixels) => (int)Math.Round(pixels * Math.Max(1f, FontScale));
+
         /// <summary>Extra height a fixed-size row needs so scaled text of <paramref name="font"/> still fits (0 at scale 1 or below).</summary>
         internal static int ExtraTextHeight(UIFont font)
         {

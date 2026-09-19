@@ -718,9 +718,9 @@ every signal (or computed) read while the delegate runs becomes a dependency, th
 recomputed on the next read after a dependency changed. A dependency cycle is logged and the stale value kept.
 `Subscribe` handlers run once per batch of changes, after the computed was invalidated.
 
-Bindings connect them to elements: `BindText(label, computed)` / `BindText(label, signal)` show the value in a
+Bindings connect them to elements: `BindText(label, computed)` / `BindTextToSignal(label, signal)` show the value in a
 label that only re-flows when the version changes; `BindVisible(element, computed)` and `BindEnabled(element,
-computed)` drive `Visible` / `Enabled` from the computed's `Flag`; `BindValue(input, signal)` is two-way for text
+computed)` drive `Visible` / `Enabled` from the computed's `Flag`; `BindTextInput` / `BindNumberInput` / `BindCheckbox` / `BindSlider` / `BindDropdown(input, signal)` are two-way for text
 inputs, number inputs, checkboxes, sliders and dropdowns (the input reads the signal instead of its getter and writes
 it when edited; the setter it was created with is still called afterwards, so your own fields stay in sync).
 `Unbind(element)` drops every
@@ -730,8 +730,8 @@ menu.
 ```csharp
 IUISignal daySignal = ui.SignalNumber(day);
 IUISignal seasonSignal = ui.Signal(season);
-ui.BindValue(dayInput, daySignal);            // an IUINumberInput created earlier
-ui.BindValue(seasonDropdown, seasonSignal);   // an IUIDropdown created earlier
+ui.BindNumberInput(dayInput, daySignal);            // an IUINumberInput created earlier
+ui.BindDropdown(seasonDropdown, seasonSignal);   // an IUIDropdown created earlier
 
 IUIComputed summary = ui.Computed(() => $"Day {daySignal.Number:0} of {seasonSignal.Value}");
 IUILabel summaryLabel = ui.AddLabel(menu.Root, "signals.summary", () => string.Empty);
@@ -1623,14 +1623,14 @@ v1.1 additions, in the order they appear in the file (a consumer's copy may incl
 | `IUIComputed ComputedNumber(Func<double> compute)`                                                                                                    | Numeric variant of `Computed`.                                                                        |
 | `IUIComputed ComputedBool(Func<bool> compute)`                                                                                                        | Boolean variant of `Computed`.                                                                        |
 | `void BindText(IUILabel label, IUIComputed source)`                                                                                                   | Show `source` in the label; the label only re-flows when the computed's version changes.              |
-| `void BindText(IUILabel label, IUISignal source)`                                                                                                     | Show `source` in the label; the label only re-flows when the signal's version changes.                |
+| `void BindTextToSignal(IUILabel label, IUISignal source)`                                                                                                     | Show `source` in the label; the label only re-flows when the signal's version changes.                |
 | `void BindVisible(IUIElement element, IUIComputed source)`                                                                                            | Drive `Visible` from the computed's `Flag`.                                                           |
 | `void BindEnabled(IUIElement element, IUIComputed source)`                                                                                            | Drive `Enabled` from the computed's `Flag`.                                                           |
-| `void BindValue(IUITextInput input, IUISignal signal)`                                                                                                | Two-way: the input shows the signal and writes it when edited (the setter it was created with is still called). |
-| `void BindValue(IUINumberInput input, IUISignal signal)`                                                                                              | Two-way: the input shows the signal's `Number` and writes it when edited.                             |
-| `void BindValue(IUICheckbox input, IUISignal signal)`                                                                                                 | Two-way: the checkbox shows the signal's `Flag` and writes it when toggled.                           |
-| `void BindValue(IUISlider input, IUISignal signal)`                                                                                                   | Two-way: the slider shows the signal's `Number` and writes it when moved.                             |
-| `void BindValue(IUIDropdown input, IUISignal signal)`                                                                                                 | Two-way: the dropdown selects the choice equal to the signal's `Value` and writes it when changed.    |
+| `void BindTextInput(IUITextInput input, IUISignal signal)`                                                                                                | Two-way: the input shows the signal and writes it when edited (the setter it was created with is still called). |
+| `void BindNumberInput(IUINumberInput input, IUISignal signal)`                                                                                              | Two-way: the input shows the signal's `Number` and writes it when edited.                             |
+| `void BindCheckbox(IUICheckbox input, IUISignal signal)`                                                                                                 | Two-way: the checkbox shows the signal's `Flag` and writes it when toggled.                           |
+| `void BindSlider(IUISlider input, IUISignal signal)`                                                                                                   | Two-way: the slider shows the signal's `Number` and writes it when moved.                             |
+| `void BindDropdown(IUIDropdown input, IUISignal signal)`                                                                                                 | Two-way: the dropdown selects the choice equal to the signal's `Value` and writes it when changed.    |
 | `void Unbind(IUIElement element)`                                                                                                                     | Drop every binding on `element` (restoring the original value delegates). Bindings are also dropped when the element leaves its menu. |
 | `IUIForm AddForm(IUIContainer parent, string id, object model)`                                                                                       | Generate a two-column form from the public read / write properties of `model` (see [Auto-forms](#auto-forms)). |
 | `IUIHud CreateHud(string id)`                                                                                                                         | Create (or replace) a HUD widget: a non-modal overlay drawn during gameplay. Build its tree under `IUIHud.Root`. |
