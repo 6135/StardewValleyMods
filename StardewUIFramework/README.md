@@ -698,7 +698,8 @@ a range. `SelectedRow` is the primary row (or -1) and `SelectedRows` every selec
 either replaces the selection without raising events, `ClearSelection()` empties it. Events: `OnValueChanged` when
 the user changes the selection (`OldIndex` / `NewIndex` are underlying indices of the primary row), `OnRowClick`
 for every left or right click on a row after selection was applied (an `IUIRowEvent`: a click event plus the
-underlying `Row`), `OnRowActivated` on a double-click or Enter with a selected row, `OnScroll` after scrolling
+underlying `Row`), `OnRowActivated` on a double-click or Enter with a selected row, `RowTooltip` for a rich
+tooltip per row, `OnScroll` after scrolling
 (row delta). The grid is focusable: while focused, Up / Down / PageUp / PageDown / Home / End move the selection
 (Shift extends it in multi-select) and Enter activates the primary row; the wheel scrolls one row per notch.
 `ScrollToRow(row)` brings an underlying row into view (no-op when filtered out); `FirstVisibleIndex` is a display
@@ -1471,6 +1472,7 @@ change the display order; only the visible rows exist as elements):
 | `Action<IUIValueEvent> OnValueChanged`                    | Raised when the user changes the selection (`OldIndex` / `NewIndex` are underlying indices of the primary row).               |
 | `Action<IUIRowEvent> OnRowClick`                          | Raised for every click on a row (left or right), after selection was applied.                                                 |
 | `Action<int> OnRowActivated`                              | Raised on a double-click on a row or Enter with a selected row; the argument is the underlying index.                         |
+| `Func<int, IUITooltip> RowTooltip`                        | Rich tooltip for a whole row (underlying index), built with `CreateTooltip`; evaluated when the row is (re)built.             |
 | `Action<int> OnScroll`                                    | Raised after scrolling; argument is the row delta.                                                                            |
 | `void ScrollToRow(int row)`                               | Scroll so the underlying row is visible (no-op when it is filtered out).                                                      |
 | `string ScrollSound`                                      | Scroll sound cue (`null` = default, empty = silent).                                                                          |

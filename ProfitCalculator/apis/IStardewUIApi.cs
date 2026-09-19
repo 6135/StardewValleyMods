@@ -1358,6 +1358,9 @@ namespace UIFramework.Api
         /// <summary>Raised on a double-click on a row or Enter with a selected row; the argument is the underlying index.</summary>
         Action<int> OnRowActivated { get; set; }
 
+        /// <summary>Rich tooltip for a whole row (underlying index), built with <see cref="IStardewUIApi.CreateTooltip"/>; null = none. Evaluated when the row is (re)built.</summary>
+        Func<int, IUITooltip> RowTooltip { get; set; }
+
         /// <summary>Raised after scrolling; argument is the row delta.</summary>
         Action<int> OnScroll { get; set; }
 

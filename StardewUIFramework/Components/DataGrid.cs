@@ -144,11 +144,13 @@ namespace UIFramework.Components
         internal Action<IUIRowEvent>? OnRowClick { get; set; }
         internal Action<int>? OnRowActivated { get; set; }
         internal Action<int>? OnScroll { get; set; }
+        internal Func<int, IUITooltip>? RowTooltip { get; set; }
 
         Action<string, int> IUIDataGrid.OnColumnResized { get => OnColumnResized!; set => OnColumnResized = value; }
         Action<IUIValueEvent> IUIDataGrid.OnValueChanged { get => OnValueChanged!; set => OnValueChanged = value; }
         Action<IUIRowEvent> IUIDataGrid.OnRowClick { get => OnRowClick!; set => OnRowClick = value; }
         Action<int> IUIDataGrid.OnRowActivated { get => OnRowActivated!; set => OnRowActivated = value; }
+        Func<int, IUITooltip> IUIDataGrid.RowTooltip { get => RowTooltip!; set => RowTooltip = value; }
         Action<int> IUIDataGrid.OnScroll { get => OnScroll!; set => OnScroll = value; }
 
         /// <summary>null = default cue, empty = silent.</summary>
@@ -410,6 +412,7 @@ namespace UIFramework.Components
             int item = pos >= 0 && pos < order.Length ? order[pos] : -1;
             row.Item = item;
             row.Visible = item >= 0;
+            row.RichTooltip = item >= 0 && RowTooltip != null ? Raise("RowTooltip", () => RowTooltip(item), null) as RichTooltip : null;
             for (int j = 0; j < columns.Count; j++)
             {
                 BuildCell(row.Cells[j], columns[j], item);
