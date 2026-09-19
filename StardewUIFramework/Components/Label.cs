@@ -112,6 +112,8 @@ namespace UIFramework.Components
             }
         }
 
+        internal override string AccessibleDescription => Accessibility.Compose(Accessibility.Text("label", "Label"), CurrentText);
+
         // labels only take clicks / hover when they have a reason to
         protected override bool IsHitTestVisible => HasPointerHandlers || (richText && OnLink != null && richLayout?.Document.HasLinks == true);
 

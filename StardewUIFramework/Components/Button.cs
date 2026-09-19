@@ -1,7 +1,6 @@
 using System;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
-using StardewValley;
 using UIFramework.Api;
 using UIFramework.Core;
 using UIFramework.Rendering;
@@ -114,7 +113,7 @@ namespace UIFramework.Components
         protected override string? HoverSoundCue => HoverSound ?? Style.HoverSound ?? Theme.HoverSound;
 
         /// <summary>Current text; pseudo-localized here for plain buttons, by the markup parser for rich ones.</summary>
-        private string CurrentText
+        internal string CurrentText
         {
             get
             {
@@ -141,6 +140,8 @@ namespace UIFramework.Components
             return richLayout.Size;
         }
 
+        internal override string AccessibleDescription => Accessibility.Compose(Accessibility.Text("button", "Button"), CurrentText, Enabled ? null : Accessibility.Text("disabled", "disabled"));
+
         private Vector2 IconSize => icon == null ? Vector2.Zero : new Vector2((iconSource?.Width ?? icon.Width) * iconScale, (iconSource?.Height ?? icon.Height) * iconScale);
 
         protected override Vector2 MeasureCore(Vector2 available)
@@ -148,8 +149,8 @@ namespace UIFramework.Components
             measuredText = CurrentText;
             Vector2 textSize = MeasureText(measuredText);
             Vector2 iconSize = IconSize;
-            float w = textSize.X + iconSize.X + (textSize.X > 0 && iconSize.X > 0 ? IconGap : 0) + (DrawBox ? (2 * PadX) : 0);
-            float h = Math.Max(textSize.Y, iconSize.Y) + (DrawBox ? (2 * PadY) : 0);
+            float w = textSize.X + iconSize.X + (textSize.X > 0 && iconSize.X > 0 ? Theme.Space(IconGap) : 0) + (DrawBox ? (2 * Theme.Space(PadX)) : 0);
+            float h = Math.Max(textSize.Y, iconSize.Y) + (DrawBox ? (2 * Theme.Space(PadY)) : 0);
             if (DrawBox)
             {
                 h = Math.Max(h, MinHeight);
@@ -164,9 +165,7 @@ namespace UIFramework.Components
             if (DrawBox)
             {
                 bool highlighted = Enabled && (IsHovered || IsFocused);
-                Texture2D texture = style.BoxTexture ?? Game1.mouseCursors;
-                Rectangle source = style.BoxSource ?? (style.BoxTexture == null ? Theme.ButtonBoxSource : texture.Bounds);
-                DrawHelper.Box(b, texture, source, Bounds, Theme.StateTint(Enabled, highlighted, style.HoverColor), style.BoxScale ?? 4f);
+                DrawHelper.StyledBox(b, style, button: true, Bounds, Theme.StateTint(Enabled, highlighted, style.HoverColor));
             }
 
             string current = CurrentText;
@@ -184,7 +183,7 @@ namespace UIFramework.Components
         {
             Vector2 textSize = MeasureText(current);
             Vector2 iconSize = IconSize;
-            float gap = textSize.X > 0 && iconSize.X > 0 ? IconGap : 0;
+            float gap = textSize.X > 0 && iconSize.X > 0 ? Theme.Space(IconGap) : 0;
             float x = Bounds.X + ((Bounds.Width - (textSize.X + iconSize.X + gap)) / 2f);
 
             if (icon != null)
@@ -200,7 +199,7 @@ namespace UIFramework.Components
                 return;
             }
 
-            Color textColor = Enabled ? style.TextColor : style.TextColor * 0.5f;
+            Color textColor = Enabled ? style.TextColor : style.DisabledTextColor;
             int textY = (int)(Bounds.Y + ((Bounds.Height - textSize.Y) / 2f));
             if (richLayout != null)
             {

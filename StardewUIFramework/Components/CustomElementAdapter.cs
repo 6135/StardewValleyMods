@@ -21,6 +21,16 @@ namespace UIFramework.Components
 
         internal override bool Focusable => bridge.WantsFocus;
 
+        /// <summary>Custom components have no text of their own: the consumer's <c>AccessibleName</c> or the tooltip describes them.</summary>
+        internal override string AccessibleDescription
+        {
+            get
+            {
+                string? tooltip = Tooltip == null ? null : Raise("Tooltip", Tooltip, string.Empty);
+                return Accessibility.Compose("Custom", tooltip ?? Id);
+            }
+        }
+
         /// <summary>Overlay components draw (content + <c>OnDrawExtra</c>) and are hit-tested above the tree.</summary>
         protected override bool DrawsInOverlay => bridge.WantsOverlay;
 

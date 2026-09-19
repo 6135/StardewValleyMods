@@ -65,6 +65,7 @@ namespace UIFramework.Core
             old?.HandleFocusLost();
             UpdateSubscription();
             element?.HandleFocusGained();
+            Accessibility.AnnounceElement(element);
         }
 
         internal void ClearFocus() => SetFocus(null);

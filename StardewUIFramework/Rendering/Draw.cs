@@ -24,19 +24,65 @@ namespace UIFramework.Rendering
             IClickableMenu.drawTextureBox(b, texture, source, rect.X, rect.Y, rect.Width, rect.Height, color, scale, shadow);
         }
 
-        /// <summary>Vanilla panel box (<c>Game1.menuTexture</c>).</summary>
-        internal static void PanelBox(SpriteBatch b, Rectangle rect, Color color)
+        /// <summary>The theme's panel box (vanilla <c>Game1.menuTexture</c> by default), used by HUD widgets and toasts.</summary>
+        internal static void PanelBox(SpriteBatch b, Rectangle rect, Color tint)
         {
-            Box(b, Game1.menuTexture, Theme.PanelBoxSource, rect, color, 1f);
+            ThemedBox(b, Theme.PanelTexture, Theme.PanelBoxSource, rect, tint, 1f);
         }
 
-        /// <summary>Vanilla button box (<c>Game1.mouseCursors</c> 432,439).</summary>
-        internal static void ButtonBox(SpriteBatch b, Rectangle rect, Color color)
+        /// <summary>
+        /// Draw a box the theme's way: a solid fill with an outline when the theme sets <see cref="Theme.BoxFill"/>
+        /// (the outline takes <paramref name="tint"/> when it is not white, so hover / disabled states stay visible),
+        /// otherwise the 9-slice <paramref name="texture"/> multiplied by <see cref="Theme.BoxTint"/>.
+        /// </summary>
+        internal static void ThemedBox(SpriteBatch b, Texture2D texture, Rectangle source, Rectangle rect, Color tint, float scale)
         {
-            Box(b, Game1.mouseCursors, Theme.ButtonBoxSource, rect, color, 4f);
+            if (rect.Width <= 0 || rect.Height <= 0)
+            {
+                return;
+            }
+
+            Color? fill = Theme.BoxFill;
+            if (fill.HasValue)
+            {
+                Fill(b, rect, fill.Value);
+                Outline(b, rect, tint == Color.White ? Theme.BorderColor : tint, Theme.BorderThickness);
+                return;
+            }
+
+            Box(b, texture, source, rect, Multiply(tint, Theme.BoxTint), scale);
         }
 
-        /// <summary>Draw a text string at a position (optionally with the vanilla shadow).</summary>
+        /// <summary>
+        /// The box behind a panel (<paramref name="button"/> = false) or a button: the element's own texture / source
+        /// when its style sets one (drawn untouched, as before themes), otherwise the theme's box for that kind.
+        /// </summary>
+        internal static void StyledBox(SpriteBatch b, in ResolvedStyle style, bool button, Rectangle rect, Color tint)
+        {
+            float scale = style.BoxScale ?? (button ? 4f : 1f);
+            if (style.BoxTexture != null)
+            {
+                Box(b, style.BoxTexture, style.BoxSource ?? style.BoxTexture.Bounds, rect, tint, scale);
+                return;
+            }
+
+            Texture2D texture = button ? Theme.ButtonTexture : Theme.PanelTexture;
+            Rectangle source = style.BoxSource ?? (button ? Theme.ButtonBoxSource : Theme.PanelBoxSource);
+            ThemedBox(b, texture, source, rect, tint, scale);
+        }
+
+        /// <summary>Component-wise product of two colors (white is the identity).</summary>
+        internal static Color Multiply(Color a, Color b)
+        {
+            if (b == Color.White)
+            {
+                return a;
+            }
+
+            return new Color(a.R * b.R / 255, a.G * b.G / 255, a.B * b.B / 255, a.A * b.A / 255);
+        }
+
+        /// <summary>Draw a text string at a position (optionally with the vanilla shadow). <paramref name="scale"/> is multiplied by the theme's font scale.</summary>
         internal static void Text(SpriteBatch b, string content, UIFont font, Vector2 position, Color color, bool shadow, float scale)
         {
             if (string.IsNullOrEmpty(content))
@@ -44,6 +90,7 @@ namespace UIFramework.Rendering
                 return;
             }
 
+            scale *= Theme.FontScale;
             SpriteFont spriteFont = GameTextMeasurer.GetFont(font);
             if (shadow)
             {

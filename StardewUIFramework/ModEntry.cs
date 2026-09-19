@@ -1,9 +1,12 @@
+using System;
+using System.Collections.Generic;
 using System.Linq;
 using StardewModdingAPI;
 using StardewModdingAPI.Events;
 using UIFramework.Api;
 using UIFramework.Core;
 using UIFramework.Hosting;
+using UIFramework.Rendering;
 
 namespace UIFramework
 {
@@ -71,6 +74,13 @@ namespace UIFramework
             // END RICHTEXT entry
 
             // BEGIN THEME entry
+            UIServices.SaveConfig = () => Helper.WriteConfig(config);
+            ThemeSwitcher.Menus = menus;
+            helper.Events.GameLoop.GameLaunched += (_, _) => ConnectScreenReader();
+            helper.Events.Content.AssetRequested += OnAssetRequested;
+            helper.Events.Content.AssetsInvalidated += (_, e) => RefreshThemeIf(e.NamesWithoutLocale.Any(n => n.IsEquivalentTo(Theme.AssetName)));
+            helper.Events.Content.AssetReady += (_, e) => RefreshThemeIf(e.NameWithoutLocale.IsEquivalentTo(Theme.AssetName));
+            helper.ConsoleCommands.Add("ui_theme", "Switch the UI Framework theme: ui_theme <name> (no argument lists the themes).", OnThemeCommand);
             // END THEME entry
 
             // BEGIN SIGNALS entry
@@ -160,6 +170,19 @@ namespace UIFramework
             // END RICHTEXT gmcm
 
             // BEGIN THEME gmcm
+            // the theme list is read a few ticks later so Content Patcher (which initializes on the first tick) has added its themes
+            int ticksUntilThemeOptions = 5;
+            void AddThemeOptionsWhenReady(object? s, UpdateTickedEventArgs args)
+            {
+                if (--ticksUntilThemeOptions > 0)
+                {
+                    return;
+                }
+
+                Helper.Events.GameLoop.UpdateTicked -= AddThemeOptionsWhenReady;
+                RegisterThemeOptions(gmcm);
+            }
+            Helper.Events.GameLoop.UpdateTicked += AddThemeOptionsWhenReady;
             // END THEME gmcm
 
             // BEGIN HUD gmcm
@@ -167,6 +190,90 @@ namespace UIFramework
 
             // BEGIN TOOLS gmcm
             // END TOOLS gmcm
+        }
+
+        // ---------------------------------------------------------------------------------------------------------
+        //  THEME: theme asset, console command, screen reader
+        // ---------------------------------------------------------------------------------------------------------
+
+        /// <summary>Provide the bundled <c>assets/themes.json</c> as the default content of the theme asset (Content Patcher packs edit it).</summary>
+        private static void OnAssetRequested(object? sender, AssetRequestedEventArgs e)
+        {
+            if (e.NameWithoutLocale.IsEquivalentTo(Theme.AssetName))
+            {
+                e.LoadFromModFile<Dictionary<string, ThemeData>>("assets/themes.json", AssetLoadPriority.Exclusive);
+            }
+        }
+
+        private static void RefreshThemeIf(bool themeAssetChanged)
+        {
+            if (themeAssetChanged)
+            {
+                ThemeSwitcher.Refresh();
+            }
+        }
+
+        /// <summary>GMCM options for the theme, text scale and reduced motion settings.</summary>
+        private void RegisterThemeOptions(IGenericModConfigMenuApi gmcm)
+        {
+            gmcm.AddTextOption(ModManifest,
+                getValue: () => config.Theme,
+                setValue: v => ThemeSwitcher.Apply(v ?? Theme.DefaultThemeName, ModManifest.UniqueID),
+                name: () => Helper.Translation.Get("config.theme"),
+                tooltip: () => Helper.Translation.Get("config.theme.desc"),
+                allowedValues: ThemeChoices(), formatAllowedValue: null, fieldId: null);
+            gmcm.AddNumberOption(ModManifest,
+                getValue: () => config.TextScale,
+                setValue: v =>
+                {
+                    config.TextScale = v;
+                    ThemeSwitcher.Refresh();
+                },
+                name: () => Helper.Translation.Get("config.text-scale"),
+                tooltip: () => Helper.Translation.Get("config.text-scale.desc"),
+                min: 0.75f, max: 2f, interval: 0.05f, formatValue: v => v.ToString("0.00"), fieldId: null);
+            gmcm.AddBoolOption(ModManifest,
+                getValue: () => config.ReducedMotion,
+                setValue: v => config.ReducedMotion = v,
+                name: () => Helper.Translation.Get("config.reduced-motion"),
+                tooltip: () => Helper.Translation.Get("config.reduced-motion.desc"),
+                fieldId: null);
+        }
+
+        /// <summary>The theme names for the GMCM dropdown: everything in the asset plus the configured name (so an unknown value still shows).</summary>
+        private string[] ThemeChoices()
+        {
+            var names = new List<string>(Theme.ThemeNames);
+            if (!names.Contains(config.Theme, StringComparer.OrdinalIgnoreCase))
+            {
+                names.Add(config.Theme);
+            }
+
+            return names.ToArray();
+        }
+
+        private void OnThemeCommand(string command, string[] args)
+        {
+            if (args.Length == 0 || string.IsNullOrWhiteSpace(args[0]))
+            {
+                Monitor.Log($"Active theme: {Theme.ActiveName}. Available: {string.Join(", ", Theme.ThemeNames)}.", LogLevel.Info);
+                return;
+            }
+
+            ThemeSwitcher.Apply(args[0], ModManifest.UniqueID);
+        }
+
+        /// <summary>Route announcements to Stardew Access when it is installed.</summary>
+        private void ConnectScreenReader()
+        {
+            IStardewAccessApi? reader = Helper.ModRegistry.GetApi<IStardewAccessApi>("shoaib.stardewaccess");
+            if (reader == null)
+            {
+                return;
+            }
+
+            UIServices.Announcer = text => reader.Say(text, interrupt: true);
+            Monitor.Log("Stardew Access detected; framework menus will announce titles, focus and value changes.", LogLevel.Info);
         }
     }
 }

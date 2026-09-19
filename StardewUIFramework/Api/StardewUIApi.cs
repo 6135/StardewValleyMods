@@ -393,6 +393,37 @@ namespace UIFramework.Api
         // END RICHTEXT facade
 
         // BEGIN THEME facade
+
+        public string[] ListThemes() => Theme.ThemeNames;
+
+        public string ActiveTheme => Theme.ActiveName;
+
+        public void SetTheme(string name)
+        {
+            if (string.IsNullOrWhiteSpace(name))
+            {
+                throw new ArgumentException("A theme name is required.", nameof(name));
+            }
+
+            ThemeSwitcher.Apply(name, consumer.ModId);
+        }
+
+        public Color ThemeColor(string key)
+        {
+            return (key ?? string.Empty).Trim().ToLowerInvariant() switch
+            {
+                "disabled-text" => Theme.DisabledTextColor,
+                "hover" => Theme.HoverColor,
+                "scrollbar" => Theme.ScrollbarTint,
+                "border" => Theme.BorderColor,
+                _ => Theme.TextColor
+            };
+        }
+
+        public bool ReducedMotion => Theme.ReducedMotion;
+
+        public void Announce(string text) => Accessibility.Announce(text);
+
         // END THEME facade
 
         // BEGIN DATAGRID facade

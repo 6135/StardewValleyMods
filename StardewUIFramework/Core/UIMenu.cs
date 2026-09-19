@@ -34,6 +34,7 @@ namespace UIFramework.Core
         private bool collapsed;
         private Point anchorOffset;
         private Func<string>? title;
+        private UIElement? announcedHover;
 
         internal UIMenu(string id, ConsumerContext consumer, MenuRegistry registry)
         {
@@ -303,10 +304,10 @@ namespace UIFramework.Core
         //  Layout
         // ---------------------------------------------------------------------------------------------------------
 
-        private int InsetLeft => (drawBox ? BoxInsetSide : 0) + padding;
-        private int InsetRight => (drawBox ? BoxInsetSide : 0) + padding;
-        private int InsetTop => (drawBox ? BoxInsetTop : 0) + padding;
-        private int InsetBottom => (drawBox ? BoxInsetBottom : 0) + padding;
+        private int InsetLeft => (drawBox ? BoxInsetSide : 0) + Theme.Space(padding);
+        private int InsetRight => (drawBox ? BoxInsetSide : 0) + Theme.Space(padding);
+        private int InsetTop => (drawBox ? BoxInsetTop : 0) + Theme.Space(padding);
+        private int InsetBottom => (drawBox ? BoxInsetBottom : 0) + Theme.Space(padding);
 
         /// <summary>Measure the root, compute the menu rectangle from the size / position policy, arrange the tree.</summary>
         internal void Relayout()
@@ -396,6 +397,7 @@ namespace UIFramework.Core
 
             Focus.Validate();
             Root.Update(elapsedMs);
+            AnnounceRestingHover();
             if (OnUpdate != null)
             {
                 Action<IUIMenu, double> cb = OnUpdate;
@@ -422,7 +424,7 @@ namespace UIFramework.Core
 
             if (drawBox)
             {
-                Game1.drawDialogueBox(Bounds.X, Bounds.Y, Bounds.Width, Bounds.Height, speaker: false, drawOnlyBox: true);
+                DrawChrome(b);
             }
 
             string? titleText = title == null ? null : Pseudo.Transform(Consumer.Invoke(Id, "Title", title, string.Empty));
@@ -452,6 +454,40 @@ namespace UIFramework.Core
             if (UIServices.Config.DebugOverlay)
             {
                 DrawHelper.DebugBounds(b, Bounds, Id, Color.Red);
+            }
+        }
+
+        /// <summary>The vanilla dialogue box, or the theme's panel box when the theme restyles boxes (tint, texture or solid fill).</summary>
+        private void DrawChrome(SpriteBatch b)
+        {
+            if (Theme.IsVanillaChrome)
+            {
+                Game1.drawDialogueBox(Bounds.X, Bounds.Y, Bounds.Width, Bounds.Height, speaker: false, drawOnlyBox: true);
+                return;
+            }
+
+            DrawHelper.ThemedBox(b, Theme.PanelTexture, Theme.PanelBoxSource, Bounds, Color.White, 1f);
+        }
+
+        /// <summary>Screen reader: describe the hovered element once the cursor rested on it for the tooltip delay.</summary>
+        private void AnnounceRestingHover()
+        {
+            UIElement? hovered = Hovered;
+            if (hovered == null || hovered == announcedHover || !Accessibility.Enabled)
+            {
+                announcedHover = hovered;
+                return;
+            }
+
+            if (UIServices.NowMs() - HoverStartMs < Consumer.EffectiveTooltipDelay)
+            {
+                return;
+            }
+
+            announcedHover = hovered;
+            if (!hovered.IsFocused)
+            {
+                Accessibility.AnnounceElement(hovered);
             }
         }
 
@@ -531,6 +567,12 @@ namespace UIFramework.Core
             LayoutDirty = true;
             Relayout();
             registry.NotifyOpened(this);
+            announcedHover = null;
+            if (Accessibility.Enabled)
+            {
+                string titleText = title == null ? string.Empty : Consumer.Invoke(Id, "Title", title, string.Empty) ?? string.Empty;
+                Accessibility.Announce(Accessibility.Compose(Accessibility.Text("menu", "Menu"), titleText.Length > 0 ? titleText : Id));
+            }
             if (OnOpen != null)
             {
                 Action<IUIMenu> cb = OnOpen;

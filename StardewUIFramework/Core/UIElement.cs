@@ -296,6 +296,29 @@ namespace UIFramework.Core
         protected T Raise<T>(string eventName, Func<T>? func, T fallback) => Consumer.Invoke(Id, eventName, func, fallback);
 
         // ---------------------------------------------------------------------------------------------------------
+        //  Accessibility
+        // ---------------------------------------------------------------------------------------------------------
+
+        /// <summary>Consumer override for the screen reader description (null = <see cref="AccessibleDescription"/>).</summary>
+        internal Func<string>? AccessibleName { get; set; }
+
+        Func<string> IUIElement.AccessibleName { get => AccessibleName!; set => AccessibleName = value; }
+
+        /// <summary>
+        /// What a screen reader says for this element: "&lt;type&gt;: &lt;label / text / value&gt;". Components override it;
+        /// the default is the element kind plus its tooltip title and text.
+        /// </summary>
+        internal virtual string AccessibleDescription
+        {
+            get
+            {
+                string? title = TooltipTitle == null ? null : Raise("TooltipTitle", TooltipTitle, string.Empty);
+                string? tooltip = Tooltip == null ? null : Raise("Tooltip", Tooltip, string.Empty);
+                return Accessibility.Compose(GetType().Name, title, tooltip);
+            }
+        }
+
+        // ---------------------------------------------------------------------------------------------------------
         //  Style
         // ---------------------------------------------------------------------------------------------------------
 
