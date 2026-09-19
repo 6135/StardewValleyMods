@@ -33,7 +33,7 @@ Known gaps / follow‑ups:
 
 - Window chrome: `Game1.drawDialogueBox` still draws speaker decorations and the title banner overlaps the first row at some sizes (seen in‑game); fix pending in `UIMenu.Draw` / `BoxInsetTop`.
 - Rich tooltip builder (§9) is not built; tooltips are `Func<string>` + optional title only. Rich hover content goes through `OnDrawOverlay` or a custom component.
-- `UIFramework.Tests` (§14) not created; layout/event code is written to be testable (`ITextMeasurer`, `UIServices` hooks) but no test project exists yet.
+- `StardewUIFramework.Tests` (§14, xUnit, `v2/tools`) covers layout, routing, inputs and the tools headlessly through the `Testing/` harness (`TestHost`, `InputDriver`, `TreeSnapshot`); it is not yet listed in `Stardew Mods.sln`. Menus are never opened as `IClickableMenu`s in tests (`Game1.activeClickableMenu`'s setter needs `Game1.player`).
 - In‑game acceptance (§14: UI scales 75/100/150 %, resize, gamepad reach) still to be run for the Profit Calculator port.
 - `TextInput` has no caret movement (Left/Right fall through to focus traversal; the caret is always at the end).
 - Gamepad support relies on vanilla snapping (`populateClickableComponentList` with `SNAP_AUTOMATIC`); `receiveGamePadButton` adds nothing of its own.

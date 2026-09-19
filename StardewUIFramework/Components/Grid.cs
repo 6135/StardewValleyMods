@@ -33,6 +33,8 @@ namespace UIFramework.Components
         private List<GridTrack> effectiveRows;
         private float[] columnAuto = Array.Empty<float>();
         private float[] rowAuto = Array.Empty<float>();
+        private float[] columnSizes = Array.Empty<float>();
+        private float[] rowSizes = Array.Empty<float>();
 
         internal Grid(string id, string columns, string rows) : base(id)
         {
@@ -119,6 +121,12 @@ namespace UIFramework.Components
 
         // a grid is layout-only: clicks on the gaps fall through unless it has a handler / tooltip
         protected override bool IsHitTestVisible => HasPointerHandlers;
+
+        /// <summary>Resolved column widths from the last arrange (inspector overlay).</summary>
+        internal float[] ColumnSizes => columnSizes;
+
+        /// <summary>Resolved row heights from the last arrange (inspector overlay).</summary>
+        internal float[] RowSizes => rowSizes;
 
         // ---------------------------------------------------------------------------------------------------------
         //  Tracks
@@ -351,6 +359,8 @@ namespace UIFramework.Components
             float rowSpacingTotal = RowSpace * Math.Max(0, rowCount - 1);
             float[] colSizes = LayoutEngine.ResolveTracks(effectiveColumns, columnAuto, Bounds.Width - colSpacingTotal);
             float[] rowSizes = LayoutEngine.ResolveTracks(effectiveRows, rowAuto, Bounds.Height - rowSpacingTotal);
+            columnSizes = colSizes;
+            this.rowSizes = rowSizes;
 
             foreach (UIElement child in Children)
             {

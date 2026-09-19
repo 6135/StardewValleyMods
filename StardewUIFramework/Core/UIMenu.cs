@@ -312,6 +312,7 @@ namespace UIFramework.Core
         /// <summary>Measure the root, compute the menu rectangle from the size / position policy, arrange the tree.</summary>
         internal void Relayout()
         {
+            using PerfCounters.Scope perf = PerfCounters.Begin(this, PerfCounters.Phase.Layout);
             Point vp = UIServices.ViewportSize();
             int insetW = InsetLeft + InsetRight;
             int insetH = InsetTop + InsetBottom;
@@ -390,6 +391,7 @@ namespace UIFramework.Core
 
         internal void Tick(double elapsedMs)
         {
+            using PerfCounters.Scope perf = PerfCounters.Begin(this, PerfCounters.Phase.Update);
             if (LayoutDirty)
             {
                 Relayout();
@@ -411,6 +413,7 @@ namespace UIFramework.Core
 
         internal void Draw(SpriteBatch b)
         {
+            using PerfCounters.Scope perf = PerfCounters.Begin(this, PerfCounters.Phase.Draw, endsFrame: true);
             if (LayoutDirty)
             {
                 Relayout();
@@ -447,6 +450,7 @@ namespace UIFramework.Core
             else
             {
                 Root.Draw(b);
+                InspectorRenderer.Draw(this, b);
                 Overlay.Draw(b);
                 DrawTooltip(b);
             }

@@ -1,5 +1,6 @@
 using System;
 using StardewModdingAPI;
+using StardewModdingAPI.Utilities;
 
 namespace UIFramework
 {
@@ -15,5 +16,8 @@ namespace UIFramework
         void AddNumberOption(IManifest mod, Func<float> getValue, Action<float> setValue, Func<string> name, Func<string>? tooltip, float? min, float? max, float? interval, Func<float, string>? formatValue, string? fieldId);
 
         void AddTextOption(IManifest mod, Func<string> getValue, Action<string> setValue, Func<string> name, Func<string>? tooltip, string[]? allowedValues, Func<string, string>? formatAllowedValue, string? fieldId);
+
+        // TOOLS
+        void AddKeybindList(IManifest mod, Func<KeybindList> getValue, Action<KeybindList> setValue, Func<string> name, Func<string>? tooltip, string? fieldId);
     }
 }

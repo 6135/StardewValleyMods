@@ -36,6 +36,10 @@ namespace UIFramework
         // END HUD config
 
         // BEGIN TOOLS config
+
+        /// <summary>Keybind list that toggles the in-game inspector (empty = none).</summary>
+        public string InspectorHotkey { get; set; } = "F10";
+
         // END TOOLS config
     }
 }

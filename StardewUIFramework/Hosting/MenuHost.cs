@@ -81,6 +81,12 @@ namespace UIFramework.Hosting
         public override void performHoverAction(int x, int y)
         {
             base.performHoverAction(x, y);
+            if (Inspector.Enabled)
+            {
+                Inspector.HandleHover(Menu, x, y);
+                return;
+            }
+
             layout.Hover(x, y);
             if (!Menu.Collapsed)
             {
@@ -94,6 +100,12 @@ namespace UIFramework.Hosting
 
         public override void receiveLeftClick(int x, int y, bool playSound = true)
         {
+            if (Inspector.Enabled)
+            {
+                Inspector.HandleClick(Menu, x, y);
+                return;
+            }
+
             if (upperRightCloseButton != null && shouldDrawCloseButton() && upperRightCloseButton.containsPoint(x, y))
             {
                 if (playSound)
@@ -119,6 +131,11 @@ namespace UIFramework.Hosting
 
         public override void receiveRightClick(int x, int y, bool playSound = true)
         {
+            if (Inspector.Enabled)
+            {
+                return; // the inspector owns the mouse
+            }
+
             if (!Menu.Collapsed)
             {
                 Menu.Router.Click(x, y, UIMouseButton.Right);
@@ -166,6 +183,12 @@ namespace UIFramework.Hosting
         public override void receiveKeyPress(Keys key)
         {
             (bool shift, bool ctrl, bool alt) = ReadModifiers();
+            if (Inspector.Enabled)
+            {
+                Inspector.HandleKey(Menu, key, shift, ctrl);
+                return;
+            }
+
             if (!Menu.Collapsed && Menu.Router.KeyPress(key, shift, ctrl, alt))
             {
                 return;
@@ -294,6 +317,9 @@ namespace UIFramework.Hosting
 
             Menu.OnHostClosed(this);
         }
+
+        /// <summary>Whether this host is the game's active menu (as opposed to a child menu).</summary>
+        internal bool IsActiveMenu => Game1.activeClickableMenu == this;
 
         /// <summary>Whether this host is still reachable from the game's active menu chain.</summary>
         internal bool IsStillActive()
