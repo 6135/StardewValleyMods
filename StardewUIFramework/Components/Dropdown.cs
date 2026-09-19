@@ -22,7 +22,7 @@ namespace UIFramework.Components
     /// </summary>
     internal sealed class Dropdown : UIElement, IUIDropdown
     {
-        /// <summary>Height of the closed box and of every row in the open list.</summary>
+        /// <summary>Height of the closed box and of every row in the open list at text scale 1.</summary>
         internal const int DropdownRowHeight = 44;
 
         private const int DefaultWidth = 300;
@@ -173,6 +173,11 @@ namespace UIFramework.Components
         internal override bool Focusable => true;
         internal override bool ActivateOnEnter => true;
 
+        internal override string AccessibleDescription => Accessibility.Compose(
+            Accessibility.Text("dropdown", "Dropdown"),
+            GetLabel(SelectedIndex),
+            Enabled ? null : Accessibility.Text("disabled", "disabled"));
+
         protected override string? HoverSoundCue => Style.HoverSound ?? Theme.HoverSound;
 
         private string OpenSoundCue => Style.ClickSound ?? Theme.DropdownOpenSound;
@@ -208,6 +213,7 @@ namespace UIFramework.Components
                 UIValueEvent e = UIValueEvent.Index(this, oldIndex, newIndex, oldChoice, newChoice);
                 Raise("OnValueChanged", () => cb(e));
             }
+            Accessibility.AnnounceValue(this);
         }
 
         // ---------------------------------------------------------------------------------------------------------
@@ -268,7 +274,10 @@ namespace UIFramework.Components
         //  Layout / draw
         // ---------------------------------------------------------------------------------------------------------
 
-        protected override Vector2 MeasureCore(Vector2 available) => new(DefaultWidth, DropdownRowHeight);
+        protected override Vector2 MeasureCore(Vector2 available) => new(DefaultWidth, RowHeight);
+
+        /// <summary>Row height including the extra room scaled text needs.</summary>
+        private int RowHeight => DropdownRowHeight + Theme.ExtraTextHeight(Style.Font);
 
         /// <summary>Width of the text box part (the arrow button takes the rest).</summary>
         private int BoxWidth => Math.Max(0, Bounds.Width - ButtonWidth);
@@ -279,7 +288,7 @@ namespace UIFramework.Components
             get
             {
                 int rows = Math.Min(maxVisible, choices.Length);
-                int height = rows * DropdownRowHeight;
+                int height = rows * RowHeight;
                 int y = Math.Min(Bounds.Y, UIServices.ViewportSize().Y - height);
                 return new Rectangle(Bounds.X, Math.Max(0, y), BoxWidth, height);
             }
@@ -292,9 +301,9 @@ namespace UIFramework.Components
             ResolvedStyle style = Style;
             bool highlighted = Enabled && (IsHovered || IsFocused || IsOpen);
             Color tint = Theme.StateTint(Enabled, highlighted, style.HoverColor);
-            Color textColor = Enabled ? style.TextColor : style.TextColor * 0.5f;
+            Color textColor = Enabled ? style.TextColor : style.DisabledTextColor;
 
-            DrawHelper.Box(b, Game1.mouseCursors, Theme.DropdownBoxSource, new Rectangle(Bounds.X, Bounds.Y, BoxWidth, Bounds.Height), tint, SpriteScale);
+            DrawHelper.ThemedBox(b, Game1.mouseCursors, Theme.DropdownBoxSource, new Rectangle(Bounds.X, Bounds.Y, BoxWidth, Bounds.Height), tint, SpriteScale);
             DrawHelper.Text(b, GetLabel(SelectedIndex), style.Font, new Vector2(Bounds.X + TextPadX, Bounds.Y + TextPadY), textColor, style.TextShadow, 1f);
             b.Draw(Game1.mouseCursors, new Vector2(Bounds.X + Bounds.Width - ButtonWidth, Bounds.Y), Theme.DropdownButtonSource, tint, 0f, Vector2.Zero, SpriteScale, SpriteEffects.None, 0f);
         }
@@ -308,19 +317,20 @@ namespace UIFramework.Components
 
             ResolvedStyle style = Style;
             Rectangle list = ListBounds;
-            DrawHelper.Box(b, Game1.mouseCursors, Theme.DropdownBoxSource, list, Color.White, SpriteScale);
+            DrawHelper.ThemedBox(b, Game1.mouseCursors, Theme.DropdownBoxSource, list, Color.White, SpriteScale);
 
             var interior = new Rectangle(list.X + HighlightInset, list.Y + HighlightInset, list.Width - (2 * HighlightInset), list.Height - (2 * HighlightInset));
             int start = ActivePosition;
             int end = Math.Min(choices.Length, start + maxVisible);
             int highlight = highlightIndex >= 0 ? highlightIndex : SelectedIndex;
+            int rowHeight = RowHeight;
             for (int i = start; i < end; i++)
             {
-                int rowY = list.Y + ((i - start) * DropdownRowHeight);
+                int rowY = list.Y + ((i - start) * rowHeight);
                 if (i == highlight)
                 {
-                    var row = new Rectangle(list.X + HighlightInset, rowY, list.Width - (2 * HighlightInset), DropdownRowHeight);
-                    DrawHelper.Fill(b, Rectangle.Intersect(row, interior), Color.Wheat);
+                    var row = new Rectangle(list.X + HighlightInset, rowY, list.Width - (2 * HighlightInset), rowHeight);
+                    DrawHelper.Fill(b, Rectangle.Intersect(row, interior), style.HoverColor);
                 }
                 DrawHelper.Text(b, GetLabel(i), style.Font, new Vector2(list.X + TextPadX, rowY + TextPadY), style.TextColor, style.TextShadow, 1f);
             }
@@ -429,7 +439,7 @@ namespace UIFramework.Components
                 return -1;
             }
 
-            int index = ActivePosition + ((py - list.Y) / DropdownRowHeight);
+            int index = ActivePosition + ((py - list.Y) / RowHeight);
             return index >= 0 && index < choices.Length ? index : -1;
         }
 

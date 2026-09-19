@@ -55,6 +55,11 @@ namespace UIFramework.Components
 
         internal override bool Focusable => true;
 
+        internal override string AccessibleDescription => Accessibility.Compose(
+            Accessibility.Text("slider", "Slider"),
+            $"{Value:0.##} ({Low:0.##} - {High:0.##})",
+            Enabled ? null : Accessibility.Text("disabled", "disabled"));
+
         private static int KnobWidth => Theme.SliderKnob.Width * Theme.PixelScale;
         private static int KnobHeight => Theme.SliderKnob.Height * Theme.PixelScale;
 
@@ -115,6 +120,7 @@ namespace UIFramework.Components
                 UIValueEvent e = UIValueEvent.Number(this, oldValue, newValue);
                 Raise("OnValueChanged", () => cb(e));
             }
+            Accessibility.AnnounceValue(this);
         }
 
         /// <summary>Fraction (0..1) of the track the current value sits at.</summary>

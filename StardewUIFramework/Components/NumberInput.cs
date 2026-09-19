@@ -107,6 +107,11 @@ namespace UIFramework.Components
         internal override bool Focusable => true;
         internal override bool WantsTextInput => true;
 
+        internal override string AccessibleDescription => Accessibility.Compose(
+            Accessibility.Text("number-input", "Number input"),
+            buffer != null && IsFocused ? buffer : Format(Value),
+            Enabled ? null : Accessibility.Text("disabled", "disabled"));
+
         private double EffectiveStep => Step > 0 ? Step : 1;
 
         // ---------------------------------------------------------------------------------------------------------
@@ -194,6 +199,7 @@ namespace UIFramework.Components
                 UIValueEvent e = UIValueEvent.Number(this, oldValue, newValue);
                 Raise("OnValueChanged", () => cb(e));
             }
+            Accessibility.AnnounceValue(this);
             return true;
         }
 
@@ -345,7 +351,7 @@ namespace UIFramework.Components
         //  Layout / draw
         // ---------------------------------------------------------------------------------------------------------
 
-        protected override Vector2 MeasureCore(Vector2 available) => TextBoxDrawing.Measure(texture);
+        protected override Vector2 MeasureCore(Vector2 available) => TextBoxDrawing.Measure(texture, Style.Font);
 
         protected override void DrawCore(SpriteBatch b)
         {
@@ -360,7 +366,7 @@ namespace UIFramework.Components
 
             bool focused = Enabled && IsFocused;
             string text = focused && buffer != null ? buffer : Format(Value);
-            Color textColor = Enabled ? style.TextColor : style.TextColor * 0.5f;
+            Color textColor = Enabled ? style.TextColor : style.DisabledTextColor;
             TextBoxDrawing.DrawText(b, Bounds, text, style.Font, textColor, style.TextShadow, focused);
         }
 

@@ -59,7 +59,25 @@ namespace UIFrameworkExample
 
             BuildList(api, demo.Root);
             BuildButtons(api, demo);
+            BuildThemeRow(api, demo.Root);
             return demo;
+        }
+
+        /// <summary>A "Theme" dropdown bound to the framework's theme list: switching it restyles every framework menu (and persists).</summary>
+        private void BuildThemeRow(IStardewUIApi api, IUIContainer parent)
+        {
+            IUIStack row = api.AddStack(parent, "theme-row", true, 24);
+            row.VerticalAlign = UIAlign.Center;
+            IUILabel label = api.AddLabel(row, "theme.label", () => "Theme:");
+            label.VerticalAlign = UIAlign.Center;
+            IUIDropdown theme = api.AddDropdown(row, "theme", api.ListThemes, api.ListThemes, () => api.ActiveTheme, api.SetTheme);
+            theme.Tooltip = () => "Content Patcher packs can add themes to Mods/6135.UIFramework/Themes.";
+            theme.AccessibleName = () => $"Theme dropdown: {api.ActiveTheme}";
+            theme.OnValueChanged = e =>
+            {
+                Monitor.Log($"Theme → {e.NewValue}", LogLevel.Debug);
+                api.Announce($"Theme changed to {e.NewValue}");
+            };
         }
 
         /// <summary>Label / control rows in a two-column grid, one of every input type.</summary>

@@ -286,6 +286,10 @@ namespace UIFramework.Api
 
         /// <summary>Called in the overlay pass (on top of everything else in the menu), with the element's absolute bounds.</summary>
         Action<SpriteBatch, Rectangle> OnDrawOverlay { get; set; }
+
+        // THEME
+        /// <summary>Screen reader description override (null = the framework's "&lt;type&gt;: &lt;label / text / value&gt;" description).</summary>
+        Func<string> AccessibleName { get; set; }
     }
 
     /// <summary>An element that holds children.</summary>
@@ -737,5 +741,78 @@ namespace UIFramework.Api
         void SetTooltipDelay(int milliseconds);
         IUIStyle CreateStyle();
         void SetDefaultStyle(IUIStyle style);
+
+        // ---- v1.1 additions (additive; consumers may copy a subset) ----
+
+        // BEGIN SLOTS members
+        // END SLOTS members
+
+        // BEGIN COMPOSITES members
+        // END COMPOSITES members
+
+        // BEGIN RICHTEXT members
+        // END RICHTEXT members
+
+        // BEGIN THEME members
+
+        /// <summary>Names of the themes defined in the <c>Mods/6135.UIFramework/Themes</c> asset (Content Patcher packs can add to it).</summary>
+        string[] ListThemes();
+
+        /// <summary>Name of the theme every framework menu currently uses.</summary>
+        string ActiveTheme { get; }
+
+        /// <summary>Switch every framework menu to <paramref name="name"/> (one of <see cref="ListThemes"/>) and save it in the framework's config.</summary>
+        void SetTheme(string name);
+
+        /// <summary>A color of the active theme: <c>text</c>, <c>disabled-text</c>, <c>hover</c>, <c>scrollbar</c>, <c>border</c> (unknown keys return the text color).</summary>
+        Color ThemeColor(string key);
+
+        /// <summary>True when the player asked for reduced motion; custom components should skip their own animations then.</summary>
+        bool ReducedMotion { get; }
+
+        /// <summary>Speak <paramref name="text"/> through the screen reader (Stardew Access) when one is installed; otherwise nothing happens.</summary>
+        void Announce(string text);
+
+        // END THEME members
+
+        // BEGIN DATAGRID members
+        // END DATAGRID members
+
+        // BEGIN SIGNALS members
+        // END SIGNALS members
+
+        // BEGIN HUD members
+        // END HUD members
+
+        // BEGIN TOOLS members
+        // END TOOLS members
     }
+
+    // =================================================================================================================
+    //  v1.1 types (one region per feature; see architecture.md §16)
+    // =================================================================================================================
+
+    // BEGIN SLOTS types
+    // END SLOTS types
+
+    // BEGIN COMPOSITES types
+    // END COMPOSITES types
+
+    // BEGIN RICHTEXT types
+    // END RICHTEXT types
+
+    // BEGIN THEME types
+    // END THEME types
+
+    // BEGIN DATAGRID types
+    // END DATAGRID types
+
+    // BEGIN SIGNALS types
+    // END SIGNALS types
+
+    // BEGIN HUD types
+    // END HUD types
+
+    // BEGIN TOOLS types
+    // END TOOLS types
 }

@@ -43,10 +43,12 @@ namespace UIFramework.Components
         /// </summary>
         internal static Point DefaultSize => vanillaSize;
 
-        /// <summary>Natural size of a box using <paramref name="custom"/> (or the vanilla texture when null).</summary>
-        internal static Vector2 Measure(Texture2D? custom)
+        /// <summary>Natural size of a box using <paramref name="custom"/> (or the themed / vanilla texture when null), grown so scaled text still fits.</summary>
+        internal static Vector2 Measure(Texture2D? custom, UIFont font)
         {
-            return custom != null ? new Vector2(custom.Width, custom.Height) : vanillaSize.ToVector2();
+            Vector2 size = custom != null ? new Vector2(custom.Width, custom.Height) : vanillaSize.ToVector2();
+            size.Y += Theme.ExtraTextHeight(font);
+            return size;
         }
 
         /// <summary>The texture to draw: <paramref name="custom"/> or the vanilla one. <paramref name="sizeChanged"/> is true when the vanilla size assumption was wrong (re-layout).</summary>
@@ -58,7 +60,7 @@ namespace UIFramework.Components
                 return custom;
             }
 
-            Texture2D tex = UIServices.TextBoxTexture;
+            Texture2D tex = Theme.TextBoxTexture;
             var size = new Point(tex.Width, tex.Height);
             if (size != vanillaSize)
             {
@@ -68,7 +70,10 @@ namespace UIFramework.Components
             return tex;
         }
 
-        /// <summary>Draw the box as three slices (left cap, stretched middle, right cap) into <paramref name="bounds"/>.</summary>
+        /// <summary>
+        /// Draw the box as three slices (left cap, stretched middle, right cap) into <paramref name="bounds"/>, tinted
+        /// by the theme; a theme with a solid box fill draws a filled, outlined rectangle instead.
+        /// </summary>
         internal static void DrawBox(SpriteBatch b, Texture2D texture, Rectangle bounds, Color tint)
         {
             if (bounds.Width <= 0 || bounds.Height <= 0)
@@ -76,6 +81,15 @@ namespace UIFramework.Components
                 return;
             }
 
+            Color? fill = Theme.BoxFill;
+            if (fill.HasValue)
+            {
+                DrawHelper.Fill(b, bounds, fill.Value);
+                DrawHelper.Outline(b, bounds, tint == Color.White ? Theme.BorderColor : tint, Theme.BorderThickness);
+                return;
+            }
+
+            tint = DrawHelper.Multiply(tint, Theme.BoxTint);
             int width = Math.Max(bounds.Width, 2 * CapWidth);
             int texH = texture.Height;
             b.Draw(texture, new Rectangle(bounds.X, bounds.Y, CapWidth, bounds.Height), new Rectangle(0, 0, CapWidth, texH), tint);
@@ -94,8 +108,8 @@ namespace UIFramework.Components
             return text;
         }
 
-        /// <summary>Whether the caret is in the visible half of its blink cycle.</summary>
-        internal static bool CaretVisible => UIServices.NowMs() % 1000 >= 500;
+        /// <summary>Whether the caret is in the visible half of its blink cycle (always visible under reduced motion).</summary>
+        internal static bool CaretVisible => Theme.ReducedMotion || UIServices.NowMs() % 1000 >= 500;
 
         /// <summary>Draw the (clipped) text and, when <paramref name="caret"/> is setter, the blinking caret after it.</summary>
         internal static void DrawText(SpriteBatch b, Rectangle bounds, string text, UIFont font, Color color, bool shadow, bool caret)
@@ -106,7 +120,8 @@ namespace UIFramework.Components
 
             if (caret && CaretVisible)
             {
-                var caretRect = new Rectangle(bounds.X + TextOffsetX + (int)size.X + 2, bounds.Y + CaretOffsetY + centerShift, CaretWidth, CaretHeight);
+                int caretHeight = CaretHeight + Theme.ExtraTextHeight(font);
+                var caretRect = new Rectangle(bounds.X + TextOffsetX + (int)size.X + 2, bounds.Y + CaretOffsetY + centerShift, CaretWidth, caretHeight);
                 b.Draw(Game1.staminaRect, caretRect, color);
             }
             if (visible.Length > 0)
@@ -200,6 +215,19 @@ namespace UIFramework.Components
         internal override bool Focusable => true;
         internal override bool WantsTextInput => true;
 
+        internal override string AccessibleDescription
+        {
+            get
+            {
+                string value = Value;
+                string content = value.Length > 0 ? value : CurrentPlaceholder;
+                return Accessibility.Compose(
+                    Accessibility.Text("text-input", "Text input"),
+                    content.Length > 0 ? content : Accessibility.Text("empty", "empty"),
+                    Enabled ? null : Accessibility.Text("disabled", "disabled"));
+            }
+        }
+
         // ---------------------------------------------------------------------------------------------------------
         //  Value pipeline
         // ---------------------------------------------------------------------------------------------------------
@@ -254,7 +282,7 @@ namespace UIFramework.Components
         //  Layout / draw
         // ---------------------------------------------------------------------------------------------------------
 
-        protected override Vector2 MeasureCore(Vector2 available) => TextBoxDrawing.Measure(texture);
+        protected override Vector2 MeasureCore(Vector2 available) => TextBoxDrawing.Measure(texture, Style.Font);
 
         protected override void DrawCore(SpriteBatch b)
         {
@@ -272,11 +300,11 @@ namespace UIFramework.Components
             string placeholder = value.Length == 0 && !focused ? CurrentPlaceholder : string.Empty;
             if (placeholder.Length > 0)
             {
-                TextBoxDrawing.DrawText(b, Bounds, placeholder, style.Font, style.TextColor * 0.5f, false, false);
+                TextBoxDrawing.DrawText(b, Bounds, placeholder, style.Font, style.DisabledTextColor, false, false);
                 return;
             }
 
-            Color textColor = Enabled ? style.TextColor : style.TextColor * 0.5f;
+            Color textColor = Enabled ? style.TextColor : style.DisabledTextColor;
             TextBoxDrawing.DrawText(b, Bounds, value, style.Font, textColor, style.TextShadow, focused);
         }
 
@@ -304,6 +332,8 @@ namespace UIFramework.Components
                 return;
             }
 
+            // screen readers echo the typed character rather than the whole value
+            Accessibility.Announce(c.ToString());
             switch (c)
             {
                 case '$':
@@ -342,7 +372,10 @@ namespace UIFramework.Components
                 prospective = prospective.Substring(0, MaxLength);
             }
 
-            TryCommit(prospective);
+            if (TryCommit(prospective))
+            {
+                Accessibility.AnnounceValue(this);
+            }
         }
 
         protected internal override void HandleCommandInput(char command)
@@ -361,6 +394,7 @@ namespace UIFramework.Components
             if (TryCommit(current.Substring(0, current.Length - 1)))
             {
                 UIServices.PlaySound(Theme.BackspaceSound);
+                Accessibility.AnnounceValue(this);
             }
         }
 

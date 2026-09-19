@@ -79,6 +79,8 @@ namespace UIFramework.Components
         /// <summary>Current (unwrapped) text.</summary>
         internal string CurrentText => Raise("Text", text, string.Empty) ?? string.Empty;
 
+        internal override string AccessibleDescription => Accessibility.Compose(Accessibility.Text("label", "Label"), CurrentText);
+
         // labels only take clicks / hover when they have a reason to
         protected override bool IsHitTestVisible => HasPointerHandlers;
 

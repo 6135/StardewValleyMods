@@ -18,8 +18,6 @@ namespace UIFramework.Components
     /// </summary>
     internal sealed class ListView : UIContainer, IUIList
     {
-        private static readonly Color SelectionColor = Color.Wheat * 0.5f;
-
         private readonly Func<int>? itemCount;
         private readonly Action<int, IUIContainer>? buildRow;
         private readonly List<Panel> rows = new();
@@ -113,6 +111,23 @@ namespace UIFramework.Components
         Action<int> IUIList.OnScroll { get => OnScroll!; set => OnScroll = value; }
 
         public void ScrollTo(int firstIndex) => SetFirstVisible(firstIndex);
+
+        internal override string AccessibleDescription
+        {
+            get
+            {
+                string items = Accessibility.Text("list-items", "{{count}} items").Replace("{{count}}", lastCount.ToString());
+                return Accessibility.Compose(Accessibility.Text("list", "List"), items, selectedIndex >= 0 ? RowDescription(selectedIndex) : null);
+            }
+        }
+
+        /// <summary>"Row n of count: &lt;row text&gt;" for an item, using the row container's labels when it is on screen.</summary>
+        private string RowDescription(int item)
+        {
+            string row = Accessibility.Text("row", "Row {{index}} of {{count}}").Replace("{{index}}", (item + 1).ToString()).Replace("{{count}}", lastCount.ToString());
+            int slot = rowItems.IndexOf(item);
+            return Accessibility.Compose(row, slot >= 0 ? Accessibility.TextOf(rows[slot]) : null);
+        }
 
         // rows fill their slot exactly
         internal override UIAlign DefaultChildHorizontalAlign(UIElement child) => UIAlign.Stretch;
@@ -246,6 +261,10 @@ namespace UIFramework.Components
                 UIValueEvent e = UIValueEvent.Index(this, old, item, old.ToString(), item.ToString());
                 Raise("OnValueChanged", () => cb(e));
             }
+            if (Accessibility.Enabled)
+            {
+                Accessibility.Announce(RowDescription(item));
+            }
         }
 
         // ---------------------------------------------------------------------------------------------------------
@@ -313,11 +332,12 @@ namespace UIFramework.Components
         {
             if (selectable && selectedIndex >= 0)
             {
+                Color selection = Style.HoverColor * 0.5f;
                 for (int i = 0; i < rows.Count; i++)
                 {
                     if (rowItems[i] == selectedIndex && rows[i].Visible)
                     {
-                        DrawHelper.Fill(b, rows[i].Bounds, SelectionColor);
+                        DrawHelper.Fill(b, rows[i].Bounds, selection);
                     }
                 }
             }

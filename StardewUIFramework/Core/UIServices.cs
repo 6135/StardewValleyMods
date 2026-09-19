@@ -4,6 +4,7 @@ using Microsoft.Xna.Framework.Graphics;
 using StardewModdingAPI;
 using StardewValley;
 using UIFramework.Api;
+using UIFramework.Rendering;
 
 namespace UIFramework.Core
 {
@@ -21,6 +22,7 @@ namespace UIFramework.Core
     /// <summary>Real implementation backed by the vanilla fonts.</summary>
     internal sealed class GameTextMeasurer : ITextMeasurer
     {
+        // every result includes the theme / accessibility font scale so layout and drawing agree
         public Vector2 Measure(UIFont font, string text, float scale)
         {
             if (string.IsNullOrEmpty(text))
@@ -28,15 +30,15 @@ namespace UIFramework.Core
                 return new Vector2(0, LineHeight(font) * scale);
             }
 
-            return GetFont(font).MeasureString(text) * scale;
+            return GetFont(font).MeasureString(text) * (scale * Theme.FontScale);
         }
 
         public string Wrap(UIFont font, string text, int width)
         {
-            return Game1.parseText(text ?? string.Empty, GetFont(font), Math.Max(1, width));
+            return Game1.parseText(text ?? string.Empty, GetFont(font), Math.Max(1, (int)(width / Theme.FontScale)));
         }
 
-        public float LineHeight(UIFont font) => GetFont(font).LineSpacing;
+        public float LineHeight(UIFont font) => GetFont(font).LineSpacing * Theme.FontScale;
 
         internal static SpriteFont GetFont(UIFont font) => font switch
         {
@@ -82,6 +84,12 @@ namespace UIFramework.Core
 
         /// <summary>Translations.</summary>
         internal static ITranslationHelper? Translation { get; set; }
+
+        /// <summary>Persists <see cref="Config"/> (set by <see cref="ModEntry"/>; null in tests).</summary>
+        internal static Action? SaveConfig { get; set; }
+
+        /// <summary>Screen reader output (Stardew Access when installed); null when no screen reader mod is present.</summary>
+        internal static Action<string>? Announcer { get; set; }
 
         private static Texture2D? textBoxTexture;
         private static Texture2D? smallTextBoxTexture;

@@ -39,8 +39,55 @@ Config Menu when it is installed.
 | `TooltipDelayMs` | `400`   | How long (milliseconds) the cursor must rest on an element before its tooltip appears.   |
 | `DebugOverlay`   | `false` | Draw the bounds and ids of every element in framework menus (for mod authors).            |
 | `LogCallbacks`   | `false` | Write a trace log line every time a consumer mod's callback is invoked (for mod authors). |
+| `Theme`          | `"default"` | Name of the theme every framework menu uses (see [Themes](#themes)).                  |
+| `TextScale`      | `1.0`   | Multiplier (0.75-2.0) for all text in framework menus; layout grows with it.              |
+| `ReducedMotion`  | `false` | Disable animation: the text caret stays solid instead of blinking. Hover tints and dropdowns are already instant; custom components can read `ReducedMotion` from the API to honour it too. |
 
 A mod that uses the framework can override the tooltip delay for its own menus; the config value is the default.
+
+### Themes
+
+A theme restyles every menu built with the framework at once: text / hover / disabled colors, the box textures (or a
+solid fill with a thick border), spacing scale, font scale, text shadow, scrollbar tint and the click / hover / open /
+close sounds. Four themes ship with the mod: `default` (vanilla), `dark`, `high-contrast` (black boxes, yellow text,
+thick borders) and `colorblind` (blue / orange cues instead of the wheat hover tint). Pick one in Generic Mod Config
+Menu, with `ui_theme <name>` in the console, or by editing `Theme` in `config.json`.
+
+Themes live in the data asset `Mods/6135.UIFramework/Themes` (a dictionary of theme name → theme data, defaults in
+`assets/themes.json`), so a Content Patcher pack can add or edit themes:
+
+```json
+{
+  "Format": "2.0.0",
+  "Changes": [
+    {
+      "Action": "EditData",
+      "Target": "Mods/6135.UIFramework/Themes",
+      "Entries": {
+        "midnight": { "TextColor": "#DDE6FF", "BoxTint": "#404860", "HoverColor": "#8FB4FF", "ScrollbarTint": "#8FB4FF" }
+      }
+    }
+  ]
+}
+```
+
+Every field is optional (unset = vanilla): `TextColor`, `DisabledTextColor`, `HoverColor`, `BoxTint`, `BoxFill`,
+`BorderColor`, `ScrollbarTint` (colors as `#RRGGBB`, `#RRGGBBAA`, `R,G,B[,A]` or an XNA color name such as `Wheat`),
+`BorderThickness` (pixels, used with `BoxFill`), `BoxTexture` / `BoxSource`, `ButtonTexture` / `ButtonSource`,
+`TextBoxTexture` (game asset names plus an optional `x,y,w,h` 3x3 tile region), `SpacingScale`, `FontScale`,
+`ShadowEnabled`, `ClickSound`, `HoverSound`, `OpenSound`, `CloseSound` (cue names; an empty string is silent).
+Edits apply live when the asset is invalidated. Styles a mod sets on its own elements always win over the theme.
+
+### Accessibility
+
+- **Screen reader**: when [Stardew Access](https://www.nexusmods.com/stardewvalley/mods/16205) (1.6.2+) is installed,
+  framework menus announce the menu title on open, the focused element when focus moves ("Button: OK",
+  "Checkbox: Pay for seeds, checked", "Dropdown: Spring", ...), value changes on the focused element, selected list
+  rows, and the element under the cursor once it rested there for the tooltip delay. Mods can override the spoken
+  text per element with `AccessibleName` and speak their own text with `Announce`.
+- **Text scaling**: `TextScale` (or a theme's `FontScale`) scales every label, button, input and dropdown; text boxes
+  and dropdown rows grow to fit.
+- **Reduced motion** and the **high-contrast** theme: see above.
 
 ### Console commands
 
@@ -50,6 +97,7 @@ Type these in the SMAPI console.
 |------------|----------------------------------------------------------------------------------------|
 | `ui_debug` | Toggle the debug overlay (element bounds and ids) for the current session.             |
 | `ui_list`  | List the framework menus that are currently open, with the mod that owns each of them. |
+| `ui_theme` | `ui_theme` lists the available themes; `ui_theme <name>` switches to one and saves it. |
 
 ### Compatibility
 
@@ -310,6 +358,11 @@ Theme defaults are the vanilla look: `Game1.smallFont`, `Game1.textColor`, `Colo
 button click `select`, checkbox `drumkit6`, dropdown open `shwip` / close `drumkit6`, scrolling `shiny4`, typing
 `cowboy_monsterhit`, backspace `tinyWhip`, and no hover sound. Buttons and checkboxes also expose `ClickSound` /
 `HoverSound` directly; an empty string is silent, `null` means theme default.
+
+The player's active theme (see [Themes](#themes)) replaces those defaults for every mod; your styles still override
+it. `ListThemes()`, `ActiveTheme` and `SetTheme(name)` let a mod offer the theme choice in its own screen, and
+`ThemeColor("text" | "disabled-text" | "hover" | "scrollbar" | "border")` returns the active colors so custom
+components can match. `ReducedMotion` tells custom components to skip animation.
 
 #### Custom components
 
@@ -721,6 +774,12 @@ Entry point. One instance per consumer mod; every id you register is private to 
 | `void SetTooltipDelay(int milliseconds)`                                                                                                              | Tooltip delay for this consumer's menus (pass a negative value to reset to the framework default).    |
 | `IUIStyle CreateStyle()`                                                                                                                              | New empty style.                                                                                      |
 | `void SetDefaultStyle(IUIStyle style)`                                                                                                                | Default style for every element this consumer creates (`null` = theme).                               |
+| `string[] ListThemes()`                                                                                                                               | Names of the themes in the `Mods/6135.UIFramework/Themes` asset.                                      |
+| `string ActiveTheme { get; }`                                                                                                                         | Name of the theme every framework menu currently uses.                                                |
+| `void SetTheme(string name)`                                                                                                                          | Switch every framework menu to a theme and save it in the framework config.                           |
+| `Color ThemeColor(string key)`                                                                                                                        | Active theme color: `text`, `disabled-text`, `hover`, `scrollbar`, `border`.                          |
+| `bool ReducedMotion { get; }`                                                                                                                         | True when the player asked for no animation.                                                          |
+| `void Announce(string text)`                                                                                                                          | Speak text through the screen reader (Stardew Access) when one is installed.                          |
 
 Argument checks: ids must be non-empty; `parent` must be a container created by the framework and must belong to
 one of *your* menus (adding to another mod's menu throws `InvalidOperationException`); `itemCount`, `buildRow`,

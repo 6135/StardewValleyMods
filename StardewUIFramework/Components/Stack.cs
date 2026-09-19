@@ -2,6 +2,7 @@ using System;
 using Microsoft.Xna.Framework;
 using UIFramework.Api;
 using UIFramework.Core;
+using UIFramework.Rendering;
 
 namespace UIFramework.Components
 {
@@ -65,6 +66,9 @@ namespace UIFramework.Components
             }
         }
 
+        /// <summary>Spacing actually used: the consumer's value scaled by the theme.</summary>
+        private int EffectiveSpacing => Theme.Space(spacing);
+
         // a stack is layout-only: clicks on the gaps fall through to whatever is behind it (unless it has a handler)
         protected override bool IsHitTestVisible => HasPointerHandlers;
 
@@ -97,7 +101,7 @@ namespace UIFramework.Components
             }
             if (visible > 1)
             {
-                main += spacing * (visible - 1);
+                main += EffectiveSpacing * (visible - 1);
             }
 
             return horizontal ? new Vector2(main, cross) : new Vector2(cross, main);
@@ -106,6 +110,7 @@ namespace UIFramework.Components
         protected override void ArrangeCore()
         {
             int cursor = horizontal ? Bounds.X : Bounds.Y;
+            int gap = EffectiveSpacing;
             foreach (UIElement child in Children)
             {
                 if (!child.Visible)
@@ -118,7 +123,7 @@ namespace UIFramework.Components
                     ? new Rectangle(cursor, Bounds.Y, extent, Bounds.Height)
                     : new Rectangle(Bounds.X, cursor, Bounds.Width, extent);
                 child.Arrange(slot);
-                cursor += extent + spacing;
+                cursor += extent + gap;
             }
         }
     }

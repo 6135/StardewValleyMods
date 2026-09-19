@@ -65,7 +65,13 @@ namespace UIFramework.Components
         internal override bool Focusable => true;
         internal override bool ActivateOnEnter => true;
 
-        private string CurrentLabel => Raise("Label", label, string.Empty) ?? string.Empty;
+        internal string CurrentLabel => Raise("Label", label, string.Empty) ?? string.Empty;
+
+        internal override string AccessibleDescription => Accessibility.Compose(
+            Accessibility.Text("checkbox", "Checkbox"),
+            CurrentLabel,
+            Value ? Accessibility.Text("checked", "checked") : Accessibility.Text("unchecked", "unchecked"),
+            Enabled ? null : Accessibility.Text("disabled", "disabled"));
 
         // ---------------------------------------------------------------------------------------------------------
         //  Value pipeline
@@ -95,6 +101,7 @@ namespace UIFramework.Components
                 UIValueEvent e = UIValueEvent.Bool(this, oldValue, newValue);
                 Raise("OnValueChanged", () => cb(e));
             }
+            Accessibility.AnnounceValue(this);
         }
 
         // ---------------------------------------------------------------------------------------------------------
@@ -111,7 +118,7 @@ namespace UIFramework.Components
             }
 
             Vector2 textSize = UIServices.Text.Measure(Style.Font, measuredLabel, 1f);
-            return new Vector2(box + LabelGap + textSize.X, Math.Max(box, textSize.Y));
+            return new Vector2(box + Theme.Space(LabelGap) + textSize.X, Math.Max(box, textSize.Y));
         }
 
         protected override void DrawCore(SpriteBatch b)
@@ -136,8 +143,8 @@ namespace UIFramework.Components
             }
 
             Vector2 textSize = UIServices.Text.Measure(style.Font, current, 1f);
-            Color textColor = Enabled ? style.TextColor : style.TextColor * 0.5f;
-            var textPos = new Vector2(Bounds.X + box + LabelGap, (int)(Bounds.Y + ((Bounds.Height - textSize.Y) / 2f)));
+            Color textColor = Enabled ? style.TextColor : style.DisabledTextColor;
+            var textPos = new Vector2(Bounds.X + box + Theme.Space(LabelGap), (int)(Bounds.Y + ((Bounds.Height - textSize.Y) / 2f)));
             DrawHelper.Text(b, current, style.Font, textPos, textColor, style.TextShadow, 1f);
         }
 
