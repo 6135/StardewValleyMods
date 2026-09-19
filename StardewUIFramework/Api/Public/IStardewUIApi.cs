@@ -610,6 +610,10 @@ namespace UIFramework.Api
 
         /// <summary>Escape (or the menu key) closes the menu (default true).</summary>
         bool CloseOnEscape { get; set; }
+
+        // HUD
+        /// <summary>Let the player move, resize and collapse the window; the result persists per save (default true).</summary>
+        bool PlayerLayout { get; set; }
     }
 
     /// <summary>A screen. Build its tree under <see cref="Root"/>, then <see cref="Open"/>.</summary>
@@ -671,6 +675,14 @@ namespace UIFramework.Api
 
         /// <summary>Move the menu (sets <see cref="Anchor"/> to Explicit).</summary>
         void SetPosition(int x, int y);
+
+        // HUD
+        /// <summary>
+        /// Let the player drag the window by its title strip, collapse it with the button next to the close button and
+        /// (when <see cref="Width"/> and <see cref="Height"/> are fixed) resize it from the bottom-right corner. The
+        /// result is saved per save file and re-applied whenever the menu opens (default true; needs <see cref="DrawBox"/>).
+        /// </summary>
+        bool PlayerLayout { get; set; }
     }
 
     // =================================================================================================================
@@ -759,6 +771,30 @@ namespace UIFramework.Api
         // END SIGNALS members
 
         // BEGIN HUD members
+
+        // ---- HUD widgets and toasts ----
+
+        /// <summary>Create (or replace) a HUD widget: a non-modal overlay drawn during gameplay. Build its tree under <see cref="IUIHud.Root"/>.</summary>
+        IUIHud CreateHud(string id);
+
+        /// <summary>Look up one of your HUD widgets, or null.</summary>
+        IUIHud GetHud(string id);
+
+        /// <summary>Remove a HUD widget.</summary>
+        void DestroyHud(string id);
+
+        /// <summary>Show a short notification in the bottom-left corner for 3.5 seconds.</summary>
+        void ShowToast(string text);
+
+        /// <summary>Show a short notification in the bottom-left corner for <paramref name="durationMs"/> milliseconds.</summary>
+        void ShowToast(string text, int durationMs);
+
+        /// <summary>Show a notification with an icon (<paramref name="source"/> null = whole texture).</summary>
+        void ShowToastWithIcon(string text, Texture2D icon, Rectangle? source, int durationMs);
+
+        /// <summary>Forget the player's saved position / size / collapsed state for <paramref name="menu"/> and restore the values you set.</summary>
+        void ResetPlayerLayout(IUIMenu menu);
+
         // END HUD members
 
         // BEGIN TOOLS members
@@ -788,6 +824,66 @@ namespace UIFramework.Api
     // END SIGNALS types
 
     // BEGIN HUD types
+
+    /// <summary>
+    /// A HUD widget: a tree of ordinary elements drawn over the world during gameplay (from <c>Display.RenderedHud</c>),
+    /// never as a menu. It hides itself while any menu is open, during events / cutscenes and while the vanilla HUD is
+    /// hidden. Add elements to <see cref="Root"/> with the usual <c>Add*</c> calls.
+    /// </summary>
+    public interface IUIHud
+    {
+        /// <summary>The id given to <see cref="IStardewUIApi.CreateHud"/>.</summary>
+        string Id { get; }
+
+        /// <summary>Root container (a vertical <see cref="IUIStack"/>).</summary>
+        IUIStack Root { get; }
+
+        /// <summary>Consumer switch; the widget is also hidden when <see cref="ShowWhen"/> returns false.</summary>
+        bool Visible { get; set; }
+
+        /// <summary>Screen corner / edge the widget hangs from (<see cref="UIAnchor.Explicit"/> uses <see cref="X"/> / <see cref="Y"/> verbatim).</summary>
+        UIAnchor Anchor { get; set; }
+
+        /// <summary>Horizontal offset in UI pixels added to the anchor position (positive = right).</summary>
+        int X { get; set; }
+
+        /// <summary>Vertical offset in UI pixels added to the anchor position (positive = down).</summary>
+        int Y { get; set; }
+
+        /// <summary>Fixed width, or null to fit content.</summary>
+        int? Width { get; set; }
+
+        /// <summary>Fixed height, or null to fit content.</summary>
+        int? Height { get; set; }
+
+        /// <summary>Draw a vanilla 9-slice panel box (with padding) behind the content (default true).</summary>
+        bool DrawBox { get; set; }
+
+        /// <summary>Opacity of the background box, 0..1 (default 1). Element content is always drawn opaque.</summary>
+        float Opacity { get; set; }
+
+        /// <summary>
+        /// When true the widget receives hover and clicks while no menu is open (the game only loses the click when an
+        /// element handled it) and the player can drag it to a new position, which persists per save.
+        /// </summary>
+        bool Interactive { get; set; }
+
+        /// <summary>Evaluated every frame; return false to hide the widget (null = always shown).</summary>
+        Func<bool> ShowWhen { get; set; }
+
+        /// <summary>Every tick while shown, with elapsed milliseconds.</summary>
+        Action<IUIHud, double> OnUpdate { get; set; }
+
+        /// <summary>Absolute bounds of the widget box, valid after it was drawn once.</summary>
+        Rectangle Bounds { get; }
+
+        /// <summary>Find an element by id anywhere in the tree, or null.</summary>
+        IUIElement Find(string id);
+
+        /// <summary>Request a layout pass before the next draw.</summary>
+        void InvalidateLayout();
+    }
+
     // END HUD types
 
     // BEGIN TOOLS types

@@ -83,6 +83,13 @@ namespace UIFramework.Core
         /// <summary>Translations.</summary>
         internal static ITranslationHelper? Translation { get; set; }
 
+        // HUD
+        /// <summary>HUD widgets and toasts (null until <see cref="ModEntry"/> wired it).</summary>
+        internal static Hosting.HudService? Hud { get; set; }
+
+        /// <summary>Player-owned window layouts for the current save (null until <see cref="ModEntry"/> wired it).</summary>
+        internal static Hosting.WindowLayoutStore? Layouts { get; set; }
+
         private static Texture2D? textBoxTexture;
         private static Texture2D? smallTextBoxTexture;
 

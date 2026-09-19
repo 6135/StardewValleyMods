@@ -60,6 +60,32 @@ namespace UIFramework
             // END SIGNALS entry
 
             // BEGIN HUD entry
+            var layouts = new WindowLayoutStore(helper.Data);
+            var hud = new HudService(helper, menus);
+            UIServices.Layouts = layouts;
+            UIServices.Hud = hud;
+            helper.Events.GameLoop.SaveLoaded += (_, _) =>
+            {
+                layouts.Load();
+                hud.ApplyLayouts();
+            };
+            helper.Events.GameLoop.Saving += (_, _) => layouts.Save();
+            helper.Events.GameLoop.ReturnedToTitle += (_, _) => layouts.Clear();
+            helper.ConsoleCommands.Add("ui_toast", "Show a test toast: ui_toast <text>.", (_, args) =>
+            {
+                hud.ShowToast(args.Length == 0 ? "Hello from the UI Framework!" : string.Join(" ", args), null, null, ToastLayer.DefaultDurationMs);
+            });
+            helper.ConsoleCommands.Add("ui_layout_reset", "Forget every player-adjusted window position / size / collapsed state for the current save.", (_, _) =>
+            {
+                int count = layouts.Count;
+                layouts.Clear();
+                if (Context.IsWorldReady)
+                {
+                    layouts.Save();
+                }
+
+                Monitor.Log($"Cleared {count} saved window layout(s).", LogLevel.Info);
+            });
             // END HUD entry
 
             // BEGIN TOOLS entry

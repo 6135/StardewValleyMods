@@ -50,6 +50,21 @@ Type these in the SMAPI console.
 |------------|----------------------------------------------------------------------------------------|
 | `ui_debug` | Toggle the debug overlay (element bounds and ids) for the current session.             |
 | `ui_list`  | List the framework menus that are currently open, with the mod that owns each of them. |
+| `ui_toast <text>` | Show a test notification in the bottom-left corner.                             |
+| `ui_layout_reset` | Forget every window position / size / collapsed state you changed in the current save. |
+
+### Moving, collapsing and resizing windows
+
+Every framework window can be adjusted by the player (unless the mod that owns it opted out):
+
+- **Move** it by dragging its title banner or the top border of the box.
+- **Collapse** it to its title strip with the arrow button next to the close button; click again to expand.
+- **Resize** windows that have a fixed size by dragging the dotted grip in the bottom-right corner (it never gets
+  smaller than its content).
+- Interactive HUD widgets (small overlays some mods draw during play) can be dragged the same way.
+
+Positions, sizes and collapsed states are stored in the save file (host player only; farmhands keep them for the
+session) and restored the next time the window opens. `ui_layout_reset` clears them.
 
 ### Compatibility
 
@@ -339,6 +354,30 @@ cell, `OnDrawExtra`, ...). See `UIFrameworkExample/VolumeGauge.cs` for a complet
 empty string to unbind. Keybind lists use SMAPI's `KeybindList` string syntax, so you can feed values straight from
 your Generic Mod Config Menu settings: `"F9"`, `"LeftControl + F8"`, `"LeftControl + F8, LeftShift + F9"`. An invalid
 string is logged as a warning and ignored.
+
+#### HUD widgets and toasts
+
+`CreateHud(id)` returns an `IUIHud`: a tree of ordinary elements (build it under `hud.Root` with the same `Add*`
+calls) drawn over the world from SMAPI's `Display.RenderedHud`, never as a menu. It hangs from a screen corner or
+edge (`Anchor` plus the `X` / `Y` offsets), sizes to its content unless `Width` / `Height` are set, and draws a panel
+box behind the content (`DrawBox`, `Opacity`). It hides itself while any menu is open, during events and while the
+vanilla HUD is hidden, plus whenever `Visible` is false or `ShowWhen` returns false. With `Interactive = true` it
+receives hover and clicks while no menu is open (the game only loses a click that an element handled) and the player
+can drag it; the offset is saved with the game. HUD widgets never take keyboard focus, so text inputs in them are
+display-only. `OnUpdate` runs every tick while shown.
+
+`ShowToast(text)`, `ShowToast(text, durationMs)` and `ShowToastWithIcon(text, icon, source, durationMs)` queue
+notifications in the bottom-left corner: at most five are shown, each fades in and out over 200 ms and older ones
+slide up when a newer one arrives. Toasts are drawn from `Display.RenderedHud` while no menu is open and from
+`Display.RenderedActiveMenu` while one is, so they stay visible on top of menus.
+
+#### Player-owned layout
+
+Windows are movable, collapsible and (when fixed-size) resizable by the player, and the result is saved per save
+file under the key `"<yourModId>/<menuId>"`. This needs no code; set `PlayerLayout = false` on the menu or its
+options to opt out, and call `ResetPlayerLayout(menu)` to drop the saved layout and restore the anchor / position /
+size you set. A saved position is applied when the menu opens (before `OnOpen`), so values you set in `OnOpen`
+override it.
 
 ### API reference
 
@@ -647,6 +686,7 @@ the menu.
 | `bool DrawBox`         | Draw the vanilla dialogue box behind the content (default `true`). |
 | `int Padding`          | Inner padding between the box border and the root container.       |
 | `bool CloseOnEscape`   | Escape (or the menu key) closes the menu (default `true`).         |
+| `bool PlayerLayout`    | Let the player move / collapse / resize the window (default `true`). |
 
 #### `IUIMenu`
 
@@ -680,6 +720,28 @@ A screen. Build its tree under `Root`, then `Open`.
 | `void InvalidateLayout()`           | Request a layout pass before the next draw.                                            |
 | `IUIElement Find(string id)`        | Find an element by id anywhere in the tree, or `null`.                                 |
 | `void SetPosition(int x, int y)`    | Move the menu (sets `Anchor` to `Explicit`).                                           |
+| `bool PlayerLayout`                 | Let the player move / collapse / resize the window; persists per save (default `true`, needs `DrawBox`). |
+
+#### `IUIHud`
+
+A HUD widget (see [HUD widgets and toasts](#hud-widgets-and-toasts)).
+
+| Member                            | Description                                                                          |
+|-----------------------------------|--------------------------------------------------------------------------------------|
+| `string Id`                       | The id given to `CreateHud`.                                                         |
+| `IUIStack Root`                   | Root container (a vertical `IUIStack`).                                              |
+| `bool Visible`                    | Consumer switch (default `true`).                                                    |
+| `UIAnchor Anchor`                 | Screen corner / edge the widget hangs from (default `TopLeft`).                      |
+| `int X`, `int Y`                  | Offset added to the anchor position (positive = right / down); verbatim position for `Explicit`. |
+| `int? Width`, `int? Height`       | Fixed size, or `null` to fit content.                                                |
+| `bool DrawBox`                    | Draw a vanilla panel box with padding behind the content (default `true`).           |
+| `float Opacity`                   | Opacity of the box, 0..1 (default 1); content is always opaque.                      |
+| `bool Interactive`                | Receive hover / clicks while no menu is open and let the player drag the widget.     |
+| `Func<bool> ShowWhen`             | Evaluated every tick; `false` hides the widget (`null` = always).                    |
+| `Action<IUIHud, double> OnUpdate` | Every tick while shown, with elapsed milliseconds.                                   |
+| `Rectangle Bounds`                | Absolute bounds of the box, valid after the first draw.                              |
+| `IUIElement Find(string id)`      | Find an element by id anywhere in the tree, or `null`.                               |
+| `void InvalidateLayout()`         | Request a layout pass before the next draw.                                          |
 
 #### `IStardewUIApi`
 
@@ -721,6 +783,13 @@ Entry point. One instance per consumer mod; every id you register is private to 
 | `void SetTooltipDelay(int milliseconds)`                                                                                                              | Tooltip delay for this consumer's menus (pass a negative value to reset to the framework default).    |
 | `IUIStyle CreateStyle()`                                                                                                                              | New empty style.                                                                                      |
 | `void SetDefaultStyle(IUIStyle style)`                                                                                                                | Default style for every element this consumer creates (`null` = theme).                               |
+| `IUIHud CreateHud(string id)`                                                                                                                         | Create (or replace) a HUD widget.                                                                     |
+| `IUIHud GetHud(string id)`                                                                                                                            | Look up one of your HUD widgets, or `null`.                                                           |
+| `void DestroyHud(string id)`                                                                                                                          | Remove a HUD widget.                                                                                  |
+| `void ShowToast(string text)`                                                                                                                         | Notification in the bottom-left corner for 3.5 s.                                                     |
+| `void ShowToast(string text, int durationMs)`                                                                                                         | Notification with a custom duration (non-positive = default).                                         |
+| `void ShowToastWithIcon(string text, Texture2D icon, Rectangle? source, int durationMs)`                                                              | Notification with an icon (`source` `null` = whole texture).                                          |
+| `void ResetPlayerLayout(IUIMenu menu)`                                                                                                                | Forget the player's saved layout for the menu and restore the placement you set.                     |
 
 Argument checks: ids must be non-empty; `parent` must be a container created by the framework and must belong to
 one of *your* menus (adding to another mod's menu throws `InvalidOperationException`); `itemCount`, `buildRow`,

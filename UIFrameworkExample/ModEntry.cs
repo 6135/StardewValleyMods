@@ -13,6 +13,7 @@ namespace UIFrameworkExample
     public class ModEntry : Mod
     {
         private IUIMenu? menu;
+        private IUIHud? hud;
 
         // state edited by the form (values live here, the framework reads/writes them through delegates)
         private string name = "Farmer";
@@ -27,6 +28,13 @@ namespace UIFrameworkExample
         {
             helper.Events.GameLoop.GameLaunched += OnGameLaunched;
             helper.ConsoleCommands.Add("ui_demo", "Open the UI Framework example menu.", (_, _) => menu?.Open(true));
+            helper.ConsoleCommands.Add("ui_hud", "Toggle the UI Framework example HUD widget.", (_, _) =>
+            {
+                if (hud != null)
+                {
+                    hud.Visible = !hud.Visible;
+                }
+            });
         }
 
         private void OnGameLaunched(object? sender, GameLaunchedEventArgs e)
@@ -59,7 +67,29 @@ namespace UIFrameworkExample
 
             BuildList(api, demo.Root);
             BuildButtons(api, demo);
+            BuildHud(api);
             return demo;
+        }
+
+        /// <summary>
+        /// A HUD widget in the top-right corner (hidden until <c>ui_hud</c>): the OK click counter and the current
+        /// day. It is interactive, so it can be dragged (the position is saved with the game) and its button clicked.
+        /// </summary>
+        private void BuildHud(IStardewUIApi api)
+        {
+            hud = api.CreateHud("demo-hud");
+            hud.Anchor = UIAnchor.TopRight;
+            hud.X = -16;
+            hud.Y = 16;
+            hud.Visible = false;
+            hud.Interactive = true;
+            hud.Opacity = 0.85f;
+            hud.ShowWhen = () => Context.IsWorldReady;
+
+            IUIStack lines = api.AddStack(hud.Root, "hud.lines", false, 4);
+            api.AddLabel(lines, "hud.clicks", () => $"Clicks: {clicks}");
+            api.AddLabel(lines, "hud.day", () => $"{Game1.currentSeason} {Game1.dayOfMonth}, year {Game1.year}");
+            api.AddButton(lines, "hud.open", () => "Open demo", _ => menu?.Open(false));
         }
 
         /// <summary>Label / control rows in a two-column grid, one of every input type.</summary>
@@ -139,6 +169,7 @@ namespace UIFrameworkExample
             {
                 clicks++;
                 Monitor.Log($"OK: name={name} day={day} season={season} seeds={payForSeeds} volume={volume} row={selectedRow}", LogLevel.Info);
+                api.ShowToastWithIcon($"OK pressed {clicks} time(s).", Game1.mouseCursors, new Microsoft.Xna.Framework.Rectangle(128, 256, 16, 16), 3000);
             });
             ok.Tooltip = () => "Enter also triggers this button.";
             api.AddButton(buttons, "close", () => "Close", _ => demo.Close());

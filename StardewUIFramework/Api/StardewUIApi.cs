@@ -63,7 +63,8 @@ namespace UIFramework.Api
                 Y = options.Y,
                 DrawBox = options.DrawBox,
                 Padding = options.Padding,
-                CloseOnEscape = options.CloseOnEscape
+                CloseOnEscape = options.CloseOnEscape,
+                PlayerLayout = options.PlayerLayout // HUD
             };
             menus.Register(consumer.ModId, menu);
             return menu;
@@ -286,6 +287,43 @@ namespace UIFramework.Api
         // END SIGNALS facade
 
         // BEGIN HUD facade
+
+        public IUIHud CreateHud(string id)
+        {
+            RequireId(id);
+            return RequireHud().Create(consumer, id);
+        }
+
+        public IUIHud GetHud(string id) => RequireHud().Get(consumer.ModId, id ?? string.Empty)!;
+
+        public void DestroyHud(string id) => RequireHud().Destroy(consumer.ModId, id ?? string.Empty);
+
+        public void ShowToast(string text) => ShowToastWithIcon(text, null, null, ToastLayer.DefaultDurationMs);
+
+        public void ShowToast(string text, int durationMs) => ShowToastWithIcon(text, null, null, durationMs);
+
+        public void ShowToastWithIcon(string text, Texture2D? icon, Rectangle? source, int durationMs)
+        {
+            if (string.IsNullOrEmpty(text) && icon == null)
+            {
+                return;
+            }
+
+            RequireHud().ShowToast(text ?? string.Empty, icon, source, durationMs > 0 ? durationMs : ToastLayer.DefaultDurationMs);
+        }
+
+        public void ResetPlayerLayout(IUIMenu menu)
+        {
+            if (menu is not UIMenu m)
+            {
+                throw new ArgumentException("The menu was not created by this framework.", nameof(menu));
+            }
+
+            UIServices.Layouts?.Reset(m);
+        }
+
+        private static HudService RequireHud() => UIServices.Hud ?? throw new InvalidOperationException("The HUD service is not available yet (it is wired in the framework's Entry).");
+
         // END HUD facade
 
         // BEGIN TOOLS facade
