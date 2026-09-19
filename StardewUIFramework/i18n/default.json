@@ -5,5 +5,7 @@
   "config.debug-overlay": "Debug overlay",
   "config.debug-overlay.desc": "Draw the bounds and ids of every element in framework menus.",
   "config.log-callbacks": "Log callbacks",
-  "config.log-callbacks.desc": "Write a trace log line every time a consumer callback is invoked."
+  "config.log-callbacks.desc": "Write a trace log line every time a consumer callback is invoked.",
+  "config.inspector-hotkey": "Inspector hotkey",
+  "config.inspector-hotkey.desc": "Toggles the in-game inspector while a framework menu is open: hover elements to see their bounds, margins and properties, nudge them with the keyboard, and press E to export the menu as C# code."
 }

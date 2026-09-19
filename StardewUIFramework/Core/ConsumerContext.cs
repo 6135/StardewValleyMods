@@ -50,6 +50,7 @@ namespace UIFramework.Core
                 UIServices.Log($"[{ModId}] {eventName} on '{elementId}'");
             }
 
+            long started = PerfCounters.StartCallback();
             try
             {
                 action();
@@ -57,6 +58,10 @@ namespace UIFramework.Core
             catch (Exception ex)
             {
                 Mute(key, elementId, eventName, ex);
+            }
+            finally
+            {
+                PerfCounters.EndCallback(started);
             }
         }
 
@@ -74,6 +79,7 @@ namespace UIFramework.Core
                 return fallback;
             }
 
+            long started = PerfCounters.StartCallback();
             try
             {
                 return func();
@@ -82,6 +88,10 @@ namespace UIFramework.Core
             {
                 Mute(key, elementId, eventName, ex);
                 return fallback;
+            }
+            finally
+            {
+                PerfCounters.EndCallback(started);
             }
         }
 

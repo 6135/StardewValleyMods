@@ -1,4 +1,4 @@
-using System.Linq;
+using System.IO;
 using StardewModdingAPI;
 using StardewModdingAPI.Events;
 using UIFramework.Api;
@@ -36,11 +36,6 @@ namespace UIFramework
                 config.DebugOverlay = !config.DebugOverlay;
                 Monitor.Log($"Debug overlay {(config.DebugOverlay ? "enabled" : "disabled")}.", LogLevel.Info);
             });
-            helper.ConsoleCommands.Add("ui_list", "List the UI Framework menus that are currently open.", (_, _) =>
-            {
-                string list = string.Join("\n", menus.OpenMenus.Select(m => $"  {m}"));
-                Monitor.Log(menus.OpenMenus.Count == 0 ? "No framework menus are open." : $"Open menus:\n{list}", LogLevel.Info);
-            });
 
             // v1.1 wiring (one region per feature; see architecture.md §16)
 
@@ -63,6 +58,9 @@ namespace UIFramework
             // END HUD entry
 
             // BEGIN TOOLS entry
+            Inspector.ExportDirectory = Path.Combine(helper.DirectoryPath, "export");
+            new DebugConsole(menus, Monitor).Register(helper.ConsoleCommands);
+            helper.Events.Input.ButtonsChanged += (_, _) => Inspector.OnButtonsChanged();
             // END TOOLS entry
         }
 
@@ -117,6 +115,12 @@ namespace UIFramework
             // END HUD gmcm
 
             // BEGIN TOOLS gmcm
+            gmcm.AddKeybindList(ModManifest,
+                getValue: () => Inspector.ParseHotkey(config.InspectorHotkey),
+                setValue: v => config.InspectorHotkey = v.ToString(),
+                name: () => Helper.Translation.Get("config.inspector-hotkey"),
+                tooltip: () => Helper.Translation.Get("config.inspector-hotkey.desc"),
+                fieldId: null);
             // END TOOLS gmcm
         }
     }

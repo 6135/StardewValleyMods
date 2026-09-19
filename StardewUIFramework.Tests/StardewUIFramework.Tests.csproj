@@ -1,0 +1,43 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <AssemblyName>StardewUIFramework.Tests</AssemblyName>
+    <RootNamespace>StardewUIFramework.Tests</RootNamespace>
+    <TargetFramework>net6.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <LangVersion>latest</LangVersion>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+    <!-- the framework references the game assemblies through ModBuildConfig; resolve them the same way here -->
+    <GamePath>$(STARDEW_GAME_DIR)</GamePath>
+    <EnableHarmony>false</EnableHarmony>
+    <EnableModDeploy>false</EnableModDeploy>
+    <EnableModZip>false</EnableModZip>
+    <!-- xUnit discovery loads the game / MonoGame types referenced by the test classes before any test code runs,
+         so those assemblies must sit next to the test DLL; everything else resolves from the game folder at run time
+         (Testing/GameAssemblies.cs) -->
+    <BundleExtraAssemblies>Game</BundleExtraAssemblies>
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+    <DefaultItemExcludes>$(DefaultItemExcludes);obj/**;bin/**</DefaultItemExcludes>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Pathoschild.Stardew.ModBuildConfig" Version="4.3.2" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
+    <PackageReference Include="xunit" Version="2.9.2" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- lets Testing/GameAssemblies.cs resolve the game / SMAPI / MonoGame DLLs from the game folder at run time -->
+    <AssemblyMetadata Include="GamePath" Value="$(GamePath)" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../StardewUIFramework/UIFramework.csproj" />
+  </ItemGroup>
+
+</Project>
