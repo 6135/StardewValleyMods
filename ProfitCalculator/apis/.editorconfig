@@ -1,3 +1,0 @@
-# The UI Framework API contract is copied verbatim from StardewUIFramework/Api/Public/IStardewUIApi.cs; do not edit it here.
-[IStardewUIApi.cs]
-dotnet_diagnostic.CS1591.severity = none
