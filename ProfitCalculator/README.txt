@@ -7,7 +7,8 @@ Provides the ability to select whether the user wants to buy seeds or fertilizer
 ## Installation
 
 1. Install [SMAPI](https://smapi.io/).
-2. Install [Generic Config Menu](https://www.nexusmods.com/stardewvalley/mods/5098). Optional but recommended to allow for more customization of settings.
+2. Install [UI Framework](https://github.com/6135/StardewValleyMods/tree/master/StardewUIFramework) (`6135.UIFramework`). Required: the calculator's menus are built with it.
+3. Install [Generic Config Menu](https://www.nexusmods.com/stardewvalley/mods/5098). Optional but recommended to allow for more customization of settings.
 2. Install [Content Patcher](https://www.nexusmods.com/stardewvalley/mods/1915). (Optional to add CP Crops)
 3. Install [Json Assets](https://www.nexusmods.com/stardewvalley/mods/1720). (Optional to add JA Crops)
 4. Install [DGA](https://www.nexusmods.com/stardewvalley/mods/9365). (Optional to add DGA Crops)		
@@ -18,6 +19,12 @@ Provides the ability to select whether the user wants to buy seeds or fertilizer
 ## Configuration
 
 The config file is located in `Stardew Valley/Mods/ProfitCalculator/config.json`. It allows you to change the keybind to open the calculator and the time for the tooltip to appear.
+
+The look of the menus (theme, text scale, reduced motion) is configured in the UI Framework's own config / Generic Config Menu page and applies to every mod that uses it.
+
+## Usage
+
+Press the hotkey to open the settings screen, adjust the day, season, fertilizer and money options and press `Calculate` (or `Enter`). The results screen lists every crop that can still be harvested with those settings, sorted by profit per day; click a column header to sort by it, and hover a row for the full breakdown (seed / fertilizer cost, growth and regrowth time, harvests, drop counts and quality chances). `Escape` returns to the settings screen. The windows can be dragged, collapsed and resized; their position is remembered per save.
 
 ## Seed Price Override
 
@@ -78,7 +85,7 @@ If you want to add a crop that is not in the game, you can do so by adding a `cr
 - [X] Add support for JA crops.
 - [X] Add support for CP crops.
 - [X] Add support for DGA crops.
-- [ ] Add proper scaling support for options menu.
+- [X] Add proper scaling support for options menu.
 - [ ] Obtain Seed prices from stores and from DGA to get more accurate seed prices.
 - [ ] Add support to multi-drop crops.
 - [ ] Add support for fruit trees.

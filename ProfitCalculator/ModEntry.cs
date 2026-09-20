@@ -1,18 +1,16 @@
-﻿using ProfitCalculator.main.memory;
+using ProfitCalculator.main.memory;
 using ProfitCalculator.apis;
 using ProfitCalculator.main;
 using ProfitCalculator.main.accessors;
 using ProfitCalculator.main.builders;
 using ProfitCalculator.main.models;
 using ProfitCalculator.main.ui;
-using ProfitCalculator.main.ui.menus;
 using StardewModdingAPI;
 using StardewModdingAPI.Events;
-using StardewValley;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Xml;
+using UIFramework.Api;
 using CropData = ProfitCalculator.main.models.CropData;
 
 #nullable enable
@@ -23,8 +21,11 @@ namespace ProfitCalculator
     public class ModEntry : Mod
     {
         private ModConfig? Config;
+        private IStardewUIApi? uiApi;
+        private ProfitCalculatorSettings? settings;
         private ProfitCalculatorMainMenu? mainMenu;
         internal static readonly string UniqueID = "6135.ProfitCalculator";
+        private const string UIFrameworkId = "6135.UIFramework";
 
         /// <summary>The mod entry point, called after the mod is first loaded.</summary>
         /// <param name="helper">Provides simplified APIs for writing mods.</param>
@@ -42,11 +43,10 @@ namespace ProfitCalculator
             }
 
             //hook events
-            helper.Events.Input.ButtonPressed += OnButtonPressed;
             helper.Events.GameLoop.GameLaunched += OnGameLaunchedAPIs;
             helper.Events.GameLoop.GameLaunched += OnGameLaunchedAddGenericModConfigMenu;
+            helper.Events.GameLoop.GameLaunched += OnGameLaunchedBuildMenus;
             helper.Events.GameLoop.SaveLoaded += OnSaveGameLoaded;
-            helper.Events.Input.MouseWheelScrolled += this.OnMouseWheelScrolled;
             helper.Events.GameLoop.DayStarted += OnDayStartedResetCache;
         }
 
@@ -84,7 +84,11 @@ namespace ProfitCalculator
             configMenu.Register(
                 mod: this.ModManifest,
                 reset: () => this.Config = new ModConfig(),
-                save: () => this.Helper.WriteConfig(this.Config!)
+                save: () =>
+                {
+                    this.Helper.WriteConfig(this.Config!);
+                    ApplyConfig();
+                }
             );
 
             // add keybinding setting
@@ -115,6 +119,34 @@ namespace ProfitCalculator
             );
         }
 
+        #region UI Framework
+
+        /// <summary>Request the UI Framework API and build the screens with it.</summary>
+        private void OnGameLaunchedBuildMenus(object? sender, GameLaunchedEventArgs? e)
+        {
+            uiApi = this.Helper.ModRegistry.GetApi<IStardewUIApi>(UIFrameworkId);
+            if (uiApi is null)
+            {
+                Monitor.Log($"UI Framework ({UIFrameworkId}) is not installed; the calculator cannot open its menus.", LogLevel.Error);
+                return;
+            }
+            settings = new ProfitCalculatorSettings();
+            mainMenu = new ProfitCalculatorMainMenu(uiApi, Helper, Monitor, settings, new ProfitCalculatorResultsMenu(uiApi, Helper));
+            ApplyConfig();
+        }
+
+        /// <summary>Push the hotkey and tooltip delay from the config to the framework.</summary>
+        private void ApplyConfig()
+        {
+            if (uiApi is null || mainMenu is null)
+                return;
+            uiApi.BindToggleHotkey(mainMenu.Menu, (Config?.HotKey ?? SButton.F8).ToString());
+            // the legacy delay was counted in frames (60 per second); the framework takes milliseconds
+            uiApi.SetTooltipDelay((Config?.ToolTipDelay ?? 30) * 1000 / 60);
+        }
+
+        #endregion UI Framework
+
         [EventPriority(EventPriority.Low - 9999)]
         private void OnSaveGameLoaded(object? sender, SaveLoadedEventArgs? e)
         {
@@ -126,10 +158,9 @@ namespace ProfitCalculator
                 Container.Instance.RegisterInstance(CustomBushAPI, UniqueID);
             }
 
-            if (Context.IsWorldReady)
-            {
-                mainMenu = new ProfitCalculatorMainMenu();
-            }
+            // take the day, season and money defaults from the save that was just loaded
+            settings?.Reset();
+
             var Calculator = Container.Instance.GetInstance<Calculator>(ModEntry.UniqueID);
             if (Calculator is null)
             {
@@ -158,43 +189,6 @@ namespace ProfitCalculator
                 }
             }
             );
-        }
-
-        /// <summary>Raised after the player presses a button on the keyboard, controller, or mouse.</summary>
-        /// <param name="sender">The event sender.</param>
-        /// <param name="e">The event data.</param>
-        private void OnButtonPressed(object? sender, ButtonPressedEventArgs? e)
-        {
-            // ignore if player hasn't loaded a save yet
-            if (!Context.IsWorldReady || e == null)
-                return;
-
-            //check if button pressed is button in config
-            if (e.Button == (Config?.HotKey ?? SButton.None))
-            {
-                //open menu if not already open else close
-                if (mainMenu?.IsProfitCalculatorOpen != null && !mainMenu.IsProfitCalculatorOpen)
-                {
-                    mainMenu.IsProfitCalculatorOpen = true;
-                    mainMenu.UpdateMenu();
-                    Game1.activeClickableMenu = mainMenu;
-                    Game1.playSound("bigSelect");
-                }
-                else if (mainMenu?.IsProfitCalculatorOpen != null)
-                {
-                    mainMenu.IsProfitCalculatorOpen = false;
-                    mainMenu.UpdateMenu();
-                    DropdownOption.ActiveDropdown = null;
-                    Game1.activeClickableMenu = null;
-                    Game1.playSound("bigDeSelect");
-                }
-            }
-        }
-
-        private void OnMouseWheelScrolled(object? sender, MouseWheelScrolledEventArgs? e)
-        {
-            if (e != null)
-                DropdownOption.ActiveDropdown?.ReceiveScrollWheelAction(e.Delta);
         }
 
         /// <summary>
