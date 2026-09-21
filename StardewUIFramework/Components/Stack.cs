@@ -2,11 +2,12 @@ using System;
 using Microsoft.Xna.Framework;
 using UIFramework.Api;
 using UIFramework.Core;
+using UIFramework.Rendering;
 
 namespace UIFramework.Components
 {
     /// <summary>Lays children out in a column (default) or a row with fixed spacing.</summary>
-    internal sealed class Stack : UIContainer, IUIStack
+    internal class Stack : UIContainer, IUIStack
     {
         private bool horizontal;
         private int spacing;
@@ -65,6 +66,9 @@ namespace UIFramework.Components
             }
         }
 
+        /// <summary>Spacing actually used: the consumer's value scaled by the theme.</summary>
+        private int EffectiveSpacing => Theme.Space(spacing);
+
         // a stack is layout-only: clicks on the gaps fall through to whatever is behind it (unless it has a handler)
         protected override bool IsHitTestVisible => HasPointerHandlers;
 
@@ -75,6 +79,7 @@ namespace UIFramework.Components
         {
             float main = 0, cross = 0;
             int visible = 0;
+            int gap = EffectiveSpacing;
             foreach (UIElement child in Children)
             {
                 if (!child.Visible)
@@ -82,7 +87,13 @@ namespace UIFramework.Components
                     continue;
                 }
 
-                Vector2 size = child.Measure(available);
+                // each child is offered what is left along the main axis, so wrapping labels and fill-what-you-get
+                // children (star grids, lists) stop pushing later siblings out of the container
+                float used = main + (visible > 0 ? gap : 0);
+                Vector2 remaining = horizontal
+                    ? new Vector2(Math.Max(0, available.X - used), available.Y)
+                    : new Vector2(available.X, Math.Max(0, available.Y - used));
+                Vector2 size = child.Measure(remaining);
                 if (horizontal)
                 {
                     main += size.X;
@@ -97,7 +108,7 @@ namespace UIFramework.Components
             }
             if (visible > 1)
             {
-                main += spacing * (visible - 1);
+                main += gap * (visible - 1);
             }
 
             return horizontal ? new Vector2(main, cross) : new Vector2(cross, main);
@@ -106,6 +117,8 @@ namespace UIFramework.Components
         protected override void ArrangeCore()
         {
             int cursor = horizontal ? Bounds.X : Bounds.Y;
+            int end = horizontal ? Bounds.Right : Bounds.Bottom;
+            int gap = EffectiveSpacing;
             foreach (UIElement child in Children)
             {
                 if (!child.Visible)
@@ -113,12 +126,14 @@ namespace UIFramework.Components
                     child.Arrange(new Rectangle(Bounds.X, Bounds.Y, 0, 0));
                     continue;
                 }
-                int extent = (int)Math.Ceiling(horizontal ? child.DesiredSize.X : child.DesiredSize.Y);
+                // a child never extends past the container; what does not fit is cut, not spilled over the box
+                int start = Math.Min(cursor, end);
+                int extent = Math.Min((int)Math.Ceiling(horizontal ? child.DesiredSize.X : child.DesiredSize.Y), end - start);
                 Rectangle slot = horizontal
-                    ? new Rectangle(cursor, Bounds.Y, extent, Bounds.Height)
-                    : new Rectangle(Bounds.X, cursor, Bounds.Width, extent);
+                    ? new Rectangle(start, Bounds.Y, extent, Bounds.Height)
+                    : new Rectangle(Bounds.X, start, Bounds.Width, extent);
                 child.Arrange(slot);
-                cursor += extent + spacing;
+                cursor += extent + gap;
             }
         }
     }

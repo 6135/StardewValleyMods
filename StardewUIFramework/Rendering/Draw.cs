@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using StardewValley;
@@ -24,19 +25,65 @@ namespace UIFramework.Rendering
             IClickableMenu.drawTextureBox(b, texture, source, rect.X, rect.Y, rect.Width, rect.Height, color, scale, shadow);
         }
 
-        /// <summary>Vanilla panel box (<c>Game1.menuTexture</c>).</summary>
-        internal static void PanelBox(SpriteBatch b, Rectangle rect, Color color)
+        /// <summary>The theme's panel box (vanilla <c>Game1.menuTexture</c> by default), used by HUD widgets and toasts.</summary>
+        internal static void PanelBox(SpriteBatch b, Rectangle rect, Color tint)
         {
-            Box(b, Game1.menuTexture, Theme.PanelBoxSource, rect, color, 1f);
+            ThemedBox(b, Theme.PanelTexture, Theme.PanelBoxSource, rect, tint, 1f);
         }
 
-        /// <summary>Vanilla button box (<c>Game1.mouseCursors</c> 432,439).</summary>
-        internal static void ButtonBox(SpriteBatch b, Rectangle rect, Color color)
+        /// <summary>
+        /// Draw a box the theme's way: a solid fill with an outline when the theme sets <see cref="Theme.BoxFill"/>
+        /// (the outline takes <paramref name="tint"/> when it is not white, so hover / disabled states stay visible),
+        /// otherwise the 9-slice <paramref name="texture"/> multiplied by <see cref="Theme.BoxTint"/>.
+        /// </summary>
+        internal static void ThemedBox(SpriteBatch b, Texture2D texture, Rectangle source, Rectangle rect, Color tint, float scale)
         {
-            Box(b, Game1.mouseCursors, Theme.ButtonBoxSource, rect, color, 4f);
+            if (rect.Width <= 0 || rect.Height <= 0)
+            {
+                return;
+            }
+
+            Color? fill = Theme.BoxFill;
+            if (fill.HasValue)
+            {
+                Fill(b, rect, fill.Value);
+                Outline(b, rect, tint == Color.White ? Theme.BorderColor : tint, Theme.BorderThickness);
+                return;
+            }
+
+            Box(b, texture, source, rect, Multiply(tint, Theme.BoxTint), scale);
         }
 
-        /// <summary>Draw a text string at a position (optionally with the vanilla shadow).</summary>
+        /// <summary>
+        /// The box behind a panel (<paramref name="button"/> = false) or a button: the element's own texture / source
+        /// when its style sets one (drawn untouched, as before themes), otherwise the theme's box for that kind.
+        /// </summary>
+        internal static void StyledBox(SpriteBatch b, in ResolvedStyle style, bool button, Rectangle rect, Color tint)
+        {
+            float scale = style.BoxScale ?? (button ? 4f : 1f);
+            if (style.BoxTexture != null)
+            {
+                Box(b, style.BoxTexture, style.BoxSource ?? style.BoxTexture.Bounds, rect, tint, scale);
+                return;
+            }
+
+            Texture2D texture = button ? Theme.ButtonTexture : Theme.PanelTexture;
+            Rectangle source = style.BoxSource ?? (button ? Theme.ButtonBoxSource : Theme.PanelBoxSource);
+            ThemedBox(b, texture, source, rect, tint, scale);
+        }
+
+        /// <summary>Component-wise product of two colors (white is the identity).</summary>
+        internal static Color Multiply(Color a, Color b)
+        {
+            if (b == Color.White)
+            {
+                return a;
+            }
+
+            return new Color(a.R * b.R / 255, a.G * b.G / 255, a.B * b.B / 255, a.A * b.A / 255);
+        }
+
+        /// <summary>Draw a text string at a position (optionally with the vanilla shadow). <paramref name="scale"/> is multiplied by the theme's font scale.</summary>
         internal static void Text(SpriteBatch b, string content, UIFont font, Vector2 position, Color color, bool shadow, float scale)
         {
             if (string.IsNullOrEmpty(content))
@@ -44,6 +91,7 @@ namespace UIFramework.Rendering
                 return;
             }
 
+            scale *= Theme.FontScale;
             SpriteFont spriteFont = GameTextMeasurer.GetFont(font);
             if (shadow)
             {
@@ -66,6 +114,72 @@ namespace UIFramework.Rendering
             Vector2 size = UIServices.Text.Measure(font, text, scale);
             float x = rect.X + LayoutEngine.AlignOffset(horizontal == UIAlign.Stretch ? UIAlign.Start : horizontal, rect.Width, (int)size.X);
             Text(b, text, font, new Vector2((int)x, rect.Y), color, shadow, scale);
+        }
+
+        /// <summary>Smallest scale <c>FitText</c> shrinks to before it starts cutting characters.</summary>
+        private const float MinFitScale = 0.7f;
+
+        /// <summary>
+        /// Draw a single line inside <paramref name="rect"/>: at <paramref name="scale"/> when it fits, otherwise shrunk
+        /// in 10 % steps down to 70 % of it, and if it still does not fit, truncated with "..." at that smallest scale.
+        /// The line is centered vertically on where the unshrunk line would sit so rows keep their baseline.
+        /// </summary>
+        internal static void FitText(SpriteBatch b, string text, UIFont font, Rectangle rect, Color color, bool shadow, float scale, UIAlign horizontal)
+        {
+            FitText(b, text, font, rect, color, shadow, scale, horizontal, bold: false);
+        }
+
+        /// <summary>
+        /// <see cref="FitText(SpriteBatch, string, UIFont, Rectangle, Color, bool, float, UIAlign)"/> with an optional bold face
+        /// (<c>Utility.drawBoldText</c>). Returns the width the text was drawn with (0 when nothing was drawn).
+        /// </summary>
+        internal static float FitText(SpriteBatch b, string text, UIFont font, Rectangle rect, Color color, bool shadow, float scale, UIAlign horizontal, bool bold)
+        {
+            if (string.IsNullOrEmpty(text) || rect.Width <= 0)
+            {
+                return 0;
+            }
+
+            float fullHeight = UIServices.Text.Measure(font, text, scale).Y;
+            float fitScale = scale;
+            while (UIServices.Text.Measure(font, text, fitScale).X > rect.Width && fitScale > MinFitScale * scale + 0.001f)
+            {
+                fitScale = Math.Max(MinFitScale * scale, fitScale - (0.1f * scale));
+            }
+
+            string shown = UIServices.Text.Measure(font, text, fitScale).X > rect.Width ? Truncate(text, font, fitScale, rect.Width) : text;
+            Vector2 shownSize = UIServices.Text.Measure(font, shown, fitScale);
+            var line = new Rectangle(rect.X, rect.Y + (int)((fullHeight - shownSize.Y) / 2f), rect.Width, rect.Height);
+            if (bold)
+            {
+                float x = line.X + LayoutEngine.AlignOffset(horizontal == UIAlign.Stretch ? UIAlign.Start : horizontal, line.Width, (int)shownSize.X);
+                Utility.drawBoldText(b, shown, GameTextMeasurer.GetFont(font), new Vector2((int)x, line.Y), color, fitScale * Theme.FontScale);
+            }
+            else
+            {
+                TextInRect(b, shown, font, line, color, shadow, fitScale, horizontal);
+            }
+            return shownSize.X;
+        }
+
+        /// <summary>The longest prefix of <paramref name="text"/> + "..." that fits in <paramref name="width"/> (may be just "...").</summary>
+        private static string Truncate(string text, UIFont font, float scale, int width)
+        {
+            const string Ellipsis = "...";
+            int lo = 0, hi = text.Length;
+            while (lo < hi)
+            {
+                int mid = (lo + hi + 1) / 2;
+                if (UIServices.Text.Measure(font, text.Substring(0, mid).TrimEnd() + Ellipsis, scale).X <= width)
+                {
+                    lo = mid;
+                }
+                else
+                {
+                    hi = mid - 1;
+                }
+            }
+            return text.Substring(0, lo).TrimEnd() + Ellipsis;
         }
 
         /// <summary>Solid rectangle (uses <c>Game1.staminaRect</c>).</summary>
@@ -95,25 +209,29 @@ namespace UIFramework.Rendering
         /// </summary>
         internal static void WithScissor(SpriteBatch b, Rectangle clip, Action draw)
         {
+            // MonoGame applies the rasterizer state lazily, so the device cannot tell us whether an outer clip is
+            // active; the clip stack does (nested ScrollView / ListView inside a scrolled menu).
             GraphicsDevice device = b.GraphicsDevice;
-            Rectangle outer = device.ScissorRectangle;
-            bool outerEnabled = device.RasterizerState?.ScissorTestEnable ?? false;
-            Rectangle effective = outerEnabled ? Rectangle.Intersect(outer, clip) : clip;
+            bool outerEnabled = clipStack.Count > 0;
+            Rectangle effective = outerEnabled ? Rectangle.Intersect(clipStack.Peek(), clip) : clip;
             effective = Rectangle.Intersect(effective, device.Viewport.Bounds);
             if (effective.Width <= 0 || effective.Height <= 0)
             {
                 return;
             }
 
+            Rectangle outer = device.ScissorRectangle;
             b.End();
             device.ScissorRectangle = effective;
             b.Begin(SpriteSortMode.Deferred, BlendState.AlphaBlend, SamplerState.PointClamp, null, ScissorState);
+            clipStack.Push(effective);
             try
             {
                 draw();
             }
             finally
             {
+                clipStack.Pop();
                 b.End();
                 device.ScissorRectangle = outer;
                 if (outerEnabled)
@@ -126,6 +244,9 @@ namespace UIFramework.Rendering
                 }
             }
         }
+
+        /// <summary>Active scissor rectangles, innermost last.</summary>
+        private static readonly Stack<Rectangle> clipStack = new();
 
         /// <summary>Debug overlay: bounds outline plus the id in tiny text.</summary>
         internal static void DebugBounds(SpriteBatch b, Rectangle rect, string id, Color? color = null)

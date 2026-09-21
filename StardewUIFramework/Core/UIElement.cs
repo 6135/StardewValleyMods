@@ -45,10 +45,19 @@ namespace UIFramework.Core
         /// <summary>The menu this element is attached to (null while detached).</summary>
         internal UIMenu? OwnerMenu { get; private set; }
 
-        /// <summary>Consumer that owns the menu (never null; <see cref="ConsumerContext.None"/> while detached).</summary>
-        internal ConsumerContext Consumer => OwnerMenu?.Consumer ?? ConsumerContext.None;
+        /// <summary>
+        /// Consumer whose callbacks this element raises (never null; <see cref="ConsumerContext.None"/> while detached):
+        /// the slot contributor when the element sits under a contributor container, otherwise the menu's owner.
+        /// </summary>
+        internal ConsumerContext Consumer => Sealing.ContributorOf(this) ?? OwnerMenu?.Consumer ?? ConsumerContext.None;
 
-        IUIContainer IUIElement.Parent => ParentElement!;
+        /// <summary>Set on the container a slot contribution builds into: everything below it is attributed to that mod (v2 slots).</summary>
+        internal ConsumerContext? Contributor { get; set; }
+
+        /// <summary>Opt out of modification by other mods; <see cref="Sealing"/> enforces it on lookup and tree edits.</summary>
+        public bool Sealed { get; set; }
+
+        IUIContainer IUIElement.Parent => ParentElement is Components.ScrollView { FitContent: true } ? null! : ParentElement!;
         IUIMenu IUIElement.Menu => OwnerMenu!;
 
         /// <summary>Called when the element is attached to / detached from a menu tree.</summary>
@@ -136,11 +145,15 @@ namespace UIFramework.Core
 
         internal Func<string>? Tooltip { get; set; }
         internal Func<string>? TooltipTitle { get; set; }
+
+        /// <summary>Rich tooltip (replaces <see cref="Tooltip"/> / <see cref="TooltipTitle"/> when set).</summary>
+        internal RichTooltip? RichTooltip { get; set; }
         internal object? Tag { get; set; }
         internal UIStyle? StyleObject { get; set; }
 
         Func<string> IUIElement.Tooltip { get => Tooltip!; set => Tooltip = value; }
         Func<string> IUIElement.TooltipTitle { get => TooltipTitle!; set => TooltipTitle = value; }
+        IUITooltip IUIElement.RichTooltip { get => RichTooltip!; set => RichTooltip = value as RichTooltip; }
         object IUIElement.Tag { get => Tag!; set => Tag = value; }
 
         IUIStyle IUIElement.Style
@@ -281,6 +294,29 @@ namespace UIFramework.Core
 
         /// <summary>Invoke a consumer callback that returns a value through the guard.</summary>
         protected T Raise<T>(string eventName, Func<T>? func, T fallback) => Consumer.Invoke(Id, eventName, func, fallback);
+
+        // ---------------------------------------------------------------------------------------------------------
+        //  Accessibility
+        // ---------------------------------------------------------------------------------------------------------
+
+        /// <summary>Consumer override for the screen reader description (null = <see cref="AccessibleDescription"/>).</summary>
+        internal Func<string>? AccessibleName { get; set; }
+
+        Func<string> IUIElement.AccessibleName { get => AccessibleName!; set => AccessibleName = value; }
+
+        /// <summary>
+        /// What a screen reader says for this element: "&lt;type&gt;: &lt;label / text / value&gt;". Components override it;
+        /// the default is the element kind plus its tooltip title and text.
+        /// </summary>
+        internal virtual string AccessibleDescription
+        {
+            get
+            {
+                string? title = TooltipTitle == null ? null : Raise("TooltipTitle", TooltipTitle, string.Empty);
+                string? tooltip = Tooltip == null ? null : Raise("Tooltip", Tooltip, string.Empty);
+                return Accessibility.Compose(GetType().Name, title, tooltip);
+            }
+        }
 
         // ---------------------------------------------------------------------------------------------------------
         //  Style
@@ -435,6 +471,7 @@ namespace UIFramework.Core
             {
                 DrawHelper.DebugBounds(b, Bounds, Id);
             }
+            InspectorRenderer.DrawElement(b, this);
         }
 
         /// <summary>
@@ -462,7 +499,7 @@ namespace UIFramework.Core
 
         private bool HasClickHandlers => OnClick != null || OnRightClick != null;
 
-        private bool HasHoverHandlers => Tooltip != null || OnHover != null || OnHoverEnd != null;
+        private bool HasHoverHandlers => Tooltip != null || RichTooltip != null || OnHover != null || OnHoverEnd != null;
 
         /// <summary>Return the deepest visible + enabled element under the point, or null.</summary>
         internal virtual UIElement? HitTest(int px, int py)

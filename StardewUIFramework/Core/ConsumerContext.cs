@@ -24,6 +24,9 @@ namespace UIFramework.Core
         /// <summary>Default style for this consumer's elements (null = theme default).</summary>
         internal UIStyle? DefaultStyle { get; set; }
 
+        /// <summary>Signal bindings this consumer created (SIGNALS; dropped per element on detach / unbind).</summary>
+        internal SignalBindings Bindings { get; } = new();
+
         internal ConsumerContext(string modId)
         {
             ModId = modId;
@@ -50,6 +53,7 @@ namespace UIFramework.Core
                 UIServices.Log($"[{ModId}] {eventName} on '{elementId}'");
             }
 
+            long started = PerfCounters.StartCallback();
             try
             {
                 action();
@@ -57,6 +61,10 @@ namespace UIFramework.Core
             catch (Exception ex)
             {
                 Mute(key, elementId, eventName, ex);
+            }
+            finally
+            {
+                PerfCounters.EndCallback(started);
             }
         }
 
@@ -74,6 +82,7 @@ namespace UIFramework.Core
                 return fallback;
             }
 
+            long started = PerfCounters.StartCallback();
             try
             {
                 return func();
@@ -82,6 +91,10 @@ namespace UIFramework.Core
             {
                 Mute(key, elementId, eventName, ex);
                 return fallback;
+            }
+            finally
+            {
+                PerfCounters.EndCallback(started);
             }
         }
 

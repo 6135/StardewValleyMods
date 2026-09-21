@@ -15,17 +15,21 @@ namespace UIFramework.Api
     /// </summary>
     public sealed class StardewUIApi : IStardewUIApi
     {
-        public static string Version => "1.0.0";
+        public static string Version => "1.1.0";
 
         private readonly ConsumerContext consumer;
         private readonly MenuRegistry menus;
         private readonly HotkeyService hotkeys;
+        private readonly CompositeRegistry composites;
+        private readonly ExtensionRegistry extensions;
 
-        internal StardewUIApi(ConsumerContext consumer, MenuRegistry menus, HotkeyService hotkeys)
+        internal StardewUIApi(ConsumerContext consumer, MenuRegistry menus, HotkeyService hotkeys, CompositeRegistry composites, ExtensionRegistry extensions)
         {
             this.consumer = consumer;
             this.menus = menus;
             this.hotkeys = hotkeys;
+            this.composites = composites;
+            this.extensions = extensions;
         }
 
         public string ApiVersion => Version;
@@ -63,7 +67,8 @@ namespace UIFramework.Api
                 Y = options.Y,
                 DrawBox = options.DrawBox,
                 Padding = options.Padding,
-                CloseOnEscape = options.CloseOnEscape
+                CloseOnEscape = options.CloseOnEscape,
+                PlayerLayout = options.PlayerLayout // HUD
             };
             menus.Register(consumer.ModId, menu);
             return menu;
@@ -196,12 +201,14 @@ namespace UIFramework.Api
                 throw new ArgumentException("The menu was not created by this framework.", nameof(menu));
             }
 
-            return m.Root.FindById(id ?? string.Empty)!;
+            // another mod's menu: sealed subtrees are hidden (see Sealing)
+            return (m.Consumer.ModId == consumer.ModId ? m.Root.FindById(id ?? string.Empty) : Sealing.FindReachable(m.Root, id ?? string.Empty, consumer))!;
         }
 
         public void Remove(IUIElement element)
         {
             UIElement e = UIContainer.Unwrap(element);
+            RequireWriteAccess(e);
             e.ParentElement?.Remove(e);
         }
 
@@ -264,6 +271,333 @@ namespace UIFramework.Api
         public void SetDefaultStyle(IUIStyle style) => consumer.DefaultStyle = style as UIStyle;
 
         // ---------------------------------------------------------------------------------------------------------
+        //  v1.1 features (one region per feature; see architecture.md §16)
+        // ---------------------------------------------------------------------------------------------------------
+
+        // BEGIN SLOTS facade
+
+        public IUISlot AddSlot(IUIContainer parent, string id)
+        {
+            return Attach(parent, new Slot(RequireId(id)));
+        }
+
+        public IUISlotInfo[] ListSlots(string ownerModId) => extensions.ListSlots(ownerModId ?? string.Empty);
+
+        public void ContributeTo(string ownerModId, string menuId, string slotId, Action<IUIContainer, IUIScreenContext> build)
+        {
+            ContributeTo(ownerModId, menuId, slotId, 0, build);
+        }
+
+        public void ContributeTo(string ownerModId, string menuId, string slotId, int priority, Action<IUIContainer, IUIScreenContext> build)
+        {
+            ArgumentNullException.ThrowIfNull(build);
+
+            extensions.Contribute(consumer, RequireId(ownerModId), RequireId(menuId), RequireId(slotId), priority, build);
+        }
+
+        public void RemoveContribution(string ownerModId, string menuId, string slotId)
+        {
+            extensions.RemoveContribution(consumer, ownerModId ?? string.Empty, menuId ?? string.Empty, slotId ?? string.Empty);
+        }
+
+        public void Expose(IUIMenu menu, string key, Func<string> value)
+        {
+            extensions.ExposuresOf(RequireOwnMenu(menu)).SetString(RequireId(key), value);
+        }
+
+        public void ExposeNumber(IUIMenu menu, string key, Func<double> value)
+        {
+            extensions.ExposuresOf(RequireOwnMenu(menu)).SetNumber(RequireId(key), value);
+        }
+
+        public void ExposeBool(IUIMenu menu, string key, Func<bool> value)
+        {
+            extensions.ExposuresOf(RequireOwnMenu(menu)).SetBool(RequireId(key), value);
+        }
+
+        public void ExposeCommand(IUIMenu menu, string key, Action command)
+        {
+            extensions.ExposuresOf(RequireOwnMenu(menu)).SetCommand(RequireId(key), command);
+        }
+
+        public void Publish(IUIMenu menu, string eventName)
+        {
+            extensions.ExposuresOf(RequireOwnMenu(menu)).Publish(RequireId(eventName));
+        }
+
+        public void OnScreenBuilt(string ownerModId, string menuId, Action<IUIMenu> decorate)
+        {
+            extensions.SetDecorator(consumer, RequireId(ownerModId), RequireId(menuId), decorate);
+        }
+
+        // END SLOTS facade
+
+        // BEGIN COMPOSITES facade
+
+        public IUICompositeArgs CreateCompositeArgs() => new CompositeArgs();
+
+        public void DefineComposite(string name, Action<IUICompositeHost, IUICompositeArgs> build)
+        {
+            ArgumentNullException.ThrowIfNull(build);
+
+            composites.Define(consumer, RequireId(name), build);
+        }
+
+        public bool HasComposite(string name) => composites.Has(name ?? string.Empty);
+
+        public string[] ListComposites() => composites.List();
+
+        public void UndefineComposite(string name) => composites.Undefine(consumer, name ?? string.Empty);
+
+        public IUIComposite AddComposite(IUIContainer parent, string id, string compositeName, IUICompositeArgs args)
+        {
+            RequireId(compositeName);
+            CompositeArgs bag = args switch
+            {
+                null => new CompositeArgs(),
+                CompositeArgs own => own,
+                _ => throw new ArgumentException("The arguments were not created by CreateCompositeArgs().", nameof(args))
+            };
+            Composite composite = Attach(parent, new Composite(RequireId(id), compositeName, bag, composites));
+            composite.Build();
+            return composite;
+        }
+
+        public IUIElement AddCustom(IUIContainer parent, string id, IUICustomComponent implementation, Action<IUIContainer> build)
+        {
+            ArgumentNullException.ThrowIfNull(implementation);
+            ArgumentNullException.ThrowIfNull(build);
+
+            CustomHostAdapter adapter = Attach(parent, new CustomHostAdapter(RequireId(id), implementation));
+            adapter.Build(build);
+            return adapter;
+        }
+
+        /// <summary>True when this consumer defined the composite that <paramref name="container"/> (or an ancestor) hosts.</summary>
+        private bool FillsComponentOf(UIContainer container)
+        {
+            for (UIElement? e = container; e != null; e = e.ParentElement)
+            {
+                if (e is UIContainer c && c.ComponentOwner?.ModId == consumer.ModId)
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        // END COMPOSITES facade
+
+        // BEGIN RICHTEXT facade
+        public IUITooltip CreateTooltip() => new RichTooltip();
+        // END RICHTEXT facade
+
+        // BEGIN THEME facade
+
+        public string[] ListThemes() => Theme.ThemeNames;
+
+        public string ActiveTheme => Theme.ActiveName;
+
+        public void SetTheme(string name)
+        {
+            if (string.IsNullOrWhiteSpace(name))
+            {
+                throw new ArgumentException("A theme name is required.", nameof(name));
+            }
+
+            ThemeSwitcher.Apply(name, consumer.ModId);
+        }
+
+        public Color ThemeColor(string key)
+        {
+            return (key ?? string.Empty).Trim().ToLowerInvariant() switch
+            {
+                "disabled-text" => Theme.DisabledTextColor,
+                "hover" => Theme.HoverColor,
+                "scrollbar" => Theme.ScrollbarTint,
+                "border" => Theme.BorderColor,
+                _ => Theme.TextColor
+            };
+        }
+
+        public bool ReducedMotion => Theme.ReducedMotion;
+
+        public void Announce(string text) => Accessibility.Announce(text);
+
+        // END THEME facade
+
+        // BEGIN DATAGRID facade
+
+        public IUIDataGrid AddDataGrid(IUIContainer parent, string id, int rowHeight, int visibleRows, Func<int> rowCount)
+        {
+            ArgumentNullException.ThrowIfNull(rowCount);
+
+            return Attach(parent, new DataGrid(RequireId(id), rowHeight, visibleRows, rowCount));
+        }
+
+        // END DATAGRID facade
+
+        // BEGIN SIGNALS facade
+
+        public IUISignal Signal(string initial) => new Signal(consumer, ReactiveValue.FromText(initial));
+
+        public IUISignal SignalNumber(double initial) => new Signal(consumer, ReactiveValue.FromNumber(initial));
+
+        public IUISignal SignalBool(bool initial) => new Signal(consumer, ReactiveValue.FromFlag(initial));
+
+        public IUIComputed Computed(Func<string> compute)
+        {
+            ArgumentNullException.ThrowIfNull(compute);
+
+            return new Computed(consumer, () => ReactiveValue.FromText(compute()), ReactiveValue.FromText(string.Empty));
+        }
+
+        public IUIComputed ComputedNumber(Func<double> compute)
+        {
+            ArgumentNullException.ThrowIfNull(compute);
+
+            return new Computed(consumer, () => ReactiveValue.FromNumber(compute()), ReactiveValue.FromNumber(0));
+        }
+
+        public IUIComputed ComputedBool(Func<bool> compute)
+        {
+            ArgumentNullException.ThrowIfNull(compute);
+
+            return new Computed(consumer, () => ReactiveValue.FromFlag(compute()), ReactiveValue.FromFlag(false));
+        }
+
+        public void BindText(IUILabel label, IUIComputed source) => BindText(label, RequireReactive(source));
+
+        public void BindTextToSignal(IUILabel label, IUISignal source) => BindText(label, RequireReactive(source));
+
+        private void BindText(IUILabel label, Reactive source)
+        {
+            Label target = RequireElement<Label>(label);
+            consumer.Bindings.Add(target, SignalBindings.TextKind, new TextBinding(target, source));
+        }
+
+        public void BindVisible(IUIElement element, IUIComputed source)
+        {
+            UIElement target = RequireElement<UIElement>(element);
+            consumer.Bindings.Add(target, SignalBindings.VisibleKind, new FlagBinding(target, RequireReactive(source), (e, flag) => e.Visible = flag));
+        }
+
+        public void BindEnabled(IUIElement element, IUIComputed source)
+        {
+            UIElement target = RequireElement<UIElement>(element);
+            consumer.Bindings.Add(target, SignalBindings.EnabledKind, new FlagBinding(target, RequireReactive(source), (e, flag) => e.Enabled = flag));
+        }
+
+        public void BindTextInput(IUITextInput input, IUISignal signal)
+        {
+            TextInput target = RequireElement<TextInput>(input);
+            Signal source = RequireSignal(signal);
+            BindValue(target, new ValueBinding<string>(target.BoundGetter, target.BoundSetter, target.Rebind, () => source.Value, v => source.Value = v));
+        }
+
+        public void BindNumberInput(IUINumberInput input, IUISignal signal)
+        {
+            NumberInput target = RequireElement<NumberInput>(input);
+            Signal source = RequireSignal(signal);
+            BindValue(target, new ValueBinding<double>(target.BoundGetter, target.BoundSetter, target.Rebind, () => source.Number, v => source.Number = v));
+        }
+
+        public void BindCheckbox(IUICheckbox input, IUISignal signal)
+        {
+            Checkbox target = RequireElement<Checkbox>(input);
+            Signal source = RequireSignal(signal);
+            BindValue(target, new ValueBinding<bool>(target.BoundGetter, target.BoundSetter, target.Rebind, () => source.Flag, v => source.Flag = v));
+        }
+
+        public void BindSlider(IUISlider input, IUISignal signal)
+        {
+            Slider target = RequireElement<Slider>(input);
+            Signal source = RequireSignal(signal);
+            BindValue(target, new ValueBinding<double>(target.BoundGetter, target.BoundSetter, target.Rebind, () => source.Number, v => source.Number = v));
+        }
+
+        public void BindDropdown(IUIDropdown input, IUISignal signal)
+        {
+            Dropdown target = RequireElement<Dropdown>(input);
+            Signal source = RequireSignal(signal);
+            BindValue(target, new ValueBinding<string>(target.BoundGetter, target.BoundSetter, target.Rebind, () => source.Value, v => source.Value = v));
+        }
+
+        private void BindValue(UIElement target, SignalBinding binding) => consumer.Bindings.Add(target, SignalBindings.ValueKind, binding);
+
+        public void Unbind(IUIElement element) => consumer.Bindings.Drop(RequireElement<UIElement>(element));
+
+        public IUIForm AddForm(IUIContainer parent, string id, object model)
+        {
+            ArgumentNullException.ThrowIfNull(model);
+
+            return Attach(parent, new AutoForm(RequireId(id), model, consumer));
+        }
+
+        private static T RequireElement<T>(IUIElement element) where T : UIElement
+        {
+            ArgumentNullException.ThrowIfNull(element);
+
+            return element as T ?? throw new ArgumentException("The element was not created by this framework (or is not the expected kind).", nameof(element));
+        }
+
+        private static Reactive RequireReactive(object source)
+        {
+            ArgumentNullException.ThrowIfNull(source);
+
+            return source as Reactive ?? throw new ArgumentException("The signal / computed was not created by this framework.", nameof(source));
+        }
+
+        private static Signal RequireSignal(IUISignal signal)
+        {
+            ArgumentNullException.ThrowIfNull(signal);
+
+            return signal as Signal ?? throw new ArgumentException("The signal was not created by this framework.", nameof(signal));
+        }
+
+        // END SIGNALS facade
+
+        // BEGIN HUD facade
+
+        public IUIHud CreateHud(string id)
+        {
+            RequireId(id);
+            return RequireHud().Create(consumer, id);
+        }
+
+        public IUIHud GetHud(string id) => RequireHud().Get(consumer.ModId, id ?? string.Empty)!;
+
+        public void DestroyHud(string id) => RequireHud().Destroy(consumer.ModId, id ?? string.Empty);
+
+        public void ShowToast(string text) => ShowToastWithIcon(text, null, null, ToastLayer.DefaultDurationMs);
+
+        public void ShowToast(string text, int durationMs) => ShowToastWithIcon(text, null, null, durationMs);
+
+        public void ShowToastWithIcon(string text, Texture2D? icon, Rectangle? source, int durationMs)
+        {
+            if (string.IsNullOrEmpty(text) && icon == null)
+            {
+                return;
+            }
+
+            RequireHud().ShowToast(text ?? string.Empty, icon, source, durationMs > 0 ? durationMs : ToastLayer.DefaultDurationMs);
+        }
+
+        public void ResetPlayerLayout(IUIMenu menu)
+        {
+            if (menu is not UIMenu m)
+            {
+                throw new ArgumentException("The menu was not created by this framework.", nameof(menu));
+            }
+
+            UIServices.Layouts?.Reset(m);
+        }
+
+        private static HudService RequireHud() => UIServices.Hud ?? throw new InvalidOperationException("The HUD service is not available yet (it is wired in the framework's Entry).");
+
+        // END HUD facade
+
+        // ---------------------------------------------------------------------------------------------------------
         //  Helpers
         // ---------------------------------------------------------------------------------------------------------
 
@@ -286,9 +620,9 @@ namespace UIFramework.Api
                 throw new ArgumentException("The parent container was not created by this framework.", nameof(parent));
             }
 
-            if (container.OwnerMenu != null && container.OwnerMenu.Consumer != consumer)
+            if (!FillsComponentOf(container))
             {
-                throw new InvalidOperationException($"'{container.Id}' belongs to another mod's menu.");
+                RequireWriteAccess(container);
             }
 
             if (container.OwnerMenu != null && container.OwnerMenu.Root.FindById(element.Id) != null)
@@ -298,6 +632,28 @@ namespace UIFramework.Api
 
             container.Add(element);
             return element;
+        }
+
+        /// <summary>Owner, contributor (inside its container) or decorator (outside sealed subtrees) may edit; see <see cref="Sealing"/>.</summary>
+        private void RequireWriteAccess(UIElement element)
+        {
+            Sealing.RequireWriteAccess(element, consumer, element.OwnerMenu != null && extensions.IsDecorator(consumer, element.OwnerMenu));
+        }
+
+        /// <summary>A menu of this consumer, unwrapped.</summary>
+        private UIMenu RequireOwnMenu(IUIMenu menu)
+        {
+            if (menu is not UIMenu m)
+            {
+                throw new ArgumentException("The menu was not created by this framework.", nameof(menu));
+            }
+
+            if (m.Consumer.ModId != consumer.ModId)
+            {
+                throw new InvalidOperationException($"Menu '{m.Id}' belongs to another mod ({m.Consumer.ModId}).");
+            }
+
+            return m;
         }
     }
 }

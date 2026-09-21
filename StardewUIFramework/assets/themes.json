@@ -1,0 +1,26 @@
+{
+  "default": {
+  },
+  "dark": {
+    "TextColor": "#F0E6D2",
+    "DisabledTextColor": "#8C8578",
+    "HoverColor": "#C8B890",
+    "BoxTint": "#5C5C5C",
+    "ScrollbarTint": "#9A9A9A"
+  },
+  "high-contrast": {
+    "TextColor": "#FFFF00",
+    "DisabledTextColor": "#A8A800",
+    "HoverColor": "#FFFFFF",
+    "BoxFill": "#000000",
+    "BorderColor": "#FFFF00",
+    "BorderThickness": 4,
+    "ScrollbarTint": "#FFFF00",
+    "SpacingScale": 1.15
+  },
+  "colorblind": {
+    "HoverColor": "#7FB2FF",
+    "DisabledTextColor": "#7A7A7A",
+    "ScrollbarTint": "#FFB347"
+  }
+}

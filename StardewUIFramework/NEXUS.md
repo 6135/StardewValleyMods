@@ -16,12 +16,24 @@ by hand.
   - `TooltipDelayMs` (default 400): how long the cursor must rest on an element before its tooltip appears.
   - `DebugOverlay` (default false): draw element bounds and ids in framework menus. For mod authors.
   - `LogCallbacks` (default false): trace-log every mod callback the framework invokes. For mod authors.
-- Console commands: `ui_debug` toggles the debug overlay, `ui_list` lists the framework menus that are open.
+  - `Theme` (default `default`), `TextScale` (default 1.0) and `ReducedMotion` (default false): look, text size and
+    animation of every framework menu. `PseudoLocalize` and `InspectorHotkey` (default F10) are for mod authors.
+- Console commands: `ui_theme [name]` lists or switches themes, `ui_layout_reset` forgets moved / resized windows,
+  `ui_debug` toggles the debug overlay, `ui_list` lists the framework menus that are open.
 - Works in single player, multiplayer and split-screen. No Harmony patches.
 
 **Not the same as StardewUI.** focustense's StardewUI is a different framework built around StarML markup. UI
 Framework is a code-first C# builder API with no markup language. A mod that depends on one does not need the other,
 and both can be installed together.
+
+## What's new in 1.1
+
+- Players: four themes (`default`, `dark`, `high-contrast`, `colorblind`; content packs can add more), text scaling
+  and reduced motion, screen reader announcements through Stardew Access, windows you can drag, collapse and resize
+  (remembered per save), and toast notifications.
+- Mod authors: extension slots so other mods can add UI to your screens, shareable composite components, a
+  sortable / filterable data grid, signals and auto-generated forms with undo / redo, rich text and rich tooltips,
+  HUD widgets, and an in-game inspector that exports a menu as C# code.
 
 ## For mod authors
 

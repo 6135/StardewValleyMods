@@ -8,22 +8,13 @@ Provides the ability to select whether the user wants to buy seeds or fertilizer
 
 1. Install [SMAPI](https://smapi.io/).
 2. Install [Generic Config Menu](https://www.nexusmods.com/stardewvalley/mods/5098). Optional but recommended to allow for more customization of settings.
-3. Install [UI Framework](../StardewUIFramework/README.md) (`6135.UIFramework`). Optional: with it installed the calculator uses the framework's screens; without it the built-in screens are used.
-4. Drop the contents of the provided folder into your `Stardew Valley/Mods` folder, or install from Nexus.
-5. Run the game using SMAPI.
-6. Press `F8` to open the calculator. This can be changed in the config file or in the Generic Config Menu.
+3. Drop the contents of the provided folder into your `Stardew Valley/Mods` folder, or install from Nexus.
+4. Run the game using SMAPI.
+5. Press `F8` to open the calculator. This can be changed in the config file or in the Generic Config Menu.
 
 ## Configuration
 
 The config file is located in `Stardew Valley/Mods/ProfitCalculator/config.json`. It allows you to change the keybind to open the calculator and the time for the tooltip to appear.
-
-| Key | Default | Meaning |
-|-----|---------|---------|
-| `HotKey` | `F8` | Key that opens / closes the calculator. |
-| `ToolTipDelay` | `30` | How long the cursor must rest on a result row before its details box appears (arbitrary units; higher = longer). |
-| `UseUIFramework` | `true` | Use the UI Framework screens when `6135.UIFramework` is installed. Set to `false` to keep the built-in screens even when the framework is present. |
-
-All three can also be changed in the Generic Mod Config Menu; changes apply without restarting.
 
 ## Seed Price Override
 

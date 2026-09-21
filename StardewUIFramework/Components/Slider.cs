@@ -21,8 +21,8 @@ namespace UIFramework.Components
         private const int DefaultWidth = 192;
         private const int DefaultHeight = 24;
 
-        private readonly Func<double>? getter;
-        private readonly Action<double>? setter;
+        private Func<double>? getter;
+        private Action<double>? setter;
         private double ownValue;
 
         internal Slider(string id, Func<double>? getter, Action<double>? setter, double min, double max) : base(id)
@@ -43,6 +43,18 @@ namespace UIFramework.Components
             set => Store(value);
         }
 
+        /// <summary>The value delegates the element currently reads / writes through (null = own value).</summary>
+        internal Func<double>? BoundGetter => getter;
+
+        internal Action<double>? BoundSetter => setter;
+
+        /// <summary>Swap the value delegates after construction (signal bindings); the own value is kept as the fallback.</summary>
+        internal void Rebind(Func<double>? newGetter, Action<double>? newSetter)
+        {
+            getter = newGetter;
+            setter = newSetter;
+        }
+
         public double Min { get; set; }
         public double Max { get; set; }
 
@@ -54,6 +66,11 @@ namespace UIFramework.Components
         Action<IUIValueEvent> IUISlider.OnValueChanged { get => OnValueChanged!; set => OnValueChanged = value; }
 
         internal override bool Focusable => true;
+
+        internal override string AccessibleDescription => Accessibility.Compose(
+            Accessibility.Text("slider", "Slider"),
+            $"{Value:0.##} ({Low:0.##} - {High:0.##})",
+            Enabled ? null : Accessibility.Text("disabled", "disabled"));
 
         private static int KnobWidth => Theme.SliderKnob.Width * Theme.PixelScale;
         private static int KnobHeight => Theme.SliderKnob.Height * Theme.PixelScale;
@@ -115,6 +132,7 @@ namespace UIFramework.Components
                 UIValueEvent e = UIValueEvent.Number(this, oldValue, newValue);
                 Raise("OnValueChanged", () => cb(e));
             }
+            Accessibility.AnnounceValue(this);
         }
 
         /// <summary>Fraction (0..1) of the track the current value sits at.</summary>

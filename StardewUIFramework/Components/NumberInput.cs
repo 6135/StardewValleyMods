@@ -20,8 +20,8 @@ namespace UIFramework.Components
     {
         private static readonly CultureInfo Culture = CultureInfo.InvariantCulture;
 
-        private readonly Func<double>? getter;
-        private readonly Action<double>? setter;
+        private Func<double>? getter;
+        private Action<double>? setter;
         private double ownValue;
         private int decimals;
         private Texture2D? texture;
@@ -60,6 +60,18 @@ namespace UIFramework.Components
             {
                 SetBuffer(Trim(value));
             }
+        }
+
+        /// <summary>The value delegates the element currently reads / writes through (null = own value).</summary>
+        internal Func<double>? BoundGetter => getter;
+
+        internal Action<double>? BoundSetter => setter;
+
+        /// <summary>Swap the value delegates after construction (signal bindings); the own value is kept as the fallback.</summary>
+        internal void Rebind(Func<double>? newGetter, Action<double>? newSetter)
+        {
+            getter = newGetter;
+            setter = newSetter;
         }
 
         public double Min { get; set; }
@@ -106,6 +118,11 @@ namespace UIFramework.Components
 
         internal override bool Focusable => true;
         internal override bool WantsTextInput => true;
+
+        internal override string AccessibleDescription => Accessibility.Compose(
+            Accessibility.Text("number-input", "Number input"),
+            buffer != null && IsFocused ? buffer : Format(Value),
+            Enabled ? null : Accessibility.Text("disabled", "disabled"));
 
         private double EffectiveStep => Step > 0 ? Step : 1;
 
@@ -194,6 +211,7 @@ namespace UIFramework.Components
                 UIValueEvent e = UIValueEvent.Number(this, oldValue, newValue);
                 Raise("OnValueChanged", () => cb(e));
             }
+            Accessibility.AnnounceValue(this);
             return true;
         }
 
@@ -345,7 +363,7 @@ namespace UIFramework.Components
         //  Layout / draw
         // ---------------------------------------------------------------------------------------------------------
 
-        protected override Vector2 MeasureCore(Vector2 available) => TextBoxDrawing.Measure(texture);
+        protected override Vector2 MeasureCore(Vector2 available) => TextBoxDrawing.Measure(texture, Style.Font);
 
         protected override void DrawCore(SpriteBatch b)
         {
@@ -360,7 +378,7 @@ namespace UIFramework.Components
 
             bool focused = Enabled && IsFocused;
             string text = focused && buffer != null ? buffer : Format(Value);
-            Color textColor = Enabled ? style.TextColor : style.TextColor * 0.5f;
+            Color textColor = Enabled ? style.TextColor : style.DisabledTextColor;
             TextBoxDrawing.DrawText(b, Bounds, text, style.Font, textColor, style.TextShadow, focused);
         }
 
@@ -514,7 +532,8 @@ namespace UIFramework.Components
                 return true;
             }
 
-            return TextBoxDrawing.IsTypingKey(e.Key);
+            // Ctrl shortcuts (Ctrl+Z undo in a form) are not typing: let them bubble
+            return !e.Ctrl && TextBoxDrawing.IsTypingKey(e.Key);
         }
     }
 }

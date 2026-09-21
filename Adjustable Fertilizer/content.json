@@ -48,11 +48,11 @@
       "Target": "Data/CraftingRecipes",
       "Fields": {
         "Basic Fertilizer": {
-          0: "92 2",
-          1: "Field",
-          2: "368 {{NumBasicFert}}",
-          3: "false",
-          4: "s Farming 1"
+          "0": "92 2",
+          "1": "Field",
+          "2": "368 {{NumBasicFert}}",
+          "3": "false",
+          "4": "s Farming 1"
         }
       }
     },
@@ -61,11 +61,11 @@
       "Target": "Data/CraftingRecipes",
       "Fields": {
         "Quality Fertilizer": {
-          0: "92 2 -4 1",
-          1: "Field",
-          2: "369 {{NumQualityFert}}",
-          3: "false",
-          4: "s Farming 9"
+          "0": "92 2 -4 1",
+          "1": "Field",
+          "2": "369 {{NumQualityFert}}",
+          "3": "false",
+          "4": "s Farming 9"
         }
       }
     },
@@ -74,11 +74,11 @@
       "Target": "Data/CraftingRecipes",
       "Fields": {
         "Deluxe Fertilizer": {
-          0: "337 1 92 40",
-          1: "Field",
-          2: "919 {{NumDeluxeFert}}",
-          3: "false",
-          4: "null"
+          "0": "337 1 92 40",
+          "1": "Field",
+          "2": "919 {{NumDeluxeFert}}",
+          "3": "false",
+          "4": "null"
         }
       }
     },
@@ -87,11 +87,11 @@
       "Target": "Data/CraftingRecipes",
       "Fields": {
         "Speed-Gro": {
-          0: "726 1 372 1",
-          1: "Field",
-          2: "465 {{NumSpeedGro}}",
-          3: "false",
-          4: "s Farming 3"
+          "0": "726 1 372 1",
+          "1": "Field",
+          "2": "465 {{NumSpeedGro}}",
+          "3": "false",
+          "4": "s Farming 3"
         }
       }
     },
@@ -100,11 +100,11 @@
       "Target": "Data/CraftingRecipes",
       "Fields": {
         "Deluxe Speed-Gro": {
-          0: "725 1 393 1",
-          1: "Field",
-          2: "466 {{NumDeluxeSpeed}}",
-          3: "false",
-          4: "s Farming 9"
+          "0": "725 1 393 1",
+          "1": "Field",
+          "2": "466 {{NumDeluxeSpeed}}",
+          "3": "false",
+          "4": "s Farming 9"
         }
       }
     },
@@ -113,11 +113,11 @@
       "Target": "Data/CraftingRecipes",
       "Fields": {
         "Hyper Speed-Gro": {
-          0: "909 1 881 3 768 1",
-          1: "Field",
-          2: "918 {{NumHyperSpeed}}",
-          3: "false",
-          4: "null"
+          "0": "909 1 881 3 768 1",
+          "1": "Field",
+          "2": "918 {{NumHyperSpeed}}",
+          "3": "false",
+          "4": "null"
         }
       }
     },
@@ -126,11 +126,11 @@
       "Target": "Data/CraftingRecipes",
       "Fields": {
         "Basic Retaining Soil": {
-          0: "390 2",
-          1: "Field",
-          2: "370 {{NumBasicRetaining}}",
-          3: "false",
-          4: "s Farming 4"
+          "0": "390 2",
+          "1": "Field",
+          "2": "370 {{NumBasicRetaining}}",
+          "3": "false",
+          "4": "s Farming 4"
         }
       }
     },
@@ -139,11 +139,11 @@
       "Target": "Data/CraftingRecipes",
       "Fields": {
         "Quality Retaining Soil": {
-          0: "390 3 330 1",
-          1: "Field",
-          2: "371 {{NumQualityRetaining}}",
-          3: "false",
-          4: "s Farming 7"
+          "0": "390 3 330 1",
+          "1": "Field",
+          "2": "371 {{NumQualityRetaining}}",
+          "3": "false",
+          "4": "s Farming 7"
         }
       }
     },
@@ -152,11 +152,11 @@
       "Target": "Data/CraftingRecipes",
       "Fields": {
         "Deluxe Retaining Soil": {
-          0: "390 5 771 3 330 1",
-          1: "Field",
-          2: "920 {{NumDeluxeRetaining}}",
-          3: "false",
-          4: "null"
+          "0": "390 5 771 3 330 1",
+          "1": "Field",
+          "2": "920 {{NumDeluxeRetaining}}",
+          "3": "false",
+          "4": "null"
         }
       }
     },
@@ -165,11 +165,11 @@
       "Target": "Data/CraftingRecipes",
       "Fields": {
         "Tree Fertilizer": {
-          0: "771 5 390 5",
-          1: "Field",
-          2: "805 {{NumTreeFert}}",
-          3: "false",
-          4: "s Foraging 7"
+          "0": "771 5 390 5",
+          "1": "Field",
+          "2": "805 {{NumTreeFert}}",
+          "3": "false",
+          "4": "s Foraging 7"
         }
       }
     }

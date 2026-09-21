@@ -123,14 +123,15 @@ namespace UIFramework.Components
         internal void Draw(SpriteBatch b)
         {
             Texture2D texture = Game1.mouseCursors;
-            b.Draw(texture, new Vector2(UpArrow.X, UpArrow.Y), Theme.ScrollUpArrow, Color.White, 0f, Vector2.Zero, Scale, SpriteEffects.None, 0f);
-            b.Draw(texture, new Vector2(DownArrow.X, DownArrow.Y), Theme.ScrollDownArrow, Color.White, 0f, Vector2.Zero, Scale, SpriteEffects.None, 0f);
+            Color tint = Theme.ScrollbarTint;
+            b.Draw(texture, new Vector2(UpArrow.X, UpArrow.Y), Theme.ScrollUpArrow, tint, 0f, Vector2.Zero, Scale, SpriteEffects.None, 0f);
+            b.Draw(texture, new Vector2(DownArrow.X, DownArrow.Y), Theme.ScrollDownArrow, tint, 0f, Vector2.Zero, Scale, SpriteEffects.None, 0f);
             if (Track.Height > 0)
             {
-                IClickableMenu.drawTextureBox(b, texture, Theme.ScrollTrack, Track.X, Track.Y, Track.Width, Track.Height, Color.White, Scale, false);
+                IClickableMenu.drawTextureBox(b, texture, Theme.ScrollTrack, Track.X, Track.Y, Track.Width, Track.Height, tint, Scale, false);
                 if (Track.Height >= ThumbHeight)
                 {
-                    b.Draw(texture, new Vector2(Thumb.X, Thumb.Y), Theme.ScrollThumb, Color.White, 0f, Vector2.Zero, Scale, SpriteEffects.None, 0f);
+                    b.Draw(texture, new Vector2(Thumb.X, Thumb.Y), Theme.ScrollThumb, tint, 0f, Vector2.Zero, Scale, SpriteEffects.None, 0f);
                 }
             }
         }

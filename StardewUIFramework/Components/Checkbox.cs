@@ -16,8 +16,8 @@ namespace UIFramework.Components
     {
         private const int LabelGap = 8;
 
-        private readonly Func<bool>? getter;
-        private readonly Action<bool>? setter;
+        private Func<bool>? getter;
+        private Action<bool>? setter;
         private bool ownValue;
         private Func<string>? label;
         private string measuredLabel = string.Empty;
@@ -39,6 +39,18 @@ namespace UIFramework.Components
         {
             get => getter != null ? Raise("get", getter, ownValue) : ownValue;
             set => Store(value);
+        }
+
+        /// <summary>The value delegates the element currently reads / writes through (null = own value).</summary>
+        internal Func<bool>? BoundGetter => getter;
+
+        internal Action<bool>? BoundSetter => setter;
+
+        /// <summary>Swap the value delegates after construction (signal bindings); the own value is kept as the fallback.</summary>
+        internal void Rebind(Func<bool>? newGetter, Action<bool>? newSetter)
+        {
+            getter = newGetter;
+            setter = newSetter;
         }
 
         internal Func<string>? LabelFunc
@@ -65,7 +77,13 @@ namespace UIFramework.Components
         internal override bool Focusable => true;
         internal override bool ActivateOnEnter => true;
 
-        private string CurrentLabel => Raise("Label", label, string.Empty) ?? string.Empty;
+        internal string CurrentLabel => Pseudo.Transform(Raise("Label", label, string.Empty) ?? string.Empty);
+
+        internal override string AccessibleDescription => Accessibility.Compose(
+            Accessibility.Text("checkbox", "Checkbox"),
+            CurrentLabel,
+            Value ? Accessibility.Text("checked", "checked") : Accessibility.Text("unchecked", "unchecked"),
+            Enabled ? null : Accessibility.Text("disabled", "disabled"));
 
         // ---------------------------------------------------------------------------------------------------------
         //  Value pipeline
@@ -95,6 +113,7 @@ namespace UIFramework.Components
                 UIValueEvent e = UIValueEvent.Bool(this, oldValue, newValue);
                 Raise("OnValueChanged", () => cb(e));
             }
+            Accessibility.AnnounceValue(this);
         }
 
         // ---------------------------------------------------------------------------------------------------------
@@ -111,7 +130,7 @@ namespace UIFramework.Components
             }
 
             Vector2 textSize = UIServices.Text.Measure(Style.Font, measuredLabel, 1f);
-            return new Vector2(box + LabelGap + textSize.X, Math.Max(box, textSize.Y));
+            return new Vector2(box + Theme.Space(LabelGap) + textSize.X, Math.Max(box, textSize.Y));
         }
 
         protected override void DrawCore(SpriteBatch b)
@@ -136,9 +155,10 @@ namespace UIFramework.Components
             }
 
             Vector2 textSize = UIServices.Text.Measure(style.Font, current, 1f);
-            Color textColor = Enabled ? style.TextColor : style.TextColor * 0.5f;
-            var textPos = new Vector2(Bounds.X + box + LabelGap, (int)(Bounds.Y + ((Bounds.Height - textSize.Y) / 2f)));
-            DrawHelper.Text(b, current, style.Font, textPos, textColor, style.TextShadow, 1f);
+            Color textColor = Enabled ? style.TextColor : style.DisabledTextColor;
+            int textX = Bounds.X + box + Theme.Space(LabelGap);
+            var textRect = new Rectangle(textX, (int)(Bounds.Y + ((Bounds.Height - textSize.Y) / 2f)), Math.Max(0, Bounds.Right - textX), (int)textSize.Y);
+            DrawHelper.FitText(b, current, style.Font, textRect, textColor, style.TextShadow, 1f, UIAlign.Start);
         }
 
         // ---------------------------------------------------------------------------------------------------------

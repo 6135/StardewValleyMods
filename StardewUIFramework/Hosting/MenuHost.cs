@@ -15,6 +15,7 @@ namespace UIFramework.Hosting
     /// </summary>
     internal sealed class MenuHost : IClickableMenu
     {
+        private readonly PlayerLayoutController layout; // HUD: player-owned layout
         private bool closed;
 
         internal UIMenu Menu { get; }
@@ -22,6 +23,7 @@ namespace UIFramework.Hosting
         internal MenuHost(UIMenu menu) : base(0, 0, 100, 100, showUpperRightCloseButton: false)
         {
             Menu = menu;
+            layout = new PlayerLayoutController(menu);
             SyncCloseButton();
         }
 
@@ -34,6 +36,7 @@ namespace UIFramework.Hosting
             width = r.Width;
             height = r.Height;
             SyncCloseButton();
+            layout.SyncButtons(upperRightCloseButton);
             allClickableComponents = null; // rebuilt lazily for gamepad snapping
         }
 
@@ -67,6 +70,7 @@ namespace UIFramework.Hosting
                 base.draw(b);
             }
 
+            layout.Draw(b);
             drawMouse(b);
         }
 
@@ -77,7 +81,17 @@ namespace UIFramework.Hosting
         public override void performHoverAction(int x, int y)
         {
             base.performHoverAction(x, y);
-            Menu.Router.Hover(x, y);
+            if (Inspector.Enabled)
+            {
+                Inspector.HandleHover(Menu, x, y);
+                return;
+            }
+
+            layout.Hover(x, y);
+            if (!Menu.Collapsed)
+            {
+                Menu.Router.Hover(x, y);
+            }
         }
 
         // ---------------------------------------------------------------------------------------------------------
@@ -86,6 +100,12 @@ namespace UIFramework.Hosting
 
         public override void receiveLeftClick(int x, int y, bool playSound = true)
         {
+            if (Inspector.Enabled)
+            {
+                Inspector.HandleClick(Menu, x, y);
+                return;
+            }
+
             if (upperRightCloseButton != null && shouldDrawCloseButton() && upperRightCloseButton.containsPoint(x, y))
             {
                 if (playSound)
@@ -97,7 +117,12 @@ namespace UIFramework.Hosting
                 return;
             }
 
-            bool handled = Menu.Router.Click(x, y, UIMouseButton.Left);
+            bool handled = !Menu.Collapsed && Menu.Router.Click(x, y, UIMouseButton.Left);
+            if (!handled && layout.TryBegin(x, y))
+            {
+                return;
+            }
+
             if (!handled && !Menu.Modal && !Menu.Bounds.Contains(x, y) && !Menu.Overlay.HasPopups)
             {
                 Menu.Close();
@@ -106,24 +131,49 @@ namespace UIFramework.Hosting
 
         public override void receiveRightClick(int x, int y, bool playSound = true)
         {
-            Menu.Router.Click(x, y, UIMouseButton.Right);
+            if (Inspector.Enabled)
+            {
+                return; // the inspector owns the mouse
+            }
+
+            if (!Menu.Collapsed)
+            {
+                Menu.Router.Click(x, y, UIMouseButton.Right);
+            }
         }
 
         public override void leftClickHeld(int x, int y)
         {
             base.leftClickHeld(x, y);
-            Menu.Router.ClickHeld(x, y);
+            if (layout.IsInteracting)
+            {
+                layout.Held(x, y);
+            }
+            else
+            {
+                Menu.Router.ClickHeld(x, y);
+            }
         }
 
         public override void releaseLeftClick(int x, int y)
         {
             base.releaseLeftClick(x, y);
-            Menu.Router.ClickReleased(x, y);
+            if (layout.IsInteracting)
+            {
+                layout.Released();
+            }
+            else
+            {
+                Menu.Router.ClickReleased(x, y);
+            }
         }
 
         public override void receiveScrollWheelAction(int direction)
         {
-            Menu.Router.Scroll(direction);
+            if (!Menu.Collapsed)
+            {
+                Menu.Router.Scroll(direction);
+            }
         }
 
         // ---------------------------------------------------------------------------------------------------------
@@ -133,7 +183,13 @@ namespace UIFramework.Hosting
         public override void receiveKeyPress(Keys key)
         {
             (bool shift, bool ctrl, bool alt) = ReadModifiers();
-            if (Menu.Router.KeyPress(key, shift, ctrl, alt))
+            if (Inspector.Enabled)
+            {
+                Inspector.HandleKey(Menu, key, shift, ctrl);
+                return;
+            }
+
+            if (!Menu.Collapsed && Menu.Router.KeyPress(key, shift, ctrl, alt))
             {
                 return;
             }
@@ -196,6 +252,11 @@ namespace UIFramework.Hosting
                     rightNeighborID = ClickableComponent.SNAP_AUTOMATIC
                 });
             }
+            if (layout.CollapseButton != null)
+            {
+                list.Add(layout.CollapseButton);
+            }
+
             if (upperRightCloseButton != null)
             {
                 list.Add(upperRightCloseButton);
@@ -256,6 +317,9 @@ namespace UIFramework.Hosting
 
             Menu.OnHostClosed(this);
         }
+
+        /// <summary>Whether this host is the game's active menu (as opposed to a child menu).</summary>
+        internal bool IsActiveMenu => Game1.activeClickableMenu == this;
 
         /// <summary>Whether this host is still reachable from the game's active menu chain.</summary>
         internal bool IsStillActive()

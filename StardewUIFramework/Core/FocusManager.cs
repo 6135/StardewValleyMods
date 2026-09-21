@@ -65,9 +65,23 @@ namespace UIFramework.Core
             old?.HandleFocusLost();
             UpdateSubscription();
             element?.HandleFocusGained();
+            ScrollIntoView(element);
+            Accessibility.AnnounceElement(element);
         }
 
         internal void ClearFocus() => SetFocus(null);
+
+        /// <summary>Ask every enclosing scroll view (innermost first) to bring the element into view.</summary>
+        private static void ScrollIntoView(UIElement? element)
+        {
+            for (UIElement? cur = element?.ParentElement; cur != null; cur = cur.ParentElement)
+            {
+                if (cur is Components.ScrollView view)
+                {
+                    view.ScrollIntoView(element!.Bounds);
+                }
+            }
+        }
 
         /// <summary>Re-evaluate whether the game's keyboard subscriber should be ours (call after focus changes or on open/close).</summary>
         internal void UpdateSubscription()
