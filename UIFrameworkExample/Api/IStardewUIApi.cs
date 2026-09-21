@@ -1015,7 +1015,6 @@ namespace UIFramework.Api
         void ResetPlayerLayout(IUIMenu menu);
 
         // END HUD members
-
     }
 
     // =================================================================================================================
@@ -1519,5 +1518,4 @@ namespace UIFramework.Api
     }
 
     // END HUD types
-
 }

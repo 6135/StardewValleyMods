@@ -328,7 +328,6 @@ namespace UIFramework.Hosting
                 }
             }
             UIServices.Log($"Unhid {count} elements in menu '{menu.Id}' of {menu.Consumer.ModId}.", LogLevel.Info);
-
         }
 
         private static string? WriteExportFile(UIMenu menu, string code)
