@@ -345,7 +345,8 @@ namespace UIFramework.Components
                     var row = new Rectangle(list.X + HighlightInset, rowY, list.Width - (2 * HighlightInset), rowHeight);
                     DrawHelper.Fill(b, Rectangle.Intersect(row, interior), style.HoverColor);
                 }
-                DrawHelper.Text(b, Pseudo.Transform(GetLabel(i)), style.Font, new Vector2(list.X + TextPadX, rowY + TextPadY), style.TextColor, style.TextShadow, 1f);
+                var rowText = new Rectangle(list.X + TextPadX, rowY + TextPadY, Math.Max(0, list.Width - (2 * TextPadX)), rowHeight);
+                DrawHelper.FitText(b, Pseudo.Transform(GetLabel(i)), style.Font, rowText, style.TextColor, style.TextShadow, 1f, UIAlign.Start);
             }
         }
 
