@@ -111,7 +111,8 @@ namespace ProfitCalculator.main.ui
             column.BuildCell = (row, cell) =>
             {
                 double amount = value(row);
-                IUILabel label = api.AddLabel(cell, $"{id}{row}", () => perDay ? MoneyPerDay(amount) : Money(amount));
+                // ids hang off the slot cell, not the item: slots are rebuilt one by one on scroll, so item-based ids would collide transiently
+                IUILabel label = api.AddLabel(cell, $"{cell.Id}.text", () => perDay ? MoneyPerDay(amount) : Money(amount));
                 label.HorizontalAlign = UIAlign.Stretch;
                 label.TextAlign = UIAlign.End;
                 label.Color = amount < 0 ? LossColor : ProfitColor;
@@ -131,12 +132,12 @@ namespace ProfitCalculator.main.ui
         private void BuildCropCell(int row, IUIContainer cell)
         {
             CropInfo info = crops[row];
-            IUIStack line = api.AddStack(cell, $"crop{row}", true, 8);
+            IUIStack line = api.AddStack(cell, $"{cell.Id}.line", true, 8);
             line.VerticalAlign = UIAlign.Center;
-            IUIImage sprite = api.AddImage(line, $"crop{row}.sprite", info.Crop.Sprite.Item1, info.Crop.Sprite.Item2, SpriteScale);
+            IUIImage sprite = api.AddImage(line, $"{cell.Id}.sprite", info.Crop.Sprite.Item1, info.Crop.Sprite.Item2, SpriteScale);
             sprite.VerticalAlign = UIAlign.Center;
             sprite.RichTooltip = BuildTooltip(row);
-            IUILabel label = api.AddLabel(line, $"crop{row}.name", () => info.Crop.DisplayName);
+            IUILabel label = api.AddLabel(line, $"{cell.Id}.name", () => info.Crop.DisplayName);
             label.VerticalAlign = UIAlign.Center;
         }
 

@@ -118,8 +118,14 @@ namespace ProfitCalculator.main.models
         /// <value>Property <c>Seasons</c> available seasons.</value>
         public List<Season> Seasons { get; set; }
 
-        /// <value>Property <c>Price</c> represents the crop's average sell price</value>
-        public virtual int Price(UtilsSeason season) => (int)Math.Round(DropInformation.AveragePrice(season));
+        /// <value>Property <c>Price</c> represents the crop's average sell price, including the Tiller bonus when the player has it and base stats aren't forced.</value>
+        public virtual int Price(UtilsSeason season) => (int)Math.Round(DropInformation.AveragePrice(season, ApplyTiller));
+
+        /// <summary> The calculator holding the current settings, if registered. </summary>
+        protected static Calculator? Calc => Container.Instance.GetInstance<Calculator>(ModEntry.UniqueID);
+
+        /// <summary> Whether the Tiller price bonus applies: the player has the profession and base stats aren't forced. </summary>
+        protected static bool ApplyTiller => !(Calc?.UseBaseStats ?? false) && Game1.player.professions.Contains(Farmer.tiller);
 
         #region Growth Values Calculations
 
@@ -132,6 +138,17 @@ namespace ProfitCalculator.main.models
         public virtual float GetAverageGrowthSpeedValueForCrop(FertilizerQuality fertilizerQuality)
         {
             return 0.0f;
+        }
+
+        /// <summary>
+        /// Days from planting until the first harvest, after growth speed bonuses. Mirrors the game: <c>days - ceil(days * speed)</c>, never below 1.
+        /// </summary>
+        /// <param name="fertilizerQuality"> Quality of the used Fertilizer</param>
+        /// <returns> Days until the first harvest. <c>int</c></returns>
+        public int GrowingDays(FertilizerQuality fertilizerQuality)
+        {
+            int daysToRemove = (int)Math.Ceiling(Days * GetAverageGrowthSpeedValueForCrop(fertilizerQuality));
+            return Math.Max(Days - daysToRemove, 1);
         }
 
         /// <summary>
@@ -161,23 +178,24 @@ namespace ProfitCalculator.main.models
         /// <returns> Total available days for planting and harvesting the crop. <c>int</c></returns>
         public virtual int TotalAvailableDays(UtilsSeason currentSeason, int day)
         {
-            int totalAvailableDays = 0;
-            if (IsAvailableForCurrentSeason(currentSeason))
-            {
-                //Each Season has 28 days,
-                //get index of current Season
-                int seasonIndex = (int)currentSeason;
-                //iterate over the array and add the number of days for each Season that is later than the current Season
-                for (int i = seasonIndex + 1; i < Seasons.Count; i++)
-                {
-                    totalAvailableDays += 28;
-                }
-                //add the number of days in the current Season
-                totalAvailableDays += TotalAvailableDaysInCurrentSeason(day);
-            }
             if (currentSeason == UtilsSeason.Greenhouse)
             {
-                totalAvailableDays = 28 * 4;
+                return 28 * 4;
+            }
+            if (!IsAvailableForCurrentSeason(currentSeason))
+            {
+                return 0;
+            }
+            //days left in the current Season, plus 28 for every consecutive following Season the crop also grows in
+            int totalAvailableDays = TotalAvailableDaysInCurrentSeason(day);
+            for (int i = 1; i < 4; i++)
+            {
+                Season next = (Season)(((int)currentSeason + i) % 4);
+                if (!Seasons.Contains(next))
+                {
+                    break;
+                }
+                totalAvailableDays += 28;
             }
             return totalAvailableDays;
         }
@@ -203,12 +221,8 @@ namespace ProfitCalculator.main.models
         {
             int totalHarvestTimes = 0;
             int totalAvailableDays = TotalAvailableDays(currentSeason, day);
-            //Season is Greenhouse
-            float averageGrowthSpeedValueForCrop = GetAverageGrowthSpeedValueForCrop(fertilizerQuality);
-            int days = Days;
             int daysToRegrow = RegrowDays;
-            int daysToRemove = (int)Math.Ceiling(days * averageGrowthSpeedValueForCrop);
-            int growingDays = Math.Max(days - daysToRemove, 1);
+            int growingDays = GrowingDays(fertilizerQuality);
             if (IsAvailableForCurrentSeason(currentSeason) || currentSeason == UtilsSeason.Greenhouse)
             {
                 if (totalAvailableDays < growingDays)
@@ -230,49 +244,32 @@ namespace ProfitCalculator.main.models
         }
 
         /// <summary>
-        /// How many extra crops can be harvested from the crop. Depends on farming level and extra per level defined. Currently Unused
+        /// Average number of crops per harvest before the extra-crop chance. The game rolls uniformly between the minimum stack and the maximum stack plus the farming level bonus.
         /// </summary>
-        /// <returns> Number of extra crops that can be harvested from the crop. <c>int</c></returns>
-        public virtual int ExtraCropsFromFarmingLevel()
+        /// <returns> Average crops per harvest. <c>double</c></returns>
+        public virtual double AverageCropsPerHarvest()
         {
-            //TODO: Actually use this
-
-            double totalCrops = MinHarvests;
-            if (MinHarvests > 1 || MaxHarvests > 1)
+            if (MinHarvests <= 1 && MaxHarvests <= 1)
             {
-                int max_harvest_increase = 0;
-                if (MaxHarvestIncreasePerFarmingLevel > 0)
-                {
-                    max_harvest_increase = (int)(Game1.player.FarmingLevel / MaxHarvestIncreasePerFarmingLevel);
-                }
-                totalCrops = (MinHarvests + MaxHarvests + max_harvest_increase) / 2.0;
+                return 1;
             }
-            return (int)totalCrops;
+            int maxHarvestIncrease = 0;
+            if (MaxHarvestIncreasePerFarmingLevel > 0)
+            {
+                maxHarvestIncrease = (int)((Calc?.FarmingLevel ?? 0) / MaxHarvestIncreasePerFarmingLevel);
+            }
+            int max = Math.Max(MinHarvests, MaxHarvests + maxHarvestIncrease);
+            return (MinHarvests + max) / 2.0;
         }
 
         /// <summary>
-        /// Meant to calculate the average extra crops from luck if any. Currently Unused
+        /// Average extra crops per harvest from the extra-crop chance. The game keeps rolling while the roll succeeds (chance capped at 0.9), so the expected count is <c>p / (1 - p)</c>.
         /// </summary>
         /// <returns> Average extra crops from luck. <c>double</c></returns>
         public virtual double AverageExtraCropsFromRandomness()
         {
-            //TODO: Verify this is correct
-
-            double AverageExtraCrop = ChanceForExtraCrops;
-
-#pragma warning disable S125
-            // Sections of code should not be commented out
-            /*
-                        if (ChanceForExtraCrops <= 0.0)
-                            return AverageExtraCrop;
-
-                        var items = Enumerable.Range(1, 2);
-                        AverageExtraCrop += items.Select(i => Math.Pow(ChanceForExtraCrops, i)).Sum();
-                        */
-
-            //average extra crops, should be 0.111 for 0.1 chance and
-            return AverageExtraCrop;
-#pragma warning restore S125 // Sections of code should not be commented out
+            double chance = Math.Min(0.9, ChanceForExtraCrops);
+            return chance <= 0 ? 0 : chance / (1 - chance);
         }
 
         #endregion Growth Values Calculations
@@ -282,33 +279,23 @@ namespace ProfitCalculator.main.models
         public virtual double TotalCropProfit()
         {
             UtilsSeason Season = Container.Instance.GetInstance<Calculator>(ModEntry.UniqueID)?.Season ?? UtilsSeason.Spring;
-            bool UseBaseStats = Container.Instance.GetInstance<Calculator>(ModEntry.UniqueID)?.UseBaseStats ?? false;
             FertilizerQuality fertilizerQuality = Container.Instance.GetInstance<Calculator>(ModEntry.UniqueID)?.FertilizerQuality ?? FertilizerQuality.None;
             uint day = Container.Instance.GetInstance<Calculator>(ModEntry.UniqueID)?.Day ?? 0;
-            double totalProfitFromFirstProduce;
-            double totalProfitFromRemainingProduce;
+            double price = Price(Season); //already includes the Tiller bonus
+            double cropsPerHarvest = AverageCropsPerHarvest() + AverageExtraCropsFromRandomness();
+            double profitPerHarvest;
 
             if (!AffectByQuality)
             {
-                totalProfitFromFirstProduce = 0;
-                totalProfitFromRemainingProduce = Price(Season);
+                profitPerHarvest = price * cropsPerHarvest;
             }
             else
             {
-                double averageValue = Price(Season) * GetAverageValueForCropAfterModifiers();//only applies to first produce
-                totalProfitFromFirstProduce = averageValue;
-
-                double averageExtraCrops = AverageExtraCropsFromRandomness();
-
-                totalProfitFromRemainingProduce = (MinHarvests - 1 >= 0 ? MinHarvests - 1 : 0) * Price(Season);
-
-                totalProfitFromRemainingProduce += Price(Season) * averageExtraCrops;
+                //only the first produce of a harvest rolls for quality, the rest is base quality
+                profitPerHarvest = price * GetAverageValueForCropAfterModifiers();
+                profitPerHarvest += price * (cropsPerHarvest - 1);
             }
-            if (!UseBaseStats && Game1.player.professions.Contains(Farmer.tiller))
-            {
-                totalProfitFromRemainingProduce *= 1.1f;
-            }
-            double result = (totalProfitFromFirstProduce + totalProfitFromRemainingProduce) * TotalHarvestsWithRemainingDays(Season, fertilizerQuality, (int)day);
+            double result = profitPerHarvest * TotalHarvestsWithRemainingDays(Season, fertilizerQuality, (int)day);
             return result;
         }
 
@@ -326,15 +313,13 @@ namespace ProfitCalculator.main.models
             return totalCropProfitPerDay;
         }
 
+        /// <summary>
+        /// Fertilizer stays on the tile for as long as a crop is on it, so one is enough regardless of harvests or seasons.
+        /// </summary>
+        /// <returns> Fertilizer needed for the whole run. <c>int</c></returns>
         public virtual int TotalFertilizerNeeded()
         {
-            UtilsSeason season = Container.Instance.GetInstance<Calculator>(ModEntry.UniqueID)?.Season ?? UtilsSeason.Spring;
-            uint day = Container.Instance.GetInstance<Calculator>(ModEntry.UniqueID)?.Day ?? 0;
-            if (season == UtilsSeason.Greenhouse || Seasons.Count == 1) { return 1; }
-            else
-            {
-                return (int)Math.Ceiling(TotalAvailableDays(season, (int)day) / 28.0);
-            }
+            return 1;
         }
 
         public virtual int TotalFertilizerCost()
@@ -403,7 +388,7 @@ namespace ProfitCalculator.main.models
 
         public virtual double GetAverageValueMultiplierForCrop()
         {
-            double[]? priceMultipliers = Container.Instance.GetInstance<Calculator>(ModEntry.UniqueID)?.PriceMultipliers;
+            double[] priceMultipliers = Container.Instance.GetInstance<Calculator>(ModEntry.UniqueID)?.PriceMultipliers ?? new double[] { 1.0, 1.25, 1.5, 2.0 };
 
             //apply farm level quality modifiers
             double chanceForGoldQuality = GetCropGoldQualityChance();
@@ -419,15 +404,12 @@ namespace ProfitCalculator.main.models
             return averageValue;
         }
 
+        /// <summary>
+        /// Average price multiplier of the first produce of a harvest, from the quality chances. Tiller is already part of <see cref="Price"/>.
+        /// </summary>
         public virtual double GetAverageValueForCropAfterModifiers()
         {
-            bool UseBaseStats = Container.Instance.GetInstance<Calculator>(ModEntry.UniqueID)?.UseBaseStats ?? false;
-            double averageValue = GetAverageValueMultiplierForCrop();
-            if (!UseBaseStats && Game1.player.professions.Contains(Farmer.tiller))
-            {
-                averageValue *= 1.1f;
-            }
-            return Math.Round(averageValue, 2);
+            return GetAverageValueMultiplierForCrop();
         }
 
         public virtual double GetCropBaseGoldQualityChance(double limit)

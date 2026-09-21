@@ -186,7 +186,7 @@ namespace ProfitCalculator.main.ui
                 return;
             }
             settings.ApplyTo(calculator);
-            monitor.Log("Doing Calculation", LogLevel.Debug);
+            monitor.Log($"Doing Calculation: day {calculator.Day} {calculator.Season}, fertilizer {calculator.FertilizerQuality}, base stats {calculator.UseBaseStats}, farming level {calculator.FarmingLevel}, tiller {Game1.player.professions.Contains(Farmer.tiller)}, agriculturist {Game1.player.professions.Contains(Farmer.agriculturist)}", LogLevel.Debug);
             List<CropInfo> cropInfos = calculator.RetrieveCropInfos();
             results.Show(cropInfos, Menu);
         }

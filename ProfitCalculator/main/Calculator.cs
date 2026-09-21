@@ -213,11 +213,7 @@ namespace ProfitCalculator.main
             int duration = crop.TotalAvailableDays(Season, (int)Day);
             int totalHarvests = crop.TotalHarvestsWithRemainingDays(Season, FertilizerQuality, (int)Day);
 
-            float averageGrowthSpeedValueForCrop = crop.GetAverageGrowthSpeedValueForCrop(FertilizerQuality);
-            int daysToRemove = (int)Math.Ceiling((float)crop.Days * averageGrowthSpeedValueForCrop);
-            int growingDays = Math.Max(crop.Days - daysToRemove, 1);
-
-            int growthTime = growingDays;
+            int growthTime = crop.GrowingDays(FertilizerQuality);
             int regrowthTime = crop.RegrowDays;
             int productCount = crop.MinHarvests;
             double chanceOfExtraProduct = crop.AverageExtraCropsFromRandomness();
