@@ -76,7 +76,7 @@ namespace UIFramework
             helper.Events.Content.AssetsInvalidated += (_, e) => RefreshThemeIf(e.NamesWithoutLocale.Any(n => n.IsEquivalentTo(Theme.AssetName)));
             helper.Events.Content.AssetReady += (_, e) => RefreshThemeIf(e.NameWithoutLocale.IsEquivalentTo(Theme.AssetName));
             helper.ConsoleCommands.Add("ui_theme", "Switch the UI Framework theme: ui_theme <name> (no argument lists the themes).", OnThemeCommand);
-            // END THEME entry
+            // END THEME entrywww
 
             // BEGIN HUD entry
             var layouts = new WindowLayoutStore(helper.Data);

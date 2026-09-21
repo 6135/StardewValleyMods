@@ -7,7 +7,8 @@ Provides the ability to select whether the user wants to buy seeds or fertilizer
 ## Installation
 
 1. Install [SMAPI](https://smapi.io/).
-2. Install [Generic Config Menu](https://www.nexusmods.com/stardewvalley/mods/5098). Optional but recommended to allow for more customization of settings.
+2. Install [UI Framework](https://github.com/6135/StardewValleyMods/tree/master/StardewUIFramework) (`6135.UIFramework`). Required: the calculator's menus are built with it.
+3. Install [Generic Config Menu](https://www.nexusmods.com/stardewvalley/mods/5098). Optional but recommended to allow for more customization of settings.
 3. Drop the contents of the provided folder into your `Stardew Valley/Mods` folder, or install from Nexus.
 4. Run the game using SMAPI.
 5. Press `F8` to open the calculator. This can be changed in the config file or in the Generic Config Menu.
@@ -15,6 +16,12 @@ Provides the ability to select whether the user wants to buy seeds or fertilizer
 ## Configuration
 
 The config file is located in `Stardew Valley/Mods/ProfitCalculator/config.json`. It allows you to change the keybind to open the calculator and the time for the tooltip to appear.
+
+The look of the menus (theme, text scale, reduced motion) is configured in the UI Framework's own config / Generic Config Menu page and applies to every mod that uses it.
+
+## Usage
+
+Press the hotkey to open the settings screen, adjust the day, season, fertilizer and money options and press `Calculate` (or `Enter`). The results screen lists every crop that can still be harvested with those settings, sorted by profit per day; click a column header to sort by it, and hover a row for the full breakdown (seed / fertilizer cost, growth and regrowth time, harvests, drop counts and quality chances). `Escape` returns to the settings screen. The windows can be dragged, collapsed and resized; their position is remembered per save.
 
 ## Seed Price Override
 
@@ -59,14 +66,12 @@ If you want to add a crop that is not in the game, you can do so by adding a `cr
 
 1. The mod does not take into account the farming level buffs. This is because I don't know how to get the farming level buffs. If anyone knows how to get them, please let me know.
 2. The mod does not take into account the luck based chances of getting extra items.
-3. Some extra large text may be too small to read. This is because the mod lowers the size of huge text to make it fit in the crop box. If you notice this, please let me know which crop it is and from which mod it is from so I can figure out a proper fix.
-4. When changing the scale of the game, the main options menu will be scaled but the options will be in the original positions, to fix this you need to close and reopen the options menu. 
 
 ### TODO
 
 - [X] Take Fertilizer into account.
 - [X] Take Quality into account.
-- [ ] Add proper scaling support for options menu.
+- [X] Add proper scaling support for options menu.
 - [X] Obtain Seed prices from stores
 - [ ] Add support to multi-drop crops.
 - [ ] Add support for fruit trees.

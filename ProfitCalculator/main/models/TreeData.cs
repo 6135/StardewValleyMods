@@ -43,55 +43,16 @@ namespace ProfitCalculator.main.models
         {
         }
 
-        /// <summary>
-        /// Returns the total harvests for the crop for the available time. Depends on which seasons the crop can grow, the current day , and the fertilizer quality.
-        /// </summary>
-        /// <param name="currentSeason"> Current Season of type UtilsSeason <see cref="UtilsSeason"/></param>
-        /// <param name="fertilizerQuality"> Quality of the used Fertilizer of type FertilizerQuality <see cref="FertilizerQuality"/></param>
-        /// <param name="day"> Current day as int, can be from 0 to 1</param>
-        /// <returns> Total number of harvests for the crop for the available time. <c>int</c></returns>
-        public override int TotalHarvestsWithRemainingDays(UtilsSeason currentSeason, FertilizerQuality fertilizerQuality, int day)
-        {
-            int totalHarvestTimes = 0;
-            int totalAvailableDays = TotalAvailableDays(currentSeason, day);
-            int daysToRegrow = RegrowDays;
-            const int growingDays = 0;
-            if (IsAvailableForCurrentSeason(currentSeason) || currentSeason == UtilsSeason.Greenhouse)
-            {
-                if (totalAvailableDays < growingDays)
-                    return 0;
-                //if the crop regrows, then the total harvest times are 1 for the first harvest and then the number of times it can regrow in the remaining days. We always need to subtract one to account for the day lost in the planting day.
-                if (daysToRegrow > 0)
-                {
-                    totalHarvestTimes = (int)(1 + ((totalAvailableDays - growingDays) / (double)daysToRegrow));
-                }
-                else
-                    totalHarvestTimes = totalAvailableDays / growingDays;
-            }
-            return totalHarvestTimes;
-        }
+        // Harvests and profit use the base implementation: the sapling takes Days (28) to mature with no speed bonuses,
+        // then drops one fruit per day (RegrowDays = 1) while in season.
 
-        /// <inheritdoc/>
-        public override int ExtraCropsFromFarmingLevel()
+        /// <summary>
+        /// Fruit trees can't be fertilized.
+        /// </summary>
+        /// <returns> Always 0. </returns>
+        public override int TotalFertilizerNeeded()
         {
             return 0;
-        }
-
-        /// <inheritdoc/>
-        public override double TotalCropProfit()
-        {
-            UtilsSeason season = Container.Instance.GetInstance<Calculator>(ModEntry.UniqueID)?.Season ?? UtilsSeason.Spring;
-            bool UseBaseStats = Container.Instance.GetInstance<Calculator>(ModEntry.UniqueID)?.UseBaseStats ?? false;
-            FertilizerQuality fertilizerQuality = Container.Instance.GetInstance<Calculator>(ModEntry.UniqueID)?.FertilizerQuality ?? FertilizerQuality.None;
-            uint day = Container.Instance.GetInstance<Calculator>(ModEntry.UniqueID)?.Day ?? 0;
-            double totalProfitFromFirstProduce = DropInformation.AveragePrice(season); //Price(season) already returns the average value of produced items for 1 harvest.
-
-            if (!UseBaseStats && Game1.player.professions.Contains(Farmer.tiller))
-            {
-                totalProfitFromFirstProduce *= 1.1f;
-            }
-            double result = totalProfitFromFirstProduce * TotalHarvestsWithRemainingDays(season, fertilizerQuality, (int)day);
-            return result;
         }
 
         /// <inheritdoc/>

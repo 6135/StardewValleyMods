@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using static ProfitCalculator.Utils;
+using SObject = StardewValley.Object;
 
 #nullable enable
 
@@ -52,24 +53,32 @@ namespace ProfitCalculator.main.models
             }
 
             /// <summary>
-            /// Calculates the price of the item based on the season.
+            /// Calculates the base price of the item based on the season, without profession bonuses.
             /// </summary>
             /// <param name="season">The current season.</param>
             /// <returns>The price of the item.</returns>
-            public int Price(UtilsSeason season)
+            public int Price(UtilsSeason season) => Price(season, false);
+
+            /// <summary>
+            /// Calculates the price of the item based on the season.
+            /// </summary>
+            /// <param name="season">The current season.</param>
+            /// <param name="tiller">Whether to apply the Tiller profession bonus.</param>
+            /// <returns>The price of the item.</returns>
+            public int Price(UtilsSeason season, bool tiller)
             {
-                // If drop season is null or the season is Greenhouse, return the item's store price.
-                if (Season is null || season == UtilsSeason.Greenhouse)
-                {
-                    return Item.sellToStorePrice();
-                }
-                // If the season does not match the drop season, return 0.
-                if (Season != Utils.SeasonFromUtilsSeason(season))
+                // If the drop has a season and it does not match (outside the greenhouse), return 0.
+                if (Season is not null && season != UtilsSeason.Greenhouse && Season != Utils.SeasonFromUtilsSeason(season))
                 {
                     return 0;
                 }
-
-                return Item.sellToStorePrice();
+                // Use the base price from the item data; sellToStorePrice() would already include the current player's profession bonuses.
+                int price = Item is SObject obj ? obj.Price : Item.sellToStorePrice();
+                if (tiller && IsAffectedByTiller(Item))
+                {
+                    price = (int)(price * 1.1f);
+                }
+                return price;
             }
         }
 
@@ -194,9 +203,17 @@ namespace ProfitCalculator.main.models
         /// </summary>
         /// <param name="season">The current season.</param>
         /// <returns>The average price of the drops.</returns>
-        public double AveragePrice(UtilsSeason season)
+        public double AveragePrice(UtilsSeason season) => AveragePrice(season, false);
+
+        /// <summary>
+        /// Calculates the average price of the drops based on the season.
+        /// </summary>
+        /// <param name="season">The current season.</param>
+        /// <param name="tiller">Whether to apply the Tiller profession bonus.</param>
+        /// <returns>The average price of the drops.</returns>
+        public double AveragePrice(UtilsSeason season, bool tiller)
         {
-            return Drops.Sum(drop => drop.Price(season) * drop.Chance * drop.Quantity);
+            return Drops.Sum(drop => drop.Price(season, tiller) * drop.Chance * drop.Quantity);
         }
 
         /// <summary>

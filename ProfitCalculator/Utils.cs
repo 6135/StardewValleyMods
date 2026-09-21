@@ -205,6 +205,16 @@ namespace ProfitCalculator
             return obj.Price;
         }
 
+        /// <summary>
+        /// Whether the Tiller profession raises the sell price of an item (vegetables, fruits and flowers).
+        /// </summary>
+        /// <param name="item"> The item to check.</param>
+        /// <returns> Whether Tiller applies to the item.</returns>
+        public static bool IsAffectedByTiller(Item item)
+        {
+            return item.Category is SObject.VegetableCategory or SObject.FruitsCategory or SObject.flowersCategory;
+        }
+
         public static Season SeasonFromUtilsSeason(UtilsSeason season)
         {
             return season switch

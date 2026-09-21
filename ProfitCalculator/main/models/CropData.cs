@@ -42,7 +42,7 @@ namespace ProfitCalculator.main.models
                 _cropData.DaysInPhase.Sum(),
                 _cropData.RegrowDays,
                 _cropData.HarvestMinStack,
-                _cropData.HarvestMinStack,
+                _cropData.HarvestMaxStack,
                 _cropData.HarvestMaxIncreasePerFarmingLevel,
                 _cropData.ExtraHarvestChance,
                 _dropInformation.Drops[0].Item.DisplayName,
@@ -71,7 +71,7 @@ namespace ProfitCalculator.main.models
                 _cropData.DaysInPhase.Sum(),
                 _cropData.RegrowDays,
                 _cropData.HarvestMinStack,
-                _cropData.HarvestMinStack,
+                _cropData.HarvestMaxStack,
                 _cropData.HarvestMaxIncreasePerFarmingLevel,
                 _cropData.ExtraHarvestChance,
                 _dropInformation.Drops[0].Item.DisplayName,
@@ -94,31 +94,23 @@ namespace ProfitCalculator.main.models
         public override float GetAverageGrowthSpeedValueForCrop(FertilizerQuality fertilizerQuality)
         {
             float speedIncreaseModifier = 0.0f;
-            if (!AffectByFertilizer )
+            if (AffectByFertilizer)
             {
-                speedIncreaseModifier = 1.0f;
-            }
-            else if ((int)fertilizerQuality == -1)
-            {
-                speedIncreaseModifier += 0.1f;
-            }
-            else if ((int)fertilizerQuality == -2)
-            {
-                speedIncreaseModifier += 0.25f;
-            }
-            else if ((int)fertilizerQuality == -3)
-            {
-                speedIncreaseModifier += 0.33f;
-            } else
-            {
-                speedIncreaseModifier = 0.00f;
+                speedIncreaseModifier += fertilizerQuality switch
+                {
+                    FertilizerQuality.SpeedGro => 0.1f,
+                    FertilizerQuality.DeluxeSpeedGro => 0.25f,
+                    FertilizerQuality.HyperSpeedGro => 0.33f,
+                    _ => 0.0f,
+                };
             }
             //if paddy crop then add 0.25f and if profession is agriculturist then add 0.1f
             if (IsPaddyCrop)
             {
                 speedIncreaseModifier += 0.25f;
             }
-            if (Game1.player.professions.Contains(Farmer.agriculturist))
+            bool useBaseStats = Calc?.UseBaseStats ?? false;
+            if (!useBaseStats && Game1.player.professions.Contains(Farmer.agriculturist))
             {
                 speedIncreaseModifier += 0.1f;
             }

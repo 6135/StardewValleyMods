@@ -15,6 +15,8 @@
   "max-money": "Max money",
   "base-stats": "Base stats",
   "cross-season": "Cross season",
+  "crop": "Crop",
+  "no-results": "No crop can be planted with these settings.",
   "calculate": "Calculate",
   "reset": "Reset",
   //result screen
