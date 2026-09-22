@@ -17,6 +17,8 @@ env:
   DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
   # Disable sending .NET CLI telemetry to Microsoft.
   DOTNET_CLI_TELEMETRY_OPTOUT: true
+  # ModBuildConfig reads the game folder from here (see <GamePath> in each .csproj).
+  STARDEW_GAME_DIR: ${{ github.workspace }}/.game-refs
   SOLUTION: Stardew Mods.sln
   # ModBuildConfig puts every mod's release zip here.
   ZIP_DIR: _releases
@@ -36,16 +38,23 @@ jobs:
       with:
         fetch-tags: false
 
-    # installs .NET 6 (the game's runtime) and the game + SMAPI reference assemblies from
-    # StardewModders/mod-reference-assemblies, in a game folder ModBuildConfig finds automatically
-    - name: Add build environment
-      uses: Pathoschild/SMAPI-ModBuildWorkflow/add-build-environment@v1
+    # Game + SMAPI reference assemblies (public API only, no code) so the mods compile without a game install.
+    - name: Add reference assemblies
+      uses: actions/checkout@v5
+      with:
+        repository: StardewModders/mod-reference-assemblies
+        ref: main
+        path: .game-refs
+        fetch-tags: false
+        persist-credentials: false
 
-    # the mods target .NET 6, but are written against the SDK used locally (newer C# language features)
-    - name: Setup .NET SDK
+    # .NET 6 is the game's runtime; the newer SDK matches the one used locally (newer C# language features).
+    - name: Setup .NET
       uses: actions/setup-dotnet@v5
       with:
-        dotnet-version: 10.0.x
+        dotnet-version: |
+          6.0.x
+          10.0.x
 
     - name: Set release version
       id: release
@@ -57,18 +66,25 @@ jobs:
     # every other build gets preview versions like 2.0.1-alpha.202609222359
     - name: Set prerelease versions
       if: steps.release.outputs.is-release != 'true'
-      uses: Pathoschild/SMAPI-ModBuildWorkflow/set-prerelease-versions@v1
+      shell: pwsh
+      run: ./build/Set-PrereleaseVersions.ps1
 
     - name: Build Mods
       run: dotnet build "$SOLUTION" --configuration Release -p:EnableModDeploy=false -p:ModZipPath="$GITHUB_WORKSPACE/$ZIP_DIR"
 
-    # one artifact per mod, plus an attestation for release builds
     - name: Upload build
-      id: upload
-      uses: Pathoschild/SMAPI-ModBuildWorkflow/upload-release-artifacts@v1
+      uses: actions/upload-artifact@v5
       with:
-        path: ${{ env.ZIP_DIR }}
-        create_attestations: ${{ steps.release.outputs.is-release == 'true' }}
+        name: Build
+        path: ${{ env.ZIP_DIR }}/*.zip
+        if-no-files-found: error
+
+    - name: Create attestation
+      id: attest
+      if: steps.release.outputs.is-release == 'true'
+      uses: actions/attest-build-provenance@v2
+      with:
+        subject-path: ${{ env.ZIP_DIR }}/*.zip
 
     - name: Stage release
       if: steps.release.outputs.is-release == 'true'
@@ -77,7 +93,7 @@ jobs:
         MOD_NAME: ${{ steps.release.outputs.mod-name }}
         MOD_TAG: ${{ steps.release.outputs.mod-tag }}
         MOD_VERSION: ${{ steps.release.outputs.version }}
-        ATTESTATION_URL: ${{ steps.upload.outputs.attestation-url }}
+        ATTESTATION_URL: ${{ steps.attest.outputs.attestation-url }}
       run: |
         $zip = Join-Path $env:ZIP_DIR "$env:MOD_NAME $env:MOD_VERSION.zip"
         if (-not (Test-Path -LiteralPath $zip)) { throw "Expected release package '$zip' wasn't built." }
