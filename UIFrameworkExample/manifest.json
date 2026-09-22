@@ -1,7 +1,7 @@
 {
   "Name": "UI Framework Example",
   "Author": "6135",
-  "Version": "1.1.0",
+  "Version": "%ProjectVersion%",
   "Description": "Example consumer of the UI Framework: press F9 in-game to open a demo menu.",
   "UniqueID": "6135.UIFrameworkExample",
   "EntryDll": "UIFrameworkExample.dll",

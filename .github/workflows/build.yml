@@ -1,0 +1,100 @@
+name: Build
+
+on:
+  push:
+    branches:
+      - master
+      - 'release/**'
+      - 'deployCheck/**'
+  pull_request:
+    types: [opened, synchronize, reopened]
+  workflow_dispatch:
+
+env:
+  # Disable the .NET logo in the console output.
+  DOTNET_NOLOGO: true
+  # Disable the .NET first time experience to skip caching NuGet packages and speed up the build.
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
+  # Disable sending .NET CLI telemetry to Microsoft.
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+  SOLUTION: Stardew Mods.sln
+  # ModBuildConfig puts every mod's release zip here.
+  ZIP_DIR: _releases
+
+jobs:
+
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write     # for attestation
+      attestations: write # for attestation
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v5
+      with:
+        fetch-tags: false
+
+    # installs .NET 6 (the game's runtime) and the game + SMAPI reference assemblies from
+    # StardewModders/mod-reference-assemblies, in a game folder ModBuildConfig finds automatically
+    - name: Add build environment
+      uses: Pathoschild/SMAPI-ModBuildWorkflow/add-build-environment@v1
+
+    # the mods target .NET 6, but are written against the SDK used locally (newer C# language features)
+    - name: Setup .NET SDK
+      uses: actions/setup-dotnet@v5
+      with:
+        dotnet-version: 10.0.x
+
+    - name: Set release version
+      id: release
+      shell: pwsh
+      env:
+        BRANCH: ${{ github.ref_name }}
+      run: ./build/Set-ReleaseVersion.ps1 -Branch $env:BRANCH
+
+    # every other build gets preview versions like 2.0.1-alpha.202609222359
+    - name: Set prerelease versions
+      if: steps.release.outputs.is-release != 'true'
+      uses: Pathoschild/SMAPI-ModBuildWorkflow/set-prerelease-versions@v1
+
+    - name: Build Mods
+      run: dotnet build "$SOLUTION" --configuration Release -p:EnableModDeploy=false -p:ModZipPath="$GITHUB_WORKSPACE/$ZIP_DIR"
+
+    # one artifact per mod, plus an attestation for release builds
+    - name: Upload build
+      id: upload
+      uses: Pathoschild/SMAPI-ModBuildWorkflow/upload-release-artifacts@v1
+      with:
+        path: ${{ env.ZIP_DIR }}
+        create_attestations: ${{ steps.release.outputs.is-release == 'true' }}
+
+    - name: Stage release
+      if: steps.release.outputs.is-release == 'true'
+      shell: pwsh
+      env:
+        MOD_NAME: ${{ steps.release.outputs.mod-name }}
+        MOD_TAG: ${{ steps.release.outputs.mod-tag }}
+        MOD_VERSION: ${{ steps.release.outputs.version }}
+        ATTESTATION_URL: ${{ steps.upload.outputs.attestation-url }}
+      run: |
+        $zip = Join-Path $env:ZIP_DIR "$env:MOD_NAME $env:MOD_VERSION.zip"
+        if (-not (Test-Path -LiteralPath $zip)) { throw "Expected release package '$zip' wasn't built." }
+        $out = New-Item -ItemType Directory -Force -Path _staged-release
+        Copy-Item -LiteralPath $zip -Destination $out
+        @{
+          name = $env:MOD_NAME
+          tag = $env:MOD_TAG
+          version = $env:MOD_VERSION
+          zip = (Split-Path $zip -Leaf)
+          attestation = $env:ATTESTATION_URL
+        } | ConvertTo-Json | Set-Content -Encoding utf8 (Join-Path $out 'release-info.json')
+
+    - name: Upload release
+      if: steps.release.outputs.is-release == 'true'
+      uses: actions/upload-artifact@v5
+      with:
+        name: Release
+        path: _staged-release/
+        if-no-files-found: error
