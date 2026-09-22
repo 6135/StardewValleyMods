@@ -27,6 +27,10 @@ git push -u origin release/ProfitCalculator/2.1.0
 
 - `<mod>` is the `.csproj` name, compared ignoring case and punctuation, so `release/cp-sweet-mines/1.0.1` releases `[CP] Sweet Mines`.
 - `<version>` may have a `v` prefix. A prerelease suffix (`1.2.0-beta.1`) marks the GitHub Release as a prerelease.
+- To put several mods in one GitHub Release, join them with `+`, each with its own version:
+  `release/UIFramework/1.2.0+ProfitCalculator/2.1.0`. The tag is `UIFramework/v1.2.0+ProfitCalculator/v2.1.0`.
+- To release mods separately but at the same time, push one branch each:
+  `git push origin master:release/UIFramework/1.2.0 master:release/ProfitCalculator/2.1.0`.
 - The build writes the version into the mod's `.csproj` (`build/Set-ReleaseVersion.ps1`). That change only happens in CI, so also commit the version bump if you want it in the repository.
 - Publishing fails if the tag already exists, so an existing release is never overwritten.
 - Upload the zip from the GitHub Release (or the build's artifact) to Nexus rather than rezipping it yourself, so it still matches the attestation.

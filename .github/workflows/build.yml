@@ -74,22 +74,18 @@ jobs:
       if: steps.release.outputs.is-release == 'true'
       shell: pwsh
       env:
-        MOD_NAME: ${{ steps.release.outputs.mod-name }}
-        MOD_TAG: ${{ steps.release.outputs.mod-tag }}
-        MOD_VERSION: ${{ steps.release.outputs.version }}
+        RELEASE: ${{ steps.release.outputs.release }}
         ATTESTATION_URL: ${{ steps.upload.outputs.attestation-url }}
       run: |
-        $zip = Join-Path $env:ZIP_DIR "$env:MOD_NAME $env:MOD_VERSION.zip"
-        if (-not (Test-Path -LiteralPath $zip)) { throw "Expected release package '$zip' wasn't built." }
+        $release = $env:RELEASE | ConvertFrom-Json
         $out = New-Item -ItemType Directory -Force -Path _staged-release
-        Copy-Item -LiteralPath $zip -Destination $out
-        @{
-          name = $env:MOD_NAME
-          tag = $env:MOD_TAG
-          version = $env:MOD_VERSION
-          zip = (Split-Path $zip -Leaf)
-          attestation = $env:ATTESTATION_URL
-        } | ConvertTo-Json | Set-Content -Encoding utf8 (Join-Path $out 'release-info.json')
+        foreach ($mod in $release.mods) {
+          $zip = Join-Path $env:ZIP_DIR $mod.zip
+          if (-not (Test-Path -LiteralPath $zip)) { throw "Expected release package '$zip' wasn't built." }
+          Copy-Item -LiteralPath $zip -Destination $out
+        }
+        $release | Add-Member attestation $env:ATTESTATION_URL
+        $release | ConvertTo-Json -Depth 5 | Set-Content -Encoding utf8 (Join-Path $out 'release-info.json')
 
     - name: Upload release
       if: steps.release.outputs.is-release == 'true'

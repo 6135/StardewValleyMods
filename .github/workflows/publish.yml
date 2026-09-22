@@ -30,40 +30,31 @@ jobs:
           run-id: ${{ github.event.workflow_run.id }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Get release info
-        id: get-version
-        run: |
-          info=release/release-info.json
-          cat "$info"
-          {
-            echo "name=$(jq -r .name "$info")"
-            echo "version=$(jq -r .version "$info")"
-            echo "tag=$(jq -r '.tag + "/v" + .version' "$info")"
-            echo "zip=release/$(jq -r .zip "$info")"
-            echo "attestation=$(jq -r '.attestation // ""' "$info")"
-          } >> "$GITHUB_OUTPUT"
-
       - name: List all files
         run: ls -R release
 
+      # release-info.json: { tag, title, prerelease, attestation, mods: [ { name, version, zip } ] }
       - name: Create release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_REPO: ${{ github.repository }}
-          TAG: ${{ steps.get-version.outputs.tag }}
-          TITLE: ${{ steps.get-version.outputs.name }} ${{ steps.get-version.outputs.version }}
-          ZIP: ${{ steps.get-version.outputs.zip }}
-          VERSION: ${{ steps.get-version.outputs.version }}
           SHA: ${{ github.event.workflow_run.head_sha }}
-          ATTESTATION: ${{ steps.get-version.outputs.attestation }}
         run: |
+          info=release/release-info.json
+          cat "$info"
+          tag=$(jq -r .tag "$info")
+          title=$(jq -r .title "$info")
+          attestation=$(jq -r '.attestation // ""' "$info")
+          mapfile -t zips < <(jq -r '.mods[].zip | "release/" + .' "$info")
+
           prerelease=()
-          if [[ "$VERSION" == *-* ]]; then prerelease=(--prerelease); fi
+          if [[ "$(jq -r .prerelease "$info")" == "true" ]]; then prerelease=(--prerelease); fi
           notes=""
-          if [[ -n "$ATTESTATION" ]]; then notes="See the [security attestation]($ATTESTATION) for how this zip was built."; fi
-          gh release create "$TAG" "$ZIP" \
+          if [[ -n "$attestation" ]]; then notes="See the [security attestation]($attestation) for how these zips were built."; fi
+
+          gh release create "$tag" "${zips[@]}" \
             --target "$SHA" \
-            --title "$TITLE" \
+            --title "$title" \
             --notes "$notes" \
             --generate-notes \
             "${prerelease[@]}"
