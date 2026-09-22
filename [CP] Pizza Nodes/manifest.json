@@ -1,7 +1,7 @@
 {
   "Name": "[CP] Pizza Ore Nodes",
   "Author": "6135",
-  "Version": "1.0.0",
+  "Version": "%ProjectVersion%",
   "Description": "Pizza Node",
   "UniqueID": "6135.PizzaNode",
   "MinimumApiVersion": "3.4.0",
