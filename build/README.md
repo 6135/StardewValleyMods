@@ -1,12 +1,11 @@
 # CI/CD
 
-Two GitHub Actions workflows live in `.github/workflows`. They follow Pathoschild's
-[SMAPI-ModBuildWorkflow](https://github.com/Pathoschild/SMAPI-ModBuildWorkflow) conventions, but only use GitHub's own
-actions (the repository only allows actions owned by 6135 or GitHub), with the version logic in `build/*.ps1`.
+Two GitHub Actions workflows live in `.github/workflows`. They're built on Pathoschild's
+[SMAPI-ModBuildWorkflow](https://github.com/Pathoschild/SMAPI-ModBuildWorkflow) actions.
 
 | Workflow | Runs on | Does |
 |---|---|---|
-| **Build** (`build.yml`) | pushes to `master`, `release/**`, `deployCheck/**`; pull requests; manual | Builds the whole solution and uploads the mod zips as the `Build` artifact. Non-release builds get preview versions (`2.0.1-alpha.202609222359`). A release branch builds its mod with the release version, creates a [build attestation](https://docs.github.com/en/actions/concepts/security/artifact-attestations) and uploads a `Release` artifact. |
+| **Build** (`build.yml`) | pushes to `master`, `release/**`, `deployCheck/**`; pull requests; manual | Builds the whole solution and uploads each mod's zip as its own artifact. Non-release builds get preview versions (`2.0.1-alpha.202609222359`). A release branch builds its mod with the release version, creates a [build attestation](https://docs.github.com/en/actions/concepts/security/artifact-attestations) and uploads a `Release` artifact. |
 | **Publish** (`publish.yml`) | a successful **Build** of a pushed `release/**` branch | Creates a GitHub Release (tag `<mod>/v<version>`) with the mod's zip and a link to its attestation. |
 
 No game install or secrets are needed: CI compiles against the public reference assemblies in
