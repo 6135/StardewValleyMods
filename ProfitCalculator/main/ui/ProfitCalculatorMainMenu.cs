@@ -1,4 +1,5 @@
 using Microsoft.Xna.Framework.Graphics;
+using ProfitCalculator.main.accessors;
 using ProfitCalculator.main.memory;
 using StardewModdingAPI;
 using StardewValley;
@@ -6,6 +7,7 @@ using StardewValley.Menus;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using UIFramework.Api;
 using static ProfitCalculator.Utils;
 
@@ -27,12 +29,14 @@ namespace ProfitCalculator.main.ui
         private static readonly int MenuWidth = 632 + (IClickableMenu.borderWidth * 2);
         private static readonly int ButtonHeight = Game1.tileSize;
         private static readonly int ButtonSpacing = Game1.tileSize / 4;
+        private const int MaxVisibleProduceTypes = 8;
 
         private readonly IStardewUIApi api;
         private readonly IModHelper helper;
         private readonly IMonitor monitor;
         private readonly ProfitCalculatorSettings settings;
         private readonly ProfitCalculatorResultsMenu results;
+        private readonly ProfitCalculatorResultsMenu machineResults;
         private readonly Texture2D inputTexture;
 
         /// <summary> The framework menu handle (open / close / hotkey binding). </summary>
@@ -45,14 +49,16 @@ namespace ProfitCalculator.main.ui
         /// <param name="helper"> The mod helper (translations, content). </param>
         /// <param name="monitor"> The mod monitor. </param>
         /// <param name="settings"> The values the form edits. </param>
-        /// <param name="results"> The results screen opened by Calculate. </param>
-        public ProfitCalculatorMainMenu(IStardewUIApi api, IModHelper helper, IMonitor monitor, ProfitCalculatorSettings settings, ProfitCalculatorResultsMenu results)
+        /// <param name="results"> The results screen opened by Calculate for crops sold raw. </param>
+        /// <param name="machineResults"> The results screen opened by Calculate when a machine is selected. </param>
+        public ProfitCalculatorMainMenu(IStardewUIApi api, IModHelper helper, IMonitor monitor, ProfitCalculatorSettings settings, ProfitCalculatorResultsMenu results, ProfitCalculatorResultsMenu machineResults)
         {
             this.api = api;
             this.helper = helper;
             this.monitor = monitor;
             this.settings = settings;
             this.results = results;
+            this.machineResults = machineResults;
             inputTexture = helper.ModContent.Load<Texture2D>(Path.Combine("assets", "text_box_small.png"));
 
             IUIMenuOptions options = api.CreateMenuOptions();
@@ -68,7 +74,7 @@ namespace ProfitCalculator.main.ui
         /// <summary>One label / control row per setting.</summary>
         private void BuildForm(IUIContainer parent)
         {
-            IUIGrid form = api.AddGrid(parent, "form", "auto,*", "auto,auto,auto,auto,auto,auto,auto,auto");
+            IUIGrid form = api.AddGrid(parent, "form", "auto,*", "auto,auto,auto,auto,auto,auto,auto,auto,auto");
             form.ColumnSpacing = Game1.tileSize / 2;
             form.RowSpacing = Game1.tileSize / 4;
 
@@ -80,6 +86,7 @@ namespace ProfitCalculator.main.ui
             AddFormRow(form, 5, "pay-for-fertilizer", api.AddCheckbox(form, "payForFertilizer", () => settings.PayForFertilizer, v => settings.PayForFertilizer = v));
             AddFormRow(form, 6, "max-money", BuildMaxMoneyInput(form));
             AddFormRow(form, 7, "base-stats", api.AddCheckbox(form, "useBaseStats", () => settings.UseBaseStats, v => settings.UseBaseStats = v));
+            AddFormRow(form, 8, "cross-season", api.AddCheckbox(form, "crossSeason", () => settings.CrossSeason, v => settings.CrossSeason = v));
         }
 
         /// <summary>Put a translated label in column 0 and <paramref name="control"/> in column 1 of <paramref name="row"/>.</summary>
@@ -118,11 +125,35 @@ namespace ProfitCalculator.main.ui
                 () => settings.Season.ToString(), v => settings.Season = ParseEnum<UtilsSeason>(v));
         }
 
-        /// <summary>Only raw produce is implemented, so every produce type is still labelled "not implemented".</summary>
+        /// <summary>
+        /// Raw plus every machine that accepts a plant drop. The choices are read through delegates so the list follows
+        /// the machine cache, which is rebuilt after a save loads.
+        /// </summary>
         private IUIDropdown BuildProduceTypeDropdown(IUIContainer parent)
         {
-            return AddEnumDropdown<ProduceType>(parent, "produceType", () => NotImplemented(Enum.GetNames(typeof(ProduceType)).Length),
-                () => settings.ProduceType.ToString(), v => settings.ProduceType = ParseEnum<ProduceType>(v));
+            IUIDropdown dropdown = api.AddDropdown(parent, "produceType",
+                () => ProduceOptions().Select(option => option.Id).ToArray(),
+                () => ProduceOptions().Select(option => option.Label).ToArray(),
+                ValidProduceType, v => settings.ProduceType = v);
+            // the list shows at most this many rows (fewer when there are fewer choices) and scrolls the rest
+            dropdown.MaxVisible = MaxVisibleProduceTypes;
+            return dropdown;
+        }
+
+        private static IReadOnlyList<(string Id, string Label)> ProduceOptions()
+        {
+            return Container.Instance.GetInstance<MachineAccessor>(ModEntry.UniqueID)?.GetProduceOptions()
+                ?? new List<(string Id, string Label)> { (RawProduceType, RawProduceType) };
+        }
+
+        /// <summary>The selected produce type, falling back to raw when it is no longer offered (for example after loading another save).</summary>
+        private string ValidProduceType()
+        {
+            if (!ProduceOptions().Any(option => option.Id == settings.ProduceType))
+            {
+                settings.ProduceType = RawProduceType;
+            }
+            return settings.ProduceType;
         }
 
         private IUIDropdown BuildFertilizerDropdown(IUIContainer parent)
@@ -143,16 +174,6 @@ namespace ProfitCalculator.main.ui
         private static TEnum ParseEnum<TEnum>(string value) where TEnum : struct, Enum
         {
             return Enum.TryParse(value, true, out TEnum parsed) ? parsed : default;
-        }
-
-        private string[] NotImplemented(int count)
-        {
-            string[] labels = new string[count];
-            for (int i = 0; i < count; i++)
-            {
-                labels[i] = helper.Translation.Get("not-implemented");
-            }
-            return labels;
         }
 
         #endregion Form
@@ -185,10 +206,11 @@ namespace ProfitCalculator.main.ui
                 monitor.Log("Calculator is null", LogLevel.Error);
                 return;
             }
+            ValidProduceType();
             settings.ApplyTo(calculator);
-            monitor.Log($"Doing Calculation: day {calculator.Day} {calculator.Season}, fertilizer {calculator.FertilizerQuality}, base stats {calculator.UseBaseStats}, farming level {calculator.FarmingLevel}, tiller {Game1.player.professions.Contains(Farmer.tiller)}, agriculturist {Game1.player.professions.Contains(Farmer.agriculturist)}", LogLevel.Debug);
+            monitor.Log($"Doing Calculation: day {calculator.Day} {calculator.Season}, produce {calculator.ProduceType}, fertilizer {calculator.FertilizerQuality}, cross season {calculator.CrossSeason}, base stats {calculator.UseBaseStats}, farming level {calculator.FarmingLevel}, tiller {Game1.player.professions.Contains(Farmer.tiller)}, agriculturist {Game1.player.professions.Contains(Farmer.agriculturist)}", LogLevel.Debug);
             List<CropInfo> cropInfos = calculator.RetrieveCropInfos();
-            results.Show(cropInfos, Menu);
+            (calculator.ProduceType == RawProduceType ? results : machineResults).Show(cropInfos, Menu);
         }
 
         #endregion Buttons

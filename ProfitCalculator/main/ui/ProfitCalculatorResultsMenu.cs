@@ -1,6 +1,7 @@
 using Microsoft.Xna.Framework;
 using StardewModdingAPI;
 using StardewValley;
+using StardewValley.ItemTypeDefinitions;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -14,16 +15,24 @@ namespace ProfitCalculator.main.ui
     /// The results screen of the profit calculator, built through the UI Framework: a sortable data grid with one row
     /// per crop (sprite + name, total profit, profit per day, harvests) and a rich tooltip per row with the full details
     /// (seed / fertilizer loss, timing, drop counts, quality chances). Opened as a child of the <see cref="ProfitCalculatorMainMenu"/>.
+    /// Two instances exist: one for crops sold raw and one for machine products, which lists the product first and the
+    /// crop it takes (with the input count) in a second column.
     /// </summary>
     public sealed class ProfitCalculatorResultsMenu
     {
-        /// <summary> Menu id, private to this mod inside the framework. </summary>
+        /// <summary> Menu id of the raw results screen, private to this mod inside the framework. </summary>
         public const string MenuId = "results";
+
+        /// <summary> Menu id of the machine-product results screen. </summary>
+        public const string MachineMenuId = "results-machine";
 
         private const int VisibleRows = 8;
         private const int RowHeight = 56;
         /// <summary> Wide enough for the fixed columns (below) plus a 250+ px crop column, the scrollbar and the box insets. </summary>
         private const int MenuWidth = 900;
+        /// <summary> The machine screen also fits the crop (input) column. </summary>
+        private const int MachineMenuWidth = 1120;
+        private const string InputColumnWidth = "220px";
         /// <summary> Column widths generous enough that no cell text has to shrink to fit. </summary>
         private const string MoneyColumnWidth = "150px";
         private const string MoneyPerDayColumnWidth = "190px";
@@ -35,6 +44,7 @@ namespace ProfitCalculator.main.ui
 
         private readonly IStardewUIApi api;
         private readonly IModHelper helper;
+        private readonly bool machine;
         private readonly List<CropInfo> crops = new();
         private readonly IUIMenu menu;
         private readonly IUIDataGrid grid;
@@ -45,15 +55,17 @@ namespace ProfitCalculator.main.ui
         /// </summary>
         /// <param name="api"> The UI Framework API. </param>
         /// <param name="helper"> The mod helper (translations). </param>
-        public ProfitCalculatorResultsMenu(IStardewUIApi api, IModHelper helper)
+        /// <param name="machine"> Whether this screen lists machine products (product + crop columns) instead of raw crops. </param>
+        public ProfitCalculatorResultsMenu(IStardewUIApi api, IModHelper helper, bool machine)
         {
             this.api = api;
             this.helper = helper;
+            this.machine = machine;
 
             // no title banner: the screen opens on top of the main menu, which already carries it
             IUIMenuOptions options = api.CreateMenuOptions();
-            options.Width = MenuWidth;
-            menu = api.CreateMenu(MenuId, options);
+            options.Width = machine ? MachineMenuWidth : MenuWidth;
+            menu = api.CreateMenu(machine ? MachineMenuId : MenuId, options);
 
             emptyLabel = api.AddLabel(menu.Root, "empty", () => helper.Translation.Get("no-results"));
             emptyLabel.Font = UIFont.Dialogue;
@@ -89,11 +101,28 @@ namespace ProfitCalculator.main.ui
 
         private void AddColumns()
         {
-            IUIDataGridColumn name = grid.AddColumn("crop", () => helper.Translation.Get("crop"), "*");
-            name.Text = row => crops[row].Crop.DisplayName;
-            name.BuildCell = BuildCropCell;
-            name.Sortable = true;
-            name.MinWidth = 180;
+            if (machine)
+            {
+                IUIDataGridColumn product = grid.AddColumn("product", () => helper.Translation.Get("product"), "*");
+                product.Text = row => crops[row].ProduceName;
+                product.BuildCell = BuildProductCell;
+                product.Sortable = true;
+                product.MinWidth = 180;
+
+                IUIDataGridColumn input = grid.AddColumn("crop", () => helper.Translation.Get("crop"), InputColumnWidth);
+                input.Text = row => InputText(crops[row]);
+                input.SortKey = row => crops[row].InputItem.DisplayName;
+                input.BuildCell = BuildInputCell;
+                input.Sortable = true;
+            }
+            else
+            {
+                IUIDataGridColumn name = grid.AddColumn("crop", () => helper.Translation.Get("crop"), "*");
+                name.Text = row => crops[row].Crop.DisplayName;
+                name.BuildCell = BuildCropCell;
+                name.Sortable = true;
+                name.MinWidth = 180;
+            }
 
             AddMoneyColumn("profit", "total-p", row => crops[row].TotalProfit, false);
             AddMoneyColumn("profit-day", "total-p-day", row => crops[row].ProfitPerDay, true);
@@ -141,6 +170,38 @@ namespace ProfitCalculator.main.ui
             label.VerticalAlign = UIAlign.Center;
         }
 
+        /// <summary>The product sprite followed by its name; like the crop cell, the sprite carries the row tooltip.</summary>
+        private void BuildProductCell(int row, IUIContainer cell)
+        {
+            CropInfo info = crops[row];
+            AddItemLine(cell, info.ProduceItem ?? info.InputItem, () => info.ProduceName, BuildTooltip(row));
+        }
+
+        /// <summary>The crop that goes into the machine: its sprite and "count x name".</summary>
+        private void BuildInputCell(int row, IUIContainer cell)
+        {
+            CropInfo info = crops[row];
+            AddItemLine(cell, info.InputItem, () => InputText(info), null);
+        }
+
+        private static string InputText(CropInfo info) => $"{info.InputsPerProduct} x {info.InputItem.DisplayName}";
+
+        /// <summary>An item sprite (drawn from its item data) followed by a label.</summary>
+        private void AddItemLine(IUIContainer cell, Item item, Func<string> text, IUITooltip? tooltip)
+        {
+            IUIStack line = api.AddStack(cell, $"{cell.Id}.line", true, 8);
+            line.VerticalAlign = UIAlign.Center;
+            ParsedItemData data = ItemRegistry.GetDataOrErrorItem(item.QualifiedItemId);
+            IUIImage sprite = api.AddImage(line, $"{cell.Id}.sprite", data.GetTexture(), data.GetSourceRect(), SpriteScale);
+            sprite.VerticalAlign = UIAlign.Center;
+            if (tooltip != null)
+            {
+                sprite.RichTooltip = tooltip;
+            }
+            IUILabel label = api.AddLabel(line, $"{cell.Id}.name", text);
+            label.VerticalAlign = UIAlign.Center;
+        }
+
         #endregion Columns
 
         #region Tooltip
@@ -149,20 +210,47 @@ namespace ProfitCalculator.main.ui
         private IUITooltip BuildTooltip(int row)
         {
             CropInfo info = crops[row];
-            IUITooltip tip = api.CreateTooltip().Title(() => info.Crop.DisplayName);
-            if (info.Crop.Seed != null)
+            IUITooltip tip;
+            if (machine && info.ProduceItem != null)
             {
-                tip.Item(info.Crop.Seed.QualifiedItemId);
+                // the product is what the row sells; the crop it is made from follows right under the title
+                tip = api.CreateTooltip().Title(() => info.ProduceName).Item(info.ProduceItem.QualifiedItemId)
+                         .Line(() => Detail("made-from", InputText(info)));
+            }
+            else
+            {
+                tip = api.CreateTooltip().Title(() => info.Crop.DisplayName);
+                if (info.Crop.Seed != null)
+                {
+                    tip.Item(info.Crop.Seed.QualifiedItemId);
+                }
             }
 
             tip.Line(() => Detail("total-p", Money(info.TotalProfit)), info.TotalProfit < 0 ? LossColor : ProfitColor)
                .Line(() => Detail("total-p-day", MoneyPerDay(info.ProfitPerDay)), info.ProfitPerDay < 0 ? LossColor : ProfitColor)
                .Line(() => Detail("total-s-loss", Money(info.TotalSeedLoss)))
-               .Line(() => Detail("total-s-loss-day", MoneyPerDay(info.SeedLossPerDay)));
+               .Line(() => Detail("total-s-loss-day", MoneyPerDay(info.SeedLossPerDay)))
+               .Line(() => Detail("seed-bought-count", $"#{info.SeedsNeeded}"));
             if (info.TotalFertilizerLoss != 0)
             {
                 tip.Line(() => Detail("total-f-loss", Money(info.TotalFertilizerLoss)))
                    .Line(() => Detail("total-f-loss-day", MoneyPerDay(info.FertilizerLossPerDay)));
+            }
+            if (info.FertilizerNeeded > 0)
+            {
+                tip.Line(() => Detail("fertilizer-bought-count", $"#{info.FertilizerNeeded}"));
+            }
+
+            tip.Divider()
+               .Line(() => Detail("produce-type-sold", info.ProduceName))
+               .Line(() => Detail("produce-count", $"#{info.ProduceCount.ToString("0.##", CultureInfo.CurrentCulture)}"));
+            if (info.InputsPerProduct > 1)
+            {
+                tip.Line(() => Detail("inputs-per-product", $"#{info.InputsPerProduct}"));
+            }
+            if (info.ProduceType != Utils.RawProduceType)
+            {
+                tip.Line(() => Detail("processing-time", $"{info.ProcessingDays.ToString("0.#", CultureInfo.CurrentCulture)} {helper.Translation.Get("days")}"));
             }
 
             tip.Divider()

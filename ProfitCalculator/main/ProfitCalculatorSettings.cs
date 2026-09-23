@@ -25,8 +25,8 @@ namespace ProfitCalculator.main
         /// <summary> The Season for planting. </summary>
         public UtilsSeason Season { get; set; } = UtilsSeason.Spring;
 
-        /// <summary> The type of produce to calculate with, for now only raw works. </summary>
-        public ProduceType ProduceType { get; set; } = ProduceType.Raw;
+        /// <summary> The produce type id to calculate with: <see cref="RawProduceType"/>, a machine's qualified id or a chained aging id. </summary>
+        public string ProduceType { get; set; } = RawProduceType;
 
         /// <summary> The quality of fertilizer to use. </summary>
         public FertilizerQuality FertilizerQuality { get; set; } = FertilizerQuality.None;
@@ -43,6 +43,9 @@ namespace ProfitCalculator.main
         /// <summary> Whether the player wants to use base stats or not. </summary>
         public bool UseBaseStats { get; set; }
 
+        /// <summary> Whether a crop keeps growing into the following seasons it can grow in. </summary>
+        public bool CrossSeason { get; set; } = true;
+
         /// <summary>
         /// Creates the settings, taking the defaults from the loaded save when there is one.
         /// </summary>
@@ -57,11 +60,12 @@ namespace ProfitCalculator.main
         /// </summary>
         public void Reset()
         {
-            ProduceType = ProduceType.Raw;
+            ProduceType = RawProduceType;
             FertilizerQuality = FertilizerQuality.None;
             PayForSeeds = true;
             PayForFertilizer = false;
             UseBaseStats = false;
+            CrossSeason = true;
             if (!Context.IsWorldReady)
             {
                 Day = 1;
@@ -80,7 +84,7 @@ namespace ProfitCalculator.main
         /// <param name="calculator"> The calculator to configure. </param>
         public void ApplyTo(Calculator calculator)
         {
-            calculator.SetSettings(Day, MaxDay, MinDay, Season, ProduceType, FertilizerQuality, PayForSeeds, PayForFertilizer, MaxMoney, UseBaseStats);
+            calculator.SetSettings(Day, MaxDay, MinDay, Season, ProduceType, FertilizerQuality, PayForSeeds, PayForFertilizer, MaxMoney, UseBaseStats, CrossSeason);
         }
     }
 }

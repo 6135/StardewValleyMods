@@ -5,7 +5,6 @@ using StardewValley.GameData.Shops;
 using StardewValley.Internal;
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
 
 namespace ProfitCalculator.main.accessors
@@ -29,13 +28,59 @@ namespace ProfitCalculator.main.accessors
         /// </summary>
         public ShopAccessor()
         {
-            var Helper = Container.Instance.GetInstance<IModHelper>(ModEntry.UniqueID);
-            // Initialize seed price cache with data from SeedPrices.json
-            seedPriceCache = new(
-                    () => Helper?.ModContent.Load<Dictionary<string, int>>(Path.Combine("assets", "SeedPrices.json"))
-                );
+            // Initialize seed price cache from the SeedPrices asset (assets/SeedPrices.json, editable by other mods)
+            seedPriceCache = new(LoadSeedPrices);
             // Initialize shop stock cache
             shopStock = new(BuildCache);
+        }
+
+        /// <summary>
+        /// Loads the seed prices from the <see cref="ManualCropRegistry.SeedPricesAsset"/> asset.
+        /// </summary>
+        /// <returns>The seed prices keyed by seed id, or an empty dictionary if the asset can't be loaded.</returns>
+        private static Dictionary<string, int> LoadSeedPrices()
+        {
+            try
+            {
+                return Game1.content.Load<Dictionary<string, int>>(ManualCropRegistry.SeedPricesAsset) ?? new();
+            }
+            catch (Exception e)
+            {
+                Container.Instance.GetInstance<IMonitor>(ModEntry.UniqueID)?.Log($"Failed to load {ManualCropRegistry.SeedPricesAsset}: {e.Message}", LogLevel.Warn);
+                return new();
+            }
+        }
+
+        /// <summary>
+        /// Looks up a fixed seed price: first the overrides set through the mod API, then the SeedPrices asset.
+        /// The asset may use unqualified (<c>472</c>) or qualified (<c>(O)472</c>) keys.
+        /// </summary>
+        /// <param name="cropId">The qualified seed id.</param>
+        /// <param name="price">The fixed price, when found.</param>
+        /// <returns>True if a fixed price exists.</returns>
+        private bool TryGetFixedSeedPrice(string cropId, out int price)
+        {
+            var registry = Container.Instance.GetInstance<ManualCropRegistry>(ModEntry.UniqueID);
+            if (registry != null && registry.TryGetSeedPrice(cropId, out price))
+            {
+                return true;
+            }
+
+            var prices = seedPriceCache.GetCache();
+            if (prices != null)
+            {
+                string trimmed = cropId.TrimStart();
+                if (trimmed.Length > 3 && prices.TryGetValue(trimmed[3..], out price))
+                {
+                    return true;
+                }
+                if (prices.TryGetValue(trimmed, out price))
+                {
+                    return true;
+                }
+            }
+            price = 0;
+            return false;
         }
 
         /// <summary>
@@ -249,10 +294,9 @@ namespace ProfitCalculator.main.accessors
         /// <returns>The cheapest seed price.</returns>
         public int GetCheapestSeedPrice(string cropId)
         {
-            string unqualifiedId = cropId.TrimStart()[3..];
-            if (seedPriceCache.GetCache().ContainsKey(unqualifiedId))
+            if (TryGetFixedSeedPrice(cropId, out int fixedPrice))
             {
-                return seedPriceCache.GetCache()[unqualifiedId];
+                return fixedPrice;
             }
 
             var chace = shopStock.GetCache();
@@ -272,10 +316,9 @@ namespace ProfitCalculator.main.accessors
         /// <returns>The most expensive seed price.</returns>
         public int GetExpensiveSeedPrice(string cropId)
         {
-            string unqualifiedId = cropId.TrimStart()[3..];
-            if (seedPriceCache.GetCache().ContainsKey(unqualifiedId))
+            if (TryGetFixedSeedPrice(cropId, out int fixedPrice))
             {
-                return seedPriceCache.GetCache()[unqualifiedId];
+                return fixedPrice;
             }
             var cache = shopStock.GetCache();
             return cache

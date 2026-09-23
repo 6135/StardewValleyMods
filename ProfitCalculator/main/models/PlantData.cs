@@ -6,7 +6,8 @@ using StardewModdingAPI;
 using StardewValley;
 using System;
 using System.Collections.Generic;
-using System.Xml.Linq;
+using System.Diagnostics.CodeAnalysis;
+using System.Linq;
 using static ProfitCalculator.Utils;
 using SObject = StardewValley.Object;
 
@@ -81,14 +82,17 @@ namespace ProfitCalculator.main.models
         /// <value>Property <c>affectByFertilizer</c> represents whether the crop is affected by fertilizer or not.</value>
         public bool AffectByFertilizer { get; set; }
 
-        /// <value>Property <c>Price</c> represents the price of the crop. Without Shop Modifiers </value>
-        public int SeedPrice
+        /// <summary> Seed price set explicitly (manual crops, the mod API); when null the cheapest shop price is used. </summary>
+        protected int? SeedPriceOverride { get; set; }
+
+        /// <value>Property <c>SeedPrice</c> represents the price of the seed: the explicit override when set, otherwise the cheapest shop price. </value>
+        public virtual int SeedPrice
         {
             get
             {
-                return Container.Instance.GetInstance<ShopAccessor>(ModEntry.UniqueID)?.GetCheapestSeedPrice(Seed.QualifiedItemId) ?? 0;
+                return SeedPriceOverride ?? Container.Instance.GetInstance<ShopAccessor>(ModEntry.UniqueID)?.GetCheapestSeedPrice(Seed.QualifiedItemId) ?? 0;
             }
-            set => throw new NotImplementedException();
+            set => SeedPriceOverride = value;
         }
 
         /// <value>Property <c>Days</c> represents the crop's total days to grow excluding <see cref="RegrowDays"/>.</value>
@@ -118,14 +122,11 @@ namespace ProfitCalculator.main.models
         /// <value>Property <c>Seasons</c> available seasons.</value>
         public List<Season> Seasons { get; set; }
 
-        /// <value>Property <c>Price</c> represents the crop's average sell price, including the Tiller bonus when the player has it and base stats aren't forced.</value>
-        public virtual int Price(UtilsSeason season) => (int)Math.Round(DropInformation.AveragePrice(season, ApplyTiller));
+        /// <value>Property <c>Price</c> represents the crop's average sell price, including the sale profession bonuses (Tiller, Artisan) when the player has them and base stats aren't forced.</value>
+        public virtual int Price(UtilsSeason season) => (int)Math.Round(DropInformation.AveragePrice(season, true));
 
         /// <summary> The calculator holding the current settings, if registered. </summary>
         protected static Calculator? Calc => Container.Instance.GetInstance<Calculator>(ModEntry.UniqueID);
-
-        /// <summary> Whether the Tiller price bonus applies: the player has the profession and base stats aren't forced. </summary>
-        protected static bool ApplyTiller => !(Calc?.UseBaseStats ?? false) && Game1.player.professions.Contains(Farmer.tiller);
 
         #region Growth Values Calculations
 
@@ -186,8 +187,12 @@ namespace ProfitCalculator.main.models
             {
                 return 0;
             }
-            //days left in the current Season, plus 28 for every consecutive following Season the crop also grows in
+            //days left in the current Season, plus 28 for every consecutive following Season the crop also grows in (when cross season is on)
             int totalAvailableDays = TotalAvailableDaysInCurrentSeason(day);
+            if (!(Calc?.CrossSeason ?? true))
+            {
+                return totalAvailableDays;
+            }
             for (int i = 1; i < 4; i++)
             {
                 Season next = (Season)(((int)currentSeason + i) % 4);
@@ -276,28 +281,154 @@ namespace ProfitCalculator.main.models
 
         #region Crop Profit Calculations
 
+        /// <summary>
+        /// Total sale value of the crop over the available time for the selected produce type, before seed and fertilizer costs.
+        /// </summary>
+        /// <returns> Total value of all harvests. <c>double</c></returns>
         public virtual double TotalCropProfit()
         {
-            UtilsSeason Season = Container.Instance.GetInstance<Calculator>(ModEntry.UniqueID)?.Season ?? UtilsSeason.Spring;
-            FertilizerQuality fertilizerQuality = Container.Instance.GetInstance<Calculator>(ModEntry.UniqueID)?.FertilizerQuality ?? FertilizerQuality.None;
-            uint day = Container.Instance.GetInstance<Calculator>(ModEntry.UniqueID)?.Day ?? 0;
-            double price = Price(Season); //already includes the Tiller bonus
-            double cropsPerHarvest = AverageCropsPerHarvest() + AverageExtraCropsFromRandomness();
-            double profitPerHarvest;
+            UtilsSeason season = Calc?.Season ?? UtilsSeason.Spring;
+            FertilizerQuality fertilizerQuality = Calc?.FertilizerQuality ?? FertilizerQuality.None;
+            uint day = Calc?.Day ?? 0;
+            string produceType = Calc?.ProduceType ?? RawProduceType;
+            double profitPerHarvest = produceType == RawProduceType
+                ? RawValuePerHarvest(season)
+                : ArtisanValuePerHarvest(season, produceType);
+            return profitPerHarvest * TotalHarvestsWithRemainingDays(season, fertilizerQuality, (int)day);
+        }
+
+        /// <summary>
+        /// Average number of crops per harvest, including the extra-crop chance.
+        /// </summary>
+        /// <returns> Average crops per harvest. <c>double</c></returns>
+        public virtual double TotalCropsPerHarvest()
+        {
+            return AverageCropsPerHarvest() + AverageExtraCropsFromRandomness();
+        }
+
+        /// <summary>
+        /// Average sale value of one harvest sold raw, including the quality chances of the first produce.
+        /// </summary>
+        /// <param name="season"> The selected season. </param>
+        /// <returns> Average value of one harvest. <c>double</c></returns>
+        public virtual double RawValuePerHarvest(UtilsSeason season)
+        {
+            double price = Price(season); //already includes the Tiller bonus
+            double cropsPerHarvest = TotalCropsPerHarvest();
 
             if (!AffectByQuality)
             {
-                profitPerHarvest = price * cropsPerHarvest;
+                return price * cropsPerHarvest;
             }
-            else
-            {
-                //only the first produce of a harvest rolls for quality, the rest is base quality
-                profitPerHarvest = price * GetAverageValueForCropAfterModifiers();
-                profitPerHarvest += price * (cropsPerHarvest - 1);
-            }
-            double result = profitPerHarvest * TotalHarvestsWithRemainingDays(Season, fertilizerQuality, (int)day);
-            return result;
+            //only the first produce of a harvest rolls for quality, the rest is base quality
+            double profitPerHarvest = price * GetAverageValueForCropAfterModifiers();
+            profitPerHarvest += price * (cropsPerHarvest - 1);
+            return profitPerHarvest;
         }
+
+        /// <summary>
+        /// Average sale value of one harvest processed by the machine <paramref name="produceType"/>. Crop quality is
+        /// ignored because machine outputs don't copy it; drops the machine rejects count as 0.
+        /// </summary>
+        /// <param name="season"> The selected season. </param>
+        /// <param name="produceType"> The produce type id (see <see cref="MachineAccessor"/>). </param>
+        /// <returns> Average value of one harvest. <c>double</c></returns>
+        public virtual double ArtisanValuePerHarvest(UtilsSeason season, string produceType)
+        {
+            MachineAccessor? machines = Machines;
+            if (machines is null)
+            {
+                return 0;
+            }
+            return TotalCropsPerHarvest() * DropInformation.AverageValue(season, drop => machines.TryGetProduct(drop, produceType, out ProductInfo? product) ? product.ValuePerInput : null);
+        }
+
+        /// <summary>
+        /// Whether the produce type <paramref name="produceType"/> can process this plant: every drop that counts in the
+        /// selected season must be accepted by the machine. Raw is always possible.
+        /// </summary>
+        /// <param name="produceType"> The produce type id. </param>
+        /// <returns> Whether the plant can be sold as that produce type. </returns>
+        public virtual bool CanProduce(string produceType)
+        {
+            if (produceType == RawProduceType)
+            {
+                return true;
+            }
+            MachineAccessor? machines = Machines;
+            if (machines is null)
+            {
+                return false;
+            }
+            UtilsSeason season = Calc?.Season ?? UtilsSeason.Spring;
+            List<DropInformation.Drop> counting = DropInformation.Drops.Where(drop => drop.CountsIn(season)).ToList();
+            return counting.Count > 0 && counting.All(drop => machines.TryGetProduct(drop, produceType, out _));
+        }
+
+        /// <summary>
+        /// The product made from the plant's main drop (the one that counts most in the selected season).
+        /// </summary>
+        /// <param name="produceType"> The produce type id. </param>
+        /// <param name="product"> The product, when the machine accepts the main drop. </param>
+        /// <returns> Whether a product was found. </returns>
+        public bool TryGetMainProduct(string produceType, [NotNullWhen(true)] out ProductInfo? product)
+        {
+            product = null;
+            DropInformation.Drop? main = MainDrop(Calc?.Season ?? UtilsSeason.Spring);
+            MachineAccessor? machines = Machines;
+            return main is not null && produceType != RawProduceType && machines is not null && machines.TryGetProduct(main, produceType, out product);
+        }
+
+        /// <summary>
+        /// Name of what is sold: "Raw" for the harvest itself, otherwise the display name of the main product.
+        /// </summary>
+        /// <param name="produceType"> The produce type id. </param>
+        /// <returns> The display name. </returns>
+        public string ProduceName(string produceType)
+        {
+            if (produceType != RawProduceType && TryGetMainProduct(produceType, out ProductInfo? product))
+            {
+                return product.Output.DisplayName;
+            }
+            return Container.Instance.GetInstance<IModHelper>(ModEntry.UniqueID)?.Translation.Get("raw").ToString() ?? RawProduceType;
+        }
+
+        /// <summary>
+        /// Expected number of items sold over the available time: crops when sold raw, otherwise machine products
+        /// (each input's products divided by the machine's required input count).
+        /// </summary>
+        /// <param name="produceType"> The produce type id. </param>
+        /// <returns> Expected number of items sold. <c>double</c></returns>
+        public virtual double TotalProduceCount(string produceType)
+        {
+            UtilsSeason season = Calc?.Season ?? UtilsSeason.Spring;
+            FertilizerQuality fertilizerQuality = Calc?.FertilizerQuality ?? FertilizerQuality.None;
+            uint day = Calc?.Day ?? 0;
+            MachineAccessor? machines = Machines;
+            double perCrop = DropInformation.AverageValue(season, drop =>
+            {
+                if (produceType == RawProduceType)
+                {
+                    return 1;
+                }
+                return machines is not null && machines.TryGetProduct(drop, produceType, out ProductInfo? product) ? product.ProductsPerInput : null;
+            });
+            return perCrop * TotalCropsPerHarvest() * TotalHarvestsWithRemainingDays(season, fertilizerQuality, (int)day);
+        }
+
+        /// <summary> The drop that counts most (chance times quantity) in <paramref name="season"/>, if any. This is the input shown for machine products. </summary>
+        /// <param name="season"> The selected season. </param>
+        /// <returns> The main drop, or null when nothing drops in that season. </returns>
+        public DropInformation.Drop? MainDrop(UtilsSeason season)
+        {
+            return DropInformation.Drops
+                .Where(drop => drop.CountsIn(season))
+                .OrderByDescending(drop => drop.Chance * drop.Quantity)
+                .FirstOrDefault();
+        }
+
+        /// <summary> The machine accessor, if registered. </summary>
+        protected static MachineAccessor? Machines => Container.Instance.GetInstance<MachineAccessor>(ModEntry.UniqueID);
 
         public virtual double TotalCropProfitPerDay()
         {

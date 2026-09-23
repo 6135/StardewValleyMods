@@ -5,8 +5,14 @@ using StardewValley.GameData;
 using System.Collections.Generic;
 
 /// <summary>Model used for custom bushes.</summary>
-public interface ICustomBush
+public interface ICustomBushData
 {
+    /// <summary>Gets the game state queries that determine if the bush can produce.</summary>
+    public List<string> ConditionsToProduce { get; }
+
+    /// <summary>Gets the unique id of the bush (the id of the item planted to grow it).</summary>
+    public string Id { get; }
+
     /// <summary>Gets the age needed to produce.</summary>
     public int AgeToProduce { get; }
 
@@ -22,11 +28,11 @@ public interface ICustomBush
     /// <summary>Gets the default texture used when planted indoors.</summary>
     public string IndoorTexture { get; }
 
-    /// <summary>Gets the season in which this bush will produce its drops.</summary>
-    public List<Season> Seasons { get; }
-
     /// <summary>Gets the rules which override the locations that custom bushes can be planted in.</summary>
     public List<PlantableRule> PlantableLocationRules { get; }
+
+    /// <summary>Gets the season in which this bush will produce its drops.</summary>
+    public List<Season> Seasons { get; }
 
     /// <summary>Gets the texture of the tea bush.</summary>
     public string Texture { get; }

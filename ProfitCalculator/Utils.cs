@@ -1,3 +1,4 @@
+using ProfitCalculator.main;
 using ProfitCalculator.main.memory;
 using StardewModdingAPI;
 using StardewValley;
@@ -54,19 +55,10 @@ namespace ProfitCalculator
         }
 
         /// <summary>
-        /// Produce type enum.
+        /// Produce type id for selling the harvest as is. Any other produce type id is a machine's qualified id
+        /// (for example <c>(BC)12</c>) or a chained aging id (for example <c>(BC)12&gt;(BC)163</c>), see <see cref="main.accessors.MachineAccessor"/>.
         /// </summary>
-        public enum ProduceType
-        {
-            /// <summary> Crops. </summary>
-            Raw,
-
-            /// <summary> Artisan goods. </summary>
-            Keg,
-
-            /// <summary> Artisan goods. </summary>
-            Cask
-        }
+        public const string RawProduceType = "Raw";
 
         /// <summary>
         /// Fertilizer quality enum.
@@ -115,16 +107,6 @@ namespace ProfitCalculator
         }
 
         /// <summary>
-        /// Get translated produce type name.
-        /// </summary>
-        /// <param name="produceType"> The produce type to get the translated name of.</param>
-        /// <returns> The translated name of the produce type.</returns>
-        public static string GetTranslatedProduceType(ProduceType produceType)
-        {
-            return GetTranslatedName(produceType.ToString());
-        }
-
-        /// <summary>
         /// Get translated fertilizer quality name.
         /// </summary>
         /// <param name="fertilizerQuality"> The fertilizer quality to get the translated name of.</param>
@@ -141,21 +123,6 @@ namespace ProfitCalculator
         public static string[] GetAllTranslatedSeasons()
         {
             string[] names = Enum.GetNames(typeof(UtilsSeason));
-            string[] translatedNames = new string[names.Length];
-            foreach (string name in names)
-            {
-                translatedNames[Array.IndexOf(names, name)] = GetTranslatedName(name);
-            }
-            return translatedNames;
-        }
-
-        /// <summary>
-        /// Get all translated produce type names.
-        /// </summary>
-        /// <returns> Array of all translated produce type names.</returns>
-        public static string[] GetAllTranslatedProduceTypes()
-        {
-            string[] names = Enum.GetNames(typeof(ProduceType));
             string[] translatedNames = new string[names.Length];
             foreach (string name in names)
             {
@@ -213,6 +180,34 @@ namespace ProfitCalculator
         public static bool IsAffectedByTiller(Item item)
         {
             return item.Category is SObject.VegetableCategory or SObject.FruitsCategory or SObject.flowersCategory;
+        }
+
+        /// <summary>
+        /// Applies the sale price profession bonuses the game applies in <c>Object.getPriceAfterMultipliers</c>: Tiller
+        /// (x1.1 for vegetables, fruits and flowers) and Artisan (x1.4 for artisan goods). Both are skipped when the
+        /// calculator is set to use base stats.
+        /// </summary>
+        /// <param name="item"> The item being sold, used for its category.</param>
+        /// <param name="basePrice"> The price before profession bonuses.</param>
+        /// <returns> The sale price after the bonuses that apply.</returns>
+        public static int ApplySaleBonuses(Item item, int basePrice)
+        {
+            bool useBaseStats = Container.Instance.GetInstance<Calculator>(ModEntry.UniqueID)?.UseBaseStats ?? false;
+            var professions = Game1.player?.professions;
+            if (useBaseStats || professions is null)
+            {
+                return basePrice;
+            }
+            float multiplier = 1f;
+            if (IsAffectedByTiller(item) && professions.Contains(Farmer.tiller))
+            {
+                multiplier *= 1.1f;
+            }
+            if (item.Category == SObject.artisanGoodsCategory && professions.Contains(Farmer.artisan))
+            {
+                multiplier *= 1.4f;
+            }
+            return (int)(basePrice * multiplier);
         }
 
         public static Season SeasonFromUtilsSeason(UtilsSeason season)

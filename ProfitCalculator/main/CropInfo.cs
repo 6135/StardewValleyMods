@@ -1,6 +1,9 @@
 ﻿using ProfitCalculator.main.models;
 using System;
 using System.Collections.Generic;
+using StardewValley;
+
+#nullable enable
 
 namespace ProfitCalculator.main
 {
@@ -30,8 +33,8 @@ namespace ProfitCalculator.main
         /// <summary> The fertilizer loss per day. </summary>
         public readonly double FertilizerLossPerDay;
 
-        /// <summary> The produce type. </summary>
-        public readonly Utils.ProduceType ProduceType;
+        /// <summary> The produce type id (see <see cref="Utils.RawProduceType"/>). </summary>
+        public readonly string ProduceType;
 
         /// <summary> The duration. </summary>
         public readonly int Duration;
@@ -63,6 +66,30 @@ namespace ProfitCalculator.main
         /// <summary> The chance of iridium quality. </summary>
         public readonly double ChanceOfIridiumQuality;
 
+        /// <summary> Display name of what is sold: "Raw" or the machine product's name. </summary>
+        public readonly string ProduceName;
+
+        /// <summary> Expected number of items sold over the run (machine products after dividing by the required input count). </summary>
+        public readonly double ProduceCount;
+
+        /// <summary> Input items the machine takes per batch; 1 when sold raw. </summary>
+        public readonly int InputsPerProduct;
+
+        /// <summary> Days the machine takes per batch; 0 when sold raw. </summary>
+        public readonly double ProcessingDays;
+
+        /// <summary> Seeds needed over the run. </summary>
+        public readonly int SeedsNeeded;
+
+        /// <summary> Fertilizer needed over the run. </summary>
+        public readonly int FertilizerNeeded;
+
+        /// <summary> The machine's main product; null when sold raw. </summary>
+        public readonly Item? ProduceItem;
+
+        /// <summary> The harvested item that goes into the machine (the crop's main drop). </summary>
+        public readonly Item InputItem;
+
         /// <summary>
         /// Initializes a new instance of the <see cref="CropInfo"/> class.
         /// </summary>
@@ -84,7 +111,15 @@ namespace ProfitCalculator.main
         /// <param name="chanceOfSilverQuality"> The chance of silver quality. </param>
         /// <param name="chanceOfGoldQuality"> The chance of gold quality. </param>
         /// <param name="chanceOfIridiumQuality"> The chance of iridium quality. </param>
-        public CropInfo(PlantData crop, double totalProfit, double profitPerDay, double totalSeedLoss, double seedLossPerDay, double totalFertilizerLoss, double fertilizerLossPerDay, Utils.ProduceType produceType, int duration, int totalHarvests, int growthTime, int regrowthTime, int productCount, double chanceOfExtraProduct, double chanceOfNormalQuality, double chanceOfSilverQuality, double chanceOfGoldQuality, double chanceOfIridiumQuality)
+        /// <param name="produceName"> Display name of what is sold. </param>
+        /// <param name="produceCount"> Expected number of items sold over the run. </param>
+        /// <param name="inputsPerProduct"> Input items the machine takes per batch. </param>
+        /// <param name="processingDays"> Days the machine takes per batch. </param>
+        /// <param name="seedsNeeded"> Seeds needed over the run. </param>
+        /// <param name="fertilizerNeeded"> Fertilizer needed over the run. </param>
+        /// <param name="produceItem"> The machine's main product, or null when sold raw. </param>
+        /// <param name="inputItem"> The harvested item that goes into the machine. </param>
+        public CropInfo(PlantData crop, double totalProfit, double profitPerDay, double totalSeedLoss, double seedLossPerDay, double totalFertilizerLoss, double fertilizerLossPerDay, string produceType, int duration, int totalHarvests, int growthTime, int regrowthTime, int productCount, double chanceOfExtraProduct, double chanceOfNormalQuality, double chanceOfSilverQuality, double chanceOfGoldQuality, double chanceOfIridiumQuality, string produceName, double produceCount, int inputsPerProduct, double processingDays, int seedsNeeded, int fertilizerNeeded, Item? produceItem, Item inputItem)
         {
             Crop = crop;
             TotalProfit = totalProfit - totalSeedLoss - totalFertilizerLoss;
@@ -104,6 +139,14 @@ namespace ProfitCalculator.main
             ChanceOfSilverQuality = chanceOfSilverQuality;
             ChanceOfGoldQuality = chanceOfGoldQuality;
             ChanceOfIridiumQuality = chanceOfIridiumQuality;
+            ProduceName = produceName;
+            ProduceCount = produceCount;
+            InputsPerProduct = inputsPerProduct;
+            ProcessingDays = processingDays;
+            SeedsNeeded = seedsNeeded;
+            FertilizerNeeded = fertilizerNeeded;
+            ProduceItem = produceItem;
+            InputItem = inputItem;
         }
 
         #region Overloads and Overrides
@@ -122,7 +165,13 @@ namespace ProfitCalculator.main
                 $"\"SeedLossPerDay\": {SeedLossPerDay}," +
                 $"\"TotalFertilizerLoss\": {TotalFertilizerLoss}," +
                 $"\"FertilizerLossPerDay\": {FertilizerLossPerDay}," +
-                $"\"ProduceType\": {ProduceType}," +
+                $"\"ProduceType\": \"{ProduceType}\"," +
+                $"\"ProduceName\": \"{ProduceName}\"," +
+                $"\"ProduceCount\": {ProduceCount}," +
+                $"\"InputsPerProduct\": {InputsPerProduct}," +
+                $"\"ProcessingDays\": {ProcessingDays}," +
+                $"\"SeedsNeeded\": {SeedsNeeded}," +
+                $"\"FertilizerNeeded\": {FertilizerNeeded}," +
                 $"\"Duration\": {Duration}," +
                 $"\"TotalHarvests\": {TotalHarvests}," +
                 $"\"GrowthTime\": {GrowthTime}," +
@@ -141,7 +190,7 @@ namespace ProfitCalculator.main
         /// </summary>
         /// <param name="obj"></param>
         /// <returns> <c>true</c> if the specified <see cref="CropInfo"/> is equal to the current <see cref="CropInfo"/>; otherwise, <c>false</c>. </returns>
-        public override bool Equals(object obj)
+        public override bool Equals(object? obj)
         {
             if (obj is not CropInfo cropInfo)
                 return false;
@@ -160,7 +209,9 @@ namespace ProfitCalculator.main
                 (ChanceOfNormalQuality, cropInfo.ChanceOfNormalQuality),
                 (ChanceOfSilverQuality, cropInfo.ChanceOfSilverQuality),
                 (ChanceOfGoldQuality, cropInfo.ChanceOfGoldQuality),
-                (ChanceOfIridiumQuality, cropInfo.ChanceOfIridiumQuality)
+                (ChanceOfIridiumQuality, cropInfo.ChanceOfIridiumQuality),
+                (ProduceCount, cropInfo.ProduceCount),
+                (ProcessingDays, cropInfo.ProcessingDays)
             };
 
             foreach (var (prop, cropProp) in doubleProperties)
@@ -179,7 +230,13 @@ namespace ProfitCalculator.main
                     GrowthTime == cropInfo.GrowthTime &&
                     RegrowthTime == cropInfo.RegrowthTime;
 
-            return part1 && parte2 && ProductCount == cropInfo.ProductCount;
+            bool part3 =
+                    ProduceName == cropInfo.ProduceName &&
+                    InputsPerProduct == cropInfo.InputsPerProduct &&
+                    SeedsNeeded == cropInfo.SeedsNeeded &&
+                    FertilizerNeeded == cropInfo.FertilizerNeeded;
+
+            return part1 && parte2 && part3 && ProductCount == cropInfo.ProductCount;
         }
 
         /// <summary>
@@ -207,6 +264,12 @@ namespace ProfitCalculator.main
             hash.Add(ChanceOfSilverQuality);
             hash.Add(ChanceOfGoldQuality);
             hash.Add(ChanceOfIridiumQuality);
+            hash.Add(ProduceName);
+            hash.Add(ProduceCount);
+            hash.Add(InputsPerProduct);
+            hash.Add(ProcessingDays);
+            hash.Add(SeedsNeeded);
+            hash.Add(FertilizerNeeded);
             return hash.ToHashCode();
         }
 

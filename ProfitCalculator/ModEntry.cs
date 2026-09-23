@@ -34,6 +34,7 @@ namespace ProfitCalculator
             Container.Instance.RegisterInstance<Calculator>(UniqueID);
             Container.Instance.RegisterInstance(helper, UniqueID);
             Container.Instance.RegisterInstance(this.Monitor, UniqueID);
+            Container.Instance.RegisterInstance<ManualCropRegistry>(UniqueID);
 
             //read config
             Config = helper.ReadConfig<ModConfig>();
@@ -48,6 +49,14 @@ namespace ProfitCalculator
             helper.Events.GameLoop.GameLaunched += OnGameLaunchedBuildMenus;
             helper.Events.GameLoop.SaveLoaded += OnSaveGameLoaded;
             helper.Events.GameLoop.DayStarted += OnDayStartedResetCache;
+            helper.Events.Content.AssetRequested += OnAssetRequested;
+        }
+
+        /// <summary>The API other mods get through <c>Helper.ModRegistry.GetApi</c>.</summary>
+        /// <returns>The <see cref="IProfitCalculatorApi"/> implementation.</returns>
+        public override object GetApi()
+        {
+            return new ProfitCalculatorApi();
         }
 
         /*********
@@ -58,6 +67,20 @@ namespace ProfitCalculator
         private void OnDayStartedResetCache(object? sender, DayStartedEventArgs? e)
         {
             Container.Instance.GetInstance<ShopAccessor>(ModEntry.UniqueID)?.ForceRebuildCache();
+            Container.Instance.GetInstance<MachineAccessor>(ModEntry.UniqueID)?.InvalidateCaches();
+        }
+
+        /// <summary>Provide the manual crops and seed prices as game assets, so content packs can edit them.</summary>
+        private void OnAssetRequested(object? sender, AssetRequestedEventArgs e)
+        {
+            if (e.NameWithoutLocale.IsEquivalentTo(ManualCropRegistry.ManualCropsAsset))
+            {
+                e.LoadFromModFile<Dictionary<string, ManualCropDefinition>>("assets/ManualCrops.json", AssetLoadPriority.Exclusive);
+            }
+            else if (e.NameWithoutLocale.IsEquivalentTo(ManualCropRegistry.SeedPricesAsset))
+            {
+                e.LoadFromModFile<Dictionary<string, int>>("assets/SeedPrices.json", AssetLoadPriority.Exclusive);
+            }
         }
 
         private void OnGameLaunchedAPIs(object? sender, GameLaunchedEventArgs? e)
@@ -131,7 +154,7 @@ namespace ProfitCalculator
                 return;
             }
             settings = new ProfitCalculatorSettings();
-            mainMenu = new ProfitCalculatorMainMenu(uiApi, Helper, Monitor, settings, new ProfitCalculatorResultsMenu(uiApi, Helper));
+            mainMenu = new ProfitCalculatorMainMenu(uiApi, Helper, Monitor, settings, new ProfitCalculatorResultsMenu(uiApi, Helper, false), new ProfitCalculatorResultsMenu(uiApi, Helper, true));
             ApplyConfig();
         }
 
@@ -167,15 +190,20 @@ namespace ProfitCalculator
                 Monitor.Log("Calculator is null", LogLevel.Error);
                 return;
             }
+            // start from scratch so crops from a previously loaded save (or edited assets) don't linger
+            Calculator.ClearCrops();
+            // the first builder to add an id wins, so manual / API crops override the built-in ones
             List<IDataBuilder> builder = new()
             {
+                new ManualCropBuilder(),
                 new CropBuilder(),
                 new FruitTreeBuilder(),
+                new BushBuilder(),
             };
-            /*if (CustomBushAPI != null)
+            if (CustomBushAPI != null)
             {
                 builder.Add(new CustomBushBuilder());
-            }*/
+            }
             //linq for each builder, call build crops and add to calculator
             builder.ForEach(b =>
             {
@@ -183,23 +211,14 @@ namespace ProfitCalculator
                 {
                     b.BuildCrops().ToList().ForEach(c => Calculator.AddCrop(c.Key, c.Value));
                 }
-                catch (NotImplementedException e)
+                catch (Exception e)
                 {
-                    Monitor.Log($"Error building crops: {e.Message}", LogLevel.Error);
+                    Monitor.Log($"Error building crops with {b.GetType().Name}: {e.Message}", LogLevel.Error);
                 }
             }
             );
-        }
-
-        /// <summary>
-        /// Adds a crop to the Profit Calculator.
-        /// </summary>
-        /// <param name="id"> The id of the crop. Must be unique.</param>
-        /// <param name="crop"> The crop to add. <see cref="CropData"/> </param>
-        public static void AddCrop(string id, CropData crop)
-        {
-            var Calculator = Container.Instance.GetInstance<Calculator>(UniqueID);
-            Calculator?.AddCrop(id, crop);
+            // the machine list depends on the crops that were just built
+            Container.Instance.GetInstance<MachineAccessor>(UniqueID)?.InvalidateCaches();
         }
     }
 }

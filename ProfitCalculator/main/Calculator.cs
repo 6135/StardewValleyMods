@@ -1,4 +1,5 @@
-﻿using ProfitCalculator.main.memory;
+﻿using ProfitCalculator.main.accessors;
+using ProfitCalculator.main.memory;
 using ProfitCalculator.main.models;
 using StardewModdingAPI;
 using StardewValley;
@@ -42,10 +43,9 @@ namespace ProfitCalculator.main
         public UtilsSeason Season { get; set; }
 
         /// <summary>
-        /// Type of produce selected
-        /// TODO: Implement this.
+        /// Id of the produce type selected: <see cref="RawProduceType"/>, a machine's qualified id or a chained aging id (see <see cref="accessors.MachineAccessor"/>).
         /// </summary>
-        public ProduceType ProduceType { get; set; }
+        public string ProduceType { get; set; } = RawProduceType;
 
         /// <summary>
         /// Type of fertilizer selected
@@ -73,7 +73,7 @@ namespace ProfitCalculator.main
         public bool UseBaseStats { get; set; }
 
         /// <summary>
-        /// Whether or not to calculate crops that are not available for the current Season. If false, then crops that are not available for the current Season will not be calculated. Not used.
+        /// Whether a crop keeps growing into the following seasons it can grow in. If false, only the days left in the selected Season are counted.
         /// </summary>
         public bool CrossSeason { get; set; }
 
@@ -111,7 +111,7 @@ namespace ProfitCalculator.main
         /// <param name="maxMoney"> <see cref="MaxMoney"/></param>
         /// <param name="useBaseStats"> <see cref="UseBaseStats"/></param>
         /// <param name="crossSeason"> <see cref="CrossSeason"/></param>
-        public void SetSettings(uint day, uint maxDay, uint minDay, UtilsSeason _season, ProduceType produceType, FertilizerQuality fertilizerQuality, bool payForSeeds, bool payForFertilizer, uint maxMoney, bool useBaseStats, bool crossSeason)
+        public void SetSettings(uint day, uint maxDay, uint minDay, UtilsSeason _season, string produceType, FertilizerQuality fertilizerQuality, bool payForSeeds, bool payForFertilizer, uint maxMoney, bool useBaseStats, bool crossSeason)
         {
             Day = day;
             MaxDay = maxDay;
@@ -133,21 +133,6 @@ namespace ProfitCalculator.main
                 FarmingLevel = Game1.player.FarmingLevel;
             }
         }
-
-        /// <summary>
-        /// Sets the settings for the calculator to use when calculating profits.
-        /// </summary>
-        /// <param name="day"><see cref="Day"/></param>
-        /// <param name="maxDay"><see cref="MaxDay"/></param>
-        /// <param name="minDay"><see cref="MinDay"/></param>
-        /// <param name="_season"><see cref="StardewValley.Season"/></param>
-        /// <param name="produceType"><see cref="ProduceType"/></param>
-        /// <param name="fertilizerQuality"> <see cref="FertilizerQuality"/></param>
-        /// <param name="payForSeeds"> <see cref="PayForSeeds"/></param>
-        /// <param name="payForFertilizer"> <see cref="PayForFertilizer"/></param>
-        /// <param name="maxMoney"> <seex cref="MaxMoney"/></param>
-        /// <param name="useBaseStats"> <see cref="UseBaseStats"/></param>
-        public void SetSettings(uint day, uint maxDay, uint minDay, UtilsSeason _season, ProduceType produceType, FertilizerQuality fertilizerQuality, bool payForSeeds, bool payForFertilizer, uint maxMoney, bool useBaseStats) => SetSettings(day, maxDay, minDay, _season, produceType, fertilizerQuality, payForSeeds, payForFertilizer, maxMoney, useBaseStats, true);
 
         /// <summary>
         /// Clears the list of crops.
@@ -183,6 +168,11 @@ namespace ProfitCalculator.main
             List<CropInfo> cropInfos = new();
             foreach (PlantData crop in Crops.Values)
             {
+                // crops the selected machine can't take are hidden
+                if (ProduceType != RawProduceType && !crop.CanProduce(ProduceType))
+                {
+                    continue;
+                }
                 CropInfo ci = RetrieveCropInfo(crop);
                 if (ci.TotalHarvests >= 1)
                 {
@@ -209,7 +199,7 @@ namespace ProfitCalculator.main
             double seedLossPerDay = crop.TotalSeedsCostPerDay();
             double totalFertilizerLoss = crop.TotalFertilizerCost();
             double fertilizerLossPerDay = crop.TotalFertilzerCostPerDay();
-            ProduceType produceType = ProduceType;
+            string produceType = ProduceType;
             int duration = crop.TotalAvailableDays(Season, (int)Day);
             int totalHarvests = crop.TotalHarvestsWithRemainingDays(Season, FertilizerQuality, (int)Day);
 
@@ -222,7 +212,22 @@ namespace ProfitCalculator.main
             double chanceOfGoldQuality = crop.GetCropGoldQualityChance();
             double chanceOfIridiumQuality = crop.GetCropIridiumQualityChance();
 
-            return new CropInfo(crop, totalProfit, profitPerDay, totalSeedLoss, seedLossPerDay, totalFertilizerLoss, fertilizerLossPerDay, produceType, duration, totalHarvests, growthTime, regrowthTime, productCount, chanceOfExtraProduct, chanceOfNormalQuality, chanceOfSilverQuality, chanceOfGoldQuality, chanceOfIridiumQuality);
+            string produceName = crop.ProduceName(produceType);
+            double produceCount = crop.TotalProduceCount(produceType);
+            int inputsPerProduct = 1;
+            double processingDays = 0;
+            Item produceItem = null;
+            if (produceType != RawProduceType && crop.TryGetMainProduct(produceType, out ProductInfo product))
+            {
+                inputsPerProduct = product.RequiredCount;
+                processingDays = product.ProcessingDays;
+                produceItem = product.Output;
+            }
+            Item inputItem = crop.MainDrop(Season)?.Item ?? crop.DropInformation.Drops[0].Item;
+            int seedsNeeded = crop.TotalSeedsNeeded();
+            int fertilizerNeeded = FertilizerQuality == FertilizerQuality.None ? 0 : crop.TotalFertilizerNeeded();
+
+            return new CropInfo(crop, totalProfit, profitPerDay, totalSeedLoss, seedLossPerDay, totalFertilizerLoss, fertilizerLossPerDay, produceType, duration, totalHarvests, growthTime, regrowthTime, productCount, chanceOfExtraProduct, chanceOfNormalQuality, chanceOfSilverQuality, chanceOfGoldQuality, chanceOfIridiumQuality, produceName, produceCount, inputsPerProduct, processingDays, seedsNeeded, fertilizerNeeded, produceItem, inputItem);
         }
 
         /// <summary>
