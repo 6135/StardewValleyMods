@@ -3,7 +3,7 @@
   <PropertyGroup>
     <AssemblyName>UIFramework</AssemblyName>
     <RootNamespace>UIFramework</RootNamespace>
-    <Version>1.1.0</Version>
+    <Version>1.2.0</Version>
     <TargetFramework>net6.0</TargetFramework>
     <Nullable>enable</Nullable>
     <LangVersion>latest</LangVersion>

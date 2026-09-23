@@ -140,6 +140,7 @@ namespace UIFramework.Rendering
                 TooltipBlockKind.Line => TextRow(Evaluate(element, block, "RichTooltip.Line#" + index), UIFont.Small, block.Color, wrap),
                 TooltipBlockKind.Icon => IconRow(block),
                 TooltipBlockKind.Item => ItemRow(block),
+                TooltipBlockKind.ItemInstance => ItemInstanceRow(element, block, index),
                 TooltipBlockKind.Divider => DividerRow(),
                 TooltipBlockKind.Money => MoneyRow(element, block, index),
                 _ => null
@@ -193,6 +194,27 @@ namespace UIFramework.Rendering
             return new Row(icon + IconGap + nameSize.X, Math.Max(icon, nameSize.Y), (b, at, _) =>
             {
                 ItemSprite.Draw(b, data, new Rectangle((int)at.X, (int)at.Y, icon, icon), Color.White);
+                DrawHelper.Text(b, name, UIFont.Small, new Vector2(at.X + icon + IconGap, at.Y), Theme.TextColor, true, 1f);
+            });
+        }
+
+        /// <summary>An item instance (drawn with <c>drawInMenu</c>, so tints are kept) scaled to the line height, followed by its display name; skipped when the getter returns null.</summary>
+        private static Row? ItemInstanceRow(UIElement element, TooltipBlock block, int index)
+        {
+            Item? item = element.Consumer.Invoke<Item?>(element.Id, "RichTooltip.ItemInstance#" + index, block.ItemGetter, null);
+            if (item == null)
+            {
+                return null;
+            }
+
+            float lineHeight = UIServices.Text.LineHeight(UIFont.Small);
+            string name = Pseudo.Transform(item.DisplayName);
+            Vector2 nameSize = UIServices.Text.Measure(UIFont.Small, name, 1f);
+            int icon = (int)lineHeight;
+            return new Row(icon + IconGap + nameSize.X, Math.Max(icon, nameSize.Y), (b, at, _) =>
+            {
+                element.Consumer.Invoke(element.Id, "RichTooltip.ItemInstanceDraw#" + index,
+                    () => Components.ItemImage.DrawItem(b, item, at, icon, 1f, UIItemStack.Hide, Color.White, false));
                 DrawHelper.Text(b, name, UIFont.Small, new Vector2(at.X + icon + IconGap, at.Y), Theme.TextColor, true, 1f);
             });
         }

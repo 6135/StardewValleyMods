@@ -26,6 +26,11 @@ by hand.
 Framework is a code-first C# builder API with no markup language. A mod that depends on one does not need the other,
 and both can be installed together.
 
+## What's new in 1.2
+
+- Mod authors: an item element (and a tooltip row) that draws an actual item instance, so flavored goods like
+  Starfruit Wine or Blueberry Jelly show their real colors.
+
 ## What's new in 1.1
 
 - Players: four themes (`default`, `dark`, `high-contrast`, `colorblind`; content packs can add more), text scaling

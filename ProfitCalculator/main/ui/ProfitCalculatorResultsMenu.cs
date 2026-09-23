@@ -1,7 +1,6 @@
 using Microsoft.Xna.Framework;
 using StardewModdingAPI;
 using StardewValley;
-using StardewValley.ItemTypeDefinitions;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -186,13 +185,12 @@ namespace ProfitCalculator.main.ui
 
         private static string InputText(CropInfo info) => $"{info.InputsPerProduct} x {info.InputItem.DisplayName}";
 
-        /// <summary>An item sprite (drawn from its item data) followed by a label.</summary>
+        /// <summary>The item instance (drawn by the game, so flavored goods keep their tint) followed by a label.</summary>
         private void AddItemLine(IUIContainer cell, Item item, Func<string> text, IUITooltip? tooltip)
         {
             IUIStack line = api.AddStack(cell, $"{cell.Id}.line", true, 8);
             line.VerticalAlign = UIAlign.Center;
-            ParsedItemData data = ItemRegistry.GetDataOrErrorItem(item.QualifiedItemId);
-            IUIImage sprite = api.AddImage(line, $"{cell.Id}.sprite", data.GetTexture(), data.GetSourceRect(), SpriteScale);
+            IUIItemImage sprite = api.AddItemImage(line, $"{cell.Id}.sprite", () => item, SpriteScale);
             sprite.VerticalAlign = UIAlign.Center;
             if (tooltip != null)
             {
@@ -214,7 +212,8 @@ namespace ProfitCalculator.main.ui
             if (machine && info.ProduceItem != null)
             {
                 // the product is what the row sells; the crop it is made from follows right under the title
-                tip = api.CreateTooltip().Title(() => info.ProduceName).Item(info.ProduceItem.QualifiedItemId)
+                Item product = info.ProduceItem;
+                tip = api.CreateTooltip().Title(() => info.ProduceName).ItemInstance(() => product)
                          .Line(() => Detail("made-from", InputText(info)));
             }
             else

@@ -8,7 +8,8 @@ namespace UIFrameworkExample
 {
     /// <summary>
     /// Example consumer of the UI Framework. It compiles against the copied <c>Api/IStardewUIApi.cs</c> only
-    /// (no reference to the framework assembly) and builds a small settings-style screen: press F9 in-game.
+    /// (no reference to the framework assembly) and builds a small settings-style screen: press F9 in-game. F7 opens
+    /// the item image test screen (<see cref="ItemImageDemo"/>).
     /// </summary>
     public class ModEntry : Mod
     {
@@ -17,6 +18,7 @@ namespace UIFrameworkExample
 
         private IUIMenu? menu;
         private IUIHud? hud;
+        private ItemImageDemo? itemDemo;
 
         // state edited by the form (values live here, the framework reads/writes them through delegates)
         private string name = "Farmer";
@@ -39,6 +41,7 @@ namespace UIFrameworkExample
         {
             helper.Events.GameLoop.GameLaunched += OnGameLaunched;
             helper.ConsoleCommands.Add("ui_demo", "Open the UI Framework example menu.", (_, _) => menu?.Open(true));
+            helper.ConsoleCommands.Add("ui_items", "Open the item image (v1.2) test menu.", (_, _) => itemDemo?.Menu.Open(true));
             helper.ConsoleCommands.Add("ui_hud", "Toggle the UI Framework example HUD widget.", (_, _) =>
             {
                 if (hud != null)
@@ -60,6 +63,9 @@ namespace UIFrameworkExample
 
             menu = BuildMenu(ui);
             ui.BindToggleHotkey(menu, "F9");
+
+            itemDemo = new ItemImageDemo(ui);
+            ui.BindToggleHotkey(itemDemo.Menu, "F7");
         }
 
         private IUIMenu BuildMenu(IStardewUIApi api)

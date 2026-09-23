@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
+using StardewValley;
 using UIFramework.Api;
 
 namespace UIFramework.Core
@@ -13,6 +14,7 @@ namespace UIFramework.Core
         Line,
         Icon,
         Item,
+        ItemInstance,
         Divider,
         Money
     }
@@ -41,6 +43,9 @@ namespace UIFramework.Core
         internal string ItemId { get; init; } = string.Empty;
 
         internal Func<int>? Amount { get; init; }
+
+        /// <summary>Item getter for <see cref="TooltipBlockKind.ItemInstance"/>.</summary>
+        internal Func<Item>? ItemGetter { get; init; }
     }
 
     /// <summary>
@@ -73,6 +78,16 @@ namespace UIFramework.Core
         }
 
         public IUITooltip Item(string qualifiedItemId) => Add(new TooltipBlock(TooltipBlockKind.Item) { ItemId = qualifiedItemId ?? string.Empty });
+
+        public IUITooltip ItemInstance(Func<Item> item)
+        {
+            if (item == null)
+            {
+                return this;
+            }
+
+            return Add(new TooltipBlock(TooltipBlockKind.ItemInstance) { ItemGetter = item });
+        }
 
         public IUITooltip Divider() => Add(new TooltipBlock(TooltipBlockKind.Divider));
 

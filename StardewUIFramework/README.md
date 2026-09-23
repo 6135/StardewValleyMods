@@ -1418,6 +1418,7 @@ Create with `CreateTooltip()` and assign to `IUIElement.RichTooltip`.
 | `IUITooltip Line(Func<string> text, Color color)`           | A line of (rich) text in `color`.                                         |
 | `IUITooltip Icon(Texture2D texture, Rectangle? source, float scale)` | A block icon drawn on its own row.                               |
 | `IUITooltip Item(string qualifiedItemId)`                   | A vanilla item's sprite and display name on one row (qualified id, e.g. `(O)24`). |
+| `IUITooltip ItemInstance(Func<Item> item)` (v1.2)           | An item instance's sprite, drawn with `drawInMenu` so tints are kept, and its display name. Null skips the row. |
 | `IUITooltip Divider()`                                      | A horizontal rule.                                                        |
 | `IUITooltip Money(Func<int> amount)`                        | A coin icon followed by the amount, like vanilla shop tooltips.           |
 | `IUITooltip MaxWidth(int px)`                               | Wrap lines wider than this many UI pixels (0 = only the screen limits the width). |
@@ -1553,7 +1554,7 @@ Entry point. One instance per consumer mod; every id you register is private to 
 
 | Member                                                                                                                                                | Description                                                                                           |
 |-------------------------------------------------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------|
-| `string ApiVersion`                                                                                                                                   | Semantic version of this API (`1.1.0`).                                                               |
+| `string ApiVersion`                                                                                                                                   | Semantic version of this API (`1.2.0`).                                                               |
 | `IUIMenuOptions CreateMenuOptions()`                                                                                                                  | New options bag with the defaults listed under `IUIMenuOptions`.                                      |
 | `IUIMenu CreateMenu(string id, IUIMenuOptions options)`                                                                                               | Create (or replace) a menu.                                                                           |
 | `IUIMenu CreateMenu(string id)`                                                                                                                       | Create a menu with default options.                                                                   |
@@ -1643,6 +1644,17 @@ v1.1 additions, in the order they appear in the file (a consumer's copy may incl
 | `void ShowToastWithIcon(string text, Texture2D icon, Rectangle? source, int durationMs)`                                                              | Show a notification with an icon (`source` `null` = whole texture).                                   |
 | `void ResetPlayerLayout(IUIMenu menu)`                                                                                                                | Forget the player's saved position / size / collapsed state for `menu` and restore the values you set. |
 
+v1.2 additions:
+
+| Member | Description |
+|--------|-------------|
+| `IUIItemImage AddItemImage(IUIContainer parent, string id, Func<Item> item, float scale)` | An item instance drawn with the game's `drawInMenu`, so flavored goods (wine, jelly, pickles) keep their color tint. `item` is read every frame; null draws nothing. 16 x 16 at scale 1. |
+| `IUITooltip.ItemInstance(Func<Item> item)` | Tooltip row with an item instance's sprite (tint kept) and display name, e.g. "Starfruit Wine". |
+
+`IUIItemImage` adds `Item` (`Func<Item>`), `Scale`, `Stack` (`UIItemStack.Hide` / `Quality` / `NumberAndQuality`),
+`DrawShadow`, `Alpha` and `Tint` to the usual `IUIElement` members (overlays are hidden below 32 px, scale 2). With an explicit width / height the item is
+drawn as a square fitting the bounds.
+
 Argument checks: ids must be non-empty; `parent` must be a container created by the framework and must belong to
 one of *your* menus (adding to another mod's menu throws `InvalidOperationException`, unless you are a slot
 contributor adding to the container you were handed, a registered decorator adding outside a sealed subtree, or the
@@ -1671,14 +1683,15 @@ API:
 
 ### Versioning
 
-`IStardewUIApi.ApiVersion` returns a semantic version string (currently `1.1.0`). Members are only ever **added**,
+`IStardewUIApi.ApiVersion` returns a semantic version string (currently `1.2.0`). Members are only ever **added**,
 never renamed or removed: additive changes bump the minor version, and a breaking change would ship as a new
 `IStardewUIApi2` interface alongside the old one. A consumer's copy of the interface may be a subset of the
 framework's, so you can keep an older copy of `IStardewUIApi.cs` and only update it when you need new members. Set
 `MinimumVersion` in your manifest to the framework version that introduced the members you use: everything under
 "v1.1 additions" in the API file (the `// BEGIN <FEATURE> members` / `types` regions and the `// SLOTS`,
 `// RICHTEXT`, `// THEME`, `// HUD` tagged members at the end of `IUIElement`, `IUILabel`, `IUIButton`,
-`IUIMenuOptions` and `IUIMenu`) needs `1.1.0`; a 1.0 copy of the file still works against 1.1.
+`IUIMenuOptions` and `IUIMenu`) needs `1.1.0`, and the `// BEGIN ITEMIMAGE` regions plus `IUITooltip.ItemInstance`
+(v1.2) need `1.2.0`; older copies of the file still work against newer versions.
 
 ### Generating the API reference
 

@@ -17,6 +17,7 @@ using System;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
+using StardewValley;
 
 namespace UIFramework.Api
 {
@@ -1017,6 +1018,18 @@ namespace UIFramework.Api
         void ResetPlayerLayout(IUIMenu menu);
 
         // END HUD members
+
+        // BEGIN ITEMIMAGE members (v1.2)
+
+        /// <summary>
+        /// Add an element that draws an item instance with the game's own <c>drawInMenu</c>, so flavored goods (wine,
+        /// jelly, pickles...) keep their color tint. <paramref name="item"/> is read every frame; null draws nothing.
+        /// Measures 16 x 16 UI pixels at <paramref name="scale"/> 1 (4 = a vanilla 64 px slot).
+        /// </summary>
+        IUIItemImage AddItemImage(IUIContainer parent, string id, Func<Item> item, float scale);
+
+        // END ITEMIMAGE members
+
     }
 
     // =================================================================================================================
@@ -1220,6 +1233,12 @@ namespace UIFramework.Api
 
         /// <summary>A vanilla item's sprite and display name on one row (qualified id, e.g. <c>(O)24</c>).</summary>
         IUITooltip Item(string qualifiedItemId);
+
+        /// <summary>
+        /// (v1.2) An item instance's sprite, drawn with <c>drawInMenu</c> so tints are kept, and its display name on one
+        /// row (e.g. "Starfruit Wine"). <paramref name="item"/> is read each frame; null skips the row.
+        /// </summary>
+        IUITooltip ItemInstance(Func<Item> item);
 
         /// <summary>A horizontal rule.</summary>
         IUITooltip Divider();
@@ -1520,4 +1539,42 @@ namespace UIFramework.Api
     }
 
     // END HUD types
+
+    // BEGIN ITEMIMAGE types (v1.2)
+
+    /// <summary>What an <see cref="IUIItemImage"/> draws on top of the item sprite.</summary>
+    public enum UIItemStack
+    {
+        /// <summary>Only the sprite.</summary>
+        Hide,
+        /// <summary>The quality star, but no stack number.</summary>
+        Quality,
+        /// <summary>The stack number (when above 1) and the quality star, like an inventory slot.</summary>
+        NumberAndQuality
+    }
+
+    /// <summary>An item instance drawn with the game's <c>drawInMenu</c>. Created by <see cref="IStardewUIApi.AddItemImage"/>.</summary>
+    public interface IUIItemImage : IUIElement
+    {
+        /// <summary>The item to draw, read every frame; null draws nothing.</summary>
+        Func<Item> Item { get; set; }
+
+        /// <summary>Size multiplier: 1 = 16 UI pixels, 4 = a vanilla 64 px slot. Ignored when an explicit width / height is set (the item then fits the bounds).</summary>
+        float Scale { get; set; }
+
+        /// <summary>Stack number / quality star overlay. Default <see cref="UIItemStack.Hide"/>. Overlays are hidden while the item is drawn smaller than 32 UI pixels (scale 2).</summary>
+        UIItemStack Stack { get; set; }
+
+        /// <summary>Draw the vanilla drop shadow under the item. Default false.</summary>
+        bool DrawShadow { get; set; }
+
+        /// <summary>Opacity from 0 to 1 (default 1); halved while the element is disabled.</summary>
+        float Alpha { get; set; }
+
+        /// <summary>Color multiplied into the sprite (default white).</summary>
+        Color Tint { get; set; }
+    }
+
+    // END ITEMIMAGE types
+
 }

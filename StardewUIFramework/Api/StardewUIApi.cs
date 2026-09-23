@@ -15,7 +15,7 @@ namespace UIFramework.Api
     /// </summary>
     public sealed class StardewUIApi : IStardewUIApi
     {
-        public static string Version => "1.1.0";
+        public static string Version => "1.2.0";
 
         private readonly ConsumerContext consumer;
         private readonly MenuRegistry menus;
@@ -134,6 +134,11 @@ namespace UIFramework.Api
         public IUIImage AddImage(IUIContainer parent, string id, Texture2D texture, Rectangle? source, float scale)
         {
             return Attach(parent, new Image(RequireId(id), texture, source, scale));
+        }
+
+        public IUIItemImage AddItemImage(IUIContainer parent, string id, Func<StardewValley.Item> item, float scale)
+        {
+            return Attach(parent, new ItemImage(RequireId(id), item ?? (() => null!), scale));
         }
 
         public IUIButton AddButton(IUIContainer parent, string id, Func<string> text, Action<IUIClickEvent> onClick)

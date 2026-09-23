@@ -205,7 +205,7 @@ namespace UIFramework.Rendering
         /// <summary>
         /// Run <paramref name="draw"/> with the scissor rectangle set to <paramref name="clip"/> (intersected with any
         /// outer clip). Ends the current batch and restarts it with the parameters the game uses for menus
-        /// (Deferred / AlphaBlend / PointClamp), then restores them. The only place the framework calls End/Begin.
+        /// (Deferred / AlphaBlend / PointClamp), then restores them. With <see cref="WithTransform"/>, the only places the framework calls End/Begin.
         /// </summary>
         internal static void WithScissor(SpriteBatch b, Rectangle clip, Action draw)
         {
@@ -242,6 +242,28 @@ namespace UIFramework.Rendering
                 {
                     b.Begin(SpriteSortMode.Deferred, BlendState.AlphaBlend, SamplerState.PointClamp);
                 }
+            }
+        }
+
+        /// <summary>
+        /// Run <paramref name="draw"/> with <paramref name="transform"/> applied to everything it draws (for code that
+        /// only lays out correctly at one size, like the game's <c>drawInMenu</c> at scale 1). Restarts the batch with
+        /// the same parameters as <see cref="WithScissor"/>, keeping an active clip (the scissor rectangle stays in screen
+        /// space), then restores it.
+        /// </summary>
+        internal static void WithTransform(SpriteBatch b, Matrix transform, Action draw)
+        {
+            RasterizerState? rasterizer = clipStack.Count > 0 ? ScissorState : null;
+            b.End();
+            b.Begin(SpriteSortMode.Deferred, BlendState.AlphaBlend, SamplerState.PointClamp, null, rasterizer, null, transform);
+            try
+            {
+                draw();
+            }
+            finally
+            {
+                b.End();
+                b.Begin(SpriteSortMode.Deferred, BlendState.AlphaBlend, SamplerState.PointClamp, null, rasterizer);
             }
         }
 

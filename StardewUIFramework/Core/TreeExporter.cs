@@ -195,6 +195,9 @@ namespace UIFramework.Core
                 case Image image:
                     DescribeImage(image, v, p);
                     return true;
+                case ItemImage itemImage:
+                    DescribeItemImage(itemImage, v, p);
+                    return true;
                 case Button button:
                     DescribeButton(button, v, p);
                     return true;
@@ -294,6 +297,30 @@ namespace UIFramework.Core
         {
             string source = i.Source.HasValue ? RectLiteral(i.Source.Value) : "null";
             Line($"IUIImage {v} = api.AddImage({p}, {Str(i.Id)}, null {TodoComment("texture")}, {source}, {Float(i.Scale)});");
+            if (i.Tint != Color.White)
+            {
+                Line($"{v}.Tint = {ColorLiteral(i.Tint)};");
+            }
+        }
+
+        private void DescribeItemImage(ItemImage i, string v, string p)
+        {
+            Line($"IUIItemImage {v} = api.AddItemImage({p}, {Str(i.Id)}, () => null {TodoComment("item")}, {Float(i.Scale)});");
+            if (i.Stack != UIItemStack.Hide)
+            {
+                Line($"{v}.Stack = UIItemStack.{i.Stack};");
+            }
+
+            if (i.DrawShadow)
+            {
+                Line($"{v}.DrawShadow = true;");
+            }
+
+            if (i.Alpha != 1f)
+            {
+                Line($"{v}.Alpha = {Float(i.Alpha)};");
+            }
+
             if (i.Tint != Color.White)
             {
                 Line($"{v}.Tint = {ColorLiteral(i.Tint)};");
