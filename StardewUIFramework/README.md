@@ -357,7 +357,10 @@ event name, and that callback is then muted for that element so it cannot spam t
 The menu draws in two passes: the tree in order, then an overlay pass for anything that has to sit above its
 siblings (an open dropdown list, `OnDrawOverlay` callbacks, custom components with `WantsOverlay`). Overlay elements
 also get first pick at input. Only one dropdown is open at a time; opening another closes the first. Dropdowns show
-`MaxVisible` rows and scroll beyond that; the open list is clamped to the screen. Tooltips are suppressed while a
+`MaxVisible` rows and scroll beyond that; the open list is clamped to the screen. When there are more choices than
+`MaxVisible`, the open list shows a compact scroll indicator on its right edge (1.2): up / down arrows, dimmed at
+either end, and a thumb sized to the visible share of the list. Clicking an arrow scrolls one row and clicking the
+track jumps there. Tooltips are suppressed while a
 popup is open.
 
 #### Focus, keyboard and gamepad navigation
@@ -1227,7 +1230,7 @@ padded area):
 |----------------------------------------|--------------------------------------------------------------|
 | `int SelectedIndex`                    | Index of the selected choice.                                |
 | `string SelectedValue`                 | Value of the selected choice.                                |
-| `int MaxVisible`                       | Rows shown at once when open (the list scrolls beyond that). |
+| `int MaxVisible`                       | Rows shown at once when open (the list scrolls beyond that, with a scroll indicator). |
 | `bool IsOpen`                          | Whether the list is open.                                    |
 | `void Open()`, `void Close()`          | Open / close the list.                                       |
 | `void RefreshChoices()`                | Re-evaluate the choices / labels delegates.                  |

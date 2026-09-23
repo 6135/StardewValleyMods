@@ -30,6 +30,7 @@ and both can be installed together.
 
 - Mod authors: an item element (and a tooltip row) that draws an actual item instance, so flavored goods like
   Starfruit Wine or Blueberry Jelly show their real colors.
+- Players: dropdowns with more choices than fit now show a small scrollbar, so it's clear the list scrolls.
 
 ## What's new in 1.1
 

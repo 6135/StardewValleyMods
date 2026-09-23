@@ -15,6 +15,7 @@ namespace UIFrameworkExample
     /// <item>flavored goods drawn by id (<c>AddImage</c>, no tint) next to the same instance drawn with <c>AddItemImage</c>;</item>
     /// <item>every <see cref="UIItemStack"/> overlay at scales 1 to 4, each framed by a boxed panel (the inspector, F10, outlines the exact bounds);</item>
     /// <item>drop shadow, alpha, tint, disabled, an explicit (non-square) size and an item that changes every second;</item>
+    /// <item>dropdowns that overflow (scroll indicator: arrows, track and a thumb sized to the visible share) next to one that fits;</item>
     /// <item>a tooltip with <c>ItemInstance</c> rows next to a plain <c>Item(id)</c> row.</item>
     /// </list>
     /// Items are created on first draw, so the menu can be built at game launch.
@@ -61,6 +62,8 @@ namespace UIFrameworkExample
             Divider(Menu.Root, "overlay.divider");
             BuildOptionsSection(Menu.Root);
             Divider(Menu.Root, "options.divider");
+            BuildDropdownSection(Menu.Root);
+            Divider(Menu.Root, "dropdown.divider");
             BuildTooltipSection(Menu.Root);
         }
 
@@ -164,6 +167,41 @@ namespace UIFrameworkExample
                 setup(image);
                 Place(box, row, column);
                 Place(api.AddLabel(grid, $"options.{c}.label", () => label), row + 1, column);
+            }
+        }
+
+        /// <summary>
+        /// Dropdown scroll indicator (v1.2): 24 choices showing 6 rows (arrows + track + thumb), 24 choices showing 1 row
+        /// (too short for the arrows: track only), and 5 choices showing up to 8 (no overflow, no indicator).
+        /// </summary>
+        private void BuildDropdownSection(IUIContainer parent)
+        {
+            Heading(parent, "dropdown.heading", "Dropdowns: scroll indicator when choices overflow");
+            string[] many = new string[24];
+            for (int i = 0; i < many.Length; i++)
+            {
+                many[i] = $"Choice {i + 1}";
+            }
+            string[] few = { "Spring", "Summer", "Fall", "Winter", "Greenhouse" };
+
+            var cases = new (string Label, string[] Choices, int MaxVisible)[]
+            {
+                ("24 choices, 6 visible", many, 6),
+                ("24 choices, 1 visible", many, 1),
+                ("5 choices, fits", few, 8)
+            };
+
+            IUIGrid grid = api.AddGrid(parent, "dropdown.grid", "auto,auto", Rows(cases.Length));
+            grid.ColumnSpacing = 24;
+            grid.RowSpacing = 8;
+            for (int r = 0; r < cases.Length; r++)
+            {
+                (string label, string[] choices, int maxVisible) = cases[r];
+                string selected = choices[0];
+                Place(api.AddLabel(grid, $"dropdown.{r}.label", () => label), r, 0);
+                IUIDropdown dropdown = api.AddDropdown(grid, $"dropdown.{r}", () => choices, () => choices, () => selected, v => selected = v);
+                dropdown.MaxVisible = maxVisible;
+                Place(dropdown, r, 1);
             }
         }
 
