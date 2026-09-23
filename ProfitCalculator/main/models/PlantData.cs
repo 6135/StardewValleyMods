@@ -189,7 +189,7 @@ namespace ProfitCalculator.main.models
             }
             //days left in the current Season, plus 28 for every consecutive following Season the crop also grows in (when cross season is on)
             int totalAvailableDays = TotalAvailableDaysInCurrentSeason(day);
-            if (!(Calc?.CrossSeason ?? true))
+            if (!(Calc?.CrossSeason ?? false))
             {
                 return totalAvailableDays;
             }
@@ -291,7 +291,7 @@ namespace ProfitCalculator.main.models
             FertilizerQuality fertilizerQuality = Calc?.FertilizerQuality ?? FertilizerQuality.None;
             uint day = Calc?.Day ?? 0;
             string produceType = Calc?.ProduceType ?? RawProduceType;
-            double profitPerHarvest = produceType == RawProduceType
+            double profitPerHarvest = IsSoldRaw(produceType)
                 ? RawValuePerHarvest(season)
                 : ArtisanValuePerHarvest(season, produceType);
             return profitPerHarvest * TotalHarvestsWithRemainingDays(season, fertilizerQuality, (int)day);
@@ -345,13 +345,13 @@ namespace ProfitCalculator.main.models
 
         /// <summary>
         /// Whether the produce type <paramref name="produceType"/> can process this plant: every drop that counts in the
-        /// selected season must be accepted by the machine. Raw is always possible.
+        /// selected season must be accepted by the machine. Selling raw (see <see cref="Utils.IsSoldRaw"/>) is always possible.
         /// </summary>
         /// <param name="produceType"> The produce type id. </param>
         /// <returns> Whether the plant can be sold as that produce type. </returns>
         public virtual bool CanProduce(string produceType)
         {
-            if (produceType == RawProduceType)
+            if (IsSoldRaw(produceType))
             {
                 return true;
             }
@@ -376,7 +376,7 @@ namespace ProfitCalculator.main.models
             product = null;
             DropInformation.Drop? main = MainDrop(Calc?.Season ?? UtilsSeason.Spring);
             MachineAccessor? machines = Machines;
-            return main is not null && produceType != RawProduceType && machines is not null && machines.TryGetProduct(main, produceType, out product);
+            return main is not null && !IsSoldRaw(produceType) && machines is not null && machines.TryGetProduct(main, produceType, out product);
         }
 
         /// <summary>
@@ -386,7 +386,7 @@ namespace ProfitCalculator.main.models
         /// <returns> The display name. </returns>
         public string ProduceName(string produceType)
         {
-            if (produceType != RawProduceType && TryGetMainProduct(produceType, out ProductInfo? product))
+            if (!IsSoldRaw(produceType) && TryGetMainProduct(produceType, out ProductInfo? product))
             {
                 return product.Output.DisplayName;
             }
@@ -407,7 +407,7 @@ namespace ProfitCalculator.main.models
             MachineAccessor? machines = Machines;
             double perCrop = DropInformation.AverageValue(season, drop =>
             {
-                if (produceType == RawProduceType)
+                if (IsSoldRaw(produceType))
                 {
                     return 1;
                 }
@@ -443,6 +443,12 @@ namespace ProfitCalculator.main.models
             double totalCropProfitPerDay = totalProfit / TotalAvailableDays(season, (int)day);
             return totalCropProfitPerDay;
         }
+
+        /// <summary>
+        /// First day (counted from planting) on which the running profit covers the seed cost, or -1 if never / not applicable.
+        /// </summary>
+        /// <returns> The payback day, or -1. <c>int</c></returns>
+        public virtual int PaybackDay() => -1;
 
         /// <summary>
         /// Fertilizer stays on the tile for as long as a crop is on it, so one is enough regardless of harvests or seasons.

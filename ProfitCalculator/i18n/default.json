@@ -14,6 +14,9 @@
   "max-money": "Max money",
   "base-stats": "Base stats",
   "cross-season": "Cross season",
+  "years": "Years",
+  "heavy-tapper": "Heavy tapper",
+  "tree-fertilizer": "Tree fertilizer",
   "crop": "Crop",
   "product": "Product",
   "made-from": "Made from",
@@ -33,6 +36,8 @@
   "greenhouse": "Greenhouse",
   //produce types
   "raw": "Raw",
+  "fruit-trees": "Fruit trees",
+  "wild-trees": "Wild trees",
   "produce-chain": "{{first}} + {{second}}",
   //fertilizer types
   "none": "None",
@@ -71,5 +76,7 @@
   "max-harvests-level": "Max # Drops/Level",
   "extra-harvest-chance": "Extra chance",
   "inputs-per-product": "Inputs per product",
-  "processing-time": "Processing time"
+  "processing-time": "Processing time",
+  "payback": "Pays back on day {{day}}",
+  "payback-never": "Never pays back"
 }

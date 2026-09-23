@@ -71,34 +71,75 @@ namespace ProfitCalculator.main.ui
 
         #region Form
 
-        /// <summary>One label / control row per setting.</summary>
+        /// <summary>A form row: its label, its control and when it is shown (null = always).</summary>
+        private sealed record FormRow(IUILabel Label, IUIElement Control, Func<bool>? Visible);
+
+        /// <summary>The form rows in display order; <see cref="UpdateFormRows"/> numbers the visible ones.</summary>
+        private readonly List<FormRow> formRows = new();
+
+        /// <summary>One label / control row per setting. Rows that don't apply to the selected produce type are hidden.</summary>
         private void BuildForm(IUIContainer parent)
         {
+            // only the always-visible rows are declared; the grid adds an auto track for each extra visible row
             IUIGrid form = api.AddGrid(parent, "form", "auto,*", "auto,auto,auto,auto,auto,auto,auto,auto,auto");
             form.ColumnSpacing = Game1.tileSize / 2;
             form.RowSpacing = Game1.tileSize / 4;
 
-            AddFormRow(form, 0, "day", BuildDayInput(form));
-            AddFormRow(form, 1, "Season", BuildSeasonDropdown(form));
-            AddFormRow(form, 2, "produce-type", BuildProduceTypeDropdown(form));
-            AddFormRow(form, 3, "fertilizer-type", BuildFertilizerDropdown(form));
-            AddFormRow(form, 4, "pay-for-seeds", api.AddCheckbox(form, "payForSeeds", () => settings.PayForSeeds, v => settings.PayForSeeds = v));
-            AddFormRow(form, 5, "pay-for-fertilizer", api.AddCheckbox(form, "payForFertilizer", () => settings.PayForFertilizer, v => settings.PayForFertilizer = v));
-            AddFormRow(form, 6, "max-money", BuildMaxMoneyInput(form));
-            AddFormRow(form, 7, "base-stats", api.AddCheckbox(form, "useBaseStats", () => settings.UseBaseStats, v => settings.UseBaseStats = v));
-            AddFormRow(form, 8, "cross-season", api.AddCheckbox(form, "crossSeason", () => settings.CrossSeason, v => settings.CrossSeason = v));
+            AddFormRow(form, "day", BuildDayInput(form));
+            AddFormRow(form, "Season", BuildSeasonDropdown(form));
+            AddFormRow(form, "produce-type", BuildProduceTypeDropdown(form));
+            AddFormRow(form, "years", BuildYearsInput(form), () => settings.ProduceType != RawProduceType);
+            AddFormRow(form, "heavy-tapper", api.AddCheckbox(form, "heavyTapper", () => settings.HeavyTapper, v => settings.HeavyTapper = v), () => settings.ProduceType == WildTreesProduceType);
+            AddFormRow(form, "tree-fertilizer", api.AddCheckbox(form, "treeFertilizer", () => settings.TreeFertilizer, v => settings.TreeFertilizer = v), () => settings.ProduceType == WildTreesProduceType);
+            AddFormRow(form, "fertilizer-type", BuildFertilizerDropdown(form));
+            AddFormRow(form, "pay-for-seeds", api.AddCheckbox(form, "payForSeeds", () => settings.PayForSeeds, v => settings.PayForSeeds = v));
+            AddFormRow(form, "pay-for-fertilizer", api.AddCheckbox(form, "payForFertilizer", () => settings.PayForFertilizer, v => settings.PayForFertilizer = v));
+            AddFormRow(form, "max-money", BuildMaxMoneyInput(form));
+            AddFormRow(form, "base-stats", api.AddCheckbox(form, "useBaseStats", () => settings.UseBaseStats, v => settings.UseBaseStats = v));
+            AddFormRow(form, "cross-season", api.AddCheckbox(form, "crossSeason", () => settings.CrossSeason, v => settings.CrossSeason = v));
+
+            UpdateFormRows();
+            Menu.OnUpdate = (_, _) => UpdateFormRows();
         }
 
-        /// <summary>Put a translated label in column 0 and <paramref name="control"/> in column 1 of <paramref name="row"/>.</summary>
-        private void AddFormRow(IUIGrid form, int row, string translationKey, IUIElement control)
+        /// <summary>Add a translated label in column 0 and <paramref name="control"/> in column 1 of the next row.</summary>
+        private void AddFormRow(IUIGrid form, string translationKey, IUIElement control, Func<bool>? visible = null)
         {
             IUILabel label = api.AddLabel(form, control.Id + ".label", () => helper.Translation.Get(translationKey) + ": ");
             label.Font = UIFont.Dialogue;
-            label.Row = row;
             label.VerticalAlign = UIAlign.Center;
-            control.Row = row;
             control.Column = 1;
             control.VerticalAlign = UIAlign.Center;
+            formRows.Add(new FormRow(label, control, visible));
+        }
+
+        /// <summary>
+        /// Show the rows that apply to the selected produce type and number the visible ones consecutively, so a hidden
+        /// row leaves no gap (the grid skips hidden children). Both setters are no-ops when nothing changed.
+        /// </summary>
+        private void UpdateFormRows()
+        {
+            int row = 0;
+            foreach (FormRow formRow in formRows)
+            {
+                bool visible = formRow.Visible?.Invoke() ?? true;
+                formRow.Label.Visible = visible;
+                formRow.Control.Visible = visible;
+                if (visible)
+                {
+                    formRow.Label.Row = row;
+                    formRow.Control.Row = row;
+                    row++;
+                }
+            }
+        }
+
+        private IUINumberInput BuildYearsInput(IUIContainer parent)
+        {
+            IUINumberInput years = api.AddNumberInput(parent, "years", () => settings.Years, v => settings.Years = (uint)Math.Round(v), ProfitCalculatorSettings.MinYears, ProfitCalculatorSettings.MaxYears, 1, true);
+            years.Decimals = 0;
+            years.Texture = inputTexture;
+            return years;
         }
 
         private IUINumberInput BuildDayInput(IUIContainer parent)
@@ -126,7 +167,7 @@ namespace ProfitCalculator.main.ui
         }
 
         /// <summary>
-        /// Raw plus every machine that accepts a plant drop. The choices are read through delegates so the list follows
+        /// Raw, the fruit tree and wild tree views, plus every machine that accepts a plant drop. The choices are read through delegates so the list follows
         /// the machine cache, which is rebuilt after a save loads.
         /// </summary>
         private IUIDropdown BuildProduceTypeDropdown(IUIContainer parent)
@@ -208,9 +249,10 @@ namespace ProfitCalculator.main.ui
             }
             ValidProduceType();
             settings.ApplyTo(calculator);
-            monitor.Log($"Doing Calculation: day {calculator.Day} {calculator.Season}, produce {calculator.ProduceType}, fertilizer {calculator.FertilizerQuality}, cross season {calculator.CrossSeason}, base stats {calculator.UseBaseStats}, farming level {calculator.FarmingLevel}, tiller {Game1.player.professions.Contains(Farmer.tiller)}, agriculturist {Game1.player.professions.Contains(Farmer.agriculturist)}", LogLevel.Debug);
+            monitor.Log($"Doing Calculation: day {calculator.Day} {calculator.Season}, produce {calculator.ProduceType}, fertilizer {calculator.FertilizerQuality}, cross season {calculator.CrossSeason}, years {calculator.Years}, heavy tapper {calculator.HeavyTapper}, tree fertilizer {calculator.TreeFertilizer}, base stats {calculator.UseBaseStats}, farming level {calculator.FarmingLevel}, tiller {Game1.player.professions.Contains(Farmer.tiller)}, agriculturist {Game1.player.professions.Contains(Farmer.agriculturist)}", LogLevel.Debug);
             List<CropInfo> cropInfos = calculator.RetrieveCropInfos();
-            (calculator.ProduceType == RawProduceType ? results : machineResults).Show(cropInfos, Menu);
+            // Raw and the tree views sell the harvest as is and share the raw screen
+            (IsSoldRaw(calculator.ProduceType) ? results : machineResults).Show(cropInfos, Menu);
         }
 
         #endregion Buttons

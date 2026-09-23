@@ -98,8 +98,10 @@ namespace ProfitCalculator.main.accessors
         }
 
         /// <summary>
-        /// The produce types the player can choose: <see cref="RawProduceType"/> first, then every machine (and chained
-        /// aging option) that accepts at least one plant's drop, sorted by display name.
+        /// The produce types the player can choose: <see cref="RawProduceType"/> first, then
+        /// <see cref="FruitTreesProduceType"/> and <see cref="WildTreesProduceType"/>, then every machine (and chained
+        /// aging option) that accepts at least one plant's drop, sorted by display name. Wild tree tapper products never
+        /// create or join a machine option.
         /// </summary>
         /// <returns> The produce type ids with their display labels. </returns>
         public IReadOnlyList<(string Id, string Label)> GetProduceOptions()
@@ -109,6 +111,7 @@ namespace ProfitCalculator.main.accessors
 
         /// <summary>
         /// Gets what the machine (or chained option) <paramref name="produceId"/> makes from <paramref name="drop"/>.
+        /// Produce types sold raw (<see cref="Utils.IsSoldRaw"/>) have no machine product.
         /// </summary>
         /// <param name="drop"> The plant drop put in the machine. </param>
         /// <param name="produceId"> The produce type id. </param>
@@ -117,7 +120,7 @@ namespace ProfitCalculator.main.accessors
         public bool TryGetProduct(DropInformation.Drop drop, string produceId, [NotNullWhen(true)] out ProductInfo? info)
         {
             info = null;
-            if (drop?.Item is null || string.IsNullOrEmpty(produceId) || produceId == RawProduceType)
+            if (drop?.Item is null || string.IsNullOrEmpty(produceId) || IsSoldRaw(produceId))
             {
                 return false;
             }
@@ -217,10 +220,14 @@ namespace ProfitCalculator.main.accessors
             GameLocation location = Game1.getFarm();
             List<LoadedMachine> machines = LoadMachines(location);
 
-            // one input per distinct drop
+            // one input per distinct drop; tapper products never go into machines
             Dictionary<string, Item> inputs = new();
             foreach (PlantData plant in calculator.Crops.Values)
             {
+                if (plant is WildTreeData)
+                {
+                    continue;
+                }
                 foreach (DropInformation.Drop drop in plant.DropInformation?.Drops ?? new List<DropInformation.Drop>())
                 {
                     if (drop?.Item is not null)
@@ -503,7 +510,7 @@ namespace ProfitCalculator.main.accessors
             }
         }
 
-        /// <summary> Raw first, then the listed machines and chains sorted by label. </summary>
+        /// <summary> Raw first, then the fruit tree and wild tree views, then the listed machines and chains sorted by label. </summary>
         private static List<(string Id, string Label)> BuildOptions(MachineCatalog result)
         {
             IModHelper? helper = Container.Instance.GetInstance<IModHelper>(ModEntry.UniqueID);
@@ -511,7 +518,12 @@ namespace ProfitCalculator.main.accessors
                 .Select(id => (Id: id, Label: MachineLabel(id, helper)))
                 .OrderBy(option => option.Label, StringComparer.CurrentCultureIgnoreCase)
                 .ToList();
-            List<(string Id, string Label)> options = new() { (RawProduceType, helper?.Translation.Get("raw").ToString() ?? RawProduceType) };
+            List<(string Id, string Label)> options = new()
+            {
+                (RawProduceType, helper?.Translation.Get("raw").ToString() ?? RawProduceType),
+                (FruitTreesProduceType, helper?.Translation.Get("fruit-trees").ToString() ?? FruitTreesProduceType),
+                (WildTreesProduceType, helper?.Translation.Get("wild-trees").ToString() ?? WildTreesProduceType)
+            };
             options.AddRange(machines);
             return options;
         }

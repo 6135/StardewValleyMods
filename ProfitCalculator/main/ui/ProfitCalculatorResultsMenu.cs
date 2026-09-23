@@ -247,16 +247,23 @@ namespace ProfitCalculator.main.ui
             {
                 tip.Line(() => Detail("inputs-per-product", $"#{info.InputsPerProduct}"));
             }
-            if (info.ProduceType != Utils.RawProduceType)
+            if (!Utils.IsSoldRaw(info.ProduceType))
             {
                 tip.Line(() => Detail("processing-time", $"{info.ProcessingDays.ToString("0.#", CultureInfo.CurrentCulture)} {helper.Translation.Get("days")}"));
             }
 
+            bool treeView = Utils.IsTreeProduceType(info.ProduceType);
             tip.Divider()
                .Line(() => Detail("grow-time", $"{info.GrowthTime} {helper.Translation.Get("days")}"))
                .Line(() => Detail("regrow-time", info.RegrowthTime > 0 ? $"{info.RegrowthTime} {helper.Translation.Get("days")}" : helper.Translation.Get("no")))
                .Line(() => Detail("harvest-count", $"#{info.TotalHarvests}"))
                .Line(() => Detail("duration", $"{info.Duration} {helper.Translation.Get("days")}"));
+            if (info.PaybackDay != -1 || treeView)
+            {
+                tip.Line(() => info.PaybackDay >= 0
+                    ? helper.Translation.Get("payback", new { day = info.PaybackDay }).ToString()
+                    : helper.Translation.Get("payback-never").ToString());
+            }
 
             tip.Divider()
                .Line(() => Detail("min-harvests", $"#{info.Crop.MinHarvests}"))
@@ -271,13 +278,14 @@ namespace ProfitCalculator.main.ui
             }
 
             tip.Divider();
-            if (info.ChanceOfNormalQuality != 0)
+            // the tree views always show the whole quality mix (a fruit tree's mix changes with its age)
+            if (info.ChanceOfNormalQuality != 0 || treeView)
             {
                 tip.Line(() => Detail("value-normal", Percent(info.ChanceOfNormalQuality)));
             }
             tip.Line(() => Detail("value-silver", Percent(info.ChanceOfSilverQuality)))
                .Line(() => Detail("value-gold", Percent(info.ChanceOfGoldQuality)));
-            if (info.ChanceOfIridiumQuality != 0)
+            if (info.ChanceOfIridiumQuality > 0)
             {
                 tip.Line(() => Detail("value-iridium", Percent(info.ChanceOfIridiumQuality)));
             }

@@ -43,7 +43,7 @@ namespace ProfitCalculator.main
         public UtilsSeason Season { get; set; }
 
         /// <summary>
-        /// Id of the produce type selected: <see cref="RawProduceType"/>, a machine's qualified id or a chained aging id (see <see cref="accessors.MachineAccessor"/>).
+        /// Id of the produce type selected: <see cref="RawProduceType"/>, <see cref="FruitTreesProduceType"/>, <see cref="WildTreesProduceType"/>, a machine's qualified id or a chained aging id (see <see cref="accessors.MachineAccessor"/>).
         /// </summary>
         public string ProduceType { get; set; } = RawProduceType;
 
@@ -76,6 +76,22 @@ namespace ProfitCalculator.main
         /// Whether a crop keeps growing into the following seasons it can grow in. If false, only the days left in the selected Season are counted.
         /// </summary>
         public bool CrossSeason { get; set; }
+
+        /// <summary>
+        /// Number of years (112 days each) trees are simulated over: the window of <see cref="FruitTreesProduceType"/>,
+        /// <see cref="WildTreesProduceType"/> and of fruit trees in machine lists. From 1 to 10.
+        /// </summary>
+        public uint Years { get; set; } = 1;
+
+        /// <summary>
+        /// Whether wild trees are tapped with a heavy tapper, which halves the time between products.
+        /// </summary>
+        public bool HeavyTapper { get; set; }
+
+        /// <summary>
+        /// Whether wild trees are grown with tree fertilizer, which raises their daily growth chance.
+        /// </summary>
+        public bool TreeFertilizer { get; set; }
 
         /// <summary>
         /// Price multipliers for the different qualities of crops
@@ -111,8 +127,14 @@ namespace ProfitCalculator.main
         /// <param name="maxMoney"> <see cref="MaxMoney"/></param>
         /// <param name="useBaseStats"> <see cref="UseBaseStats"/></param>
         /// <param name="crossSeason"> <see cref="CrossSeason"/></param>
-        public void SetSettings(uint day, uint maxDay, uint minDay, UtilsSeason _season, string produceType, FertilizerQuality fertilizerQuality, bool payForSeeds, bool payForFertilizer, uint maxMoney, bool useBaseStats, bool crossSeason)
+        /// <param name="years"> <see cref="Years"/>, clamped to 1-10</param>
+        /// <param name="heavyTapper"> <see cref="HeavyTapper"/></param>
+        /// <param name="treeFertilizer"> <see cref="TreeFertilizer"/></param>
+        public void SetSettings(uint day, uint maxDay, uint minDay, UtilsSeason _season, string produceType, FertilizerQuality fertilizerQuality, bool payForSeeds, bool payForFertilizer, uint maxMoney, bool useBaseStats, bool crossSeason, uint years, bool heavyTapper, bool treeFertilizer)
         {
+            Years = Math.Clamp(years, 1u, 10u);
+            HeavyTapper = heavyTapper;
+            TreeFertilizer = treeFertilizer;
             Day = day;
             MaxDay = maxDay;
             MinDay = minDay;
@@ -168,8 +190,7 @@ namespace ProfitCalculator.main
             List<CropInfo> cropInfos = new();
             foreach (PlantData crop in Crops.Values)
             {
-                // crops the selected machine can't take are hidden
-                if (ProduceType != RawProduceType && !crop.CanProduce(ProduceType))
+                if (!IsListed(crop))
                 {
                     continue;
                 }
@@ -184,6 +205,24 @@ namespace ProfitCalculator.main
             }
             cropInfos.Sort((x, y) => y.ProfitPerDay.CompareTo(x.ProfitPerDay));
             return cropInfos;
+        }
+
+        /// <summary>
+        /// Whether <paramref name="crop"/> belongs in the list of the selected <see cref="ProduceType"/>: Raw lists every
+        /// plant but trees, the tree views list only their own kind, and a machine lists the plants it accepts (fruit
+        /// trees included, wild tree tapper products never).
+        /// </summary>
+        /// <param name="crop"> The plant to check. </param>
+        /// <returns> Whether the plant is listed. </returns>
+        private bool IsListed(PlantData crop)
+        {
+            return ProduceType switch
+            {
+                RawProduceType => crop is not TreeData and not WildTreeData,
+                FruitTreesProduceType => crop is TreeData,
+                WildTreesProduceType => crop is WildTreeData,
+                _ => crop is not WildTreeData && crop.CanProduce(ProduceType)
+            };
         }
 
         /// <summary>
@@ -217,7 +256,7 @@ namespace ProfitCalculator.main
             int inputsPerProduct = 1;
             double processingDays = 0;
             Item produceItem = null;
-            if (produceType != RawProduceType && crop.TryGetMainProduct(produceType, out ProductInfo product))
+            if (!IsSoldRaw(produceType) && crop.TryGetMainProduct(produceType, out ProductInfo product))
             {
                 inputsPerProduct = product.RequiredCount;
                 processingDays = product.ProcessingDays;
@@ -226,8 +265,9 @@ namespace ProfitCalculator.main
             Item inputItem = crop.MainDrop(Season)?.Item ?? crop.DropInformation.Drops[0].Item;
             int seedsNeeded = crop.TotalSeedsNeeded();
             int fertilizerNeeded = FertilizerQuality == FertilizerQuality.None ? 0 : crop.TotalFertilizerNeeded();
+            int paybackDay = crop.PaybackDay();
 
-            return new CropInfo(crop, totalProfit, profitPerDay, totalSeedLoss, seedLossPerDay, totalFertilizerLoss, fertilizerLossPerDay, produceType, duration, totalHarvests, growthTime, regrowthTime, productCount, chanceOfExtraProduct, chanceOfNormalQuality, chanceOfSilverQuality, chanceOfGoldQuality, chanceOfIridiumQuality, produceName, produceCount, inputsPerProduct, processingDays, seedsNeeded, fertilizerNeeded, produceItem, inputItem);
+            return new CropInfo(crop, totalProfit, profitPerDay, totalSeedLoss, seedLossPerDay, totalFertilizerLoss, fertilizerLossPerDay, produceType, duration, totalHarvests, growthTime, regrowthTime, productCount, chanceOfExtraProduct, chanceOfNormalQuality, chanceOfSilverQuality, chanceOfGoldQuality, chanceOfIridiumQuality, produceName, produceCount, inputsPerProduct, processingDays, seedsNeeded, fertilizerNeeded, produceItem, inputItem, paybackDay);
         }
 
         /// <summary>

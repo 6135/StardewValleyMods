@@ -90,6 +90,9 @@ namespace ProfitCalculator.main
         /// <summary> The harvested item that goes into the machine (the crop's main drop). </summary>
         public readonly Item InputItem;
 
+        /// <summary> First day (counted from planting) on which the running profit covers the seed cost, or -1 if never / not applicable. See <see cref="PlantData.PaybackDay"/>. </summary>
+        public readonly int PaybackDay;
+
         /// <summary>
         /// Initializes a new instance of the <see cref="CropInfo"/> class.
         /// </summary>
@@ -119,8 +122,10 @@ namespace ProfitCalculator.main
         /// <param name="fertilizerNeeded"> Fertilizer needed over the run. </param>
         /// <param name="produceItem"> The machine's main product, or null when sold raw. </param>
         /// <param name="inputItem"> The harvested item that goes into the machine. </param>
-        public CropInfo(PlantData crop, double totalProfit, double profitPerDay, double totalSeedLoss, double seedLossPerDay, double totalFertilizerLoss, double fertilizerLossPerDay, string produceType, int duration, int totalHarvests, int growthTime, int regrowthTime, int productCount, double chanceOfExtraProduct, double chanceOfNormalQuality, double chanceOfSilverQuality, double chanceOfGoldQuality, double chanceOfIridiumQuality, string produceName, double produceCount, int inputsPerProduct, double processingDays, int seedsNeeded, int fertilizerNeeded, Item? produceItem, Item inputItem)
+        /// <param name="paybackDay"> First day the running profit covers the seed cost, or -1 if never / not applicable. </param>
+        public CropInfo(PlantData crop, double totalProfit, double profitPerDay, double totalSeedLoss, double seedLossPerDay, double totalFertilizerLoss, double fertilizerLossPerDay, string produceType, int duration, int totalHarvests, int growthTime, int regrowthTime, int productCount, double chanceOfExtraProduct, double chanceOfNormalQuality, double chanceOfSilverQuality, double chanceOfGoldQuality, double chanceOfIridiumQuality, string produceName, double produceCount, int inputsPerProduct, double processingDays, int seedsNeeded, int fertilizerNeeded, Item? produceItem, Item inputItem, int paybackDay = -1)
         {
+            PaybackDay = paybackDay;
             Crop = crop;
             TotalProfit = totalProfit - totalSeedLoss - totalFertilizerLoss;
             ProfitPerDay = profitPerDay - seedLossPerDay - fertilizerLossPerDay;
@@ -181,7 +186,8 @@ namespace ProfitCalculator.main
                 $"\"ChanceOfNormalQuality\": {ChanceOfNormalQuality}," +
                 $"\"ChanceOfSilverQuality\": {ChanceOfSilverQuality}," +
                 $"\"ChanceOfGoldQuality\": {ChanceOfGoldQuality}," +
-                $"\"ChanceOfIridiumQuality\": {ChanceOfIridiumQuality}" +
+                $"\"ChanceOfIridiumQuality\": {ChanceOfIridiumQuality}," +
+                $"\"PaybackDay\": {PaybackDay}" +
                 "}";
         }
 
@@ -236,7 +242,7 @@ namespace ProfitCalculator.main
                     SeedsNeeded == cropInfo.SeedsNeeded &&
                     FertilizerNeeded == cropInfo.FertilizerNeeded;
 
-            return part1 && parte2 && part3 && ProductCount == cropInfo.ProductCount;
+            return part1 && parte2 && part3 && ProductCount == cropInfo.ProductCount && PaybackDay == cropInfo.PaybackDay;
         }
 
         /// <summary>
@@ -270,6 +276,7 @@ namespace ProfitCalculator.main
             hash.Add(ProcessingDays);
             hash.Add(SeedsNeeded);
             hash.Add(FertilizerNeeded);
+            hash.Add(PaybackDay);
             return hash.ToHashCode();
         }
 

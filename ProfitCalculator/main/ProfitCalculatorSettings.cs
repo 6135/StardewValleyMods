@@ -25,7 +25,7 @@ namespace ProfitCalculator.main
         /// <summary> The Season for planting. </summary>
         public UtilsSeason Season { get; set; } = UtilsSeason.Spring;
 
-        /// <summary> The produce type id to calculate with: <see cref="RawProduceType"/>, a machine's qualified id or a chained aging id. </summary>
+        /// <summary> The produce type id to calculate with: <see cref="RawProduceType"/>, <see cref="FruitTreesProduceType"/>, <see cref="WildTreesProduceType"/>, a machine's qualified id or a chained aging id. </summary>
         public string ProduceType { get; set; } = RawProduceType;
 
         /// <summary> The quality of fertilizer to use. </summary>
@@ -44,7 +44,22 @@ namespace ProfitCalculator.main
         public bool UseBaseStats { get; set; }
 
         /// <summary> Whether a crop keeps growing into the following seasons it can grow in. </summary>
-        public bool CrossSeason { get; set; } = true;
+        public bool CrossSeason { get; set; }
+
+        /// <summary> Lowest value of <see cref="Years"/>. </summary>
+        public const uint MinYears = 1;
+
+        /// <summary> Highest value of <see cref="Years"/>. </summary>
+        public const uint MaxYears = 10;
+
+        /// <summary> Number of years (112 days each) trees are simulated over, from <see cref="MinYears"/> to <see cref="MaxYears"/>. </summary>
+        public uint Years { get; set; } = 1;
+
+        /// <summary> Whether wild trees are tapped with a heavy tapper (half the time between products). </summary>
+        public bool HeavyTapper { get; set; }
+
+        /// <summary> Whether wild trees are grown with tree fertilizer (faster growth). </summary>
+        public bool TreeFertilizer { get; set; }
 
         /// <summary>
         /// Creates the settings, taking the defaults from the loaded save when there is one.
@@ -65,7 +80,10 @@ namespace ProfitCalculator.main
             PayForSeeds = true;
             PayForFertilizer = false;
             UseBaseStats = false;
-            CrossSeason = true;
+            CrossSeason = false;
+            Years = 1;
+            HeavyTapper = false;
+            TreeFertilizer = false;
             if (!Context.IsWorldReady)
             {
                 Day = 1;
@@ -84,7 +102,7 @@ namespace ProfitCalculator.main
         /// <param name="calculator"> The calculator to configure. </param>
         public void ApplyTo(Calculator calculator)
         {
-            calculator.SetSettings(Day, MaxDay, MinDay, Season, ProduceType, FertilizerQuality, PayForSeeds, PayForFertilizer, MaxMoney, UseBaseStats, CrossSeason);
+            calculator.SetSettings(Day, MaxDay, MinDay, Season, ProduceType, FertilizerQuality, PayForSeeds, PayForFertilizer, MaxMoney, UseBaseStats, CrossSeason, Years, HeavyTapper, TreeFertilizer);
         }
     }
 }

@@ -75,13 +75,12 @@ namespace ProfitCalculator.main.models
                 return 0;
             }
             bool greenhouse = currentSeason == UtilsSeason.Greenhouse;
-            // In the greenhouse every season counts, so the starting season index is irrelevant.
-            int plantingSeason = greenhouse ? 0 : (int)currentSeason;
             int harvests = 0;
             for (int t = 1; t <= window; t++)
             {
-                int dayOfMonth = ((day - 1 + t) % 28) + 1;
-                Season season = (Season)((plantingSeason + ((day - 1 + t) / 28)) % 4);
+                int dayOfMonth = PlantingCalendar.DayOfMonth(day, t);
+                // In the greenhouse every season counts, so the starting season index is irrelevant.
+                Season season = PlantingCalendar.SeasonAt(currentSeason, day, t);
                 if (t >= AgeToProduce && dayOfMonth >= DayToBeginProducing && (greenhouse || Seasons.Contains(season)))
                 {
                     harvests++;

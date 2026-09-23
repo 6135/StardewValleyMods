@@ -199,6 +199,7 @@ namespace ProfitCalculator
                 new CropBuilder(),
                 new FruitTreeBuilder(),
                 new BushBuilder(),
+                new WildTreeBuilder(),
             };
             if (CustomBushAPI != null)
             {

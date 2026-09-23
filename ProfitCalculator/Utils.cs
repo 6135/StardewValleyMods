@@ -61,6 +61,39 @@ namespace ProfitCalculator
         public const string RawProduceType = "Raw";
 
         /// <summary>
+        /// Produce type id listing only fruit trees, over <see cref="Calculator.Years"/> years. The fruit is sold raw.
+        /// </summary>
+        public const string FruitTreesProduceType = "FruitTrees";
+
+        /// <summary>
+        /// Produce type id listing only wild trees with a tapper, over <see cref="Calculator.Years"/> years. The tapper
+        /// products are sold raw.
+        /// </summary>
+        public const string WildTreesProduceType = "WildTrees";
+
+        /// <summary>
+        /// Whether <paramref name="produceType"/> sells the harvest as is (no machine product): <see cref="RawProduceType"/>,
+        /// <see cref="FruitTreesProduceType"/> and <see cref="WildTreesProduceType"/>.
+        /// </summary>
+        /// <param name="produceType"> The produce type id. </param>
+        /// <returns> Whether the harvest is sold raw. </returns>
+        public static bool IsSoldRaw(string? produceType)
+        {
+            return produceType is RawProduceType or FruitTreesProduceType or WildTreesProduceType;
+        }
+
+        /// <summary>
+        /// Whether <paramref name="produceType"/> is one of the tree views (<see cref="FruitTreesProduceType"/> or
+        /// <see cref="WildTreesProduceType"/>).
+        /// </summary>
+        /// <param name="produceType"> The produce type id. </param>
+        /// <returns> Whether the produce type lists trees. </returns>
+        public static bool IsTreeProduceType(string? produceType)
+        {
+            return produceType is FruitTreesProduceType or WildTreesProduceType;
+        }
+
+        /// <summary>
         /// Fertilizer quality enum.
         /// </summary>
         public enum FertilizerQuality
@@ -184,8 +217,8 @@ namespace ProfitCalculator
 
         /// <summary>
         /// Applies the sale price profession bonuses the game applies in <c>Object.getPriceAfterMultipliers</c>: Tiller
-        /// (x1.1 for vegetables, fruits and flowers) and Artisan (x1.4 for artisan goods). Both are skipped when the
-        /// calculator is set to use base stats.
+        /// (x1.1 for vegetables, fruits and flowers), Artisan (x1.4 for artisan goods) and Tapper (x1.25 for syrups,
+        /// category -27). All are skipped when the calculator is set to use base stats.
         /// </summary>
         /// <param name="item"> The item being sold, used for its category.</param>
         /// <param name="basePrice"> The price before profession bonuses.</param>
@@ -206,6 +239,10 @@ namespace ProfitCalculator
             if (item.Category == SObject.artisanGoodsCategory && professions.Contains(Farmer.artisan))
             {
                 multiplier *= 1.4f;
+            }
+            if (item.Category == SObject.syrupCategory && professions.Contains(Farmer.tapper))
+            {
+                multiplier *= 1.25f;
             }
             return (int)(basePrice * multiplier);
         }
