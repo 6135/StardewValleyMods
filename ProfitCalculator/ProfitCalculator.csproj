@@ -4,10 +4,12 @@
     <TargetFramework>net6.0</TargetFramework>
 	  <AssemblyName>ProfitCalculator</AssemblyName>
 	  <RootNamespace>ProfitCalculator</RootNamespace>
-	  <Version>2.0.0</Version>
+	  <Version>2.1.0</Version>
 	  <EnableHarmony>true</EnableHarmony>
 	  <GamePath>$(STARDEW_GAME_DIR)</GamePath>
 	  <GenerateDocumentationFile>true</GenerateDocumentationFile>
+	  <!-- keep generated files out of the compile globs even when obj/bin are redirected (parallel builds) -->
+	  <DefaultItemExcludes>$(DefaultItemExcludes);obj/**;bin/**</DefaultItemExcludes>
   </PropertyGroup>
 
   <ItemGroup>
@@ -19,6 +21,8 @@
 	
 	<ItemGroup>
 		<None Include="i18n\default.json" />
+		<!-- the data-driven screens (UI Framework data imported at launch, see ProfitCalculatorDataUI) -->
+		<None Include="assets\ui.json" CopyToOutputDirectory="PreserveNewest" />
 	</ItemGroup>
 
 	<ItemGroup>

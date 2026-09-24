@@ -1030,6 +1030,89 @@ namespace UIFramework.Api
 
         // END ITEMIMAGE members
 
+        // BEGIN DATA members (v1.6)
+
+        /// <summary>
+        /// Run one trigger action on behalf of your mod: a vanilla action, a <c>6135.UIFramework_*</c> action, another
+        /// mod's action, or <c>"@owner/command args"</c> for a registered command. <c>${...}</c> is evaluated in your
+        /// mod's scope first. Returns false (and logs why) when it failed.
+        /// </summary>
+        bool RunAction(string action);
+
+        /// <summary>
+        /// Import data UIs from JSON: <c>{ "Menus": { "main": {...} }, "Huds": {...}, "Sprites": {...}, "Owner": {...} }</c>
+        /// (keys without an owner are prefixed with your mod id). The entries become the base layer of the framework's
+        /// data assets, so Content Patcher packs can still patch them. Calling it again adds / replaces entries. The menus
+        /// are built before it returns, so <see cref="GetMenu"/> and <see cref="BindToggleHotkey"/> work on the next line;
+        /// later reloads rebuild them in place (the same menu objects).
+        /// </summary>
+        void ImportData(string json);
+
+        /// <summary>
+        /// Register a command data can run: <c>"OnClick": "@YourModId/name arg1 arg2"</c> (your own data may write
+        /// <c>@name</c>) or <c>6135.UIFramework_Invoke YourModId/name</c>. Replaces an earlier command with the same name.
+        /// </summary>
+        void RegisterCommand(string name, Action<IUIDataCall> run);
+
+        /// <summary>Remove a command registered with <see cref="RegisterCommand"/>.</summary>
+        void UnregisterCommand(string name);
+
+        /// <summary>
+        /// Register a function data expressions can call: <c>${@YourModId/name(1, 'a')}</c> (your own data may write
+        /// <c>@name(...)</c>). Arguments arrive as text; a numeric / <c>true</c> / <c>false</c> result keeps its type.
+        /// </summary>
+        void RegisterFunction(string name, Func<string[], string> function);
+
+        /// <summary>
+        /// Define (or get) a row source computed by C#: data reads it with <c>"Source": "hook:YourModId/name"</c> and
+        /// <c>row.&lt;field&gt;</c>. Set its delegates, and call <see cref="IUIDataSource.Refresh"/> when the rows change.
+        /// </summary>
+        IUIDataSource DefineDataSource(string name);
+
+        /// <summary>Expose a signal to data as <c>@YourModId/name</c> (read-only there; data refreshes when it changes).</summary>
+        void ExposeSignal(string name, IUISignal signal);
+
+        /// <summary>Expose a computed value to data as <c>@YourModId/name</c> (data refreshes when it is invalidated).</summary>
+        void ExposeComputed(string name, IUIComputed computed);
+
+        /// <summary>
+        /// Expose a plain C# object to data: <c>model.name.Property.Sub</c> (your own data) or
+        /// <c>model[YourModId/name].Property</c>, read by reflection (public properties and fields, case-insensitive).
+        /// Inputs can bind to it (<c>"Bind": "model.name.Day"</c>) and a <c>Form</c> can edit it (<c>"Model": "name"</c>).
+        /// Objects implementing <c>INotifyPropertyChanged</c> / <c>INotifyCollectionChanged</c> refresh data when they
+        /// change; other reads are re-evaluated once per tick. Null removes it.
+        /// </summary>
+        void ExposeModel(string name, object model);
+
+        /// <summary>
+        /// Expose a list of plain C# objects as a row source: <c>"Source": "hook:YourModId/name"</c>, cells read
+        /// <c>row.Property</c>. <paramref name="rows"/> is read again when the UI opens and whenever data state changes
+        /// (a command ran, a signal changed...). Null removes it.
+        /// </summary>
+        void ExposeRows(string name, Func<object[]> rows);
+
+        /// <summary>
+        /// Import a JSON file like <see cref="ImportData"/> (a full path: <c>Path.Combine(helper.DirectoryPath, "assets/ui.json")</c>). With
+        /// <paramref name="watch"/> (meant for development) the file is watched and re-imported when saved, and open
+        /// menus rebuild in place: point it at your project's source file to edit UIs without rebuilding the mod.
+        /// </summary>
+        void ImportDataFile(string path, bool watch);
+
+        /// <summary>
+        /// Register custom drawing data elements can use: <c>"DrawExtra": "YourModId/name"</c> (drawn after the element's
+        /// content) or <c>"DrawOverlay": "YourModId/name"</c> (drawn above the whole menu).
+        /// </summary>
+        void RegisterDrawHook(string name, Action<SpriteBatch, Rectangle, IUIDataCall> draw);
+
+        /// <summary>
+        /// A live view of a data state value on the current screen: <c>session.x</c> / <c>config.x</c> /
+        /// <c>player.x</c> (your mod's), or qualified <c>menu[owner/menu].x</c>, <c>session[owner].x</c>, <c>stat.x</c>...
+        /// Writes go through the state store (watches and bindings react).
+        /// </summary>
+        IUISignal DataState(string key);
+
+        // END DATA members
+
     }
 
     // =================================================================================================================
@@ -1525,6 +1608,13 @@ namespace UIFramework.Api
         /// <summary>Evaluated every frame; return false to hide the widget (null = always shown).</summary>
         Func<bool> ShowWhen { get; set; }
 
+        // HUDOVERMENUS (v1.8)
+        /// <summary>
+        /// Keep the widget drawn on top of an open menu (like toasts) instead of hiding it while any menu is open
+        /// (default false). Over a menu it takes no input: hover, clicks and dragging stay world-only.
+        /// </summary>
+        bool ShowOverMenus { get; set; }
+
         /// <summary>Every tick while shown, with elapsed milliseconds.</summary>
         Action<IUIHud, double> OnUpdate { get; set; }
 
@@ -1576,5 +1666,75 @@ namespace UIFramework.Api
     }
 
     // END ITEMIMAGE types
+
+    // BEGIN DATA types (v1.6)
+
+    /// <summary>
+    /// A call from data into a C# hook (a command, a draw hook): where it came from and access to the caller's data
+    /// scope. Valid only during the call (a draw hook gets the same instance every frame).
+    /// </summary>
+    public interface IUIDataCall
+    {
+        /// <summary>The hook's name (without the owner).</summary>
+        string Name { get; }
+
+        /// <summary>The arguments after the command name (already interpolated), or empty.</summary>
+        string[] Args { get; }
+
+        /// <summary>The owner of the UI the call came from (a content pack's or your own mod id).</summary>
+        string OwnerModId { get; }
+
+        /// <summary>The menu the call came from, or null (actions run outside a UI).</summary>
+        IUIMenu Menu { get; }
+
+        /// <summary>The element the call came from, or null.</summary>
+        IUIElement Element { get; }
+
+        /// <summary>
+        /// The collection row the call ran in, or null: your object for <c>ExposeRows</c> rows, the item for item rows,
+        /// the row index for <c>DefineDataSource</c> rows, a string-keyed dictionary for JSON rows, the value otherwise.
+        /// </summary>
+        object Row { get; }
+
+        /// <summary>The position of <see cref="Row"/> in its collection, or -1.</summary>
+        int RowIndex { get; }
+
+        /// <summary>Evaluate a data expression in the caller's scope (<c>"menu.count + 1"</c> or text with <c>${...}</c>).</summary>
+        string Evaluate(string expression);
+
+        /// <summary>Read a state value (<c>menu.x</c>, <c>session.x</c>, <c>config.x</c>, <c>model.name.Path</c>...) in the caller's scope.</summary>
+        string GetState(string key);
+
+        /// <summary>Write a state value in the caller's scope (text is typed: numbers and true / false keep their type); false when it could not be written.</summary>
+        bool SetState(string key, string value);
+    }
+
+    /// <summary>
+    /// A row source computed by C# (see <see cref="IStardewUIApi.DefineDataSource"/>). Data reads
+    /// <c>row.&lt;field&gt;</c> through <see cref="Text"/> (numeric text becomes a number), falling back to
+    /// <see cref="Number"/> when Text is unset or returns null; <c>row.item</c> reads <see cref="Item"/>.
+    /// </summary>
+    public interface IUIDataSource
+    {
+        /// <summary>The source's name (without the owner).</summary>
+        string Name { get; }
+
+        /// <summary>Number of rows.</summary>
+        Func<int> Count { get; set; }
+
+        /// <summary>A field of a row as text: (row index, field name) → text, or null for "no such field".</summary>
+        Func<int, string, string> Text { get; set; }
+
+        /// <summary>A field of a row as a number: (row index, field name) → number.</summary>
+        Func<int, string, double> Number { get; set; }
+
+        /// <summary>The item of a row (<c>row.item</c>), or null.</summary>
+        Func<int, Item> Item { get; set; }
+
+        /// <summary>Tell data the rows changed: collections re-read them on the next tick.</summary>
+        void Refresh();
+    }
+
+    // END DATA types
 
 }

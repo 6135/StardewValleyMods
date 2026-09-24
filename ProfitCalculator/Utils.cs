@@ -83,17 +83,6 @@ namespace ProfitCalculator
         }
 
         /// <summary>
-        /// Whether <paramref name="produceType"/> is one of the tree views (<see cref="FruitTreesProduceType"/> or
-        /// <see cref="WildTreesProduceType"/>).
-        /// </summary>
-        /// <param name="produceType"> The produce type id. </param>
-        /// <returns> Whether the produce type lists trees. </returns>
-        public static bool IsTreeProduceType(string? produceType)
-        {
-            return produceType is FruitTreesProduceType or WildTreesProduceType;
-        }
-
-        /// <summary>
         /// Fertilizer quality enum.
         /// </summary>
         public enum FertilizerQuality

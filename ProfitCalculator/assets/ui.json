@@ -1,0 +1,371 @@
+// Profit Calculator's screens as UI Framework data (imported by ProfitCalculatorDataUI with ImportDataFile).
+//
+// Reached from C#:
+//   model.settings.*     the ProfitCalculatorSettings the main screen edits (ExposeModel)
+//   hook:produceOptions  the produce types offered (ExposeRows: Id, Label)
+//   hook:crops / @crops  the last calculation's CropInfo rows (ExposeRows)
+//   @Calculate, @Reset, @ValidateSettings  commands
+//   @t(key[, token, value]...)  translation; @money(v), @moneyDay(v), @percent(v), @format(v, format)  formatting
+//
+// Content Patcher tokens do not apply in this file: text goes through @t(). Content Patcher packs can still patch
+// the menus field by field (Mods/6135.UIFramework/Menus, keys "6135.ProfitCalculator/main" ...).
+{
+  // shared by both results screens' RowTooltip ({ "From": "crop" }); every value comes from the hovered row
+  "Owner": {
+    "Tooltips": {
+      "crop": {
+        "MaxWidth": 420,
+        "Blocks": [
+          // machine product: the product (drawn by the game, so flavored goods keep their tint), then the crop it is made from
+          { "Type": "Title", "Text": "${row.ProduceName}", "When": "row.ProduceItem != null" },
+          { "Type": "Item", "Item": "${row.ProduceItem}", "When": "row.ProduceItem != null" },
+          { "Type": "Line", "Text": "${@t('made-from')}: ${row.InputsPerProduct} x ${row.InputItem.DisplayName}", "When": "row.ProduceItem != null" },
+          // sold raw: the crop and its seed
+          { "Type": "Title", "Text": "${row.Crop.DisplayName}", "When": "row.ProduceItem == null" },
+          { "Type": "Item", "Item": "${row.Crop.Seed}", "When": "row.ProduceItem == null && row.Crop.Seed != null" },
+      
+          { "Type": "Line", "Text": "${@t('total-p')}: ${@money(row.TotalProfit)}", "Color": "${row.TotalProfit < 0 ? 'Red' : 'DarkGreen'}" },
+          { "Type": "Line", "Text": "${@t('total-p-day')}: ${@moneyDay(row.ProfitPerDay)}", "Color": "${row.ProfitPerDay < 0 ? 'Red' : 'DarkGreen'}" },
+          { "Type": "Line", "Text": "${@t('total-s-loss')}: ${@money(row.TotalSeedLoss)}" },
+          { "Type": "Line", "Text": "${@t('total-s-loss-day')}: ${@moneyDay(row.SeedLossPerDay)}" },
+          { "Type": "Line", "Text": "${@t('seed-bought-count')}: #${row.SeedsNeeded}" },
+          { "Type": "Line", "Text": "${@t('total-f-loss')}: ${@money(row.TotalFertilizerLoss)}", "When": "row.TotalFertilizerLoss != 0" },
+          { "Type": "Line", "Text": "${@t('total-f-loss-day')}: ${@moneyDay(row.FertilizerLossPerDay)}", "When": "row.TotalFertilizerLoss != 0" },
+          { "Type": "Line", "Text": "${@t('fertilizer-bought-count')}: #${row.FertilizerNeeded}", "When": "row.FertilizerNeeded > 0" },
+      
+          { "Type": "Divider" },
+          { "Type": "Line", "Text": "${@t('produce-type-sold')}: ${row.ProduceName}" },
+          { "Type": "Line", "Text": "${@t('produce-count')}: #${@format(row.ProduceCount, '0.##')}" },
+          { "Type": "Line", "Text": "${@t('inputs-per-product')}: #${row.InputsPerProduct}", "When": "row.InputsPerProduct > 1" },
+          { "Type": "Line", "Text": "${@t('processing-time')}: ${@format(row.ProcessingDays, '0.#')} ${@t('days')}", "When": "row.ProduceType != 'Raw' && row.ProduceType != 'FruitTrees' && row.ProduceType != 'WildTrees'" },
+      
+          { "Type": "Divider" },
+          { "Type": "Line", "Text": "${@t('grow-time')}: ${row.GrowthTime} ${@t('days')}" },
+          { "Type": "Line", "Text": "${@t('regrow-time')}: ${row.RegrowthTime > 0 ? row.RegrowthTime + ' ' + @t('days') : @t('no')}" },
+          { "Type": "Line", "Text": "${@t('harvest-count')}: #${row.TotalHarvests}" },
+          { "Type": "Line", "Text": "${@t('duration')}: ${row.Duration} ${@t('days')}" },
+          // the tree views always say when (or that) the seed cost is paid back
+          { "Type": "Line", "Text": "${row.PaybackDay >= 0 ? @t('payback', 'day', row.PaybackDay) : @t('payback-never')}", "When": "row.PaybackDay != -1 || row.ProduceType == 'FruitTrees' || row.ProduceType == 'WildTrees'" },
+      
+          { "Type": "Divider" },
+          { "Type": "Line", "Text": "${@t('min-harvests')}: #${row.Crop.MinHarvests}" },
+          { "Type": "Line", "Text": "${@t('max-harvests')}: #${row.Crop.MaxHarvests}" },
+          { "Type": "Line", "Text": "${@t('max-harvests-level')}: #${@format(row.Crop.MaxHarvestIncreasePerFarmingLevel, '0.###')}", "When": "row.Crop.MaxHarvestIncreasePerFarmingLevel != 0" },
+          { "Type": "Line", "Text": "${@t('extra-harvest-chance')}: ${@percent(row.Crop.ChanceForExtraCrops)}", "When": "row.Crop.ChanceForExtraCrops != 0" },
+      
+          { "Type": "Divider" },
+          // the tree views always show the whole quality mix (a fruit tree's mix changes with its age)
+          { "Type": "Line", "Text": "${@t('value-normal')}: ${@percent(row.ChanceOfNormalQuality)}", "When": "row.ChanceOfNormalQuality != 0 || row.ProduceType == 'FruitTrees' || row.ProduceType == 'WildTrees'" },
+          { "Type": "Line", "Text": "${@t('value-silver')}: ${@percent(row.ChanceOfSilverQuality)}" },
+          { "Type": "Line", "Text": "${@t('value-gold')}: ${@percent(row.ChanceOfGoldQuality)}" },
+          { "Type": "Line", "Text": "${@t('value-iridium')}: ${@percent(row.ChanceOfIridiumQuality)}", "When": "row.ChanceOfIridiumQuality > 0" }
+        ]
+      }
+    }
+  },
+
+  "Menus": {
+    // the settings form: a label / control row per setting; rows that do not apply to the produce type are hidden
+    "main": {
+      "Title": "${@t('app-name')}",
+      // 632 + 2 * IClickableMenu.borderWidth
+      "Width": 712,
+      "DefaultButton": "calculate",
+      // a produce type offered by another save falls back to raw
+      "OnOpen": "@ValidateSettings",
+      "Computed": {
+        // the rows under the optional ones move down by the number of optional rows shown
+        "notRaw": "model.settings.ProduceType != 'Raw'",
+        "wild": "model.settings.ProduceType == 'WildTrees'",
+        "shift": "(menu.notRaw ? 1 : 0) + (menu.wild ? 2 : 0)"
+      },
+      "Children": [
+        {
+          "Id": "form",
+          "Type": "Grid",
+          "Columns": "auto, *",
+          "Rows": "auto, auto, auto, auto, auto, auto, auto, auto, auto",
+          "ColumnSpacing": 32,
+          "RowSpacing": 16,
+          "Children": [
+            { "Id": "day.label", "Label": "${@t('day')}: ", "Font": "dialogue", "Row": 0, "VerticalAlign": "Center" },
+            { "Id": "day", "Type": "NumberInput", "Bind": "model.settings.Day", "Min": 1, "Max": 28, "Decimals": 0, "Texture": "Mods/6135.UIFramework/TextBoxSmall", "Cell": "0,1", "VerticalAlign": "Center" },
+
+            { "Id": "season.label", "Label": "${@t('Season')}: ", "Font": "dialogue", "Row": 1, "VerticalAlign": "Center" },
+            {
+              "Id": "season",
+              "Type": "Dropdown",
+              "Bind": "model.settings.Season",
+              "ChoicesSource": { "Rows": [ "Spring", "Summer", "Fall", "Winter", "Greenhouse" ] },
+              "ChoiceValue": "${row}",
+              "ChoiceLabel": "${@t(lower(row))}",
+              "MaxVisible": 5,
+              "Cell": "1,1",
+              "VerticalAlign": "Center"
+            },
+
+            { "Id": "produceType.label", "Label": "${@t('produce-type')}: ", "Font": "dialogue", "Row": 2, "VerticalAlign": "Center" },
+            {
+              // raw, the fruit tree and wild tree views, plus every machine that accepts a plant drop (rebuilt after a save loads)
+              "Id": "produceType",
+              "Type": "Dropdown",
+              "Bind": "model.settings.ProduceType",
+              "ChoicesSource": "hook:produceOptions",
+              "ChoiceValue": "${row.Id}",
+              "ChoiceLabel": "${row.Label}",
+              // at most this many rows (fewer when there are fewer choices); the rest scroll
+              "MaxVisible": 8,
+              "Cell": "2,1",
+              "VerticalAlign": "Center"
+            },
+
+            { "Id": "years.label", "Label": "${@t('years')}: ", "Font": "dialogue", "Row": 3, "VerticalAlign": "Center", "Visible": "menu.notRaw" },
+            { "Id": "years", "Type": "NumberInput", "Bind": "model.settings.Years", "Min": 1, "Max": 10, "Decimals": 0, "Texture": "Mods/6135.UIFramework/TextBoxSmall", "Cell": "3,1", "VerticalAlign": "Center", "Visible": "menu.notRaw" },
+
+            { "Id": "heavyTapper.label", "Label": "${@t('heavy-tapper')}: ", "Font": "dialogue", "Row": 4, "VerticalAlign": "Center", "Visible": "menu.wild" },
+            { "Id": "heavyTapper", "Type": "Checkbox", "Bind": "model.settings.HeavyTapper", "Cell": "4,1", "VerticalAlign": "Center", "Visible": "menu.wild" },
+
+            { "Id": "treeFertilizer.label", "Label": "${@t('tree-fertilizer')}: ", "Font": "dialogue", "Row": 5, "VerticalAlign": "Center", "Visible": "menu.wild" },
+            { "Id": "treeFertilizer", "Type": "Checkbox", "Bind": "model.settings.TreeFertilizer", "Cell": "5,1", "VerticalAlign": "Center", "Visible": "menu.wild" },
+
+            { "Id": "fertilizerQuality.label", "Label": "${@t('fertilizer-type')}: ", "Font": "dialogue", "Row": "3 + menu.shift", "VerticalAlign": "Center" },
+            {
+              "Id": "fertilizerQuality",
+              "Type": "Dropdown",
+              "Bind": "model.settings.FertilizerQuality",
+              "ChoicesSource": { "Rows": [ "None", "Basic", "Quality", "Deluxe", "SpeedGro", "DeluxeSpeedGro", "HyperSpeedGro" ] },
+              "ChoiceValue": "${row}",
+              "ChoiceLabel": "${@t(lower(row))}",
+              "MaxVisible": 7,
+              "Row": "3 + menu.shift",
+              "Column": 1,
+              "VerticalAlign": "Center"
+            },
+
+            { "Id": "payForSeeds.label", "Label": "${@t('pay-for-seeds')}: ", "Font": "dialogue", "Row": "4 + menu.shift", "VerticalAlign": "Center" },
+            { "Id": "payForSeeds", "Type": "Checkbox", "Bind": "model.settings.PayForSeeds", "Row": "4 + menu.shift", "Column": 1, "VerticalAlign": "Center" },
+
+            { "Id": "payForFertilizer.label", "Label": "${@t('pay-for-fertilizer')}: ", "Font": "dialogue", "Row": "5 + menu.shift", "VerticalAlign": "Center" },
+            { "Id": "payForFertilizer", "Type": "Checkbox", "Bind": "model.settings.PayForFertilizer", "Row": "5 + menu.shift", "Column": 1, "VerticalAlign": "Center" },
+
+            { "Id": "maxMoney.label", "Label": "${@t('max-money')}: ", "Font": "dialogue", "Row": "6 + menu.shift", "VerticalAlign": "Center" },
+            {
+              "Id": "maxMoney",
+              "Type": "NumberInput",
+              "Bind": "model.settings.MaxMoney",
+              "Min": 0,
+              "Max": 99999999,
+              "Decimals": 0,
+              "Texture": "Mods/6135.UIFramework/TextBoxSmall",
+              // room for eight digits without the text shrinking
+              "Width": 192,
+              "Row": "6 + menu.shift",
+              "Column": 1,
+              "VerticalAlign": "Center"
+            },
+
+            { "Id": "useBaseStats.label", "Label": "${@t('base-stats')}: ", "Font": "dialogue", "Row": "7 + menu.shift", "VerticalAlign": "Center" },
+            { "Id": "useBaseStats", "Type": "Checkbox", "Bind": "model.settings.UseBaseStats", "Row": "7 + menu.shift", "Column": 1, "VerticalAlign": "Center" },
+
+            { "Id": "crossSeason.label", "Label": "${@t('cross-season')}: ", "Font": "dialogue", "Row": "8 + menu.shift", "VerticalAlign": "Center" },
+            { "Id": "crossSeason", "Type": "Checkbox", "Bind": "model.settings.CrossSeason", "Row": "8 + menu.shift", "Column": 1, "VerticalAlign": "Center" }
+          ]
+        },
+        {
+          "Id": "buttons",
+          "Type": "Stack",
+          "Horizontal": true,
+          "Spacing": 16,
+          "MarginTop": 32,
+          "Children": [
+            // runs the calculation and opens "results" or "results-machine" as a child (also the Enter default)
+            { "Id": "calculate", "Button": "${@t('calculate')}", "ClickSound": "select", "Height": 64, "OnClick": "@Calculate" },
+            { "Id": "reset", "Button": "${@t('reset')}", "ClickSound": "dialogueCharacterClose", "Height": 64, "OnClick": "@Reset" }
+          ]
+        }
+      ]
+    },
+
+    // crops sold raw (and the tree views): crop, total profit, profit per day, harvests; no title (it opens over the main menu)
+    "results": {
+      // wide enough for the fixed columns plus a 250+ px crop column, the scrollbar and the box insets
+      "Width": 900,
+      "OnOpen": [
+        "6135.UIFramework_ClearSelection crops",
+        "6135.UIFramework_Sort crops profit-day desc",
+        "6135.UIFramework_ScrollTo crops top"
+      ],
+      "Children": [
+        { "Id": "empty", "Label": "${@t('no-results')}", "Font": "dialogue", "Margin": 32, "Visible": "len(@crops) == 0" },
+        {
+          "Id": "crops",
+          "Type": "DataGrid",
+          "Source": "hook:crops",
+          "RowHeight": 56,
+          "VisibleRows": 8,
+          "Selectable": true,
+          "Sort": "profit-day desc",
+          "HorizontalAlign": "Stretch",
+          "Visible": "len(@crops) > 0",
+          "Columns": [
+            {
+              "Id": "crop",
+              "Header": "${@t('crop')}",
+              "Width": "*",
+              "MinWidth": 180,
+              "Sortable": true,
+              "Text": "${row.Crop.DisplayName}",
+              // the crop's own sprite (a Tuple<Texture2D, Rectangle> on the C# row) and its name; the row tooltip covers the whole row
+              "Cell": [
+                {
+                  "Id": "line",
+                  "Type": "Stack",
+                  "Horizontal": true,
+                  "Spacing": 8,
+                  "VerticalAlign": "Center",
+                  "Children": [
+                    { "Id": "sprite", "Type": "Image", "Sprite": "${row.Crop.Sprite}", "Scale": 3, "VerticalAlign": "Center" },
+                    { "Id": "name", "Label": "${row.Crop.DisplayName}", "VerticalAlign": "Center" }
+                  ]
+                }
+              ]
+            },
+            // right-aligned money columns, drawn green for a gain and red for a loss
+            {
+              "Id": "profit",
+              "Header": "${@t('total-p')}",
+              "Width": "150px",
+              "Sortable": true,
+              "Align": "End",
+              "Text": "${@money(row.TotalProfit)}",
+              "SortNumber": "row.TotalProfit",
+              "Cell": [ { "Id": "text", "Label": "${@money(row.TotalProfit)}", "HorizontalAlign": "Stretch", "TextAlign": "End", "Color": "${row.TotalProfit < 0 ? 'Red' : 'DarkGreen'}" } ]
+            },
+            {
+              "Id": "profit-day",
+              "Header": "${@t('total-p-day')}",
+              "Width": "190px",
+              "Sortable": true,
+              "Align": "End",
+              "Text": "${@moneyDay(row.ProfitPerDay)}",
+              "SortNumber": "row.ProfitPerDay",
+              "Cell": [ { "Id": "text", "Label": "${@moneyDay(row.ProfitPerDay)}", "HorizontalAlign": "Stretch", "TextAlign": "End", "Color": "${row.ProfitPerDay < 0 ? 'Red' : 'DarkGreen'}" } ]
+            },
+            {
+              "Id": "harvests",
+              "Header": "${@t('harvest-count')}",
+              "Width": "100px",
+              "Sortable": true,
+              "Align": "End",
+              "Text": "#${row.TotalHarvests}",
+              "SortNumber": "row.TotalHarvests"
+            }
+          ],
+          "RowTooltip": { "From": "crop" }
+        }
+      ]
+    },
+
+    // machine products: the product first, then the crop it takes (with the input count)
+    "results-machine": {
+      // the raw screen plus the crop (input) column
+      "Width": 1120,
+      "OnOpen": [
+        "6135.UIFramework_ClearSelection crops",
+        "6135.UIFramework_Sort crops profit-day desc",
+        "6135.UIFramework_ScrollTo crops top"
+      ],
+      "Children": [
+        { "Id": "empty", "Label": "${@t('no-results')}", "Font": "dialogue", "Margin": 32, "Visible": "len(@crops) == 0" },
+        {
+          "Id": "crops",
+          "Type": "DataGrid",
+          "Source": "hook:crops",
+          "RowHeight": 56,
+          "VisibleRows": 8,
+          "Selectable": true,
+          "Sort": "profit-day desc",
+          "HorizontalAlign": "Stretch",
+          "Visible": "len(@crops) > 0",
+          "Columns": [
+            {
+              "Id": "product",
+              "Header": "${@t('product')}",
+              "Width": "*",
+              "MinWidth": 180,
+              "Sortable": true,
+              "Text": "${row.ProduceName}",
+              // the product (drawn by the game, so flavored goods keep their tint) and its name; the row tooltip covers the whole row
+              "Cell": [
+                {
+                  "Id": "line",
+                  "Type": "Stack",
+                  "Horizontal": true,
+                  "Spacing": 8,
+                  "VerticalAlign": "Center",
+                  "Children": [
+                    { "Id": "sprite", "Type": "ItemImage", "Item": "${row.ProduceItem != null ? row.ProduceItem : row.InputItem}", "Scale": 3, "VerticalAlign": "Center" },
+                    { "Id": "name", "Label": "${row.ProduceName}", "VerticalAlign": "Center" }
+                  ]
+                }
+              ]
+            },
+            {
+              "Id": "crop",
+              "Header": "${@t('crop')}",
+              "Width": "220px",
+              "Sortable": true,
+              "Text": "${row.InputsPerProduct} x ${row.InputItem.DisplayName}",
+              "SortKey": "${row.InputItem.DisplayName}",
+              // the crop that goes into the machine: its sprite and "count x name"
+              "Cell": [
+                {
+                  "Id": "line",
+                  "Type": "Stack",
+                  "Horizontal": true,
+                  "Spacing": 8,
+                  "VerticalAlign": "Center",
+                  "Children": [
+                    { "Id": "sprite", "Type": "ItemImage", "Item": "${row.InputItem}", "Scale": 3, "VerticalAlign": "Center" },
+                    { "Id": "name", "Label": "${row.InputsPerProduct} x ${row.InputItem.DisplayName}", "VerticalAlign": "Center" }
+                  ]
+                }
+              ]
+            },
+            // right-aligned money columns, drawn green for a gain and red for a loss
+            {
+              "Id": "profit",
+              "Header": "${@t('total-p')}",
+              "Width": "150px",
+              "Sortable": true,
+              "Align": "End",
+              "Text": "${@money(row.TotalProfit)}",
+              "SortNumber": "row.TotalProfit",
+              "Cell": [ { "Id": "text", "Label": "${@money(row.TotalProfit)}", "HorizontalAlign": "Stretch", "TextAlign": "End", "Color": "${row.TotalProfit < 0 ? 'Red' : 'DarkGreen'}" } ]
+            },
+            {
+              "Id": "profit-day",
+              "Header": "${@t('total-p-day')}",
+              "Width": "190px",
+              "Sortable": true,
+              "Align": "End",
+              "Text": "${@moneyDay(row.ProfitPerDay)}",
+              "SortNumber": "row.ProfitPerDay",
+              "Cell": [ { "Id": "text", "Label": "${@moneyDay(row.ProfitPerDay)}", "HorizontalAlign": "Stretch", "TextAlign": "End", "Color": "${row.ProfitPerDay < 0 ? 'Red' : 'DarkGreen'}" } ]
+            },
+            {
+              "Id": "harvests",
+              "Header": "${@t('harvest-count')}",
+              "Width": "100px",
+              "Sortable": true,
+              "Align": "End",
+              "Text": "#${row.TotalHarvests}",
+              "SortNumber": "row.TotalHarvests"
+            }
+          ],
+          "RowTooltip": { "From": "crop" }
+        }
+      ]
+    }
+  }
+}

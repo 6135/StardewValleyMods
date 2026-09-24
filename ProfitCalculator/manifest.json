@@ -8,7 +8,7 @@
   "MinimumApiVersion": "4.0.0",
   "UpdateKeys": [ "Nexus:19931" ],
   "Dependencies": [
-    { "UniqueID": "6135.UIFramework", "MinimumVersion": "1.2.0", "IsRequired": true },
+    { "UniqueID": "6135.UIFramework", "MinimumVersion": "1.8.0", "IsRequired": true },
     { "UniqueID": "furyx639.CustomBush", "IsRequired": false }
   ]
 }

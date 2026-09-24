@@ -23,7 +23,7 @@ namespace ProfitCalculator
         private ModConfig? Config;
         private IStardewUIApi? uiApi;
         private ProfitCalculatorSettings? settings;
-        private ProfitCalculatorMainMenu? mainMenu;
+        private ProfitCalculatorDataUI? dataUI;
         internal static readonly string UniqueID = "6135.ProfitCalculator";
         private const string UIFrameworkId = "6135.UIFramework";
 
@@ -50,6 +50,7 @@ namespace ProfitCalculator
             helper.Events.GameLoop.SaveLoaded += OnSaveGameLoaded;
             helper.Events.GameLoop.DayStarted += OnDayStartedResetCache;
             helper.Events.Content.AssetRequested += OnAssetRequested;
+            helper.Events.Content.LocaleChanged += OnLocaleChanged;
         }
 
         /// <summary>The API other mods get through <c>Helper.ModRegistry.GetApi</c>.</summary>
@@ -154,18 +155,25 @@ namespace ProfitCalculator
                 return;
             }
             settings = new ProfitCalculatorSettings();
-            mainMenu = new ProfitCalculatorMainMenu(uiApi, Helper, Monitor, settings, new ProfitCalculatorResultsMenu(uiApi, Helper, false), new ProfitCalculatorResultsMenu(uiApi, Helper, true));
+            // the screens are UI Framework data (assets/ui.json); ProfitCalculatorDataUI supplies what only C# computes
+            dataUI = new ProfitCalculatorDataUI(uiApi, Helper, Monitor, settings);
             ApplyConfig();
         }
 
         /// <summary>Push the hotkey and tooltip delay from the config to the framework.</summary>
         private void ApplyConfig()
         {
-            if (uiApi is null || mainMenu is null)
+            if (uiApi is null || dataUI is null)
                 return;
-            uiApi.BindToggleHotkey(mainMenu.Menu, (Config?.HotKey ?? SButton.F8).ToString());
+            dataUI.BindHotkey((Config?.HotKey ?? SButton.F8).ToString());
             // the legacy delay was counted in frames (60 per second); the framework takes milliseconds
             uiApi.SetTooltipDelay((Config?.ToolTipDelay ?? 30) * 1000 / 60);
+        }
+
+        /// <summary>Re-translate the data screens (their text comes from the <c>@t</c> function).</summary>
+        private void OnLocaleChanged(object? sender, LocaleChangedEventArgs e)
+        {
+            dataUI?.RegisterFunctions();
         }
 
         #endregion UI Framework
