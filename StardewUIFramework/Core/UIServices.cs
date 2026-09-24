@@ -8,7 +8,7 @@ using UIFramework.Rendering;
 
 namespace UIFramework.Core
 {
-    /// <summary>Measures text without exposing <see cref="SpriteFont"/> so layout can run without the game (tests).</summary>
+    /// <summary>Measures text without exposing <see cref="SpriteFont"/>.</summary>
     internal interface ITextMeasurer
     {
         Vector2 Measure(UIFont font, string text, float scale);
@@ -49,8 +49,8 @@ namespace UIFramework.Core
     }
 
     /// <summary>
-    /// Process-wide services used by the element tree. Set once by <see cref="ModEntry"/>; tests replace the
-    /// members with fakes so the layout / routing code never touches <see cref="Game1"/>.
+    /// Process-wide services used by the element tree. Set once by <see cref="ModEntry"/> so the layout /
+    /// routing code never touches <see cref="Game1"/> directly.
     /// </summary>
     internal static class UIServices
     {
@@ -90,16 +90,16 @@ namespace UIFramework.Core
         internal static Hosting.HudService? Hud { get; set; }
 
         // DATA
-        /// <summary>Data-driven menus (null until <see cref="ModEntry"/> wired it; null in tests).</summary>
+        /// <summary>Data-driven menus (null until <see cref="ModEntry"/> wired it).</summary>
         internal static global::UIFramework.Data.DataService? Data { get; set; }
 
-        /// <summary>The C# bridge of data UIs: commands, functions, sources, draw hooks and exposed values (null until <see cref="ModEntry"/> wired it; null in tests).</summary>
+        /// <summary>The C# bridge of data UIs: commands, functions, sources, draw hooks and exposed values (null until <see cref="ModEntry"/> wired it).</summary>
         internal static Hosting.HookRegistry? Hooks { get; set; }
 
         /// <summary>Player-owned window layouts for the current save (null until <see cref="ModEntry"/> wired it).</summary>
         internal static Hosting.WindowLayoutStore? Layouts { get; set; }
 
-        /// <summary>Persists <see cref="Config"/> (set by <see cref="ModEntry"/>; null in tests).</summary>
+        /// <summary>Persists <see cref="Config"/> (set by <see cref="ModEntry"/>).</summary>
         internal static Action? SaveConfig { get; set; }
 
         /// <summary>Screen reader output (Stardew Access when installed); null when no screen reader mod is present.</summary>

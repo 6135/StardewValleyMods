@@ -10,11 +10,9 @@ in-game inspector.
 
 It does nothing on its own: install it because another mod lists it as a requirement.
 
-> **Not the same as StardewUI.** [focustense's StardewUI](https://github.com/focustense/StardewUI) is a separate
-> framework built around StarML markup bound to C# view models. UI Framework takes JSON data or C#: screens are
-> Content Patcher-patchable data assets (with live expressions, named state, trigger actions and game state queries,
-> so no C# is needed), or you call `AddButton(...)`, `AddGrid(...)` and so on from C#. Mods that depend on one do not
-> need the other.
+> UI Framework takes JSON data or C#: screens are Content Patcher-patchable data assets (with live expressions, named
+> state, trigger actions and game state queries, so no C# is needed), or you call `AddButton(...)`, `AddGrid(...)` and
+> so on from C#.
 
 Design notes and the implementation plan live in [architecture.md](architecture.md).
 
@@ -1483,58 +1481,6 @@ Calculator keeps its main menu in `assets/ui.json`.
 - Elements without an `Id` cannot be targeted reliably by other packs' patches, decorations or `el[id]`.
 - A C# menu, HUD or composite with the same key always wins over a data entry.
 
-#### Headless testing
-
-`StardewUIFramework.Tests` (xUnit) runs the framework without the game through the harness in its `Testing/`
-folder, and shows how a consumer can test its own screens in CI:
-
-| Class               | Role                                                                                                                                                                                                                     |
-|---------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `TestHost`          | Installs fakes into the framework's services (monospace text measurement, a sound recorder, a fixed 1280x720 `Viewport`, a manual clock `NowMs` / `Advance`, an in-memory keyboard `Subscriber`) and creates a consumer context plus a `StardewUIApi` as `ModEntry` would (`Api`, consumer id `test.consumer`). `CreateBareMenu(id)` makes a chrome-less menu so bounds are easy to predict, `Layout(menu)` runs a layout pass, `Drive(menu)` returns an input driver, `Sounds` / `ClearSounds` inspect the cues played, `Config` is the `ModConfig` in effect. |
-| `InputDriver`       | Scripts input the way `MenuHost` feeds it from the game: `Hover`, `Click` / `RightClick` (return whether something handled it), `Drag`, `Scroll`, `Key(key, shift, ctrl)` (routed like `receiveKeyPress` and, for text inputs, also as the keyboard dispatcher would), `Type` (`'\b'` is a backspace), `Paste`, `Tick(elapsedMs)`; `Focused` / `Hovered` read the state. A layout pass runs before every action and again afterwards when the action dirtied it. |
-| `TreeSnapshot`      | `Render(menu)` lays the menu out and returns a deterministic text dump (type, id and bounds per line, indented by depth) for snapshot assertions; `Render(element)` dumps a subtree without a layout pass.                     |
-| `FakeTextMeasurer`  | The monospace `ITextMeasurer`: every character is 8 px wide (times the scale) and every line 16 px tall whatever the font; wrapping is greedy on spaces.                                                                    |
-| `GameAssemblies`    | Resolves the game, SMAPI and MonoGame assemblies from the game folder at run time (from the `GamePath` assembly metadata the project bakes in).                                                                            |
-
-Menus are never opened as `IClickableMenu`s in tests (`Game1.activeClickableMenu`'s setter needs `Game1.player`);
-the harness lays them out and drives them directly. The fakes live in the framework's static services, so the test
-assembly disables xUnit parallelization.
-
-```csharp
-[Fact]
-public void NumberInputStepsAndClamps()
-{
-    var host = new TestHost();
-    IUIMenu menu = host.CreateBareMenu("m");
-    double value = 5;
-    IUINumberInput number = host.Api.AddNumberInput(menu.Root, "n", () => value, v => value = v, 1, 28, 1, true);
-    InputDriver input = host.Drive(menu);
-
-    input.Click(number.Bounds.Center.X, number.Bounds.Center.Y);
-    Assert.True(number.IsFocused);
-    input.Key(Keys.Up);
-    Assert.Equal(6, value);
-    input.Type("9");                 // "69" clamps to 28
-    Assert.Equal(28, value);
-
-    Assert.Contains("NumberInput 'n'", TreeSnapshot.Render(menu));
-}
-```
-
-Run the suite from the repository root (the project references the game assemblies through ModBuildConfig, so
-`STARDEW_GAME_DIR` must point at the game folder exactly as for a build; the two properties stop ModBuildConfig from
-deploying or zipping the test assembly as a mod):
-
-```sh
-dotnet test StardewUIFramework.Tests -p:EnableModDeploy=false -p:EnableModZip=false
-```
-
-The harness is compiled into the test project and uses the framework's internals (`UIFramework.csproj` declares
-`InternalsVisibleTo("StardewUIFramework.Tests")`), so it is not yet a package a consumer can reference. To test your
-own screens the same way today, add your test classes to `StardewUIFramework.Tests` (they drive menus through
-`host.Api`, the same `IStardewUIApi` surface your mod uses), or copy `Testing/*.cs` into a test project of your own
-named `StardewUIFramework.Tests` with a project reference to `UIFramework.csproj`.
-
 ### API reference
 
 Everything below is declared in [`Api/Public/IStardewUIApi.cs`](Api/Public/IStardewUIApi.cs). A browsable version
@@ -2336,12 +2282,6 @@ Requirements: .NET 6 SDK and a Stardew Valley 1.6 install with SMAPI.
 
    Or open `Stardew Mods.sln` and build the `UIFramework` and `UIFrameworkExample` projects.
 
-3. Optionally run the headless test suite (see [Headless testing](#headless-testing)):
-
-   ```sh
-   dotnet test StardewUIFramework.Tests -p:EnableModDeploy=false -p:EnableModZip=false
-   ```
-
 [Pathoschild.Stardew.ModBuildConfig](https://github.com/Pathoschild/SMAPI/blob/develop/docs/technical/mod-package.md)
 handles the rest: it references the game assemblies, copies the built mod into `<game>/Mods/UIFramework` after every
 build so you can test immediately, and drops a release zip (`UIFramework <version>.zip`) into the project's build
@@ -2369,6 +2309,5 @@ honest. When the API file changes, copy it to `UIFrameworkExample/Api/IStardewUI
 | `architecture.md`                 | Design document, implementation plan, the v1.1 roadmap (§16) and the data-driven UI design (§17).                                                                                                                                                                                                                  |
 | `code-review.md`                  | Review notes and polish backlog.                                                                                                                                                                                                                                                  |
 | `Doxyfile`                        | Doxygen configuration for the API reference.                                                                                                                                                                                                                                      |
-| `../StardewUIFramework.Tests/`    | xUnit test project: `Testing/` is the headless harness (`TestHost`, `InputDriver`, `TreeSnapshot`, `FakeTextMeasurer`, `GameAssemblies`), `Tests/` covers layout, routing, inputs, scrolling / lists and the developer tools.                                                     |
 | `../UIFrameworkExample/`          | The example consumer mod (`ModEntry.cs`, `DemoSettings.cs`, `FrameBox.cs`, `VolumeGauge.cs`) with its own copy of the API file. |
 | `../[CP] UI Framework Example/`   | The example Content Patcher pack: data menus, a HUD, a settings screen, templates, a data composite and contributions, plus a hybrid menu over the example mod's C# hooks.                                                                                                                                                   |

@@ -15,7 +15,7 @@ namespace UIFramework.Core.Export
     /// <para>
     /// The constructor arguments of each kind are written from named properties; the remaining non-default
     /// properties follow in the reader's order. The output for the kinds the original single-class exporter
-    /// supported is kept byte for byte (the tooling tests assert literal lines).
+    /// supported is kept byte for byte.
     /// </para>
     /// </summary>
     internal sealed class CSharpEmitter

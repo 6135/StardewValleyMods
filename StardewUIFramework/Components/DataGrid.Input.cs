@@ -30,14 +30,14 @@ namespace UIFramework.Components
         private int lastClickRow = -1;
         private double lastClickMs;
 
-        /// <summary>Reads the Shift / Ctrl state at click time (replaceable by tests).</summary>
-        internal static Func<(bool shift, bool ctrl)> ReadModifiers { get; set; } = () =>
+        /// <summary>Reads the Shift / Ctrl state at click time.</summary>
+        private static (bool shift, bool ctrl) ReadModifiers()
         {
             KeyboardState kb = Game1.GetKeyboardState();
             bool shift = kb.IsKeyDown(Keys.LeftShift) || kb.IsKeyDown(Keys.RightShift);
             bool ctrl = kb.IsKeyDown(Keys.LeftControl) || kb.IsKeyDown(Keys.RightControl);
             return (shift, ctrl);
-        };
+        }
 
         // ---------------------------------------------------------------------------------------------------------
         //  Selection properties

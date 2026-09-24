@@ -23,10 +23,6 @@ settings pages, HUD widgets, additions to other mods' menus) without writing any
   `ui_debug` toggles the debug overlay, `ui_list` lists the framework menus that are open.
 - Works in single player, multiplayer and split-screen. No Harmony patches.
 
-**Not the same as StardewUI.** focustense's StardewUI is a different framework built around StarML markup bound to C#
-view models. UI Framework takes JSON data (Content Patcher data assets, no C# needed) or a C# builder API, and has no
-markup language. A mod that depends on one does not need the other, and both can be installed together.
-
 ## What's new in 1.8
 
 - Players: clicking a button, checkbox, dropdown or slider no longer leaves it highlighted, and one Escape closes the
@@ -39,6 +35,9 @@ markup language. A mod that depends on one does not need the other, and both can
   (`Path.Combine(helper.DirectoryPath, "assets/ui.json")`); relative paths are no longer resolved.
 - Fixes: framework trigger actions no longer report "failed" after they succeeded (buttons stopped responding after
   the first click); UI Framework now lists Content Patcher as an optional dependency, so its token is accepted.
+- Removed: the `StardewUIFramework.Tests` project and its headless test harness (`TestHost`, `InputDriver`,
+  `TreeSnapshot`), along with the test-only hooks in the framework (`FocusManager.GetSubscriber` / `SetSubscriber`,
+  `DataGrid.ReadModifiers` and the unwired `HotkeyService` constructor) and `InternalsVisibleTo`.
 
 ## What's new in 1.3 to 1.7
 

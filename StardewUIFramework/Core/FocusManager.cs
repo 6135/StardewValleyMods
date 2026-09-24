@@ -36,10 +36,6 @@ namespace UIFramework.Core
         private IKeyboardSubscriber? previousSubscriber;
         private bool subscribed;
 
-        /// <summary>Hook for tests: replaces the <see cref="Game1.keyboardDispatcher"/> access.</summary>
-        internal static Func<IKeyboardSubscriber?>? GetSubscriber { get; set; }
-        internal static Action<IKeyboardSubscriber?>? SetSubscriber { get; set; }
-
         internal UIElement? Focused { get; private set; }
 
 
@@ -250,21 +246,11 @@ namespace UIFramework.Core
 
         private static IKeyboardSubscriber? ReadSubscriber()
         {
-            if (GetSubscriber != null)
-            {
-                return GetSubscriber();
-            }
-
             return Game1.keyboardDispatcher?.Subscriber;
         }
 
         private static void WriteSubscriber(IKeyboardSubscriber? subscriber)
         {
-            if (SetSubscriber != null)
-            {
-                SetSubscriber(subscriber);
-                return;
-            }
             if (Game1.keyboardDispatcher != null)
             {
                 Game1.keyboardDispatcher.Subscriber = subscriber;

@@ -38,4 +38,3 @@ git push -u origin release/ProfitCalculator/2.1.0
 ## Notes
 
 - The reference assemblies are only updated upstream when the game or SMAPI changes. If a mod starts using an API newer than they cover, CI fails until they're updated.
-- The tests in `StardewUIFramework.Tests` need the real game at run time, so CI builds them but doesn't run them.

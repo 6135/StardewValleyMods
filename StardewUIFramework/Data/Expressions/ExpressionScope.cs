@@ -81,7 +81,7 @@ namespace UIFramework.Data.Expressions
     }
 
     /// <summary>
-    /// A simple dictionary-backed scope for internal use (tests of templates, one-off evaluations, local variables
+    /// A simple dictionary-backed scope for internal use (templates, one-off evaluations, local variables
     /// layered over another scope such as a Repeat's <c>As</c> name). Roots are matched ordinally; the rest of the
     /// path walks lists, strings and string-keyed dictionaries structurally. Unknown roots, members and external
     /// calls fall through to the <see cref="Parent"/> scope.

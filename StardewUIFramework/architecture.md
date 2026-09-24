@@ -34,7 +34,7 @@ Progress against §13. Update this table when a phase or item changes; §13 stay
 | v1.1 — Data grid (§16.2) | Done | `v2-integration` | `AddDataGrid` / `IUIDataGrid` / `IUIDataGridColumn` (`Components/DataGrid*`): auto/px/star columns, sort, filter, resize, single/multi selection, `IUIRowEvent`, keyboard navigation, virtualized rows. |
 | v1.1 — Signals + auto‑forms (§16.2) | Done | `v2-integration` | `Signal*`/`Computed*` with dependency tracking, `BindText`/`BindVisible`/`BindEnabled`/`BindValue`/`Unbind` (`Core/Signals`, `Core/SignalBindings`); `AddForm(parent, id, model)` → `IUIForm` from POCO attributes (`Range`, `Choices`, `Section`, `Tooltip`, `DisplayName`, `ReadOnly` by name), validators, undo/redo, Save/Cancel (`Core/AutoForm*`). |
 | v1.1 — HUD widgets, toasts, player‑owned layout (§16.2) | Done | `v2-integration` | `IUIHud` (`CreateHud`/`GetHud`/`DestroyHud`; `Hosting/HudService` from `Display.RenderedHud`), toasts (`ShowToast*`, `Hosting/ToastLayer`), `PlayerLayout` (drag/collapse/resize; `Hosting/PlayerLayoutController`, `Hosting/WindowLayoutStore` in save data), `ResetPlayerLayout`, `ui_toast`/`ui_layout_reset`. |
-| v1.1 — Inspector, debug console, test harness (§16.2, §14) | Done | `v2-integration` | `Hosting/Inspector` + `Rendering/InspectorRenderer` (`ModConfig.InspectorHotkey`, nudge/resize/toggle, `Core/TreeExporter` → C# builder code via `ui_export`), `Hosting/DebugConsole` (`ui_list`, `ui_dump`, `ui_find`, `ui_perf`, `ui_inspect`), `Core/PerfCounters`; `StardewUIFramework.Tests` (xUnit) with the `Testing/` harness (`TestHost`, `InputDriver`, `TreeSnapshot`, `FakeTextMeasurer`), 35 tests. |
+| v1.1 — Inspector, debug console (§16.2) | Done | `v2-integration` | `Hosting/Inspector` + `Rendering/InspectorRenderer` (`ModConfig.InspectorHotkey`, nudge/resize/toggle, `Core/TreeExporter` → C# builder code via `ui_export`), `Hosting/DebugConsole` (`ui_list`, `ui_dump`, `ui_find`, `ui_perf`, `ui_inspect`), `Core/PerfCounters`. |
 | v1.3 — Static data menus, open/close, hot reload (§17.1, §17.2, §17.7) | Done | `develop` | `Data/**`: `Menus` / `Sprites` assets (Exclusive, CP `EditData`), `DataAssetReader` → `DataValidator` (path‑qualified messages, "did you mean") → `DataBuilder` through the owner's `StardewUIApi` facade (`Core/ConsumerContexts` shares one context per mod id with `GetApi`); shorthands, `From` files, `ui_schema`; `_OpenMenu` / `_CloseMenu` / `_ToggleMenu` / `_OpenMenuAsChild`, `_MENU_OPEN`, tile / touch action; content‑hash diff + `UIMenu.RebuildInPlace` (`Core/MenuViewState`); `ui_data` / `ui_validate` / `ui_reload` / `ui_open` / `ui_close`; `[CP] UI Framework Example`. |
 | v1.4 — Expressions, state, events, HUDs, owners (§17.3–§17.5) | Done | `develop` | `Data/Expressions` (Pratt parser, cached AST, sandboxed evaluator, built‑ins, per‑epoch/tick cache), `Data/State` (`DataStateStore` per screen: `menu session player stat config`, `ScopeRoots`), `Computed` / `Watch` / `Out` / `If` / `Switch` / `With`, `Keys` / `Validate` / `OnUpdate`, state actions, `_STATE` queries, `[6135.UIFramework_State]` token and the CP token; `Huds` (`HudBuilder`) and `Owners` (tooltip delay, default style, classes, hotkeys); `ui_state`. |
 | v1.5 — Collections, rich tooltips, forms (§17.6) | Done | `develop` | Sources (inline, range, item query, state, expression, themes, asset, named, C#), `Repeat` / `List` / `DataGrid` with `RowScope`, conditional tooltip blocks (`TooltipBlock.When` / `ColorFunc`), data forms on the accessor‑based `AutoForm`; `_Sort` / `_ClearSelection` / `_Form*` / `_Rebuild`. |
@@ -46,8 +46,7 @@ Progress against §13. Update this table when a phase or item changes; §13 stay
 Known gaps / follow‑ups:
 
 - Window chrome (fixed): `Game1.drawDialogueBox` draws its frame 64 px below the `y` it is given, so `UIMenu.DrawChrome` offsets the call and the top inset is 56 px like the sides; tall windows reserve the title banner and scroll their content: `UIMenu.Viewport` is a fit‑content `ScrollView` that hosts `Root` (a real tree element — inspector, dumps, hit‑testing — but not the root's API `Parent`), invisible while the content fits.
-- `StardewUIFramework.Tests` (§14, xUnit, `v2/tools`) covers layout, routing, inputs and the tools headlessly through the `Testing/` harness (`TestHost`, `InputDriver`, `TreeSnapshot`); it is listed in `Stardew Mods.sln`. Menus are never opened as `IClickableMenu`s in tests (`Game1.activeClickableMenu`'s setter needs `Game1.player`).
-- In‑game acceptance (§14: UI scales 75/100/150 %, resize, gamepad reach) still to be run for the Profit Calculator port, and none of the v1.1 features has been exercised in game yet (built and unit‑tested headlessly only).
+- In‑game acceptance (§14: UI scales 75/100/150 %, resize, gamepad reach) still to be run for the Profit Calculator port, and none of the v1.1 features has been exercised in game yet (built only).
 - `TextInput` has no caret movement (Left/Right fall through to focus traversal; the caret is always at the end).
 - Gamepad support relies on vanilla snapping (`populateClickableComponentList` with `SNAP_AUTOMATIC`); `receiveGamePadButton` adds nothing of its own.
 - `HotkeyService` listens to `Input.ButtonsChanged` + `KeybindList.JustPressed()` rather than `Input.ButtonPressed` (§6.3); equivalent for consumers.
@@ -68,7 +67,7 @@ Known gaps / follow‑ups:
 
 ### Non‑goals (v1)
 
-- ~~Declarative UI from JSON/StarML (that is StardewUI's niche). v1 is code‑first through the API.~~ **Reversed in
+- ~~Declarative UI from JSON. v1 is code‑first through the API.~~ **Reversed in
   v1.3:** screens can be JSON data assets edited by Content Patcher (§17). The C# API stays first class; there is
   still no markup language.
 - ~~Data binding framework. Values are read/written through getter/setter delegates, like Profit Calculator does
@@ -421,12 +420,11 @@ UIFrameworkExample/
   UIFrameworkExample.csproj, manifest.json (depends on 6135.UIFramework)
   Api/IStardewUIApi.cs            verbatim copy
   ModEntry.cs                     builds a form + a scrollable list; F9 toggles it
-UIFramework.Tests/  (optional)    xUnit; layout engine + event routing are pure C# and testable without the game
 ```
 
 Repository tasks:
 
-- Update `Stardew Mods.sln`: replace the two stale project entries with the new projects (and the test project if added). — done for the two projects.
+- Update `Stardew Mods.sln`: replace the two stale project entries with the new projects. — done.
 - Root `README.md`: add the framework to the mod list; link `architecture.md` and the API file.
 - CI (CodeFactor is already wired): ensure the new projects build with `STARDEW_GAME_DIR` documented in the README.
 
@@ -484,9 +482,8 @@ Each phase ends in a buildable, demoable state.
 
 ---
 
-## 14. Testing strategy
+## 14. Verification
 
-- **Unit (no game)**: layout engine (measure/arrange for Stack/Grid/ScrollView), event routing (hit‑test, bubble, capture, overlay‑first), focus traversal order, number clamping/validation, `KeybindList` parsing. Abstract font measurement behind `ITextMeasurer` so tests don't need `SpriteFont`.
 - **In‑game smoke (example mod)**: a "kitchen sink" screen exercising every component; console command `ui_demo` opens it; `ui_debug` toggles the bounds overlay.
 - **Acceptance**: Profit Calculator port matches current behavior (Phase 7) at UI scales 75 % / 100 % / 150 % and after window resize; gamepad navigation reaches every control.
 - **Proxy compatibility**: the example mod must compile against *only* the copied `IStardewUIApi.cs` (no project reference to UIFramework) — enforce by keeping it a separate project without a `ProjectReference`.
@@ -502,7 +499,6 @@ Each phase ends in a buildable, demoable state.
 | `Game1.keyboardDispatcher.Subscriber` fought over by multiple mods. | Only `FocusManager` sets it, only while a framework menu is active, and it restores the previous subscriber on close. |
 | SpriteBatch state corruption when nesting `End/Begin` for scissor clipping. | Single helper `Draw.WithScissor(b, rect, action)` that restores exactly the outer parameters; no raw `b.End()` elsewhere (enforced in code review). |
 | SDV 1.6 changed `IClickableMenu` signatures and UI viewport handling. | Target `MinimumApiVersion 4.0.0`, use `Game1.uiViewport` everywhere, and reuse the Profit Calculator position formula which already works on 1.6. |
-| Naming collision with the existing StardewUI framework (focustense). | Keep the mod name **UI Framework** / id `6135.UIFramework`; call out the difference in the README (since v1.3: JSON data assets or a C# builder API, vs StarML markup bound to C# view models). |
 
 Decisions taken in this document:
 
@@ -561,20 +557,19 @@ Each item stands alone; none is required by another unless noted.
 
 | Feature | What it is | Builds on | Value |
 |---|---|---|---|
-| **In‑game inspector and editor** | Devtools‑style overlay: hover any element to see id, bounds, margins, grid tracks; drag to nudge, edit properties live; **export the resulting C# builder code** to the clipboard/log. | Tree + debug overlay (§11), layout engine | Cuts the compile‑launch‑look loop to seconds; no other Stardew UI framework has it. |
+| **In‑game inspector and editor** | Devtools‑style overlay: hover any element to see id, bounds, margins, grid tracks; drag to nudge, edit properties live; **export the resulting C# builder code** to the clipboard/log. | Tree + debug overlay (§11), layout engine | Cuts the compile‑launch‑look loop to seconds; no other Stardew Valley UI framework has it. |
 | **Player‑owned layout** | Every framework window is movable/resizable/collapsible by the player; positions and sizes persist per save via `helper.Data`. Zero consumer code. | `MenuHost`, `MenuRegistry` | Consistent player experience across all consumer mods. |
 | **Theme assets** | Theme = Content Patcher‑patchable asset (fonts, colors, box sprites, spacing scale) with dark, high‑contrast and colorblind variants. One theme applies to every consumer. | `Theme`/`DefaultTheme` (§9) | Players restyle all mod UIs at once; modders get it free. |
 | **Data grid** | Virtualized table with sortable/filterable columns, column resize, cell renderers, row selection and multi‑select events. | `ListView`, `ScrollView`, `Grid` | Replaces the Profit Calculator results list; nothing comparable exists. |
-| **Signals** | `api.Signal(get)`, `api.Computed(() => …)` with automatic dependency tracking; bound labels/inputs re‑render only when inputs change. | Value binding (§6.2) | Reactive UI without StarML or view models. |
+| **Signals** | `api.Signal(get)`, `api.Computed(() => …)` with automatic dependency tracking; bound labels/inputs re‑render only when inputs change. | Value binding (§6.2) | Reactive UI without view models. |
 | **Auto‑forms from POCOs** | Generate a complete form from an object using attributes (`[Range]`, `[Choices]`, `[Section]`, `[Tooltip]`), with validation, dirty tracking, undo/redo, Save/Cancel. | Grid, inputs, validators | GMCM‑style forms for any object on any screen. |
 | **HUD widgets and toasts** | Non‑modal overlays drawn during gameplay (counters, timers, notifications) using the same components, drawn from `Display.RenderedHud`. | Components, player‑owned layout | Extends the framework beyond menus. |
 | **Accessibility** | Focused‑element announcements via the Stardew Access API, text scaling, reduced motion, high‑contrast theme. | FocusManager, themes | First accessible UI framework for SDV. |
 | **Rich inline text** | Markup in labels/tooltips: colored spans, item icons, links, bold. | Label, tooltip builder | Better tooltips and result rows. |
-| **Headless test harness** | Public `UIFramework.Testing` package: fake `ITextMeasurer`, scripted input driver, tree snapshot assertions; consumers test screens in CI without the game. | Tests (§14) | Unique developer‑experience win. |
 | **Pseudo‑localization mode** | Config flag that stretches and accents all strings to catch overflow before translation. | Label | Cheap, useful. |
 | **Debug console** | `ui_list`, `ui_dump <menu>`, `ui_perf`, `ui_slots` console commands. | Registry, inspector | Support and diagnostics. |
 
-Suggested order if all are pursued: inspector → theme assets → data grid → player‑owned layout → signals → auto‑forms → HUD widgets → accessibility → rich text → test harness → pseudo‑localization → debug console.
+Suggested order if all are pursued: inspector → theme assets → data grid → player‑owned layout → signals → auto‑forms → HUD widgets → accessibility → rich text → pseudo‑localization → debug console.
 
 ---
 
@@ -661,4 +656,19 @@ Goal: a content pack defines complete, interactive screens **without C#** and lo
 - `config.*` is global across saves; the Content Patcher token only updates at Content Patcher's update points.
 - Auto‑generated ids cannot be targeted reliably by patches, decorations or `el[id]`.
 - A contributor's data contributions and its own C# `ContributeTo` / `OnScreenBuilt` for the same slot or menu must not overlap.
-- The optional StardewUI‑inspired extras of the plan (interaction state layers, transitions, visual transforms, new components such as tabs and expanders, floating attachments, confirmations, size constraints) are not implemented.
+- The optional extras of the plan (interaction state layers, transitions, visual transforms, new components such as tabs and expanders, floating attachments, confirmations, size constraints) are not implemented.
+
+## 18. To do: differentiation
+
+Direction: the framework for content-pack authors, players and cross-mod UI, rather than competing on C# markup.
+
+- [ ] **JSON Schema for data assets.** Publish a schema for `Menus`, `Huds`, `Owners`, `Sprites`, `Composites` and
+  `Contributions` so editors give autocomplete and inline errors; link it from the Content Pack Guide.
+- [ ] **Starter templates and a quick-start page.** Copy-ready packs (settings page, shop, quest board, HUD counter)
+  and a "first menu in 10 minutes" wiki page.
+- [ ] **Less verbose JSON.** Shorthand forms and sensible defaults, with templates as the main way to build screens.
+- [ ] **Inspector saves JSON.** Let the in-game inspector/editor export pack data, not only C# builder code.
+- [ ] **Pitch player features.** Lead the Nexus page and wiki with remembered window positions, shared themes and
+  screen reader support.
+- [ ] **Close the polish gap.** Tabs, expanders, a confirmation dialog and simple transitions (see §17.10).
+- [ ] **Rename the display name.** Pick a distinct mod name; keep the `6135.UIFramework` id.

@@ -73,7 +73,7 @@ namespace UIFramework.Data.Building
         DataValue Evaluate(string raw, DataScope scope, out string? error);
     }
 
-    /// <summary>The v1.3 resolver (kept for tests and as the fallback): every value is a literal. <c>$${</c> is unescaped to <c>${</c>; an unescaped <c>${</c> is used as is, with a hint.</summary>
+    /// <summary>The v1.3 resolver (the fallback): every value is a literal. <c>$${</c> is unescaped to <c>${</c>; an unescaped <c>${</c> is used as is, with a hint.</summary>
     internal sealed class LiteralValueResolver : IValueResolver
     {
         internal static readonly LiteralValueResolver Instance = new();
