@@ -35,9 +35,6 @@ settings pages, HUD widgets, additions to other mods' menus) without writing any
   (`Path.Combine(helper.DirectoryPath, "assets/ui.json")`); relative paths are no longer resolved.
 - Fixes: framework trigger actions no longer report "failed" after they succeeded (buttons stopped responding after
   the first click); UI Framework now lists Content Patcher as an optional dependency, so its token is accepted.
-- Removed: the `StardewUIFramework.Tests` project and its headless test harness (`TestHost`, `InputDriver`,
-  `TreeSnapshot`), along with the test-only hooks in the framework (`FocusManager.GetSubscriber` / `SetSubscriber`,
-  `DataGrid.ReadModifiers` and the unwired `HotkeyService` constructor) and `InternalsVisibleTo`.
 
 ## What's new in 1.3 to 1.7
 
