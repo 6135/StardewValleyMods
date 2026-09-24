@@ -2,12 +2,12 @@
   "Name": "UI Framework Example",
   "Author": "6135",
   "Version": "%ProjectVersion%",
-  "Description": "Example consumer of the UI Framework: press F9 in-game to open a demo menu.",
+  "Description": "Example consumer of the UI Framework: press F9 in-game to open a demo menu. Also offers C# composites, a command and a draw hook to data UIs, and uses a data composite from the example content pack.",
   "UniqueID": "6135.UIFrameworkExample",
   "EntryDll": "UIFrameworkExample.dll",
   "MinimumApiVersion": "4.0.0",
   "UpdateKeys": [],
   "Dependencies": [
-    { "UniqueID": "6135.UIFramework", "MinimumVersion": "1.2.0", "IsRequired": true }
+    { "UniqueID": "6135.UIFramework", "MinimumVersion": "1.7.0", "IsRequired": true }
   ]
 }

@@ -11,6 +11,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "[CP] Pizza Nodes", "[CP] Pi
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "[CP] Sweet Mines", "[CP] Sweet Mines\[CP] Sweet Mines.csproj", "{34074A22-39A4-410F-BA00-37E26E9B7461}"
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "[CP] UI Framework Example", "[CP] UI Framework Example\[CP] UI Framework Example.csproj", "{5190684B-49F3-48E9-BE41-92E8810B345C}"
+EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Adjustable Fertilizer", "Adjustable Fertilizer\Adjustable Fertilizer.csproj", "{0E2DCBFA-6A6F-4474-9564-5B1F76427913}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "UIFramework", "StardewUIFramework\UIFramework.csproj", "{1A77A589-242F-5857-480B-7E9D9C5E064A}"
@@ -93,6 +95,21 @@ Global
 		{34074A22-39A4-410F-BA00-37E26E9B7461}.Release|x86.Build.0 = Release|Any CPU
 		{34074A22-39A4-410F-BA00-37E26E9B7461}.Release|x64.ActiveCfg = Release|Any CPU
 		{34074A22-39A4-410F-BA00-37E26E9B7461}.Release|x64.Build.0 = Release|Any CPU
+		{5190684B-49F3-48E9-BE41-92E8810B345C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5190684B-49F3-48E9-BE41-92E8810B345C}.Debug|Any CPY.ActiveCfg = Debug|Any CPU
+		{5190684B-49F3-48E9-BE41-92E8810B345C}.Debug|Any CPY.Build.0 = Debug|Any CPU
+		{5190684B-49F3-48E9-BE41-92E8810B345C}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{5190684B-49F3-48E9-BE41-92E8810B345C}.Debug|x86.Build.0 = Debug|Any CPU
+		{5190684B-49F3-48E9-BE41-92E8810B345C}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{5190684B-49F3-48E9-BE41-92E8810B345C}.Debug|x64.Build.0 = Debug|Any CPU
+		{5190684B-49F3-48E9-BE41-92E8810B345C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5190684B-49F3-48E9-BE41-92E8810B345C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{5190684B-49F3-48E9-BE41-92E8810B345C}.Release|Any CPY.ActiveCfg = Release|Any CPU
+		{5190684B-49F3-48E9-BE41-92E8810B345C}.Release|Any CPY.Build.0 = Release|Any CPU
+		{5190684B-49F3-48E9-BE41-92E8810B345C}.Release|x86.ActiveCfg = Release|Any CPU
+		{5190684B-49F3-48E9-BE41-92E8810B345C}.Release|x86.Build.0 = Release|Any CPU
+		{5190684B-49F3-48E9-BE41-92E8810B345C}.Release|x64.ActiveCfg = Release|Any CPU
+		{5190684B-49F3-48E9-BE41-92E8810B345C}.Release|x64.Build.0 = Release|Any CPU
 		{0E2DCBFA-6A6F-4474-9564-5B1F76427913}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{0E2DCBFA-6A6F-4474-9564-5B1F76427913}.Debug|Any CPY.ActiveCfg = Debug|Any CPU
 		{0E2DCBFA-6A6F-4474-9564-5B1F76427913}.Debug|Any CPY.Build.0 = Debug|Any CPU

@@ -16,6 +16,13 @@ namespace UIFrameworkExample
         /// <summary>Global name of the composite this mod defines (convention: mod id + name).</summary>
         private const string MoneyFieldName = "6135.UIFrameworkExample.MoneyField";
 
+        /// <summary>C# composites the example exposes to data packs (v1.6): the custom gauge and the hand-drawn frame.</summary>
+        private const string VolumeGaugeName = "6135.UIFrameworkExample.VolumeGauge";
+        private const string FrameBoxName = "6135.UIFrameworkExample.FrameBox";
+
+        /// <summary>A data composite (v1.7) defined by the "[CP] UI Framework Example" pack's Composites entry, instantiated here from C#.</summary>
+        private const string DataMoneyFieldName = "6135.UIFrameworkExample.CP.MoneyField";
+
         private IUIMenu? menu;
         private IUIHud? hud;
         private ItemImageDemo? itemDemo;
@@ -27,6 +34,7 @@ namespace UIFrameworkExample
         private bool payForSeeds = true;
         private double volume = 50;
         private double money = 500;
+        private double savings = 1200;
         private bool showTips = true;
         private bool playSounds;
         private int clicks;
@@ -66,6 +74,61 @@ namespace UIFrameworkExample
 
             itemDemo = new ItemImageDemo(ui);
             ui.BindToggleHotkey(itemDemo.Menu, "F7");
+
+            RegisterDataHooks(ui);
+        }
+
+        /// <summary>
+        /// The C# bridge (v1.6): what this mod offers to data UIs, e.g. the "[CP] UI Framework Example" pack's hybrid
+        /// menu. Two C# composites (usable as custom tags: <c>{ "Type": "6135.UIFrameworkExample.VolumeGauge", "Value": "menu.volume" }</c>),
+        /// a command (<c>"OnClick": "@6135.UIFrameworkExample/greet"</c>), a draw hook (<c>"DrawExtra": "6135.UIFrameworkExample/sparkle"</c>)
+        /// and the settings object as a model (<c>model[6135.UIFrameworkExample/settings].FarmName</c>, or a Form's <c>Model</c>).
+        /// </summary>
+        private void RegisterDataHooks(IStardewUIApi api)
+        {
+            // the gauge: "Value" is a data reference (menu.volume, config.x, model...), read and written by the component
+            api.DefineComposite(VolumeGaugeName, (host, args) =>
+            {
+                double fallback = 50;
+                Func<double> get = args.GetNumberGetter("Value") ?? (() => fallback);
+                Action<double> set = args.GetNumberSetter("Value") ?? (v => fallback = v);
+                IUIElement gauge = api.AddCustom(host, host.Id + ".gauge", new VolumeGauge(get, set));
+                if (args.Has("Hint"))
+                {
+                    gauge.Tooltip = args.GetGetter("Hint");
+                }
+
+                host.ExposeNumber("value", get);
+                host.ExposeCommand("reset", () => set(0));
+            });
+
+            // the frame: the data element's Children go into the custom component's host (the default ContentTarget)
+            api.DefineComposite(FrameBoxName, (host, args) =>
+            {
+                int padding = args.Has("Padding") ? (int)args.GetNumber("Padding") : 16;
+                api.AddCustom(host, host.Id + ".frame", new FrameBox(), content => content.SetMargin(padding));
+            });
+
+            // a command: arguments arrive interpolated; it can read and write the caller's state
+            api.RegisterCommand("greet", call =>
+            {
+                string who = call.Args.Length > 0 ? string.Join(" ", call.Args) : settings.FarmName;
+                clicks++;
+                call.SetState("menu.greeting", $"Hello {who}! (C# was called {clicks} time(s))");
+                api.ShowToast($"Hello from C#, {who}!", 2000);
+                Monitor.Log($"Command 'greet' from {call.OwnerModId} ({call.Menu?.Id ?? "no menu"}): {string.Join(" ", call.Args)}", LogLevel.Info);
+            });
+
+            // a draw hook: a pulsing heart in the element's top-right corner
+            api.RegisterDrawHook("sparkle", (b, bounds, call) =>
+            {
+                float pulse = 0.6f + (0.4f * (float)Math.Sin(Game1.currentGameTime.TotalGameTime.TotalMilliseconds / 250.0));
+                b.Draw(Game1.mouseCursors, new Microsoft.Xna.Framework.Vector2(bounds.Right - 12, bounds.Y - 8), new Microsoft.Xna.Framework.Rectangle(211, 428, 7, 6),
+                    Microsoft.Xna.Framework.Color.White * pulse, 0f, Microsoft.Xna.Framework.Vector2.Zero, 3f, Microsoft.Xna.Framework.Graphics.SpriteEffects.None, 1f);
+            });
+
+            // the POCO the C# form edits, readable (and bindable) from data
+            api.ExposeModel("settings", settings);
         }
 
         private IUIMenu BuildMenu(IStardewUIApi api)
@@ -74,7 +137,11 @@ namespace UIFrameworkExample
             options.Title = () => "UI Framework demo";
             options.Width = 720;
             IUIMenu demo = api.CreateMenu("demo", options);
-            demo.OnOpen = _ => Monitor.Log("Demo menu opened.", LogLevel.Debug);
+            demo.OnOpen = _ =>
+            {
+                Monitor.Log("Demo menu opened.", LogLevel.Debug);
+                AddDataComposite(api, demo);
+            };
             demo.OnClose = _ => Monitor.Log("Demo menu closed.", LogLevel.Debug);
 
             BuildForm(api, demo.Root);
@@ -150,6 +217,7 @@ namespace UIFrameworkExample
         {
             IUIStack row = api.AddStack(parent, "theme-row", true, 24);
             row.VerticalAlign = UIAlign.Center;
+            row.Sealed = true; // other mods may not edit this row (the CP pack's decoration of it is refused with an error)
             IUILabel label = api.AddLabel(row, "theme.label", () => "Theme:");
             label.VerticalAlign = UIAlign.Center;
             IUIDropdown theme = api.AddDropdown(row, "theme", api.ListThemes, api.ListThemes, () => api.ActiveTheme, api.SetTheme);
@@ -273,6 +341,7 @@ namespace UIFrameworkExample
             IUIButton ok = api.AddButton(buttons, "ok", () => $"OK ({clicks})", _ =>
             {
                 clicks++;
+                api.Publish(demo, "ok"); // contributors (C# Subscribe or a data "On": { "ok": ... }) hear it once each
                 Monitor.Log($"OK: name={name} day={day} season={season} seeds={payForSeeds} volume={volume} row={selectedRow}", LogLevel.Info);
                 api.ShowToastWithIcon($"OK pressed {clicks} time(s).", Game1.mouseCursors, new Microsoft.Xna.Framework.Rectangle(128, 256, 16, 16), 3000);
             });
@@ -330,6 +399,31 @@ namespace UIFrameworkExample
             framed.Row = 7;
             framed.ColumnSpan = 2;
             framed.Tooltip = () => "AddCustom + build: the frame is drawn by the mod, the checkboxes are built-ins.";
+        }
+
+        /// <summary>
+        /// A data composite (v1.7) from C#: the "[CP] UI Framework Example" pack defines <see cref="DataMoneyFieldName"/>
+        /// in its Composites entry; C# instantiates it with <c>AddComposite</c> like any composite. Its "value" parameter is
+        /// two-way: a getter under "value" and its setter under "value.set". Added on the first open where the pack is
+        /// loaded (data composites are registered after the game launched); editing the pack's entry and running
+        /// <c>patch reload</c> rebuilds this instance in place.
+        /// </summary>
+        private void AddDataComposite(IStardewUIApi api, IUIMenu demo)
+        {
+            if (demo.Find("data.money") != null || !api.HasComposite(DataMoneyFieldName))
+            {
+                return;
+            }
+
+            IUICompositeArgs args = api.CreateCompositeArgs();
+            args.SetString("label", "Savings (data composite):");
+            args.SetNumberGetter("value", () => savings);
+            args.SetNumberSetter("value.set", v => savings = v);
+            args.SetNumber("max", 50000);
+            IUIComposite field = api.AddComposite(demo.Root, "data.money", DataMoneyFieldName, args);
+            field.HorizontalAlign = UIAlign.Center;
+            field.Tooltip = () => $"'{field.CompositeName}' is defined in JSON by a content pack; exposed value = {field.GetNumber("value"):0}";
+            field.Subscribe("changed", () => Monitor.Log($"Savings → {savings:0}g (event from a data composite)", LogLevel.Debug));
         }
 
         /// <summary>The composite's builder: runs once per instance (and again on <see cref="IUIComposite.Rebuild"/>).</summary>

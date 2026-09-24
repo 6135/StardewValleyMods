@@ -1,0 +1,864 @@
+{
+  "Format": "2.0.0",
+  "Changes": [
+    // named sprites: another pack can reskin the demo by editing only these entries
+    {
+      "LogName": "UI Framework sprites",
+      "Action": "EditData",
+      "Target": "Mods/6135.UIFramework/Sprites",
+      "Entries": {
+        "{{ModId}}/parsnip": {
+          "Texture": "Maps/springobjects",
+          "Source": "0,16,16,16",
+          "Scale": 4
+        },
+        "{{ModId}}/heart": {
+          "Texture": "LooseSprites/Cursors",
+          "Source": "211,428,7,6",
+          "Scale": 3
+        }
+      }
+    },
+
+    // owner settings: style classes used by "Class", a global hotkey, the tooltip delay
+    {
+      "LogName": "UI Framework owner settings",
+      "Action": "EditData",
+      "Target": "Mods/6135.UIFramework/Owners",
+      "Entries": {
+        "{{ModId}}": {
+          "TooltipDelayMs": 250,
+          "Classes": {
+            "hint": { "TextColor": "#5B5B5B" },
+            "accent": { "TextColor": "#2060C0" },
+            "tab": { "Padding": 8 }
+          },
+          "Hotkeys": {
+            "hud": {
+              "Keys": "LeftControl + F10",
+              "Actions": "6135.UIFramework_ToggleHud {{ModId}}/status"
+            }
+          },
+          // owner-wide templates (v1.7), usable in every UI of this pack: parameters with defaults, and Outlet placeholders
+          // the instance's children choose with "Outlet" (children without one go into the unnamed default outlet)
+          "Templates": {
+            "section": {
+              "Params": {
+                "title": { "Type": "string", "Default": "{{i18n:crossmod.section.untitled}}" },
+                "note": { "Type": "string", "Default": "" }
+              },
+              "Spacing": 6,
+              "Children": [
+                {
+                  "Id": "head",
+                  "Type": "Stack",
+                  "Horizontal": true,
+                  "Spacing": 12,
+                  "Alignment": "Center",
+                  "Children": [
+                    { "Id": "title", "Label": "${args.title}", "Class": "accent" },
+                    { "Id": "actions", "Outlet": "actions", "Horizontal": true, "Spacing": 8 }
+                  ]
+                },
+                { "Id": "note", "Label": "${args.note}", "Class": "hint", "Wrap": true, "Visible": "len(args.note) > 0" },
+                // the default outlet; its own children are shown when the instance has none for it
+                { "Id": "body", "Type": "Outlet", "Spacing": 8, "Children": [ { "Id": "empty", "Label": "{{i18n:crossmod.section.empty}}", "Class": "hint" } ] },
+                { "Id": "rule", "Type": "Spacer", "Line": true, "Height": 8, "HorizontalAlign": "Stretch" }
+              ]
+            }
+          }
+        }
+      }
+    },
+
+    // the menus, keyed <owner mod id>/<menu id>
+    {
+      "LogName": "UI Framework menus",
+      "Action": "EditData",
+      "Target": "Mods/6135.UIFramework/Menus",
+      "Entries": {
+        "{{ModId}}/demo": {
+          "Title": "{{i18n:demo.title}}",
+          "Width": 800,
+          "Hotkey": "F10",
+          "Spacing": 12,
+          "CancelButton": "close",
+
+          // menu.* state: defaults are only used for values that do not exist yet
+          "State": {
+            "clicks": 0,
+            "tab": "form",
+            "theme": "$:{ui.theme}",
+            "hoverHelp": false,
+            "minPrice": 0,
+            "pickedCrop": -1,
+            "pickedRows": "",
+            // a list held in state (kept as JSON text): the "Wish list" repeat reads it, SetState can replace it
+            "wishes": [ "(O)24", "(O)400", "(O)254" ]
+          },
+
+          // named row sources, shared by the list, the grid and the repeat of the Collections tab
+          "Sources": {
+            "crops": {
+              "Rows": [
+                { "name": "{{i18n:crop.parsnip}}", "item": "(O)24", "seed": 20, "price": 35, "days": 4, "season": "spring" },
+                { "name": "{{i18n:crop.cauliflower}}", "item": "(O)190", "seed": 80, "price": 175, "days": 12, "season": "spring" },
+                { "name": "{{i18n:crop.potato}}", "item": "(O)192", "seed": 50, "price": 80, "days": 6, "season": "spring" },
+                { "name": "{{i18n:crop.melon}}", "item": "(O)254", "seed": 80, "price": 250, "days": 12, "season": "summer" },
+                { "name": "{{i18n:crop.blueberry}}", "item": "(O)258", "seed": 80, "price": 50, "days": 13, "season": "summer" },
+                { "name": "{{i18n:crop.hops}}", "item": "(O)304", "seed": 60, "price": 25, "days": 11, "season": "summer" },
+                { "name": "{{i18n:crop.pumpkin}}", "item": "(O)276", "seed": 100, "price": 320, "days": 13, "season": "fall" },
+                { "name": "{{i18n:crop.cranberries}}", "item": "(O)282", "seed": 240, "price": 75, "days": 7, "season": "fall" },
+                { "name": "{{i18n:crop.grape}}", "item": "(O)398", "seed": 60, "price": 80, "days": 10, "season": "fall" }
+              ]
+            },
+            "seasons": {
+              "Rows": [
+                { "name": "{{i18n:season.spring}}", "crops": [ "(O)24", "(O)190", "(O)192" ] },
+                { "name": "{{i18n:season.summer}}", "crops": [ "(O)254", "(O)258", "(O)304" ] },
+                { "name": "{{i18n:season.fall}}", "crops": [ "(O)276", "(O)282", "(O)398" ] }
+              ]
+            }
+          },
+          "Computed": {
+            "greeting": "'Hello, ' + (len(trim(menu.name)) > 0 ? menu.name : '?') + '!'"
+          },
+          "Watch": {
+            "menu.clicks": {
+              "When": "event.new > 0 && event.new % 10 == 0",
+              "Action": "6135.UIFramework_ShowToast \"{{i18n:demo.clicks.milestone}}\""
+            }
+          },
+          "Keys": [
+            { "Key": "R", "Ctrl": true, "Actions": [ "6135.UIFramework_ResetState menu.clicks", "6135.UIFramework_Announce {{i18n:demo.clicks.reset}}" ] }
+          ],
+
+          "Children": [
+            {
+              "Id": "intro",
+              "Label": "{{i18n:demo.intro}}",
+              "Wrap": true,
+              "RichText": true,
+              "OnLink": "6135.UIFramework_OpenMenuAsChild {{ModId}}/about"
+            },
+
+            // tabs: buttons write menu.tab, the Switch shows the matching page (pages are built on first show)
+            {
+              "Id": "tabs",
+              "Type": "Stack",
+              "Horizontal": true,
+              "Spacing": 8,
+              "Children": [
+                { "Id": "tab.form", "Button": "{{i18n:demo.tab.form}}", "Class": "tab", "Enabled": "menu.tab != 'form'", "OnClick": "6135.UIFramework_SetState menu.tab form" },
+                { "Id": "tab.buttons", "Button": "{{i18n:demo.tab.buttons}}", "Class": "tab", "Enabled": "menu.tab != 'buttons'", "OnClick": "6135.UIFramework_SetState menu.tab buttons" },
+                { "Id": "tab.media", "Button": "{{i18n:demo.tab.media}}", "Class": "tab", "Enabled": "menu.tab != 'media'", "OnClick": "6135.UIFramework_SetState menu.tab media" },
+                { "Id": "tab.collections", "Button": "{{i18n:demo.tab.collections}}", "Class": "tab", "Enabled": "menu.tab != 'collections'", "OnClick": "6135.UIFramework_SetState menu.tab collections" }
+              ]
+            },
+            {
+              "Id": "pages",
+              "Switch": "menu.tab",
+              "HorizontalAlign": "Stretch",
+              "Children": [
+                // page 1: a form bound to menu.* state (inputs without Bind use menu.<Id>)
+                {
+                  "Id": "form",
+                  "Case": "form",
+                  "Type": "Grid",
+                  "Columns": "auto, *",
+                  "Rows": "auto, auto, auto, auto, auto, auto",
+                  "ColumnSpacing": 24,
+                  "RowSpacing": 8,
+                  "HorizontalAlign": "Stretch",
+                  "Children": [
+                    { "Id": "name.label", "Label": "{{i18n:demo.name}}", "Cell": "0,0", "VerticalAlign": "Center" },
+                    {
+                      "Id": "name",
+                      "Type": "TextInput",
+                      "Cell": "0,1",
+                      "Value": "{{i18n:demo.name.default}}",
+                      "Placeholder": "{{i18n:demo.name.placeholder}}",
+                      "MaxLength": 24,
+                      "Validate": "contains(event.value, '#') ? '{{i18n:demo.name.invalid}}' : true",
+                      "OnInvalid": "6135.UIFramework_ShowToast ${quote(event.error)} 1500"
+                    },
+
+                    { "Id": "day.label", "Label": "{{i18n:demo.day}}", "Cell": "1,0", "VerticalAlign": "Center" },
+                    { "Id": "day", "Type": "NumberInput", "Cell": "1,1", "Value": 1, "Min": 1, "Max": 28, "Texture": "Mods/6135.UIFramework/TextBoxSmall" },
+
+                    { "Id": "season.label", "Label": "{{i18n:demo.season}}", "Cell": "2,0", "VerticalAlign": "Center" },
+                    {
+                      "Id": "season",
+                      "Type": "Dropdown",
+                      "Cell": "2,1",
+                      "Choices": "spring, summer, fall, winter",
+                      "Labels": [ "{{i18n:season.spring}}", "{{i18n:season.summer}}", "{{i18n:season.fall}}", "{{i18n:season.winter}}" ]
+                    },
+
+                    { "Id": "volume.label", "Label": "{{i18n:demo.volume}}", "Cell": "3,0", "VerticalAlign": "Center" },
+                    { "Id": "volume", "Type": "Slider", "Cell": "3,1", "Min": 0, "Max": 100, "Value": 50, "HorizontalAlign": "Stretch" },
+
+                    { "Id": "tips", "Checkbox": "{{i18n:demo.tips}}", "Cell": "4,1", "Value": true, "Tooltip": "{{i18n:demo.tips.tooltip}}" },
+
+                    // live expressions over the inputs' state
+                    { "Id": "summary", "Label": "{{i18n:demo.summary}}", "Cell": "5,1", "Class": "accent", "Wrap": true }
+                  ]
+                },
+
+                // page 2: buttons with a counter, toasts and a hover-driven detail line
+                {
+                  "Id": "buttons",
+                  "Case": "buttons",
+                  "Type": "Stack",
+                  "Spacing": 12,
+                  "Children": [
+                    {
+                      "Id": "button.row",
+                      "Type": "Stack",
+                      "Horizontal": true,
+                      "Spacing": 16,
+                      "Children": [
+                        {
+                          "Id": "count",
+                          "Button": "{{i18n:demo.count}}",
+                          "Tooltip": "{{i18n:demo.count.tooltip}}",
+                          "OnClick": "6135.UIFramework_AddState menu.clicks 1",
+                          "OnRightClick": "6135.UIFramework_ResetState menu.clicks"
+                        },
+                        {
+                          "Id": "toast",
+                          "Button": "{{i18n:demo.toast}}",
+                          "Icon": "sprite:{{ModId}}/heart",
+                          "OnClick": "6135.UIFramework_ShowToast ${quote(menu.greeting)} 2500 sprite:{{ModId}}/parsnip"
+                        },
+                        {
+                          "Id": "money",
+                          "Button": "{{i18n:demo.money}}",
+                          "Tooltip": "{{i18n:demo.money.tooltip}}",
+                          // Out: the hover state is written into menu.hoverHelp while it changes
+                          "Out": { "IsHovered": "menu.hoverHelp" },
+                          "OnClick": [ "AddMoney 100", "6135.UIFramework_ShowToast \"{{i18n:demo.money.done}}\"" ]
+                        }
+                      ]
+                    },
+                    { "Id": "count.label", "Label": "{{i18n:demo.count.label}}" },
+                    // built only while the money button is hovered (If), unlike Visible which keeps it built
+                    { "Id": "money.help", "If": "menu.hoverHelp", "Label": "{{i18n:demo.money.help}}", "Class": "hint", "Wrap": true }
+                  ]
+                },
+
+                // page 3: images, and the theme row (a dropdown bound to menu.theme that applies the theme)
+                {
+                  "Id": "media",
+                  "Case": "media",
+                  "Type": "Stack",
+                  "Spacing": 12,
+                  "Children": [
+                    {
+                      "Id": "images",
+                      "Type": "Stack",
+                      "Horizontal": true,
+                      "Spacing": 16,
+                      "Alignment": "Center",
+                      "Children": [
+                        {
+                          "Id": "parsnip",
+                          "Image": "sprite:{{ModId}}/parsnip",
+                          // a rich tooltip; the last line only shows once the counter was clicked
+                          "RichTooltip": [
+                            { "Type": "Title", "Text": "{{i18n:demo.parsnip.title}}" },
+                            { "Type": "Line", "Text": "{{i18n:demo.parsnip.tooltip}}" },
+                            { "Type": "Money", "Amount": 35 },
+                            { "Type": "Line", "Text": "{{i18n:demo.parsnip.clicks}}", "Color": "#2060C0", "When": "menu.clicks > 0" }
+                          ]
+                        },
+                        // an item query: FLAVORED_ITEM builds a real Grape Wine, drawn with its tint
+                        {
+                          "Id": "wine",
+                          "Type": "ItemImage",
+                          "Item": "FLAVORED_ITEM Wine (O)398",
+                          "Quality": 2,
+                          "Count": 3,
+                          "Stack": "NumberAndQuality",
+                          "RichTooltip": [
+                            { "Type": "Item", "Item": "FLAVORED_ITEM Wine (O)398" },
+                            { "Type": "Line", "Text": "{{i18n:demo.wine.tooltip}}" }
+                          ]
+                        },
+                        { "Id": "media.caption", "Label": "{{i18n:demo.media}}", "Font": "small" }
+                      ]
+                    },
+                    {
+                      "Id": "theme.row",
+                      "Type": "Stack",
+                      "Horizontal": true,
+                      "Spacing": 16,
+                      "Alignment": "Center",
+                      "Children": [
+                        { "Id": "theme.label", "Label": "{{i18n:demo.theme}}" },
+                        {
+                          "Id": "theme",
+                          "Type": "Dropdown",
+                          "Bind": "menu.theme",
+                          "Choices": "default, dark, high-contrast, colorblind",
+                          "OnValueChanged": "6135.UIFramework_SetTheme ${event.value}"
+                        },
+                        { "Id": "theme.current", "Label": "{{i18n:demo.theme.current}}", "Class": "hint" }
+                      ]
+                    }
+                  ]
+                },
+
+                // page 4: collections (a Repeat, a List and a DataGrid over the menu's Sources)
+                {
+                  "Id": "collections",
+                  "Case": "collections",
+                  "Type": "Stack",
+                  "Spacing": 10,
+                  "HorizontalAlign": "Stretch",
+                  "Children": [
+                    // nested Repeat: one row per season, one icon per crop; the inner repeat reads the outer row by its name
+                    { "Id": "seasons.caption", "Label": "{{i18n:demo.seasons}}", "Class": "hint" },
+                    {
+                      "Id": "seasons",
+                      "Repeat": "seasons",
+                      "As": "season",
+                      "Spacing": 4,
+                      "Children": [
+                        {
+                          "Id": "season.row",
+                          "Type": "Stack",
+                          "Horizontal": true,
+                          "Spacing": 8,
+                          "Alignment": "Center",
+                          "Children": [
+                            { "Id": "season.name", "Label": "${season.name}", "Width": 110 },
+                            {
+                              "Id": "season.crops",
+                              "Repeat": "${season.crops}",
+                              "As": "crop",
+                              "Horizontal": true,
+                              "Spacing": 4,
+                              "Children": [
+                                { "Id": "crop.icon", "Type": "ItemImage", "Item": "${crop}", "Scale": 2, "Tooltip": "{{i18n:demo.seasons.tooltip}}" }
+                              ]
+                            }
+                          ]
+                        }
+                      ]
+                    },
+
+                    // a Repeat over a state-held list
+                    {
+                      "Id": "wishes.row",
+                      "Type": "Stack",
+                      "Horizontal": true,
+                      "Spacing": 8,
+                      "Alignment": "Center",
+                      "Children": [
+                        { "Id": "wishes.label", "Label": "{{i18n:demo.wishes}}" },
+                        {
+                          "Id": "wishes",
+                          "Repeat": "menu.wishes",
+                          "Horizontal": true,
+                          "Spacing": 4,
+                          "Children": [ { "Id": "wish", "Type": "ItemImage", "Item": "${row}", "Scale": 2 } ]
+                        },
+                        { "Id": "wishes.reset", "Button": "{{i18n:demo.wishes.more}}", "OnClick": "6135.UIFramework_SetState menu.wishes [(O)24,(O)400,(O)254,(O)276,(O)398]" }
+                      ]
+                    },
+
+                    // a virtualized List with a row template and a two-way selection
+                    { "Id": "list.caption", "Label": "{{i18n:demo.list}}", "Class": "hint" },
+                    {
+                      "Id": "crop.list",
+                      "Type": "List",
+                      "Source": { "Name": "crops", "Sort": "row.name" },
+                      "As": "crop",
+                      "RowHeight": 40,
+                      "VisibleRows": 3,
+                      "Selectable": true,
+                      "BindSelected": "menu.pickedCrop",
+                      "HorizontalAlign": "Stretch",
+                      "RowTemplate": {
+                        "Id": "line",
+                        "Type": "Stack",
+                        "Horizontal": true,
+                        "Spacing": 12,
+                        "Alignment": "Center",
+                        "Children": [
+                          { "Id": "icon", "Type": "ItemImage", "Item": "${crop.item}", "Scale": 2 },
+                          { "Id": "name", "Label": "${crop.name}", "Width": 180 },
+                          { "Id": "price", "Label": "${money(crop.price)}", "Class": "hint" }
+                        ]
+                      }
+                    },
+                    { "Id": "list.picked", "Label": "{{i18n:demo.list.picked}}", "Class": "accent" },
+
+                    // a sortable, filterable DataGrid with rich row tooltips
+                    {
+                      "Id": "grid.filter",
+                      "Type": "Stack",
+                      "Horizontal": true,
+                      "Spacing": 12,
+                      "Alignment": "Center",
+                      "Children": [
+                        { "Id": "minPrice.label", "Label": "{{i18n:demo.grid.minPrice}}" },
+                        { "Id": "minPrice", "Type": "NumberInput", "Bind": "menu.minPrice", "Min": 0, "Max": 400, "Step": 25, "Texture": "Mods/6135.UIFramework/TextBoxSmall" },
+                        { "Id": "grid.sortName", "Button": "{{i18n:demo.grid.sortName}}", "OnClick": "6135.UIFramework_Sort cropGrid name" },
+                        { "Id": "grid.clear", "Button": "{{i18n:demo.grid.clear}}", "Enabled": "len(menu.pickedRows) > 0", "OnClick": "6135.UIFramework_ClearSelection cropGrid" }
+                      ]
+                    },
+                    {
+                      "Id": "cropGrid",
+                      "Type": "DataGrid",
+                      "Source": "crops",
+                      "RowHeight": 40,
+                      "VisibleRows": 4,
+                      "Selectable": true,
+                      "MultiSelect": true,
+                      "BindSelection": "menu.pickedRows",
+                      "Sort": "perDay desc",
+                      "Filter": "row.price >= menu.minPrice",
+                      "HorizontalAlign": "Stretch",
+                      "Columns": [
+                        { "Id": "icon", "Header": "", "Width": "56px", "Cell": { "Id": "img", "Type": "ItemImage", "Item": "${row.item}", "Scale": 2 } },
+                        { "Id": "name", "Header": "{{i18n:demo.grid.name}}", "Width": "*", "Sortable": true, "Resizable": true },
+                        { "Id": "price", "Header": "{{i18n:demo.grid.price}}", "Width": "auto", "Text": "${money(row.price)}", "SortNumber": "row.price", "Sortable": true, "Align": "End" },
+                        {
+                          "Id": "perDay",
+                          "Header": "{{i18n:demo.grid.perDay}}",
+                          "Width": "auto",
+                          "Text": "${round((row.price - row.seed) / row.days, 1)}g",
+                          "SortNumber": "(row.price - row.seed) / row.days",
+                          "Sortable": true,
+                          "Align": "End",
+                          "Tooltip": "{{i18n:demo.grid.perDay.tooltip}}"
+                        }
+                      ],
+                      "RowTooltip": {
+                        "MaxWidth": 420,
+                        "Blocks": [
+                          { "Type": "Item", "Item": "${row.item}" },
+                          { "Type": "Line", "Text": "{{i18n:demo.grid.tip.grow}}" },
+                          { "Type": "Money", "Amount": "${row.price}" },
+                          { "Type": "Divider" },
+                          { "Type": "Line", "Text": "{{i18n:demo.grid.tip.profit}}", "Color": "${row.price - row.seed > 50 ? 'green' : 'gray'}" },
+                          // conditional line: only for crops that sell for less than twice their seed
+                          { "Type": "Line", "Text": "{{i18n:demo.grid.tip.cheap}}", "Color": "red", "When": "row.price < row.seed * 2" }
+                        ]
+                      },
+                      "OnRowActivated": "6135.UIFramework_ShowToast ${quote(row.name + ': ' + money(row.price))} 1500"
+                    },
+                    { "Id": "grid.picked", "Label": "{{i18n:demo.grid.picked}}", "Class": "hint" }
+                  ]
+                }
+              ]
+            },
+
+            { "Id": "divider", "Type": "Spacer", "Line": true, "Height": 8, "HorizontalAlign": "Stretch" },
+            {
+              "Id": "footer",
+              "Type": "Stack",
+              "Horizontal": true,
+              "Spacing": 16,
+              "HorizontalAlign": "Center",
+              "Children": [
+                { "Id": "settings", "Button": "{{i18n:demo.settings}}", "OnClick": "6135.UIFramework_OpenMenuAsChild {{ModId}}/settings" },
+                { "Id": "hud", "Button": "{{i18n:demo.hud}}", "Tooltip": "{{i18n:demo.hud.tip}}", "OnClick": "6135.UIFramework_ToggleHud {{ModId}}/status" },
+                { "Id": "about", "Button": "{{i18n:demo.about}}", "OnClick": "6135.UIFramework_OpenMenuAsChild {{ModId}}/about" },
+                { "Id": "crossmod", "Button": "{{i18n:demo.crossmod}}", "OnClick": "6135.UIFramework_OpenMenuAsChild {{ModId}}/crossmod" },
+                // only with the UI Framework Example mod installed (its C# composites, command and draw hook)
+                { "Id": "hybrid", "Button": "{{i18n:demo.hybrid}}", "Visible": "{{HasMod |contains=6135.UIFrameworkExample}}", "OnClick": "6135.UIFramework_OpenMenuAsChild {{ModId}}/hybrid" },
+                { "Id": "close", "Button": "{{i18n:demo.close}}", "OnClick": "6135.UIFramework_CloseMenu {{ModId}}/demo" }
+              ]
+            }
+          ]
+        },
+
+        // a config.* settings screen: values are global across saves (UIFramework/data/<pack id>.json) and feed
+        // Content Patcher through the {{6135.UIFramework/State}} token (see the "Parsnip note" patch below)
+        "{{ModId}}/settings": {
+          "Title": "{{i18n:settings.title}}",
+          "Width": 600,
+          "Spacing": 12,
+          "CancelButton": "done",
+          "Children": [
+            { "Id": "settings.intro", "Label": "{{i18n:settings.intro}}", "Wrap": true, "Class": "hint" },
+            // a data Form: every field is a config.* value (With narrows the scope, so ".stars" is config.stars);
+            // edits apply at once, Cancel restores the last Save, Undo / Redo walk the history
+            {
+              "Id": "settingsForm",
+              "Type": "Form",
+              "With": "config",
+              "HorizontalAlign": "Stretch",
+              "Fields": [
+                { "Id": "parsnipNote", "Bind": ".parsnipNote", "Kind": "Checkbox", "Label": "{{i18n:settings.note}}", "Section": "{{i18n:settings.section.parsnip}}", "Value": false, "Tooltip": "{{i18n:settings.note.tooltip}}" },
+                { "Id": "stars", "Bind": ".stars", "Kind": "Integer", "Label": "{{i18n:settings.stars}}", "Min": 1, "Max": 5, "Value": 3 },
+                { "Id": "nickname", "Bind": ".nickname", "Kind": "Text", "Label": "{{i18n:settings.nickname}}", "Section": "{{i18n:settings.section.more}}", "Value": "{{i18n:demo.name.default}}", "Validate": "len(trim(event.value)) > 0 ? true : '{{i18n:settings.nickname.required}}'" },
+                { "Id": "flavor", "Bind": ".flavor", "Kind": "Dropdown", "Label": "{{i18n:settings.flavor}}", "Choices": "Wine, Juice, Jelly, Pickles" }
+              ],
+              "OnSaved": "6135.UIFramework_ShowToast \"{{i18n:settings.saved}}\" 1500"
+            },
+            { "Id": "settings.state", "Label": "{{i18n:settings.state}}", "Class": "hint" },
+            { "Id": "stars.preview", "Label": "{{i18n:settings.preview}}", "Class": "accent", "If": "config.parsnipNote" },
+            { "Id": "done", "Button": "{{i18n:settings.done}}", "HorizontalAlign": "Center", "OnClick": [ "6135.UIFramework_FormSave settingsForm", "6135.UIFramework_CloseMenu {{ModId}}/settings" ] }
+          ]
+        },
+
+        "{{ModId}}/about": {
+          "Title": "{{i18n:about.title}}",
+          "Width": 520,
+          "Alignment": "Center",
+          "DefaultButton": "ok",
+          "CancelButton": "ok",
+          "Children": [
+            { "Id": "text", "Label": "{{i18n:about.text}}", "Wrap": true, "RichText": true },
+            { "Id": "ok", "Button": "{{i18n:about.ok}}", "OnClick": "6135.UIFramework_CloseMenu {{ModId}}/about" }
+          ]
+        },
+
+        // cross-mod data (v1.7): templates, data composites (a dynamic page too), and what this menu shares with
+        // contributors (Expose / Commands / _Publish); the slot below is filled by this pack's Contributions entry
+        "{{ModId}}/crossmod": {
+          "Title": "{{i18n:crossmod.title}}",
+          "Width": 720,
+          "Spacing": 10,
+          "CancelButton": "cm.close",
+          "State": { "money": 250, "page": "PageA", "changes": 0 },
+
+          // ctx.money / ctx.page and _Invoke ctx.bonus for contributors (IUIScreenContext in C#)
+          "Expose": { "money": "menu.money", "page": "menu.page" },
+          "Commands": {
+            "bonus": [ "6135.UIFramework_AddState menu.money 100", "6135.UIFramework_ShowToast \"{{i18n:crossmod.bonus.done}}\" 1200" ]
+          },
+
+          // a menu-local template: "value" has a default, "name" is required
+          "Templates": {
+            "stat": {
+              "Params": {
+                "name": { "Type": "string", "Required": true },
+                "value": { "Type": "any", "Default": "-" }
+              },
+              "Horizontal": true,
+              "Spacing": 6,
+              "Children": [
+                { "Id": "name", "Label": "${args.name}:", "Class": "hint" },
+                { "Id": "value", "Label": "${args.value}", "Class": "accent" }
+              ]
+            }
+          },
+
+          "Children": [
+            { "Id": "cm.intro", "Label": "{{i18n:crossmod.intro}}", "Wrap": true, "RichText": true, "Class": "hint" },
+
+            // the owner template "section" without a title (its default is used) and with a child in the "actions" outlet
+            {
+              "Id": "cm.money",
+              "Type": "section",
+              "note": "{{i18n:crossmod.money.note}}",
+              "HorizontalAlign": "Stretch",
+              "Children": [
+                { "Id": "cm.money.reset", "Button": "{{i18n:crossmod.reset}}", "Outlet": "actions", "OnClick": "6135.UIFramework_Invoke #cm.field.reset" },
+
+                // the data composite as a custom tag: "value" is two-way (menu.money), "On" hears its "changed" event, and
+                // the child goes into its "after" outlet
+                {
+                  "Id": "cm.field",
+                  "Type": "{{ModId}}.MoneyField",
+                  "label": "{{i18n:crossmod.money.label}}",
+                  "value": "menu.money",
+                  "max": 5000,
+                  "On": { "changed": "6135.UIFramework_AddState menu.changes 1" },
+                  "Children": [
+                    { "Id": "cm.field.max", "Button": "{{i18n:crossmod.max}}", "Outlet": "after", "OnClick": "6135.UIFramework_SetState menu.money 5000" }
+                  ]
+                },
+                {
+                  "Id": "cm.stats",
+                  "Type": "Stack",
+                  "Spacing": 4,
+                  "Children": [
+                    {
+                      "Id": "cm.stats.row",
+                      "Type": "Stack",
+                      "Horizontal": true,
+                      "Spacing": 24,
+                      "Children": [
+                        // el[id].<key> reads what the composite exposed
+                        { "Id": "cm.stat.exposed", "Type": "stat", "name": "{{i18n:crossmod.stat.exposed}}", "value": "${el[cm.field].value}g" },
+                        { "Id": "cm.stat.changes", "Type": "stat", "name": "{{i18n:crossmod.stat.changes}}", "value": "${menu.changes}" }
+                      ]
+                    },
+                    // its own line: three stats don't fit the menu's width
+                    { "Id": "cm.stat.default", "Type": "stat", "name": "{{i18n:crossmod.stat.default}}" }
+                  ]
+                }
+              ]
+            },
+
+            // a dynamic include: the composite's name is an expression, so the page switches when menu.page changes
+            {
+              "Id": "cm.pages",
+              "Type": "section",
+              "title": "{{i18n:crossmod.pages.title}}",
+              "HorizontalAlign": "Stretch",
+              "Children": [
+                { "Id": "cm.pageA", "Button": "{{i18n:crossmod.pageA.button}}", "Outlet": "actions", "Enabled": "menu.page != 'PageA'", "OnClick": "6135.UIFramework_SetState menu.page PageA" },
+                { "Id": "cm.pageB", "Button": "{{i18n:crossmod.pageB.button}}", "Outlet": "actions", "Enabled": "menu.page != 'PageB'", "OnClick": "6135.UIFramework_SetState menu.page PageB" },
+                { "Id": "cm.page", "Type": "Composite", "Composite": "{{ModId}}.${menu.page}", "Args": { "count": "${menu.changes}" } }
+              ]
+            },
+
+            // contributors (this pack's Contributions entry) fill the slot and hear "saved"
+            {
+              "Id": "cm.contributions",
+              "Type": "section",
+              "title": "{{i18n:crossmod.slot.title}}",
+              "HorizontalAlign": "Stretch",
+              "Children": [
+                { "Id": "cm.publish", "Button": "{{i18n:crossmod.publish}}", "Outlet": "actions", "OnClick": "6135.UIFramework_Publish saved" },
+                { "Id": "cm.slot", "Type": "Slot", "Horizontal": true }
+              ]
+            },
+
+            { "Id": "cm.close", "Button": "{{i18n:crossmod.close}}", "HorizontalAlign": "Center", "OnClick": "6135.UIFramework_CloseMenu {{ModId}}/crossmod" }
+          ]
+        }
+      }
+    },
+
+    // data composites (v1.7), keyed by global name; the owner is the longest loaded mod id the name starts with (this
+    // pack). C# mods instantiate them with AddComposite (the UI Framework Example mod does), data with "Type": "<name>"
+    {
+      "LogName": "UI Framework composites",
+      "Action": "EditData",
+      "Target": "Mods/6135.UIFramework/Composites",
+      "Entries": {
+        "{{ModId}}.MoneyField": {
+          "Params": {
+            "label": { "Type": "string", "Default": "{{i18n:money.label}}" },
+            "value": { "Type": "number", "Required": true, "Description": "The amount: a state key such as menu.money (two-way); from C#, a getter at 'value' and its setter at 'value.set'." },
+            "max": { "Type": "number", "Default": 99999 },
+            "step": { "Type": "number", "Default": 10 }
+          },
+          "Horizontal": true,
+          "Spacing": 8,
+          "Alignment": "Center",
+          "Children": [
+            { "Id": "caption", "Label": "${args.label}" },
+            {
+              "Id": "input",
+              "Type": "NumberInput",
+              "Bind": "args.value",
+              "Min": 0,
+              "Max": "${args.max}",
+              "Step": "${args.step}",
+              "Width": 160,
+              "Texture": "Mods/6135.UIFramework/TextBoxSmall",
+              "OnValueChanged": "6135.UIFramework_Publish changed"
+            },
+            { "Id": "suffix", "Label": "g" },
+            { "Id": "after", "Outlet": "after", "Horizontal": true, "Spacing": 8 }
+          ],
+          // el[id].value / IUIComposite.GetNumber("value"), _Invoke #id.reset / IUIComposite.Invoke("reset")
+          "Expose": { "value": "args.value", "label": "args.label" },
+          "Commands": { "reset": "6135.UIFramework_SetState args.value 0" },
+          "Publish": [ "changed" ]
+        },
+        "{{ModId}}.PageA": {
+          "Horizontal": true,
+          "Spacing": 12,
+          "Alignment": "Center",
+          "Children": [
+            { "Id": "icon", "Image": "sprite:{{ModId}}/parsnip" },
+            { "Id": "text", "Label": "{{i18n:crossmod.pageA}}", "Wrap": true, "Width": 480 }
+          ]
+        },
+        "{{ModId}}.PageB": {
+          "Params": { "count": { "Type": "number", "Default": 0 } },
+          "Children": [
+            { "Id": "text", "Label": "{{i18n:crossmod.pageB}}", "Wrap": true, "Width": 560 }
+          ]
+        }
+      }
+    },
+
+    // contributions (v1.7), keyed <contributor>/<name>: this pack adds to its own crossmod menu's slot and listens to it
+    {
+      "LogName": "UI Framework contributions",
+      "Action": "EditData",
+      "Target": "Mods/6135.UIFramework/Contributions",
+      "Entries": {
+        "{{ModId}}/crossmod-slot": {
+          "Target": "{{ModId}}/crossmod",
+          "Slot": "cm.slot",
+          "Children": [
+            { "Id": "cms.info", "Label": "{{i18n:contrib.self.info}}", "VerticalAlign": "Center" },
+            { "Id": "cms.bonus", "Button": "{{i18n:contrib.self.bonus}}", "OnClick": "6135.UIFramework_Invoke ctx.bonus" }
+          ],
+          "On": { "saved": "6135.UIFramework_ShowToast \"{{i18n:contrib.self.saved}}\" 1500" }
+        }
+      }
+    },
+
+    // a hybrid menu (v1.6): data using what the UI Framework Example mod registers from C#; only added when it is installed
+    {
+      "LogName": "UI Framework hybrid menu",
+      "Action": "EditData",
+      "Target": "Mods/6135.UIFramework/Menus",
+      "When": { "HasMod |contains=6135.UIFrameworkExample": "true" },
+      "Entries": {
+        "{{ModId}}/hybrid": {
+          "Title": "{{i18n:hybrid.title}}",
+          "Width": 680,
+          "Spacing": 12,
+          "CancelButton": "hybrid.close",
+          "State": {
+            "volume": 50,
+            "tips": true,
+            "sounds": false,
+            "greeting": "{{i18n:hybrid.greeting.none}}"
+          },
+          "Children": [
+            { "Id": "hybrid.intro", "Label": "{{i18n:hybrid.intro}}", "Wrap": true, "Class": "hint" },
+
+            // a custom tag: the example mod's C# composite (an IUICustomComponent) used like a built-in element; its
+            // extra fields are the composite's arguments ("Value" is a two-way reference, "Hint" a live text)
+            {
+              "Id": "hybrid.volume.row",
+              "Type": "Stack",
+              "Horizontal": true,
+              "Spacing": 16,
+              "Alignment": "Center",
+              "Children": [
+                { "Id": "hybrid.gauge", "Type": "6135.UIFrameworkExample.VolumeGauge", "Value": "menu.volume", "Hint": "{{i18n:hybrid.gauge.tooltip}}" },
+                { "Id": "hybrid.slider", "Type": "Slider", "Bind": "menu.volume", "Min": 0, "Max": 100, "Width": 180 },
+                { "Id": "hybrid.volume", "Label": "${round(menu.volume)}%" },
+                // a command the composite instance exposed (#elementId.command)
+                { "Id": "hybrid.gauge.reset", "Button": "{{i18n:hybrid.reset}}", "OnClick": "6135.UIFramework_Invoke #hybrid.gauge.reset" }
+              ]
+            },
+
+            // the explicit form of a C# composite; the children go into its custom component's host (default ContentTarget)
+            {
+              "Id": "hybrid.frame",
+              "Type": "Composite",
+              "Composite": "6135.UIFrameworkExample.FrameBox",
+              "Args": { "Padding": 20 },
+              "HorizontalAlign": "Stretch",
+              "Children": [
+                { "Id": "hybrid.tips", "Checkbox": "{{i18n:hybrid.tips}}", "Bind": "menu.tips" },
+                { "Id": "hybrid.sounds", "Checkbox": "{{i18n:hybrid.sounds}}", "Bind": "menu.sounds" }
+              ]
+            },
+
+            // a C# model (ExposeModel): read with model[owner/name].Member, and bound two-way by an input
+            {
+              "Id": "hybrid.farm.row",
+              "Type": "Stack",
+              "Horizontal": true,
+              "Spacing": 16,
+              "Alignment": "Center",
+              "Children": [
+                { "Id": "hybrid.farm.label", "Label": "{{i18n:hybrid.farm}}" },
+                { "Id": "hybrid.farm", "Type": "TextInput", "Bind": "model[6135.UIFrameworkExample/settings].FarmName", "MaxLength": 24 },
+                { "Id": "hybrid.farm.day", "Label": "{{i18n:hybrid.farm.day}}", "Class": "hint" }
+              ]
+            },
+
+            // a C# command (@owner/command args) and a C# draw hook (DrawExtra)
+            {
+              "Id": "hybrid.greet",
+              "Button": "{{i18n:hybrid.greet}}",
+              "DrawExtra": "6135.UIFrameworkExample/sparkle",
+              "OnClick": "@6135.UIFrameworkExample/greet ${quote(model[6135.UIFrameworkExample/settings].FarmName)}"
+            },
+            { "Id": "hybrid.greeting", "Label": "${menu.greeting}", "Class": "accent", "Wrap": true },
+
+            // a Form over the C# model: its members (and their attributes) become the fields
+            { "Id": "hybrid.form.caption", "Label": "{{i18n:hybrid.form}}", "Class": "hint" },
+            { "Id": "hybrid.form", "Type": "Form", "Model": "model[6135.UIFrameworkExample/settings]", "ShowButtons": false, "HorizontalAlign": "Stretch" },
+
+            { "Id": "hybrid.close", "Button": "{{i18n:hybrid.close}}", "HorizontalAlign": "Center", "OnClick": "6135.UIFramework_CloseMenu {{ModId}}/hybrid" }
+          ]
+        }
+      }
+    },
+
+    // contributions to the UI Framework Example mod's C# demo menu (F9): a slot contribution using ctx.* and _Invoke ctx.log,
+    // an "ok" subscription (exactly one, however often the menu opens) and decorations; hiding its sealed theme row is
+    // refused with an error in the SMAPI log (on purpose)
+    {
+      "LogName": "UI Framework contributions to the C# demo",
+      "Action": "EditData",
+      "Target": "Mods/6135.UIFramework/Contributions",
+      "When": { "HasMod |contains=6135.UIFrameworkExample": "true" },
+      "Entries": {
+        "{{ModId}}/demo-footer": {
+          "Target": "6135.UIFrameworkExample/demo",
+          "Slot": "demo.footer",
+          "Priority": 10,
+          "Children": [
+            { "Id": "cp.footer.log", "Button": "{{i18n:contrib.log}}", "OnClick": "6135.UIFramework_Invoke ctx.log" },
+            { "Id": "cp.footer.info", "Label": "{{i18n:contrib.info}}", "Wrap": true, "VerticalAlign": "Center" }
+          ],
+          "On": { "ok": "6135.UIFramework_ShowToast \"{{i18n:contrib.ok}}\" 1500" }
+        },
+        "{{ModId}}/demo-decor": {
+          "Target": "6135.UIFrameworkExample/demo",
+          "Decorate": [
+            { "Op": "Hide", "Target": "signals.divider" },
+            {
+              "Op": "InsertAfter",
+              "Target": "close",
+              "Children": [ { "Id": "cp.crossmod", "Button": "{{i18n:contrib.open}}", "OnClick": "6135.UIFramework_OpenMenuAsChild {{ModId}}/crossmod" } ]
+            },
+            { "Op": "Set", "Target": "about", "Fields": { "Tooltip": "{{i18n:contrib.about.tooltip}}" } },
+            { "Op": "Hide", "Target": "theme-row" }
+          ]
+        }
+      }
+    },
+
+    // a HUD widget: shown in the world, toggled with the demo's HUD button, F9 or Ctrl+F10 (owner hotkey)
+    {
+      "LogName": "UI Framework HUD",
+      "Action": "EditData",
+      "Target": "Mods/6135.UIFramework/Huds",
+      "Entries": {
+        "{{ModId}}/status": {
+          "Anchor": "TopLeft",
+          "X": 16,
+          "Y": 16,
+          "Spacing": 4,
+          "Hotkey": "F9",
+          "ShowWhen": "game.worldReady",
+          // stays on top of open menus (like toasts), so the demo's Toggle HUD button shows its effect at once
+          "ShowOverMenus": true,
+          // another UI's state through the qualified form
+          "Computed": { "clicks": "menu[{{ModId}}/demo].clicks" },
+          "Children": [
+            { "Id": "status.money", "Label": "${money(game.money)}", "Font": "small" },
+            { "Id": "status.clicks", "Label": "{{i18n:hud.clicks}}", "Font": "small", "Class": "hint" }
+          ]
+        }
+      }
+    },
+
+    // Content Patcher reads UI state back through the token: the settings screen's checkbox and slider edit the
+    // parsnip's description (at the next day start or 'patch update')
+    {
+      "LogName": "Parsnip note",
+      "Action": "EditData",
+      "Target": "Data/Objects",
+      "TargetField": [ "24" ],
+      "Entries": {
+        "Description": "{{i18n:parsnip.note |stars={{6135.UIFramework/State: {{ModId}}/config.stars}}}}"
+      },
+      "When": {
+        "6135.UIFramework/State: {{ModId}}/config.parsnipNote": "true"
+      }
+    }
+  ]
+}
