@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using StardewModdingAPI;
@@ -33,6 +34,13 @@ namespace UIFramework.Core
         private bool showCloseButton = true;
         private bool collapsed;
         private Point anchorOffset;
+        private Point? settled;
+
+        /// <summary>Whether the anchor centers the menu horizontally (that axis keeps its first position while open).</summary>
+        private bool CentersX => anchor is UIAnchor.Center or UIAnchor.TopCenter or UIAnchor.BottomCenter;
+
+        /// <summary>Whether the anchor centers the menu vertically (that axis keeps its first position while open).</summary>
+        private bool CentersY => anchor is UIAnchor.Center or UIAnchor.MiddleLeft or UIAnchor.MiddleRight;
         private Func<string>? title;
         private UIElement? announcedHover;
 
@@ -150,7 +158,7 @@ namespace UIFramework.Core
             set
             {
                 anchor = value;
-                MarkLayoutDirty();
+                ResetPosition();
             }
         }
 
@@ -160,7 +168,7 @@ namespace UIFramework.Core
             set
             {
                 x = value;
-                MarkLayoutDirty();
+                ResetPosition();
             }
         }
 
@@ -170,7 +178,7 @@ namespace UIFramework.Core
             set
             {
                 y = value;
-                MarkLayoutDirty();
+                ResetPosition();
             }
         }
 
@@ -224,7 +232,7 @@ namespace UIFramework.Core
             set
             {
                 anchorOffset = value;
-                MarkLayoutDirty();
+                ResetPosition();
             }
         }
 
@@ -262,11 +270,37 @@ namespace UIFramework.Core
         Func<IUIKeyEvent, bool> IUIMenu.OnKey { get => OnKey!; set => OnKey = value; }
         Action<int> IUIMenu.OnScroll { get => OnScroll!; set => OnScroll = value; }
 
+        // BEGIN DATA menu
+        /// <summary>
+        /// Refresh hook of data-driven menus (v1.3): re-applies dynamic values and evaluates open-time conditions. Runs
+        /// at the top of <see cref="Tick"/> (<c>opening</c> = false) and when the menu opens, before slots and
+        /// decorators are rebuilt (<c>opening</c> = true). Null for C# menus.
+        /// </summary>
+        internal Action<UIMenu, bool>? DataRefresh { get; set; }
+
+        /// <summary>
+        /// Refreshers of data built into this menu by others (v1.7): data composite bodies, data slot contributions and
+        /// decorations, keyed by what registered them. Run right after <see cref="DataRefresh"/>, in C# menus too.
+        /// </summary>
+        internal Dictionary<object, Action<bool>> ExtensionRefresh { get; } = new();
+        // END DATA menu
+
         public void SetPosition(int px, int py)
         {
             x = px;
             y = py;
             anchor = UIAnchor.Explicit;
+            ResetPosition();
+        }
+
+        /// <summary>
+        /// Place the menu from its anchor again on the next layout (the position was changed, the window was resized, or
+        /// the menu reopens). While open, a centered axis otherwise keeps the position of the first layout (see
+        /// <see cref="ResolvePosition"/>).
+        /// </summary>
+        internal void ResetPosition()
+        {
+            settled = null;
             MarkLayoutDirty();
         }
 
@@ -346,6 +380,11 @@ namespace UIFramework.Core
             h = Math.Clamp(h, Math.Min(insetH, maxH), maxH);
 
             Point position = ResolvePosition(vp, w, h);
+            if (Host != null)
+            {
+                settled ??= position; // the first layout since the menu opened
+            }
+
             Bounds = new Rectangle(position.X, position.Y, w, h);
             if (!collapsed)
             {
@@ -359,11 +398,20 @@ namespace UIFramework.Core
         }
 
         /// <summary>Top-left corner for a menu of the given size: the anchor (or explicit X/Y), clamped to the viewport and below the title banner.</summary>
+        /// <remarks>
+        /// While the menu is open, an axis the anchor centers keeps the position of the first layout, so content that
+        /// grows or shrinks (a line shown on hover, a tab switch) extends the window from where it is instead of
+        /// re-centering it and moving everything under the cursor. Edge anchors are stable already.
+        /// </remarks>
         private Point ResolvePosition(Point vp, int w, int h)
         {
             int minY = title != null && drawBox ? Math.Min(TitleReserve, Math.Max(0, vp.Y - h)) : 0;
-            int px = anchor == UIAnchor.Explicit ? x : AnchorX(vp.X, w) + anchorOffset.X;
-            int py = anchor == UIAnchor.Explicit ? y : AnchorY(vp.Y, h, minY) + anchorOffset.Y;
+            int px = anchor == UIAnchor.Explicit ? x
+                : settled.HasValue && CentersX ? settled.Value.X
+                : AnchorX(vp.X, w) + anchorOffset.X;
+            int py = anchor == UIAnchor.Explicit ? y
+                : settled.HasValue && CentersY ? settled.Value.Y
+                : AnchorY(vp.Y, h, minY) + anchorOffset.Y;
             return new Point(
                 Math.Clamp(px, 0, Math.Max(0, vp.X - w)),
                 Math.Clamp(py, minY, Math.Max(minY, vp.Y - h)));
@@ -411,6 +459,7 @@ namespace UIFramework.Core
         internal void Tick(double elapsedMs)
         {
             using PerfCounters.Scope perf = PerfCounters.Begin(this, PerfCounters.Phase.Update);
+            RunDataRefresh(opening: false); // DATA
             if (LayoutDirty)
             {
                 Relayout();
@@ -517,11 +566,15 @@ namespace UIFramework.Core
             }
         }
 
-        /// <summary>Draw the hovered element's tooltip once the delay elapsed (also used by HUD widgets).</summary>
+        /// <summary>
+        /// Draw the tooltip of the hovered element once the delay elapsed (also used by HUD widgets). An element without
+        /// a tooltip shows its nearest ancestor's, so the parts of a row, cell or composite share the tooltip set on it
+        /// (an image inside a data grid row shows the row's tooltip).
+        /// </summary>
         internal void DrawTooltip(SpriteBatch b)
         {
-            UIElement? hovered = Hovered;
-            if (hovered == null || (hovered.Tooltip == null && hovered.RichTooltip == null) || Overlay.HasPopups)
+            UIElement? hovered = TooltipOwner(Hovered);
+            if (hovered == null || Overlay.HasPopups)
             {
                 return;
             }
@@ -545,6 +598,20 @@ namespace UIFramework.Core
 
             string? tooltipTitle = hovered.TooltipTitle == null ? null : Pseudo.Transform(Consumer.Invoke(hovered.Id, "TooltipTitle", hovered.TooltipTitle, string.Empty));
             IClickableMenu.drawHoverText(b, text, Game1.smallFont, boldTitleText: string.IsNullOrEmpty(tooltipTitle) ? null : tooltipTitle);
+        }
+
+        /// <summary>The element whose tooltip applies to <paramref name="element"/>: itself, else its nearest ancestor with one.</summary>
+        internal static UIElement? TooltipOwner(UIElement? element)
+        {
+            for (UIElement? e = element; e != null; e = e.ParentElement)
+            {
+                if (e.Tooltip != null || e.RichTooltip != null)
+                {
+                    return e;
+                }
+            }
+
+            return null;
         }
 
         // ---------------------------------------------------------------------------------------------------------
@@ -589,6 +656,7 @@ namespace UIFramework.Core
 
         private void AfterOpened()
         {
+            RunDataRefresh(opening: true); // DATA
             registry.NotifyOpening(this);
             LayoutDirty = true;
             Relayout();
@@ -630,6 +698,7 @@ namespace UIFramework.Core
             }
 
             Host = null;
+            settled = null;
             Overlay.CloseAll();
             Overlay.DiscardFrame();
             Focus.ClearFocus();
@@ -642,6 +711,66 @@ namespace UIFramework.Core
                 Consumer.Invoke(Id, "OnClose", () => cb(this));
             }
         }
+
+        // BEGIN DATA rebuild
+
+        /// <summary>
+        /// Rebuild the tree without replacing the menu: the same <see cref="UIMenu"/> and <see cref="MenuHost"/> stay, so
+        /// an open menu stays open, child menus survive and references to the menu stay valid (data hot reload).
+        /// <list type="number">
+        ///   <item>capture the view state by element id (focus, scroll offsets, list / grid position, sort, selection, column widths);</item>
+        ///   <item>close the overlay and clear focus and hover;</item>
+        ///   <item>clear the root (drops bindings through <see cref="OnElementDetached"/>);</item>
+        ///   <item>run <paramref name="build"/> (re-applies the options and builds the new tree);</item>
+        ///   <item>if open: run the data refresh and <see cref="MenuRegistry.NotifyOpening"/> (slots and decorators) and lay out;</item>
+        ///   <item>restore the view state and forget muted callbacks.</item>
+        /// </list>
+        /// </summary>
+        internal void RebuildInPlace(Action<UIMenu> build)
+        {
+            ArgumentNullException.ThrowIfNull(build);
+
+            MenuViewState view = MenuViewState.Capture(this);
+            Overlay.CloseAll();
+            Focus.ClearFocus();
+            Hovered = null;
+            announcedHover = null;
+            Root.Clear();
+
+            build(this);
+
+            if (IsOpen)
+            {
+                RunDataRefresh(opening: true);
+                registry.NotifyOpening(this);
+            }
+
+            LayoutDirty = true;
+            Relayout();
+            view.Restore(this);
+            Consumer.ResetMutes();
+        }
+
+        /// <summary>Run <see cref="DataRefresh"/> inside the owner's callback guard.</summary>
+        private void RunDataRefresh(bool opening)
+        {
+            Action<UIMenu, bool>? refresh = DataRefresh;
+            if (refresh != null)
+            {
+                Consumer.Invoke(Id, "DataRefresh", () => refresh(this, opening));
+            }
+
+            if (ExtensionRefresh.Count > 0)
+            {
+                // each entry isolates its own failures (refresher groups log and skip a faulting value)
+                foreach (Action<bool> extension in new List<Action<bool>>(ExtensionRefresh.Values))
+                {
+                    extension(opening);
+                }
+            }
+        }
+
+        // END DATA rebuild
 
         public override string ToString() => $"UIMenu('{Id}' of {Consumer.ModId})";
     }

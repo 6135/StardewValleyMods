@@ -108,6 +108,9 @@ namespace UIFramework.Components
         }
 
         internal override bool Focusable => true;
+
+        // click-once: a mouse click fires it and does not leave it holding focus (Tab / arrows / gamepad still reach it)
+        internal override bool FocusOnClick => false;
         internal override bool ActivateOnEnter => true;
 
         protected override string? HoverSoundCue => HoverSound ?? Style.HoverSound ?? Theme.HoverSound;

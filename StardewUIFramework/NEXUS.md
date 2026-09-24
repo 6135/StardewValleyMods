@@ -1,9 +1,10 @@
 # UI Framework
 
-A SMAPI library mod that other mods use to build their in-game menus. It provides the windows, buttons, text and
-number inputs, checkboxes, dropdowns, sliders, scroll areas, lists and tooltips, plus layout, keyboard, mouse and
-gamepad handling, so mod authors can put together a screen from parts instead of drawing and positioning everything
-by hand.
+A SMAPI library mod that other mods use to build their in-game menus, written as JSON data or C#. It provides the
+windows, buttons, text and number inputs, checkboxes, dropdowns, sliders, scroll areas, lists, data grids, forms and
+tooltips, plus layout, keyboard, mouse and gamepad handling, so authors can put together a screen from parts instead
+of drawing and positioning everything by hand. Content Patcher packs can build complete, interactive screens (and
+settings pages, HUD widgets, additions to other mods' menus) without writing any code.
 
 ## For players
 
@@ -22,9 +23,31 @@ by hand.
   `ui_debug` toggles the debug overlay, `ui_list` lists the framework menus that are open.
 - Works in single player, multiplayer and split-screen. No Harmony patches.
 
-**Not the same as StardewUI.** focustense's StardewUI is a different framework built around StarML markup. UI
-Framework is a code-first C# builder API with no markup language. A mod that depends on one does not need the other,
-and both can be installed together.
+**Not the same as StardewUI.** focustense's StardewUI is a different framework built around StarML markup bound to C#
+view models. UI Framework takes JSON data (Content Patcher data assets, no C# needed) or a C# builder API, and has no
+markup language. A mod that depends on one does not need the other, and both can be installed together.
+
+## What's new in 1.8
+
+- Players: clicking a button, checkbox, dropdown or slider no longer leaves it highlighted, and one Escape closes the
+  menu; Tab and the arrow keys still show where focus is. A centered window no longer jumps when its content grows or
+  shrinks (a line shown on hover, a tab switch). Hovering any part of a list or grid row shows the row's tooltip.
+- Content pack authors: `ShowOverMenus` keeps a HUD widget visible on top of open menus; named tooltips
+  (`Owners` > `Tooltips`, used with `{ "From": "name" }`); an image's `Sprite` can change per row (`${row.sprite}`).
+- Mod authors: `IUIHud.ShowOverMenus`; `ImportData` / `ImportDataFile` build the menus before returning, so
+  `GetMenu` and `BindToggleHotkey` work right after the import. `ImportDataFile` now takes a full path
+  (`Path.Combine(helper.DirectoryPath, "assets/ui.json")`); relative paths are no longer resolved.
+- Fixes: framework trigger actions no longer report "failed" after they succeeded (buttons stopped responding after
+  the first click); UI Framework now lists Content Patcher as an optional dependency, so its token is accepted.
+
+## What's new in 1.3 to 1.7
+
+- Content pack authors: data-driven UIs. Menus, HUD widgets, settings screens, reusable templates and components, and
+  additions to other mods' menus, all written as Content Patcher data, with live expressions, named state (including
+  per-save and cross-save settings), trigger actions, game state queries and hot reload (`patch reload` keeps an open
+  menu open).
+- Mod authors: keep your screens in JSON and offer your code to data by name (commands, functions, row sources,
+  models, draw hooks, composites); export any menu, C# or data, as JSON from the inspector.
 
 ## What's new in 1.2
 
@@ -41,13 +64,26 @@ and both can be installed together.
   sortable / filterable data grid, signals and auto-generated forms with undo / redo, rich text and rich tooltips,
   HUD widgets, and an in-game inspector that exports a menu as C# code.
 
+## For content pack authors
+
+Add `6135.UIFramework` as a dependency of your Content Patcher pack and edit `Mods/6135.UIFramework/Menus` (or `Huds`,
+`Owners`, `Sprites`, `Composites`, `Contributions`). Each menu is a tree of elements with the same names as the C#
+API (`Stack`, `Grid`, `Label`, `Button`, `NumberInput`, `Dropdown`, `List`, `DataGrid`, `Form`...). Text can show live
+values (`"Clicked ${menu.clicks} times"`), inputs bind to state (`"Bind": "config.volume"`), and events run trigger
+actions (`"OnClick": [ "AddMoney 100", "6135.UIFramework_CloseMenu" ]`). Open a menu with a hotkey, a map tile
+action, any trigger action or `ui_open`. State can also drive your own patches through a Content Patcher token.
+`ui_validate` points at every mistake by path, and `ui_schema` gives your editor autocomplete. A complete example
+pack is on GitHub.
+
 ## For mod authors
 
 Copy one file (`IStardewUIApi.cs`) into your project, add `6135.UIFramework` as a dependency in your manifest, and
 request the API with `helper.ModRegistry.GetApi<IStardewUIApi>("6135.UIFramework")`. Menus are built from typed
 handles (`AddGrid`, `AddButton`, `AddDropdown`, ...), values are bound through getter/setter delegates, every
 interaction raises a callback, and you can supply fully custom components through an interface. Hotkeys accept
-SMAPI keybind strings straight from your config.
+SMAPI keybind strings straight from your config. You can also keep your screens in JSON (imported from your mod
+folder, and hot-reloaded while you develop) and register C# commands, functions, row sources and components that the
+JSON reaches by name.
 
 Full documentation, the API reference and a complete example mod are on GitHub:
 <https://github.com/6135/StardewValleyMods/blob/master/StardewUIFramework/README.md>

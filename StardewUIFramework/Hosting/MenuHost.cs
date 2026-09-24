@@ -285,7 +285,7 @@ namespace UIFramework.Hosting
 
         public override void gameWindowSizeChanged(Rectangle oldBounds, Rectangle newBounds)
         {
-            Menu.InvalidateLayout();
+            Menu.ResetPosition(); // re-place from the anchor in the new viewport
             Menu.Relayout();
             _childMenu?.gameWindowSizeChanged(oldBounds, newBounds);
         }

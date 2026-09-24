@@ -140,7 +140,6 @@ namespace UIFramework.Rendering
 
         internal const int PixelScale = 4;
 
-        private static readonly Dictionary<string, Texture2D?> Textures = new(StringComparer.OrdinalIgnoreCase);
         private static Dictionary<string, ThemeData>? themes;
         private static ResolvedTheme? resolved;
         private static string? warnedMissing;
@@ -163,7 +162,7 @@ namespace UIFramework.Rendering
         {
             themes = null;
             resolved = null;
-            Textures.Clear();
+            TextureCache.Invalidate();
             warnedMissing = null;
         }
 
@@ -230,31 +229,8 @@ namespace UIFramework.Rendering
             return result;
         }
 
-        /// <summary>Load a texture asset by name (cached until <see cref="Invalidate"/>); null when the name is empty or the load fails.</summary>
-        private static Texture2D? LoadTexture(string? assetName)
-        {
-            if (string.IsNullOrWhiteSpace(assetName))
-            {
-                return null;
-            }
-
-            if (Textures.TryGetValue(assetName, out Texture2D? cached))
-            {
-                return cached;
-            }
-
-            Texture2D? texture = null;
-            try
-            {
-                texture = UIServices.GameContent?.Load<Texture2D>(assetName);
-            }
-            catch (Exception ex)
-            {
-                UIServices.Log($"Theme '{ActiveName}' references texture '{assetName}' which could not be loaded.\n{ex}", LogLevel.Warn);
-            }
-            Textures[assetName] = texture;
-            return texture;
-        }
+        /// <summary>Load a texture asset by name through the shared <see cref="TextureCache"/>; null when the name is empty or the load fails.</summary>
+        private static Texture2D? LoadTexture(string? assetName) => TextureCache.Load(assetName, $"Theme '{ActiveName}'");
 
         // ---------------------------------------------------------------------------------------------------------
         //  Colors

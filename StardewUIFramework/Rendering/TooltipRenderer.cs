@@ -122,6 +122,12 @@ namespace UIFramework.Rendering
             IReadOnlyList<TooltipBlock> blocks = tooltip.Blocks;
             for (int i = 0; i < blocks.Count; i++)
             {
+                // rows are built once per frame and both sized and drawn from this list, so a hidden block drops out of both
+                if (!IsShown(element, blocks[i], i))
+                {
+                    continue;
+                }
+
                 Row? row = BuildRow(element, blocks[i], i, wrap);
                 if (row != null)
                 {
@@ -136,8 +142,8 @@ namespace UIFramework.Rendering
         {
             return block.Kind switch
             {
-                TooltipBlockKind.Title => TextRow(Evaluate(element, block, "RichTooltip.Title#" + index), UIFont.Dialogue, null, wrap),
-                TooltipBlockKind.Line => TextRow(Evaluate(element, block, "RichTooltip.Line#" + index), UIFont.Small, block.Color, wrap),
+                TooltipBlockKind.Title => TextRow(Evaluate(element, block, "RichTooltip.Title#" + index), UIFont.Dialogue, ColorOf(element, block, index), wrap),
+                TooltipBlockKind.Line => TextRow(Evaluate(element, block, "RichTooltip.Line#" + index), UIFont.Small, ColorOf(element, block, index), wrap),
                 TooltipBlockKind.Icon => IconRow(block),
                 TooltipBlockKind.Item => ItemRow(block),
                 TooltipBlockKind.ItemInstance => ItemInstanceRow(element, block, index),
@@ -150,6 +156,23 @@ namespace UIFramework.Rendering
         private static string Evaluate(UIElement element, TooltipBlock block, string eventName)
         {
             return element.Consumer.Invoke(element.Id, eventName, block.Text, string.Empty) ?? string.Empty;
+        }
+
+        /// <summary>The block's <see cref="TooltipBlock.When"/> condition (true when unset; a throwing condition hides the block).</summary>
+        private static bool IsShown(UIElement element, TooltipBlock block, int index)
+        {
+            return block.When == null || element.Consumer.Invoke(element.Id, "RichTooltip.When#" + index, block.When, false);
+        }
+
+        /// <summary>Text color: <see cref="TooltipBlock.ColorFunc"/> when set and non-null, else the static <see cref="TooltipBlock.Color"/>.</summary>
+        private static Color? ColorOf(UIElement element, TooltipBlock block, int index)
+        {
+            if (block.ColorFunc == null)
+            {
+                return block.Color;
+            }
+
+            return element.Consumer.Invoke(element.Id, "RichTooltip.Color#" + index, block.ColorFunc, null) ?? block.Color;
         }
 
         /// <summary>A (rich, wrapped) text row; skipped when empty.</summary>

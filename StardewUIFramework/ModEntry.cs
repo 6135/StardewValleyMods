@@ -6,6 +6,8 @@ using StardewModdingAPI;
 using StardewModdingAPI.Events;
 using UIFramework.Api;
 using UIFramework.Core;
+using UIFramework.Data;
+using UIFramework.Data.Actions;
 using UIFramework.Hosting;
 using UIFramework.Rendering;
 
@@ -16,6 +18,8 @@ namespace UIFramework
     {
         private readonly MenuRegistry menus = new();
         private readonly CompositeRegistry composites = new();
+        private readonly ConsumerContexts contexts = new();
+        private DataService? data;
         private HotkeyService hotkeys = null!;
         private ExtensionRegistry extensions = null!;
         private ModConfig config = new();
@@ -107,17 +111,39 @@ namespace UIFramework
             });
             // END HUD entry
 
+            // BEGIN DATA entry
+            UIServices.Hooks = new HookRegistry();
+            data = new DataService(helper, Monitor, contexts, menus, hotkeys, composites, extensions);
+            UIServices.Data = data;
+            helper.Events.Content.AssetRequested += data.OnAssetRequested;
+            helper.Events.Content.AssetsInvalidated += data.OnAssetsInvalidated;
+            helper.Events.Content.AssetsInvalidated += (_, e) => TextureCache.Invalidate(e.NamesWithoutLocale);
+            helper.Events.Content.AssetReady += data.OnAssetReady;
+            helper.Events.GameLoop.UpdateTicked += data.OnUpdateTicked;
+            helper.Events.GameLoop.ReturnedToTitle += data.OnReturnedToTitle;
+            FrameworkTriggerActions.Register(data);
+            StateActions.Register(data);
+            CollectionActions.Register(data);
+            BridgeActions.Register(data);
+            FrameworkQueries.Register(data);
+            FrameworkTokens.Register(data);
+            TileActions.Register(data, Monitor);
+            // END DATA entry
+
             // BEGIN TOOLS entry
             Inspector.ExportDirectory = Path.Combine(helper.DirectoryPath, "export");
-            new DebugConsole(menus, Monitor).Register(helper.ConsoleCommands);
+            new DebugConsole(menus, Monitor, data, Path.Combine(helper.DirectoryPath, "schema")).Register(helper.ConsoleCommands);
             helper.Events.Input.ButtonsChanged += (_, _) => Inspector.OnButtonsChanged();
             // END TOOLS entry
         }
 
-        /// <summary>One API instance per consumer so ids, hotkeys and styles are namespaced and can be torn down together.</summary>
+        /// <summary>
+        /// One API instance per request, over one shared <see cref="ConsumerContext"/> per consumer (so ids, hotkeys and
+        /// styles are namespaced, and the C# and data halves of a hybrid mod share style, tooltip delay, bindings and mutes).
+        /// </summary>
         public override object GetApi(IModInfo mod)
         {
-            var consumer = new ConsumerContext(mod.Manifest.UniqueID);
+            ConsumerContext consumer = contexts.For(mod.Manifest.UniqueID);
             Monitor.Log($"API requested by {mod.Manifest.UniqueID}.", LogLevel.Trace);
             return new StardewUIApi(consumer, menus, hotkeys, composites, extensions);
         }
@@ -129,6 +155,10 @@ namespace UIFramework
 
         private void OnGameLaunched(object? sender, GameLaunchedEventArgs e)
         {
+            // BEGIN DATA launched
+            ContentPatcherToken.Register(Helper, ModManifest, Monitor); // optional: {{6135.UIFramework/State: <owner>/<key>}}
+            // END DATA launched
+
             var gmcm = Helper.ModRegistry.GetApi<IGenericModConfigMenuApi>("spacechase0.GenericModConfigMenu");
             if (gmcm == null)
             {

@@ -2,16 +2,18 @@
 
 **UI Framework** (`6135.UIFramework`) is a SMAPI library mod. Other mods use it to build in-game menus out of
 reusable parts (labels, buttons, text and number inputs, checkboxes, dropdowns, sliders, scroll areas, virtualized
-lists, data grids, auto-generated forms, rich tooltips) through a code-first C# builder API, and to run their own
-code when the player interacts with those parts. It also gives every mod that uses it HUD widgets and toasts,
+lists, data grids, auto-generated forms, rich tooltips), written as **JSON data or C#**: a Content Patcher pack can
+define complete, interactive screens without any code ([Data-driven UIs](#data-driven-uis-json)), and a C# mod uses
+the builder API and can hand its code to data by name. It also gives every mod that uses it HUD widgets and toasts,
 player-adjustable windows, themes, screen reader support, extension slots other mods can contribute to, and an
 in-game inspector.
 
 It does nothing on its own: install it because another mod lists it as a requirement.
 
 > **Not the same as StardewUI.** [focustense's StardewUI](https://github.com/focustense/StardewUI) is a separate
-> framework built around StarML markup and data binding. UI Framework is a code-first builder API: you call
-> `AddButton(...)`, `AddGrid(...)` and so on from C#; there is no markup language. Mods that depend on one do not
+> framework built around StarML markup bound to C# view models. UI Framework takes JSON data or C#: screens are
+> Content Patcher-patchable data assets (with live expressions, named state, trigger actions and game state queries,
+> so no C# is needed), or you call `AddButton(...)`, `AddGrid(...)` and so on from C#. Mods that depend on one do not
 > need the other.
 
 Design notes and the implementation plan live in [architecture.md](architecture.md).
@@ -108,12 +110,19 @@ Type these in the SMAPI console. The ones marked *(mod authors)* are diagnostics
 | `ui_pseudoloc`                         | Toggle pseudo-localization (accented, padded strings in every framework menu) for the current session. *(mod authors)*                              |
 | `ui_inspect`                           | Toggle the in-game inspector (hover elements to see their layout; the info panel lists the editing keys). *(mod authors)*                           |
 | `ui_list`                              | List the open framework menus: consumer, menu id, host type (`active` / `child`) and element count. *(mod authors)*                                 |
-| `ui_dump [<consumerId> <menuId>]`      | Print the element tree of a menu (the most recently opened one without arguments). *(mod authors)*                                                  |
+| `ui_dump [<consumerId> <menuId>]`      | Print the element tree of a menu (also `<consumerId>/<menuId>`; the most recently opened one without arguments). *(mod authors)*                    |
 | `ui_find <text>`                       | List every element of the open menus whose id contains the text. *(mod authors)*                                                                    |
 | `ui_perf on\|off\|show`                | Per-menu timing of the last 60 frames. *(mod authors)*                                                                                              |
-| `ui_export [<consumerId> <menuId>]`    | Export a menu as C# builder code to the log, `Mods/UIFramework/export` and the clipboard. *(mod authors)*                                            |
+| `ui_export [<consumerId> <menuId>] [json]` | Export a menu as C# builder code (or data-menu JSON with `json`) to the log, `Mods/UIFramework/export` and the clipboard. *(mod authors)* |
 | `ui_slots`                             | Print the extension slots of every open framework menu (hints and contributors). *(mod authors)*                                                    |
 | `ui_composites`                        | List the composite components defined through the framework. *(mod authors)*                                                                        |
+| `ui_open <owner/menu> [force]`         | Open a framework menu (data or C#); without `force` it waits until the player is free. *(mod authors)*                                              |
+| `ui_close [<owner/menu>]`              | Close a framework menu (the topmost open one without arguments). *(mod authors)*                                                                    |
+| `ui_data`                              | List the data menus and HUDs, data composites and contributions with their status and message counts, the defined sprites, the C# hooks and the imported data. *(mod authors)* |
+| `ui_validate [<owner/menu>]`           | Re-read the data assets and print every validation message (path-qualified). *(mod authors)*                                                        |
+| `ui_reload`                            | Re-read the data assets (and files imported with `ImportDataFile`) now and rebuild the entries that changed (open menus stay open). *(mod authors)* |
+| `ui_schema`                            | Write JSON Schemas of the data format to `Mods/UIFramework/schema` (editor autocomplete). *(mod authors)*                                           |
+| `ui_state [list\|get\|set\|reset] ...` | List, read, write or reset the state of data UIs (`menu[owner/menu].x`, `session[owner].x`, `config[owner].x`...). *(mod authors)*                 |
 
 The bundled example mod adds `ui_demo` (open its demo menu) and `ui_hud` (toggle its HUD widget) when it is
 installed.
@@ -146,6 +155,10 @@ ones slide up when a newer one arrives. They stay visible on top of menus.
   `Game1.menuTexture`) plus a bundled `assets/text_box_small.png`, so Content Patcher packs can retexture them.
 
 ## For modders
+
+There are two ways in. **Content pack authors** write screens as JSON data with Content Patcher and need no C# at all:
+jump to [Data-driven UIs](#data-driven-uis-json). **C# mods** use the builder API below, and can also keep their
+screens in JSON and offer code to data by name ([C# bridge](#c-bridge-and-hybrid-mods)).
 
 ### Getting started
 
@@ -253,7 +266,9 @@ Menu chrome and placement come from `IUIMenuOptions` / the same properties on `I
 - `Title` (drawn on the vanilla scroll banner above the box), `DrawBox` (the vanilla dialogue box), `ShowCloseButton`.
 - `Width` / `Height`: fixed size, or `null` to fit the content. The result is clamped to the UI viewport.
 - `Anchor` (`Center` by default, or an edge / corner) or `Explicit` with `X` / `Y`; `SetPosition(x, y)` switches to
-  `Explicit`.
+  `Explicit`. While a menu is open, a centered axis keeps the position of its first layout (1.8): content that grows or
+  shrinks (a line shown on hover, a tab switch) extends the window from where it is instead of re-centering it under
+  the cursor. It is centered again when it reopens, the game window is resized or its position properties change.
 - `Modal` (default `true`). When it is `false`, a click outside the box closes the menu.
 - `DimBackground` (default `true`) darkens the screen, unless the player turned on "Show menu background" in the
   game options (the game then draws its own backdrop).
@@ -337,7 +352,10 @@ Routing of a click:
 1. Overlay elements (an open dropdown list) get the event first. Clicking outside an open dropdown closes it *and*
    swallows the click.
 2. The deepest visible, enabled element under the cursor is the target (scroll views only hit inside their
-   viewport). A focusable target takes keyboard focus; clicking anything else clears focus.
+   viewport). A target you keep typing into or navigating (text and number inputs, data grids, custom components
+   with `WantsFocus`) takes keyboard focus; clicking anything else clears focus. Click-once controls (buttons,
+   checkboxes, dropdowns, sliders) do their job on the click and do not keep focus (1.8), so they are not left
+   highlighted and one Escape still closes the menu. Tab, arrows and the gamepad still move focus onto them.
 3. The event is delivered to the target, then bubbles to each ancestor until someone sets `IUIEvent.Handled = true`
    (buttons, checkboxes, dropdowns and custom components that return `true` from `OnClick` mark their own clicks
    handled). This lets a list row react to clicks on any of its children.
@@ -393,6 +411,10 @@ delay from the framework config, or after the value you pass to `SetTooltipDelay
 value goes back to the config default). It is drawn with the vanilla `IClickableMenu.drawHoverText`. For tooltips
 with icons, item rows, money or colored lines, set `RichTooltip` instead (see
 [Rich text and rich tooltips](#rich-text-and-rich-tooltips)).
+
+Tooltips are inherited (1.8): an element without one shows its nearest ancestor's, so an image or label inside a
+data grid row shows the row's tooltip, and a tooltip on a stack covers everything in it. Moving the cursor between
+elements that share a tooltip does not restart the delay.
 
 #### Styles
 
@@ -888,7 +910,7 @@ on, the menu stops routing input and instead:
 - keys edit the element live: **arrows** nudge `MarginLeft` / `MarginTop` (Shift x8), **+** / **-** change `Width`
   (Shift: `Height`; Ctrl x8; an element without an explicit size starts from its arranged size), **V** toggles
   `Visible`, **P** or a click pins the element so the panel stays on it while the cursor moves, **E** exports the
-  menu, **Esc** turns the inspector off. Layout-only containers (stacks, grids, spacers) can be inspected even though
+  menu as C#, **J** as JSON, **Esc** turns the inspector off. Layout-only containers (stacks, grids, spacers) can be inspected even though
   they are not hit-testable.
 
 Export (**E** or `ui_export [<consumerId> <menuId>]`) writes the C# builder code that would recreate the menu
@@ -896,7 +918,8 @@ through the public API (`api.CreateMenu`, one `Add*` call per element with the r
 for every non-default property) to the SMAPI log, to `Mods/UIFramework/export/<consumerId>-<menuId>.cs` and to the
 clipboard when the platform allows it. Delegates and textures cannot be serialized: the current value of text
 delegates is exported as a lambda so the screen looks the same, and every such spot carries a `/* TODO */` marker.
-Nudge a layout in-game, export it, paste the numbers back into your code.
+Nudge a layout in-game, export it, paste the numbers back into your code. **J** (or `ui_export ... json`) exports
+the menu as JSON instead, written to `Mods/UIFramework/export/<consumerId>-<menuId>.json` (log and clipboard as above).
 
 The other console commands are diagnostics: `ui_list` (open menus with consumer, id, host type and element count),
 `ui_dump [<consumerId> <menuId>]` (the element tree with bounds and state; the most recently opened menu without
@@ -905,6 +928,560 @@ arguments), `ui_find <text>` (elements of the open menus whose id contains the t
 contributors), `ui_composites` (defined composite names), `ui_debug` (the simpler bounds-and-ids overlay) and
 `ui_pseudoloc`. The `LogCallbacks` config flag traces every callback the framework invokes with your mod id,
 element id and event name.
+
+#### Data-driven UIs (JSON)
+
+Since v1.3 every screen can also be written as **JSON data** instead of C#. A Content Patcher pack edits the
+framework's data assets, and the framework builds each entry through its owner's own API instance: the same
+components, layout, themes, player layout, accessibility and inspector as a C# menu. Nothing about the result is
+second class. A C# mod can pick either half, or mix them: keep its UIs in JSON and hand code (commands, functions, row
+sources, draw hooks, models, composites) to data by name.
+
+- Text, number and bool getters become literals, Content Patcher tokens (resolved at patch time) or live
+  `${expressions}`.
+- Get/set pairs, signals and computeds become **named state** (`"Bind": "config.volume"`).
+- Event handlers become **action lists** of trigger action strings, with game state query `Condition`s.
+- Genuine code (custom drawing, custom components, data computed in C#) is registered once by a C# mod and
+  **referenced by name** from any pack.
+
+`[CP] UI Framework Example` in this repository is a complete pack that uses every feature below.
+
+##### Getting started (Content Patcher pack)
+
+1. Make a Content Patcher pack whose manifest depends on the framework:
+
+   ```json
+   "Dependencies": [ { "UniqueID": "6135.UIFramework", "MinimumVersion": "1.7.0" } ],
+   "ContentPackFor": { "UniqueID": "Pathoschild.ContentPatcher" }
+   ```
+
+2. Add a menu to `Mods/6135.UIFramework/Menus`. Keys are `<owner>/<menu id>`; the owner must be a loaded mod or
+   content pack, usually your own `{{ModId}}`:
+
+   ```json
+   {
+     "Format": "2.0.0",
+     "Changes": [
+       {
+         "Action": "EditData",
+         "Target": "Mods/6135.UIFramework/Menus",
+         "Entries": {
+           "{{ModId}}/hello": {
+             "Title": "{{i18n:hello.title}}",
+             "Hotkey": "F10",
+             "State": { "clicks": 0 },
+             "Children": [
+               { "Id": "text", "Label": "Clicked ${menu.clicks} times on day ${game.day}" },
+               { "Id": "click", "Button": "Click me", "OnClick": "6135.UIFramework_AddState menu.clicks 1" },
+               { "Id": "gift", "Button": "Take 100g", "Enabled": "menu.clicks >= 3", "OnClick": [ "AddMoney 100", "6135.UIFramework_CloseMenu" ] }
+             ]
+           }
+         }
+       }
+     ]
+   }
+   ```
+
+3. Open it with its `Hotkey`, with `ui_open {{ModId}}/hello` in the console, from any trigger action
+   (`6135.UIFramework_OpenMenu <owner>/hello`: `Data/TriggerActions`, mail, dialogue, another UI's button) or from a
+   map tile (`Action 6135.UIFramework_OpenMenu <owner>/hello`).
+4. Iterate: edit the JSON and run `patch reload <pack id>`. Only changed entries rebuild, in place, so an open menu
+   stays open. `ui_validate` prints every problem with its path (`Menus["Owner/hello"].Children[1](#click).Width: ...`
+   plus "did you mean" hints). A broken entry never stops the others from loading.
+
+A long definition can live in its own file: load it with Content Patcher `Load` (e.g. `Mods/{{ModId}}/UI/Main`) and
+set `"From": "Mods/{{ModId}}/UI/Main"` on the entry; the entry's own fields override the file's. Content Patcher
+tokens are not applied inside loaded files, so use `loc()` / `token()` for text there. Run `ui_schema` and point VS
+Code's `json.schemas` (or a `"$schema"` member) at `Mods/UIFramework/schema/menu.schema.json` for autocomplete and
+validation while you type.
+
+##### Assets
+
+| Asset (`Mods/6135.UIFramework/...`) | Key                        | Contents                                                                                     |
+|-------------------------------------|----------------------------|----------------------------------------------------------------------------------------------|
+| `Menus`                             | `<owner>/<menu id>`        | Menu options, state, events and the element tree                                             |
+| `Huds`                              | `<owner>/<hud id>`         | HUD widgets                                                                                  |
+| `Owners`                            | `<mod id>`                 | Per-owner settings: `TooltipDelayMs`, `DefaultStyle`, style `Classes`, global `Hotkeys`, `Templates` |
+| `Sprites`                           | `<owner>/<name>`           | Named images: `Texture`, `Source`, `Border` (3x3 box), `Scale`, `Tint`                        |
+| `Composites`                        | `<ModId>.<Name>` (global)  | Data composites, usable from data and from C# `AddComposite` (v1.7)                           |
+| `Contributions`                     | `<contributor>/<name>`     | Slot contributions, event subscriptions and decorations for another mod's menu (v1.7)         |
+| `TextBoxSmall` (texture)            |                            | The bundled small text box, for input `Texture` fields                                       |
+
+A C# mod's `ImportData` / `ImportDataFile` JSON is the base layer of these assets, so packs can patch it too. Any pack
+can patch another pack's menu field by field: Content Patcher `TargetField` reaches nested elements through their
+`Id`s. Elements without an `Id` get `<parent>.<index>` with a warning, because patches cannot target them reliably.
+
+**Collision rule.** A menu (or HUD, or composite) a C# mod created with the same owner and id wins: the data entry is
+skipped with a warning. When C# destroys a data menu (`DestroyMenu`), the entry is built again on the next reload
+unless a C# menu took its key.
+
+##### Menus, HUDs, owners and sprites
+
+**Menu entry fields:**
+
+| Field(s)                                                                  | Meaning                                                                        |
+|---------------------------------------------------------------------------|--------------------------------------------------------------------------------|
+| `Title`, `Width`, `Height`, `ShowCloseButton`, `Modal`, `DimBackground`, `Anchor`, `X`, `Y`, `DrawBox`, `Padding`, `CloseOnEscape`, `PlayerLayout` | The `IUIMenuOptions` of the menu |
+| `Horizontal`, `Spacing`, `Alignment`                                      | The root stack                                                                 |
+| `DefaultButton`, `CancelButton`                                           | Element ids for Enter / Escape                                                 |
+| `Hotkey`                                                                  | A toggle keybind (`"LeftControl + F8"`)                                        |
+| `Condition`                                                               | A game state query checked whenever data opens the menu                        |
+| `State`, `StateLifetime`, `Computed`, `Watch`, `Sources`                  | See [State](#state-scopes) and [Collections](#collections)                    |
+| `Templates`, `Expose`, `Commands`                                         | See [Templates and composites](#templates-and-composites) and [Contributions](#contributions-and-decorations) |
+| `OnOpen`, `OnClose`, `OnScroll`, `OnUpdate` + `UpdateIntervalMs`, `Keys`  | Events (action lists)                                                          |
+| `Children`                                                                | The element tree                                                               |
+| `From`                                                                    | A loaded file holding (part of) the definition                                 |
+
+**HUD entry fields** (`Huds`): `Anchor`, `X`, `Y`, `Width`, `Height`, `DrawBox`, `Opacity`, `Interactive`, `ShowOverMenus`,
+`Horizontal`, `Spacing`, `Alignment`, `Visible` (initial, per player), `ShowWhen` (a live expression), `Hotkey`,
+`State`, `Sources`, `Computed`, `Watch`, `OnUpdate` + `UpdateIntervalMs` and `Children`. Edits rebuild a HUD in place
+and keep the position the player dragged it to.
+
+**Owner entry fields** (`Owners`): `TooltipDelayMs`, `DefaultStyle` (a style), `Classes` (named styles used by
+`"Class": "header big"`, merged in order before the inline `Style`), `Hotkeys`
+(`{ "id": { "Keys": "LeftControl + J", "Condition": "...", "Actions": [ ... ] } }`) and `Templates`. The owner of a
+hybrid mod shares one context between C# and data: a field set here overrides the C# `SetTooltipDelay` /
+`SetDefaultStyle`, a field left out keeps the C# value, and removing the entry restores it.
+
+**Styles** (`Style`, `DefaultStyle`, `Classes`): `Font` (`small`, `dialogue`, `tiny`), `TextColor`, `HoverColor`,
+`BoxTexture`, `BoxSource`, `BoxScale`, `Padding`, `TextShadow`, `ClickSound`, `HoverSound`. Colors are `#RRGGBB`,
+`#RRGGBBAA`, `R,G,B[,A]` or a color name.
+
+**Image references** work everywhere a texture is taken (`Image`, button `Icon`, input `Texture`,
+`Style.BoxTexture`, toasts, tooltip icons):
+
+| Reference                               | Image                                                                               |
+|-----------------------------------------|-------------------------------------------------------------------------------------|
+| `sprite:<owner>/<name>`                 | An entry of `Sprites` (another pack can reskin a UI by editing only that asset)     |
+| `item:(O)24`                            | An item's sprite                                                                    |
+| `asset:Maps/springobjects@0,0,16,16`    | A texture asset with an optional source rectangle                                   |
+
+##### Elements
+
+An element is an object with a `Type`, an `Id` and the fields of that type; containers hold `Children`. Field names
+are the C# API's names, and every field that takes a value also takes an expression (see [Values](#values-expressions-and-functions)).
+
+| Type                                                        | Type-specific fields                                                                       |
+|-------------------------------------------------------------|--------------------------------------------------------------------------------------------|
+| `Stack`                                                     | `Horizontal`, `Spacing`, `Alignment`                                                       |
+| `Grid`                                                      | `Columns`, `Rows` (track strings: `"auto, *, 120"`), `ColumnSpacing`, `RowSpacing`          |
+| `Panel`                                                     | `DrawBox`, `Padding`                                                                       |
+| `Canvas`                                                    | children use `X`, `Y`                                                                      |
+| `ScrollView`                                                | `ViewportHeight`, `ScrollStep`, `ShowScrollbar`, `OnScroll`                                |
+| `Slot`                                                      | `Horizontal`, `MaxHeight`, `MaxContributions` (an extension slot others contribute to)     |
+| `Spacer`                                                    | `Line` (draw a divider)                                                                    |
+| `Label`                                                     | `Text`, `Font`, `Color`, `Shadow`, `Wrap`, `TextAlign`, `Scale`, `RichText`, `OnLink`      |
+| `Button`                                                    | `Text`, `Font`, `Icon`, `IconScale`, `DrawBox`, `RichText`, `ClickSound`, `HoverSound`     |
+| `Image`                                                     | `Sprite`, `Source`, `Scale`, `Tint`                                                        |
+| `ItemImage`                                                 | `Item` (id, item query or an expression giving an item), `Quality`, `Count`, `Stack`, `Scale`, `DrawShadow`, `Alpha`, `Tint` |
+| `Checkbox`                                                  | `Label`, `Value`, `Bind`, `ClickSound`, `OnValueChanged`                                   |
+| `TextInput`                                                 | `Value`, `Bind`, `Placeholder`, `MaxLength`, `Texture`, `Validate`, `OnInvalid`, `OnValueChanged`, `OnSubmit` |
+| `NumberInput`                                               | `Value`, `Bind`, `Min`, `Max`, `Step`, `Clamp`, `Decimals`, `Texture`, `Validate`, `OnInvalid`, `OnValueChanged`, `OnSubmit` |
+| `Dropdown`                                                  | `Value`, `Bind`, `Choices`, `Labels`, `MaxVisible`, `ChoicesSource`, `ChoiceValue`, `ChoiceLabel`, `OnValueChanged`, `OnScroll` |
+| `Slider`                                                    | `Value`, `Bind`, `Min`, `Max`, `Step`, `OnValueChanged`                                    |
+| `Switch`                                                    | `Switch` (an expression); children carry `Case`                                            |
+| `Repeat`, `List`, `DataGrid`                                | See [Collections](#collections)                                                            |
+| `Form`                                                      | See [Rich tooltips and forms](#rich-tooltips-and-forms)                                    |
+| `Composite`, `Outlet`, a template name, a dotted name       | See [Templates and composites](#templates-and-composites)                                  |
+
+**Every element** also takes `Condition` (a game state query, checked when the menu opens and on `_Refresh`; the
+element is hidden while it fails), `Visible`, `Enabled`, `Tooltip`, `TooltipTitle`, `RichTooltip`, `Tag`, `Sealed`,
+`AccessibleName`, `Margin` / `MarginLeft` / `MarginTop` / `MarginRight` / `MarginBottom`, `Width`, `Height`,
+`HorizontalAlign`, `VerticalAlign`, `X` / `Y` (in a canvas), `Row` / `Column` / `RowSpan` / `ColumnSpan` (in a grid),
+`Style`, `Class`, the events `OnClick`, `OnRightClick`, `OnHover`, `OnHoverEnd`, `OnFocus`, `OnBlur`, `Keys`, the
+structure fields `If`, `Case`, `With`, `Out`, the draw hooks `DrawExtra` / `DrawOverlay` and `Outlet`.
+
+**Shorthands:**
+
+| Shorthand                                   | Meaning                                                                         |
+|---------------------------------------------|---------------------------------------------------------------------------------|
+| `{ "Label": "Hello" }`                      | A label; likewise `"Button": "OK"`, `"Checkbox": "Enabled"`, `"Image": "sprite:..."` |
+| `"Margin": "8"` / `"8,4"` / `"l,t,r,b"`     | All sides / horizontal, vertical / each side                                    |
+| `"Cell": "row,col"`, `"Span": "rows,cols"`  | Grid placement                                                                  |
+| `"Choices": "a, b, c"`                      | A comma-separated list (or a JSON array)                                        |
+
+**Structure:**
+
+- `"If": "menu.showDetails"` builds the element only while the expression holds (rebuilt when it changes);
+  `Visible` keeps it built and only hides it.
+- `{ "Switch": "menu.tab", "Children": [ { "Case": "general", ... }, { "Case": "*", ... } ] }` shows one page.
+  Pages are built the first time they are shown, which suits tabs.
+- `"With": "config"` narrows the scope: inside, `.volume` means `config.volume` (in `Bind`, `If` and `${...}`).
+
+##### Values, expressions and functions
+
+- **Text** interpolates `${expr}` live (re-evaluated when what it reads changes); `$:{expr}` is evaluated **once per
+  open** (cheap, e.g. today's date); `$${` is a literal `${`.
+- **Typed fields.** A field whose whole value is one `${...}` keeps the expression's type, and bool / number fields
+  also take a bare expression (`"Enabled": "menu.count > 0"`). So **any** property can be dynamic; static values are
+  applied once and cost nothing per frame.
+- **Content Patcher tokens** (`{{i18n:...}}`, config tokens) resolve first, at patch time, so `${...}` can live in
+  i18n strings. Vanilla tokens are explicit (`token('[LocalizedText ...]')`, `loc('Strings/UI:Key')`), because their
+  `[...]` syntax collides with rich text.
+- **The language** has literals, paths (`menu.x`, `row.item.displayName`, `list[0]`), `+ - * / %`, comparisons,
+  `&& || !`, `?:` and string concatenation. It is sandboxed: no loops, no assignment, no reflection, capped depth and
+  size. Results are cached per screen and state change; anything volatile (`gsq`, `hovered`, C# functions and
+  models) is cached once per tick.
+
+| Functions                  | Names                                                                                           |
+|----------------------------|-------------------------------------------------------------------------------------------------|
+| Math                       | `round floor ceil min max abs clamp`                                                            |
+| Formatting                 | `format money percent`                                                                          |
+| Text                       | `len upper lower trim contains replace substring join quote`                                    |
+| Conversion                 | `num str bool`                                                                                  |
+| Game                       | `gsq(query)` (cached per tick, so `RANDOM` flickers), `token('[...]')`, `loc('Asset:Key')`, `itemName('(O)24')` |
+| UI                         | `isOpen('owner/menu')`, `focused(id)`, `hovered(id)`, `bounds(id).width` (`x y width height`)   |
+| C#                         | `@ModId/name(args)`: a function a C# mod registered (see [C# bridge](#c-bridge-and-hybrid-mods)) |
+
+##### State scopes
+
+State replaces getters / setters, signals and computeds. Values are kept per split-screen player and survive menu
+rebuilds and hot reloads.
+
+| Root                          | What it holds                                                                                   |
+|-------------------------------|-------------------------------------------------------------------------------------------------|
+| `menu.x`                      | Per menu. `"StateLifetime": "Open"` on the menu resets it on each open (default `Session`)       |
+| `session.x`                   | Per owner, until the return to title                                                            |
+| `player.x`                    | `Game1.player.modData["<owner>/x"]`: saved, synced, readable by vanilla `PLAYER_MOD_DATA`         |
+| `stat.x`                      | The player's stats (vanilla `PLAYER_STAT` / `IncrementStat`)                                     |
+| `config.x`                    | Per owner, global across saves (`Mods/UIFramework/data/<owner>.json`): real settings screens     |
+| `menu[owner/menu].x`, `session[owner].x`, `player[owner].x`, `config[owner].x` | The qualified forms, usable from anywhere (actions, queries, tokens, other UIs) |
+
+Read-only roots:
+
+| Root                          | What it reads                                                                                   |
+|-------------------------------|-------------------------------------------------------------------------------------------------|
+| `event.*`                     | The running event: `x y button` (clicks), `old new value index oldIndex` (value changes), `key shift ctrl alt` (keys), `link`, `delta`, `elapsed`, `error`, `name`, `elementId` |
+| `self.*`, `el[id].*`          | An element: `id value text visible enabled hovered focused x y width height tag childCount error valid`, plus `selectedIndex selectedValue isOpen` (dropdowns), `scroll maxScroll` (scroll views), `selectedRow selectedRows rowCount firstVisible sortColumn sortDescending` (lists, grids), `dirty canUndo canRedo` (forms), and a composite's exposed values |
+| `row.*`, `index`, `<As>`      | The current row of a collection (see [Collections](#collections))                              |
+| `args.*`                      | A template's or composite's arguments                                                           |
+| `game.*`                      | `money totalMoneyEarned season seasonIndex day dayOfWeek year time worldReady isMainPlayer playerName farmName location weather screen` |
+| `ui.*`                        | `theme version reducedMotion textScale`                                                          |
+| `ctx.*`                       | Values the menu's owner exposed (C# `Expose*` or data `Expose`)                                  |
+| `model.name.Path`, `model[ModId/name].Path` | A C# object exposed with `ExposeModel`, read by reflection                         |
+| `@ModId/name`                 | A signal, computed, model or row list exposed from C#                                           |
+
+A menu (or HUD) declares:
+
+- `"State": { "count": 0, "tab": "general" }`: defaults, used only while a value does not exist yet (`$:{...}` allowed;
+  arrays and objects are kept as JSON text).
+- `"Computed": { "total": "menu.price * menu.count" }`, read as `menu.total`.
+- `"Watch": { "menu.count": [ actions ] }`, run on every change with `event.old` / `event.new`.
+
+**Bindings:**
+
+- Inputs are two-way bound: `"Bind": "config.volume"` (default `menu.<Id>`; the input's `Value` is only the default).
+- `"Out": { "IsHovered": "menu.hoverOk", "ScrollOffset": "menu.scroll", ... }` writes runtime values into state (keys:
+  `IsHovered IsFocused Visible ScrollOffset MaxScroll SelectedIndex SelectedValue SelectedRow Value Text IsOpen X Y
+  Width Height`), e.g. to show a detail panel while a button is hovered.
+
+##### Events, actions, queries and tokens
+
+**Action lists.** Every event (`OnClick`, `OnValueChanged`, `OnOpen`, `Watch` entries, hotkeys...) takes a trigger
+action string, an array of them, or objects `{ "Action", "Condition", "When", "Actions", "Else" }` (`Condition` is a
+game state query, `When` an expression). Each entry is interpolated right before it runs
+(`"6135.UIFramework_SetState menu.name ${quote(menu.first + ' ' + menu.last)}"`). Vanilla actions (`AddMoney 100`,
+`AddMail ...`) and other mods' actions work unchanged, and the UI's scope also reaches actions nested in vanilla `If`.
+A failing entry is logged against the owner once. `@ModId/command args` is short for `6135.UIFramework_Invoke`.
+
+**Events that return something:**
+
+- `Keys: [ { "Key": "R", "Ctrl": true, "Shift": false, "Alt": false, "Actions": ... } ]` on elements and menus; a
+  key counts as handled when an entry matches.
+- `Validate` on text and number inputs is an expression over `event.value`: `false` or a message rejects the value,
+  `OnInvalid` runs with `event.error` (also `self.error`).
+- `OnUpdate` with `UpdateIntervalMs` (`event.elapsed`); `OnScroll` with `event.delta`.
+
+**Framework actions** (all prefixed `6135.UIFramework_`; they also work from `Data/TriggerActions`, event
+`action` commands, mail, dialogue and C# `RunAction`). A trailing `[menu]` defaults to the menu the action runs in:
+
+| Action                                                          | Effect                                                                     |
+|-----------------------------------------------------------------|----------------------------------------------------------------------------|
+| `OpenMenu <owner/menu> [force]`                                 | Open a menu (data or C#); without `force` it waits until the player is free |
+| `OpenMenuAsChild <owner/menu> [parent]`                         | Open it over `parent` (default: the topmost open framework menu)          |
+| `CloseMenu [owner/menu]`, `ToggleMenu <owner/menu>`             | Close (default: the topmost open framework menu) / toggle                  |
+| `ShowHud`, `HideHud`, `ToggleHud <owner/hud>`                   | A data HUD, per player                                                     |
+| `SetState <key> <value...>`, `AddState <key> <n>`, `ToggleState <key>`, `ResetState <key>` / `ResetState menu [owner/menu]` | Change state (numbers and true / false are typed) |
+| `ShowToast <text> [ms] [image ref]`, `Announce <text>`, `SetTheme <name>` | Feedback and theme                                               |
+| `Focus <id> [menu]`, `ScrollTo <id> <offset\|row\|top\|bottom> [menu]`, `Refresh [menu]`, `SetPosition <x> <y> [menu]`, `ResetLayout [menu]` | Navigation and layout (`Refresh` re-checks `Condition`s and one-time values) |
+| `Sort <grid> <column> [desc] [menu]`, `ClearSelection <grid\|list> [menu]`, `Rebuild <element> [menu]` | Collections (`Rebuild` re-reads a source)  |
+| `FormSave`, `FormCancel`, `Undo`, `Redo` `[form] [menu]`        | Forms (default: the form the action runs in, else the menu's first)        |
+| `Invoke <target> [args...]`                                     | Run a command: `ctx.<cmd>`, then `#<elementId>.<cmd>`, then `<ModId>/<cmd>`, then the scope owner's `<cmd>` |
+| `Publish <event> [owner/menu]`                                  | Raise an event to contributors (inside a composite body: the composite's event) |
+
+**Game state queries:** `6135.UIFramework_MENU_OPEN <owner/menu>`, `6135.UIFramework_HUD_VISIBLE <owner/hud>`,
+`6135.UIFramework_STATE <key> <value>+` and `6135.UIFramework_STATE_NUMBER <key> <min> [max]`.
+
+**Tokens:**
+
+- `[6135.UIFramework_State <key>]` puts state into dialogue, mail and other tokenizable text.
+- With Content Patcher installed, `{{6135.UIFramework/State: <owner>/<key>}}` exposes state to patches (add
+  `6135.UIFramework` as a dependency), e.g. `"When": { "6135.UIFramework/State: {{ModId}}/config.showNote": "true" }`,
+  so a pack's settings screen can drive its own patches. It updates at Content Patcher's normal update points (day
+  start, `patch update`).
+
+**Map tiles:** `6135.UIFramework_OpenMenu <owner/menu>` is also a tile `Action` and a `TouchAction` (and works in
+`Data/Buildings` `ActionTiles`). An `Action` is clicked and lives on the `Buildings` layer, which only has tiles on
+walls and fixtures: `SetProperties` needs a tile that exists there (or `SetTilesheet` + `SetIndex` to add one). A
+`TouchAction` fires when the player steps on the tile and lives on the `Back` layer, which has a tile wherever the
+player can walk:
+
+```json
+{
+  "Action": "EditMap",
+  "Target": "Maps/FarmHouse",
+  "MapTiles": [
+    {
+      "Position": { "X": 5, "Y": 5 },
+      "Layer": "Back",
+      "SetProperties": { "TouchAction": "6135.UIFramework_OpenMenu {{ModId}}/demo" }
+    }
+  ]
+}
+```
+
+##### Collections
+
+**Sources.** `List`, `DataGrid`, `Repeat` and a dropdown's `ChoicesSource` take their rows from a source. Sources are
+read when the UI opens, on `_Refresh` / `_Rebuild` and when what they read changes, never every frame:
+
+| Source                                                         | Rows                                                                          |
+|----------------------------------------------------------------|-------------------------------------------------------------------------------|
+| `{ "Rows": [ { "name": "Parsnip", "price": 35 }, ... ] }` (or the array alone) | Inline rows: objects (`row.name`) or plain values (`row`)       |
+| `"range:1..10"`, `"range:10..0..2"`, `{ "From": 1, "To": "${menu.max}", "Step": 1 }` | Numbers                                                 |
+| `"query:ALL_ITEMS (O)"`, `{ "Query": "FLAVORED_ITEM Wine (O)398", "PerItemCondition": "..." }` | Vanilla item queries; rows have `id qualifiedId name displayName description price category quality stack type` and `item` (the item itself) |
+| `"menu.items"`, `{ "State": "config.favorites" }`              | A state value holding a JSON array (`SetState` can replace it)                |
+| `"${season.crops}"`, `{ "Value": "expr" }`                     | The list an expression gives (e.g. an outer row's field in a nested `Repeat`) |
+| `"themes"`                                                     | The installed themes (`id name active`)                                       |
+| `"asset:Data/Monsters"`                                        | A `Dictionary<string, string>` asset (`key value fields`, fields split on `/`) |
+| `"fruits"` / `{ "Name": "fruits" }`                            | An entry of the menu's (or HUD's) `"Sources": { "fruits": ... }`, shared by several collections |
+| `"hook:ModId/name"` (`"hook:name"` for the owner's own)        | Rows computed in C# (`DefineDataSource` / `ExposeRows`)                        |
+
+A source object also takes `Filter` (an expression over the row), `Sort` (the row's sort key: numbers numerically,
+text alphabetically), `SortDescending` and `Limit`. Inside a collection the row is `row`, `index` is its position,
+and `"As": "fruit"` adds the name `fruit` (plus `fruitIndex`); nested collections reach outer rows by their names.
+Item values expose members too (`row.item.displayName`).
+
+- **`Repeat`** (`{ "Repeat": "menu.items", "As": "it", "Horizontal": true, "Children": [ ... ] }`) builds its
+  children once per row, non-virtualized (ids `<repeat>.<n>.<child>`); use it for short lists and nested layouts.
+- **`List`** is virtualized: `Source`, `RowTemplate` (the elements of one row), `RowHeight`, `VisibleRows`,
+  `Selectable`, `BindSelected` (a state value holding the selected index, two-way), `OnValueChanged` (`event.index`,
+  `event.row`) and `OnScroll`. Row elements are built under the row container's id (`list.row3.name`), never the
+  item index, so fast scrolling never collides ids.
+- **`DataGrid`** has every `IUIDataGrid` member: `Columns` (`Id`, `Header`, `Width`, `MinWidth`, `Align`, `Sortable`,
+  `Resizable`, `Text` (default `${row.<Id>}`), `SortKey` / `SortNumber` expressions, a `Cell` element template and a
+  `Tooltip`), `Sort` (`"profit desc"`) / `SortDescending`, `Filter` (an expression over the row; indices stay stable
+  and it is re-checked when state changes), `Selectable`, `MultiSelect`, `BindSelected` / `BindSelection`
+  (comma-separated indices), `RowTooltip`, `OnRowClick` / `OnRowActivated` / `OnValueChanged` (with `event.row` /
+  `event.index`, and `row.*` in scope), `OnColumnResized` (`event.column`, `event.width`), `OnScroll` and
+  `ScrollSound` / `SelectSound` / `SortSound`. A `Grid`'s `Columns` stays a track string.
+- **Dropdowns** take `"ChoicesSource": "themes"` instead of `Choices`, with optional `ChoiceValue` / `ChoiceLabel`
+  expressions (defaults: `row.value` / `id` / `key`, `row.label` / `displayName` / `name`).
+- **`ItemImage`**'s `Item` accepts an item query (`"FLAVORED_ITEM Wine (O)398"`, tinted like the real item) or an
+  expression giving an item (`"${row.item}"`); created items are cached by text.
+
+##### Rich tooltips and forms
+
+**Rich tooltips.** Any element takes `"RichTooltip": { "MaxWidth": 400, "Blocks": [ ... ] }` (or the block array
+alone), and a DataGrid takes the same as `RowTooltip` with `row.*` in scope. Blocks: `{ "Type": "Title" | "Line",
+"Text", "Color" }` (the color may be an expression: `"${row.profit < 0 ? 'red' : 'green'}"`), `{ "Type": "Icon",
+"Sprite": "sprite:...", "Source", "Scale" }`, `{ "Type": "Item", "Item": "(O)24" | "FLAVORED_ITEM ..." | "${row.item}" }`,
+`{ "Type": "Divider" }` and `{ "Type": "Money", "Amount": "${row.price}" }`. Every block takes `"When": "expr"` and is
+only shown while it holds.
+
+**Named tooltips (1.8).** An owner's `Owners` entry can hold `"Tooltips": { "crop": { "MaxWidth": 420, "Blocks": [...] } }`,
+and any `RichTooltip` / `RowTooltip` of that owner uses one with `{ "From": "crop" }` (its own blocks, if any, follow;
+its own `MaxWidth` wins). Values still evaluate in the scope that shows the tooltip, so two grids can share one
+row tooltip. Tooltips are also inherited: an image or label inside a row shows the row's tooltip, so cells do not
+need their own copy.
+
+**Live images (1.8).** An `Image`'s `Sprite` is a value like any other field: a literal reference, or a
+`${...}` that gives a reference string, a `Texture2D` or a `Tuple<Texture2D, Rectangle>` (the usual game sprite
+pair), so a row template can show a different sprite per row (`"Sprite": "${row.Crop.Sprite}"`). A C# row's
+`Rectangle` / `Color` values work the same way in `Source` / `Tint`.
+
+**Forms.** `{ "Type": "Form", "Fields": [ ... ], "ShowButtons": true, "OnSaved": [...], "OnCancelled": [...],
+"OnChanged": [...] }` is an auto-form over state: each field is `{ "Id", "Bind": "config.volume", "Kind": "Checkbox" |
+"Number" | "Integer" | "Text" | "Dropdown", "Label", "Tooltip", "Section", "Value" (default), "Min", "Max",
+"Choices", "ReadOnly", "Validate" }`. Edits write the bound value right away; Cancel restores the values of the last
+Save, and the form keeps an undo / redo history (`el[form].dirty`, `canUndo`, `canRedo`). `"Model": "settings"`
+instead of `Fields` builds the form over a C# model, exactly like `AddForm`.
+
+##### Templates and composites
+
+**Templates** are parameterized trees expanded where they are used (no registration, cheapest). A menu's
+`Templates` holds its own; an owner's `Owners` entry holds `Templates` shared by all its UIs (the menu's win).
+
+```jsonc
+"Templates": {
+  "section": {
+    "Params": {
+      "title": { "Type": "string", "Default": "Untitled" },      // string | number | bool | any
+      "note":  { "Type": "string", "Required": true }             // missing → validation error
+    },
+    "Spacing": 6,                                                  // Horizontal / Spacing / Alignment of the body
+    "Children": [
+      { "Id": "head", "Type": "Stack", "Horizontal": true, "Children": [
+          { "Id": "title", "Label": "${args.title}" },
+          { "Id": "actions", "Outlet": "actions", "Horizontal": true } ] },     // a named outlet
+      { "Id": "body", "Type": "Outlet", "Children": [ { "Label": "(empty)" } ] } // the default outlet + fallback content
+    ]
+  }
+}
+// an instance: "Type" (or "Template") names the template, the other fields are its arguments
+{ "Id": "money", "Type": "section", "note": "Shown under the title", "Children": [
+    { "Id": "reset", "Button": "Reset", "Outlet": "actions" },   // goes into the "actions" outlet
+    { "Id": "field", "Label": "No Outlet → the default outlet" } ] }
+```
+
+- The body reads its arguments as `args.<name>` (defaults applied, converted to the parameter's `Type`). A state path
+  argument (`"menu.amount"`) is a **reference**, `${...}` is live, anything else a literal. `"Bind": "args.value"`
+  (and `SetState` / `AddState` / `ToggleState args.value ...`) write through a reference argument, so a template
+  input edits the caller's state.
+- Body ids are prefixed with the instance id (`money.title`); the instance's children keep their ids and the caller's
+  scope. Inputs without `Bind` inside a body keep one value per instance. Children for an outlet the body does not
+  declare are added at the end of the instance with a warning.
+- `ui_validate` reports missing `Required` arguments, unknown arguments and literals of the wrong type.
+
+**Data composites** (`Composites`, keyed by global name `<ModId>.<Name>`) have the same `Params` / body / outlets,
+plus `Expose`, `Commands` and `Publish`. They are registered next to C# composites, so data uses them as custom tags
+(`{ "Type": "Pack.Id.MoneyField", "value": "menu.money" }`) or `"Type": "Composite"`, and C# uses them with
+`AddComposite` (a two-way argument from C# is a getter under the name and its setter under `<name>.set`, or an
+`IUISignal`). The owner is the longest loaded mod id the name starts with, or the entry's `Owner`. A changed entry
+rebuilds every live instance in place.
+
+```jsonc
+"{{ModId}}.MoneyField": {
+  "Params": { "label": { "Default": "Money:" }, "value": { "Type": "number", "Required": true } },
+  "Horizontal": true,
+  "Children": [
+    { "Id": "caption", "Label": "${args.label}" },
+    { "Id": "input", "Type": "NumberInput", "Bind": "args.value", "OnValueChanged": "6135.UIFramework_Publish changed" },
+    { "Id": "after", "Outlet": "after" }
+  ],
+  "Expose": { "value": "args.value" },                          // el[id].value, IUIComposite.GetNumber("value")
+  "Commands": { "reset": "6135.UIFramework_SetState args.value 0" }, // _Invoke #id.reset, IUIComposite.Invoke("reset")
+  "Publish": [ "changed" ]                                      // documentation of the events the body raises
+}
+// instance side: "On" hears the composite's events (IUIComposite.Subscribe in C#)
+{ "Id": "field", "Type": "{{ModId}}.MoneyField", "value": "menu.money", "On": { "changed": "..." } }
+```
+
+- **Dynamic includes.** `"Composite": "{{ModId}}.${menu.page}"` instantiates the new composite in place when the
+  expression changes, so other mods can add pages to an extensible tabbed menu by defining composites of the right
+  name.
+- **C# composites** work the same way: `{ "Type": "Composite", "Composite": "ModId.Gauge", "Args": { ... } }` or the
+  custom tag `{ "Type": "ModId.Gauge", "Value": "menu.volume" }` (every field other than the common element fields
+  is an argument). The element's `Children` go into its `ContentTarget` (an id inside the composite; default the host
+  of its first custom component, `<id>.host`).
+
+##### Contributions and decorations
+
+A menu's **`Expose`** / **`Commands`** share values and commands with contributors, exactly like `Expose*` /
+`ExposeCommand` in C#: `"Expose": { "money": "menu.money" }` (read as `ctx.money` in data, `GetNumber("money")` in
+C#), `"Commands": { "bonus": [ ... ] }` (`_Invoke ctx.bonus`, `IUIScreenContext.Invoke("bonus")`).
+
+**Contributions** (`Contributions`, keyed `<contributor>/<name>`) extend another mod's menu through the contributor's
+own API instance, on C# and data menus alike:
+
+```jsonc
+"{{ModId}}/footer": {
+  "Target": "6135.UIFrameworkExample/demo",   // <owner>/<menu>
+  "Slot": "demo.footer", "Priority": 10,       // ContributeTo: rebuilt every time the menu opens
+  "Children": [ { "Id": "log", "Button": "Log ${ctx.name}", "OnClick": "6135.UIFramework_Invoke ctx.log" } ],
+  "On": { "ok": "6135.UIFramework_ShowToast Heard" },   // one subscription per contributor, menu and event
+  "Decorate": [                                         // OnScreenBuilt: applied every time the menu opens
+    { "Op": "Hide", "Target": "signals.divider" },
+    { "Op": "InsertAfter", "Target": "close", "Children": [ { "Id": "mine", "Button": "Mine" } ] },
+    { "Op": "Set", "Target": "about", "Fields": { "Tooltip": "Decorated for ${ctx.name}" } },
+    { "Op": "Move", "Target": "mine", "Before": "ok" }
+  ]
+}
+```
+
+- Operations: `Hide`, `Show`, `Set` (`Visible Enabled Text Tooltip TooltipTitle Tag Width Height Margin
+  HorizontalAlign VerticalAlign Color Font`, values may be live), `InsertBefore` / `InsertAfter` / `Append`
+  (`Target` is the container) / `Replace` with `Children`, `Move` (`Before`, `After` or `Into`) and `Remove`. Every
+  open first undoes the previous application, so edits never pile up; added elements belong to the contributor.
+- An element inside a **sealed** subtree refuses every operation (logged as an error once); a menu's owner is never
+  restricted.
+- Expressions in a contribution read the owner's exposed values as `ctx.*`; `menu.*` is the contribution's own state.
+  A contributor's entries for the same slot share one `ContributeTo` (in `Priority` order), and its `Decorate` / `On`
+  for the same menu share one `OnScreenBuilt`, so C# code of the same mod should not register those for the same
+  slot or menu. After `patch reload`, open target menus rebuild their slots and decorations at once.
+
+##### C# bridge and hybrid mods
+
+C# mods can offer code to data by name, and keep their own UIs in JSON. Every hook is keyed `ModId/name`: any pack
+may use it that way, and the owner's own data may write the short name.
+
+| C# (`IStardewUIApi`)                               | Data                                                                                         |
+|----------------------------------------------------|----------------------------------------------------------------------------------------------|
+| `RegisterCommand("reset", call => ...)`            | `"OnClick": "@ModId/reset arg1 ${menu.x}"`, or `6135.UIFramework_Invoke ModId/reset ...`      |
+| `RegisterFunction("t", args => ...)`               | `"${@ModId/t('key')}"` (text arguments; numeric / `true` / `false` results keep their type)  |
+| `DefineDataSource("rows")` (`Count`, `Text`, `Number`, `Item`, `Refresh()`) | `"Source": "hook:ModId/rows"`, cells read `row.<field>`, `row.item`   |
+| `ExposeRows("crops", () => list.ToArray())`        | `"Source": "hook:ModId/crops"`, cells read the objects' members (`row.Profit`, `row.Item`)     |
+| `ExposeModel("settings", settings)`                | `model.settings.Day` (own data), `model[ModId/settings].Day`; `"Bind": "model.settings.Day"`; `{ "Type": "Form", "Model": "settings" }` |
+| `ExposeSignal("x", signal)`, `ExposeComputed(...)` | `@ModId/x` (read-only; data refreshes when it changes)                                        |
+| `RegisterDrawHook("glow", (b, bounds, call) => ...)` | `"DrawExtra": "ModId/glow"` (after the element's content) or `"DrawOverlay": ...` (above the menu) |
+| `DefineComposite("ModId.Gauge", ...)`              | A custom tag or `"Type": "Composite"` (see [Templates and composites](#templates-and-composites)) |
+| `RunAction("...")`, `DataState("session.x")`       | Run any action / read and write data state from C#                                            |
+| `ImportData(json)`, `ImportDataFile(path, watch)`  | Your JSON becomes the base layer of the data assets (Content Patcher packs can still patch it) |
+
+- **Commands** get an `IUIDataCall`: `Args` (interpolated), `OwnerModId`, `Menu`, `Element`, `Row` (your object for
+  `ExposeRows` rows, the item for item rows, a dictionary for JSON rows) and `RowIndex`, plus `Evaluate(expr)`,
+  `GetState(key)` / `SetState(key, value)` in the caller's scope. Data re-evaluates after every command.
+- **Functions** can be registered (or replaced) at any time; cached results are dropped when they are.
+- **Models** are read by public properties and fields (case-insensitive) with the same conversions as forms (integers
+  round, enums by name). An object implementing `INotifyPropertyChanged` / `INotifyCollectionChanged` refreshes data
+  when it notifies; other model reads are re-evaluated once per tick. Exposed rows are read again whenever data state
+  moves (after a command, a state write, a signal change); `IUIDataSource.Refresh()` tells data a source changed.
+- **Composite arguments** are data values that convert to whatever the C# builder asks for: text that is a state /
+  model path (`menu.volume`, `config.x`, `model.settings.Day`, `@ModId/x`) is a **reference** (`GetNumberGetter`
+  reads it, `GetNumberSetter` writes it), `${...}` is live, other values are literals, and `GetAction` runs an action
+  list. Defining a composite or exposing a model later rebuilds the data UIs.
+- **JSON for C# mods.** `ImportData(json)` / `ImportDataFile(path, watch)` take `{ "Menus": { "main": {...} },
+  "Huds": {...}, "Sprites": {...}, "Owner": {...}, "Composites": {...}, "Contributions": {...} }`; keys without an
+  owner get your mod id. With `watch: true` (for development) the file is watched and re-imported on save, and open
+  menus rebuild in place: point it at your project's source folder (e.g. `#if DEBUG` a full path) to edit UIs without
+  rebuilding. Content Patcher tokens do not apply in imported JSON; use a registered `t()` function or `loc()` for
+  text.
+- **Mixing C# with a data menu.** The menu's `IUIMenu` handle stays the same across rebuilds (`GetMenu`,
+  `BindToggleHotkey` and the owner's `SetTooltipDelay` / `SetDefaultStyle` keep working), but its elements are
+  rebuilt, so do not cache element handles: attach through hooks, slots or `OnScreenBuilt`, which runs again after
+  every rebuild.
+
+`[CP] UI Framework Example` has a hybrid menu over the example mod's `VolumeGauge` / `FrameBox` composites, its
+`greet` command, `sparkle` draw hook and `settings` model (shown when `UIFrameworkExample` is installed), and Profit
+Calculator keeps its main menu in `assets/ui.json`.
+
+##### Hot reload and tooling
+
+- **Hot reload.** Editing an asset (`patch reload`, a Content Patcher condition changing at day start, a watched
+  `ImportDataFile` save) re-reads the assets on the next tick. Entries are compared by content hash, so only changed
+  ones rebuild, **in place**: an open menu stays open, child menus survive, and focus, scroll offsets, list / grid
+  positions, sort, selection and column widths are kept. State lives outside the tree, so it is kept too.
+- **Console.** `ui_data` (every data menu, HUD, composite and contribution with its status and message counts,
+  sprites, C# hooks and imported data), `ui_validate [<owner/menu>]` (every message, path-qualified), `ui_reload`
+  (re-read now), `ui_schema` (JSON Schemas for editors), `ui_state list|get|set|reset ...` (inspect and change state),
+  `ui_open` / `ui_close`.
+- **From C# to JSON.** The inspector's **J** key and `ui_export <owner> <menu> json` export any open menu, C# or
+  data, as a `Menus` entry (`Mods/UIFramework/export/<owner>-<menu>.json`, log, clipboard). Values that were C#
+  delegates are exported as their current value with a `TODO` note, so porting a C# screen starts from a working
+  layout.
+
+##### Limitations
+
+- Custom drawing, custom components and data computed in C# cannot be written in JSON; a C# mod has to register them
+  (draw hooks, composites, sources, functions) for data to reference by name.
+- Menu and element `Condition`s are game state queries checked when the menu opens and on `_Refresh`, not every
+  frame; use `Visible` / `If` / `When` with an expression (optionally `gsq(...)`) for live conditions. `gsq()` is
+  cached per tick, so random queries flicker.
+- Content Patcher tokens only apply to entries patched into the assets, not to `From` files or imported JSON.
+- `config.*` is global across saves (per owner); use `player.*` for per-save values. The Content Patcher token only
+  updates at Content Patcher's update points.
+- Elements without an `Id` cannot be targeted reliably by other packs' patches, decorations or `el[id]`.
+- A C# menu, HUD or composite with the same key always wins over a data entry.
 
 #### Headless testing
 
@@ -1543,6 +2120,7 @@ A HUD widget (see [HUD widgets and toasts](#hud-widgets-and-toasts)).
 | `int X`, `int Y`                  | Offset added to the anchor position (positive = right / down); verbatim position for `Explicit`. |
 | `int? Width`, `int? Height`       | Fixed size, or `null` to fit content.                                                |
 | `bool DrawBox`                    | Draw a vanilla panel box with padding behind the content (default `true`).           |
+| `bool ShowOverMenus` (1.8)        | Keep the widget drawn on top of an open menu, like toasts (default `false`: hidden while a menu is open). It takes no input over a menu. |
 | `float Opacity`                   | Opacity of the box, 0..1 (default 1); content is always opaque.                      |
 | `bool Interactive`                | Receive hover / clicks while no menu is open and let the player drag the widget.     |
 | `Func<bool> ShowWhen`             | Evaluated every tick; `false` hides the widget (`null` = always).                    |
@@ -1557,7 +2135,7 @@ Entry point. One instance per consumer mod; every id you register is private to 
 
 | Member                                                                                                                                                | Description                                                                                           |
 |-------------------------------------------------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------|
-| `string ApiVersion`                                                                                                                                   | Semantic version of this API (`1.2.0`).                                                               |
+| `string ApiVersion`                                                                                                                                   | Semantic version of this API (`1.7.0`).                                                               |
 | `IUIMenuOptions CreateMenuOptions()`                                                                                                                  | New options bag with the defaults listed under `IUIMenuOptions`.                                      |
 | `IUIMenu CreateMenu(string id, IUIMenuOptions options)`                                                                                               | Create (or replace) a menu.                                                                           |
 | `IUIMenu CreateMenu(string id)`                                                                                                                       | Create a menu with default options.                                                                   |
@@ -1654,6 +2232,38 @@ v1.2 additions:
 | `IUIItemImage AddItemImage(IUIContainer parent, string id, Func<Item> item, float scale)` | An item instance drawn with the game's `drawInMenu`, so flavored goods (wine, jelly, pickles) keep their color tint. `item` is read every frame; null draws nothing. 16 x 16 at scale 1. |
 | `IUITooltip.ItemInstance(Func<Item> item)` | Tooltip row with an item instance's sprite (tint kept) and display name, e.g. "Starfruit Wine". |
 
+v1.6 additions (the C# bridge of data UIs; see [C# bridge and hybrid mods](#c-bridge-and-hybrid-mods)):
+
+| Member | Description |
+|--------|-------------|
+| `bool RunAction(string action)` | Run one trigger action (vanilla, `6135.UIFramework_*`, another mod's, or `@owner/command args`) in your mod's scope; false (logged) when it failed. |
+| `void ImportData(string json)` | Import data UIs (`Menus`, `Huds`, `Sprites`, `Owner`) as the base layer of the data assets; keys without an owner get your mod id. Adds / replaces entries. The menus are built before it returns (1.8), so `GetMenu` / `BindToggleHotkey` work on the next line. |
+| `void ImportDataFile(string path, bool watch)` | Import a JSON file by full path (`Path.Combine(helper.DirectoryPath, "assets/ui.json")`); with `watch` it is re-imported when saved and open menus rebuild in place. |
+| `void RegisterCommand(string name, Action<IUIDataCall> run)` | A command data runs with `@ModId/name args` or `6135.UIFramework_Invoke ModId/name`. |
+| `void UnregisterCommand(string name)` | Remove a command. |
+| `void RegisterFunction(string name, Func<string[], string> function)` | A function expressions call as `@ModId/name(...)`. |
+| `IUIDataSource DefineDataSource(string name)` | A C# row source (`hook:ModId/name`): set `Count`, `Text`, `Number`, `Item`; call `Refresh()` when rows change. |
+| `void ExposeSignal(string name, IUISignal signal)` / `void ExposeComputed(string name, IUIComputed computed)` | Read-only values `@ModId/name`; data refreshes when they change. |
+| `void ExposeModel(string name, object model)` | A plain object read (and bound, and edited by a `Form`) by reflection: `model.name.Path` / `model[ModId/name].Path`. Null removes it. |
+| `void ExposeRows(string name, Func<object[]> rows)` | A list of plain objects as a row source (`hook:ModId/name`, cells read `row.Member`). |
+| `void RegisterDrawHook(string name, Action<SpriteBatch, Rectangle, IUIDataCall> draw)` | Custom drawing for data elements' `DrawExtra` / `DrawOverlay`. |
+| `IUISignal DataState(string key)` | A live signal view of a data state value (`session.x`, `config.x`, `menu[owner/menu].x`...) on the current screen. |
+
+`IUIDataCall`: `Name`, `Args`, `OwnerModId`, `Menu`, `Element`, `Row`, `RowIndex`, `Evaluate(expression)`,
+`GetState(key)`, `SetState(key, value)`. `IUIDataSource`: `Name`, `Count`, `Text` (`(row, field) → text`, null =
+unknown field), `Number` (`(row, field) → number`, used when `Text` is unset or gives null), `Item`, `Refresh()`.
+
+v1.8 additions:
+
+| Member | Description |
+|--------|-------------|
+| `bool IUIHud.ShowOverMenus` | Keep a HUD widget drawn on top of an open menu (like toasts) instead of hiding it; it takes no input over a menu. |
+
+v1.8 behaviour changes (no new members): click-once controls (buttons, checkboxes, dropdowns, sliders) no longer keep
+keyboard focus after a mouse click; tooltips are inherited from the nearest ancestor that has one; `ImportData` /
+`ImportDataFile` build the imported menus before returning, and `ImportDataFile` takes a full path
+(`Path.Combine(helper.DirectoryPath, ...)`).
+
 `IUIItemImage` adds `Item` (`Func<Item>`), `Scale`, `Stack` (`UIItemStack.Hide` / `Quality` / `NumberAndQuality`),
 `DrawShadow`, `Alpha` and `Tint` to the usual `IUIElement` members (overlays are hidden below 32 px, scale 2). With an explicit width / height the item is
 drawn as a square fitting the bounds.
@@ -1686,7 +2296,7 @@ API:
 
 ### Versioning
 
-`IStardewUIApi.ApiVersion` returns a semantic version string (currently `1.2.0`). Members are only ever **added**,
+`IStardewUIApi.ApiVersion` returns a semantic version string (currently `1.8.0`; v1.3 to v1.5 added data-driven UIs without changing the C# API, v1.6 added the `// BEGIN DATA` regions, v1.7 added cross-mod data without changing the C# API, v1.8 added `IUIHud.ShowOverMenus`). Members are only ever **added**,
 never renamed or removed: additive changes bump the minor version, and a breaking change would ship as a new
 `IStardewUIApi2` interface alongside the old one. A consumer's copy of the interface may be a subset of the
 framework's, so you can keep an older copy of `IStardewUIApi.cs` and only update it when you need new members. Set
@@ -1694,7 +2304,8 @@ framework's, so you can keep an older copy of `IStardewUIApi.cs` and only update
 "v1.1 additions" in the API file (the `// BEGIN <FEATURE> members` / `types` regions and the `// SLOTS`,
 `// RICHTEXT`, `// THEME`, `// HUD` tagged members at the end of `IUIElement`, `IUILabel`, `IUIButton`,
 `IUIMenuOptions` and `IUIMenu`) needs `1.1.0`, and the `// BEGIN ITEMIMAGE` regions plus `IUITooltip.ItemInstance`
-(v1.2) need `1.2.0`; older copies of the file still work against newer versions.
+(v1.2) need `1.2.0`, the `// BEGIN DATA` regions (v1.6) need `1.6.0`, and the `// HUDOVERMENUS` tagged member of `IUIHud` (v1.8) needs `1.8.0`; older copies of the file still work against
+newer versions.
 
 ### Generating the API reference
 
@@ -1751,11 +2362,13 @@ honest. When the API file changes, copy it to `UIFrameworkExample/Api/IStardewUI
 | `Components/`                     | Built-in elements (Label, Button, TextInput, NumberInput, Checkbox, Dropdown, Slider, Image, Spacer, Stack, Grid, Panel, Canvas, ScrollView, ListView, custom adapter); v1.1: Slot, Composite, DataGrid (+ columns / rows), the custom-host adapter for `AddCustom(..., build)`.  |
 | `Hosting/`                        | `MenuHost : IClickableMenu`, hotkey service, menu registry; v1.1: extension registry (slots, exposures, decorators), composite registry, HUD service, toast layer, player layout controller and window layout store, inspector, debug console.                                     |
 | `Rendering/`                      | Drawing helpers, the theme (asset data, resolution, switcher), rich text parser / layout, tooltip renderer, pseudo-localizer, inspector renderer.                                                                                                                                  |
-| `Integrations/`                   | Generic Mod Config Menu and Stardew Access API copies.                                                                                                                                                                                                                            |
+| `Data/`                           | Data-driven UIs (v1.3+): `Model/` (JSON definitions), `Loading/` (asset reading, validation, schema), `Expressions/` (lexer, parser, evaluator, functions), `State/` (state store, scope roots, `config.*`), `Building/` (menu / HUD / collection / form / tooltip / composite / contribution builders), `Actions/` (trigger actions, queries, tokens, tile actions), `Bridge/` (C# hooks, models, imports); `DataService` ties them together. |
+| `Integrations/`                   | Generic Mod Config Menu, Stardew Access and Content Patcher API copies.                                                                                                                                                                                                                            |
 | `assets/`                         | Bundled texture (`text_box_small.png`) and the default themes (`themes.json`).                                                                                                                                                                                                    |
 | `i18n/`                           | Translations: config labels, form buttons, screen reader phrases.                                                                                                                                                                                                                 |
-| `architecture.md`                 | Design document, implementation plan and the v1.1 roadmap (§16).                                                                                                                                                                                                                  |
+| `architecture.md`                 | Design document, implementation plan, the v1.1 roadmap (§16) and the data-driven UI design (§17).                                                                                                                                                                                                                  |
 | `code-review.md`                  | Review notes and polish backlog.                                                                                                                                                                                                                                                  |
 | `Doxyfile`                        | Doxygen configuration for the API reference.                                                                                                                                                                                                                                      |
 | `../StardewUIFramework.Tests/`    | xUnit test project: `Testing/` is the headless harness (`TestHost`, `InputDriver`, `TreeSnapshot`, `FakeTextMeasurer`, `GameAssemblies`), `Tests/` covers layout, routing, inputs, scrolling / lists and the developer tools.                                                     |
-| `../UIFrameworkExample/`          | The example consumer mod (`ModEntry.cs`, `DemoSettings.cs`, `FrameBox.cs`, `VolumeGauge.cs`) with its own copy of the API file.                                                                                                                                                   |
+| `../UIFrameworkExample/`          | The example consumer mod (`ModEntry.cs`, `DemoSettings.cs`, `FrameBox.cs`, `VolumeGauge.cs`) with its own copy of the API file. |
+| `../[CP] UI Framework Example/`   | The example Content Patcher pack: data menus, a HUD, a settings screen, templates, a data composite and contributions, plus a hybrid menu over the example mod's C# hooks.                                                                                                                                                   |

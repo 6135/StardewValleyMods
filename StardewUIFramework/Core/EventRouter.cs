@@ -51,10 +51,13 @@ namespace UIFramework.Core
             return target != null && Bubble(new UIClickEvent(target, x, y, button));
         }
 
-        /// <summary>A focusable target takes focus; clicking empty space or a non-focusable element clears it.</summary>
+        /// <summary>
+        /// A target that keeps taking input takes focus; clicking empty space, a non-focusable element or a click-once
+        /// control (button, checkbox, dropdown, slider: <see cref="UIElement.FocusOnClick"/> false) clears it.
+        /// </summary>
         private void FocusFromClick(UIElement? target)
         {
-            if (target != null && target.Focusable)
+            if (target != null && target.Focusable && target.FocusOnClick)
             {
                 menu.Focus.SetFocus(target);
             }
@@ -116,7 +119,14 @@ namespace UIFramework.Core
 
             UIElement? old = menu.Hovered;
             menu.Hovered = target;
-            menu.HoverStartMs = UIServices.NowMs();
+
+            // the tooltip delay restarts only when the tooltip changes, not when the cursor moves between the parts of
+            // an element that shares its tooltip (the cells of a data grid row)
+            UIElement? owner = UIMenu.TooltipOwner(target);
+            if (owner == null || owner != UIMenu.TooltipOwner(old))
+            {
+                menu.HoverStartMs = UIServices.NowMs();
+            }
             old?.HandleHoverLeave();
             target?.HandleHoverEnter();
         }

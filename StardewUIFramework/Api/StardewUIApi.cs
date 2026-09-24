@@ -15,7 +15,7 @@ namespace UIFramework.Api
     /// </summary>
     public sealed class StardewUIApi : IStardewUIApi
     {
-        public static string Version => "1.2.0";
+        public static string Version => "1.8.0";
 
         private readonly ConsumerContext consumer;
         private readonly MenuRegistry menus;
@@ -346,13 +346,20 @@ namespace UIFramework.Api
             ArgumentNullException.ThrowIfNull(build);
 
             composites.Define(consumer, RequireId(name), build);
+            UIServices.Hooks?.NotifyStructureChanged(); // data composites of that name rebuild
         }
 
         public bool HasComposite(string name) => composites.Has(name ?? string.Empty);
 
         public string[] ListComposites() => composites.List();
 
-        public void UndefineComposite(string name) => composites.Undefine(consumer, name ?? string.Empty);
+        public void UndefineComposite(string name)
+        {
+            if (composites.Undefine(consumer, name ?? string.Empty))
+            {
+                UIServices.Hooks?.NotifyStructureChanged();
+            }
+        }
 
         public IUIComposite AddComposite(IUIContainer parent, string id, string compositeName, IUICompositeArgs args)
         {
@@ -364,6 +371,7 @@ namespace UIFramework.Api
                 _ => throw new ArgumentException("The arguments were not created by CreateCompositeArgs().", nameof(args))
             };
             Composite composite = Attach(parent, new Composite(RequireId(id), compositeName, bag, composites));
+            composites.Track(composite);
             composite.Build();
             return composite;
         }
@@ -539,6 +547,15 @@ namespace UIFramework.Api
             return Attach(parent, new AutoForm(RequireId(id), model, consumer));
         }
 
+        /// <summary><see cref="AddForm"/> over an explicit field list (accessor-backed fields) instead of the model's reflected properties.</summary>
+        internal IUIForm AddFormInternal(IUIContainer parent, string id, object model, System.Collections.Generic.IReadOnlyList<FormProperty> properties)
+        {
+            ArgumentNullException.ThrowIfNull(model);
+            ArgumentNullException.ThrowIfNull(properties);
+
+            return Attach(parent, new AutoForm(RequireId(id), model, properties, consumer));
+        }
+
         private static T RequireElement<T>(IUIElement element) where T : UIElement
         {
             ArgumentNullException.ThrowIfNull(element);
@@ -601,6 +618,109 @@ namespace UIFramework.Api
         private static HudService RequireHud() => UIServices.Hud ?? throw new InvalidOperationException("The HUD service is not available yet (it is wired in the framework's Entry).");
 
         // END HUD facade
+
+        // BEGIN DATA facade (v1.6)
+
+        public bool RunAction(string action)
+        {
+            if (string.IsNullOrWhiteSpace(action))
+            {
+                return false;
+            }
+
+            if (!Data.Actions.DataActionRunner.RunSingle(action, Data.DataScope.ForOwner(consumer.ModId), out string error))
+            {
+                UIServices.Log($"[{consumer.ModId}] RunAction '{action}': {error}", LogLevel.Warn);
+                return false;
+            }
+
+            return true;
+        }
+
+        public void ImportData(string json)
+        {
+            if (!Data.Bridge.DataImport.Import(consumer.ModId, json, null, out string error))
+            {
+                UIServices.Log($"[{consumer.ModId}] ImportData: {error}", LogLevel.Error);
+                return;
+            }
+
+            BuildImported();
+        }
+
+        /// <summary>
+        /// Build what an import added right away, so the caller can use its menus (<c>GetMenu</c>, <c>BindToggleHotkey</c>)
+        /// on the next line. Later reloads (Content Patcher edits, watched files) rebuild them in place: same menu objects.
+        /// </summary>
+        private static void BuildImported() => UIServices.Data?.Reload();
+
+        public void ImportDataFile(string path, bool watch)
+        {
+            if (string.IsNullOrWhiteSpace(path))
+            {
+                throw new ArgumentException("A file path is required.", nameof(path));
+            }
+
+            if (!Data.Bridge.DataImport.ImportFile(consumer.ModId, path, watch, out string error))
+            {
+                UIServices.Log($"[{consumer.ModId}] ImportDataFile: {error}", LogLevel.Error);
+                return;
+            }
+
+            BuildImported();
+        }
+
+        public void RegisterCommand(string name, Action<IUIDataCall> run)
+        {
+            ArgumentNullException.ThrowIfNull(run);
+
+            RequireHooks().RegisterCommand(consumer, name, run);
+        }
+
+        public void UnregisterCommand(string name) => RequireHooks().RegisterCommand(consumer, name, null);
+
+        public void RegisterFunction(string name, Func<string[], string> function)
+        {
+            ArgumentNullException.ThrowIfNull(function);
+
+            RequireHooks().RegisterFunction(consumer, name, function);
+        }
+
+        public IUIDataSource DefineDataSource(string name) => RequireHooks().DefineSource(consumer, name);
+
+        public void ExposeSignal(string name, IUISignal signal) => RequireHooks().ExposeSignal(consumer, name, signal);
+
+        public void ExposeComputed(string name, IUIComputed computed) => RequireHooks().ExposeComputed(consumer, name, computed);
+
+        public void ExposeModel(string name, object model) => RequireHooks().ExposeModel(consumer, name, model);
+
+        public void ExposeRows(string name, Func<object[]> rows) => RequireHooks().ExposeRows(consumer, name, rows);
+
+        public void RegisterDrawHook(string name, Action<SpriteBatch, Rectangle, IUIDataCall> draw)
+        {
+            ArgumentNullException.ThrowIfNull(draw);
+
+            RequireHooks().RegisterDrawHook(consumer, name, draw);
+        }
+
+        public IUISignal DataState(string key)
+        {
+            if (UIServices.Data == null)
+            {
+                throw new InvalidOperationException("Data UIs are not available yet (they are wired in the framework's Entry).");
+            }
+
+            if (!Data.State.StateAddress.TryParse(key, Data.DataScope.ForOwner(consumer.ModId), allowBare: false, out Data.State.StateAddress address, out string error))
+            {
+                throw new ArgumentException(error, nameof(key));
+            }
+
+            return new Data.Bridge.DataStateSignal(UIServices.Data.State, address);
+        }
+
+        private static HookRegistry RequireHooks() => UIServices.Hooks ?? throw new InvalidOperationException("The data hook registry is not available yet (it is wired in the framework's Entry).");
+
+        // END DATA facade
 
         // ---------------------------------------------------------------------------------------------------------
         //  Helpers

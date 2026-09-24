@@ -33,9 +33,21 @@ namespace UIFramework.Components
             this.registry = registry;
         }
 
-        public string CompositeName { get; }
+        public string CompositeName { get; private set; }
 
         IUICompositeArgs IUIComposite.Args => args;
+
+        /// <summary>True when the current definition comes from the <c>Composites</c> data asset (v1.7).</summary>
+        internal bool IsDataComposite => registry.Get(CompositeName)?.IsData == true;
+
+        /// <summary>The argument bag (data instances carry their builder payload in it).</summary>
+        internal CompositeArgs ArgsBag => args;
+
+        /// <summary>
+        /// The refreshers of a data composite's body (v1.7): registered with the menu the instance lives in
+        /// (<see cref="UIMenu.ExtensionRefresh"/>) so its live values update in C# and data menus alike. Null for C# composites.
+        /// </summary>
+        internal Data.RefresherGroup? DataGroup { get; set; }
 
         /// <summary>The mod whose builder last filled this composite (null until built or when the definition vanished).</summary>
         internal override ConsumerContext? ComponentOwner => owner;
@@ -63,8 +75,89 @@ namespace UIFramework.Components
             owner.Invoke(Id, "Composite.Build", () => build(this, args));
         }
 
+        /// <summary>Instantiate another composite in place (a data element whose <c>Composite</c> name is an expression that changed).</summary>
+        internal void Retarget(string compositeName)
+        {
+            CompositeName = compositeName;
+            Rebuild();
+        }
+
+        /// <summary>A data composite's body refreshes with the menu it is attached to.</summary>
+        internal override void SetOwnerMenu(UIMenu? menu)
+        {
+            UIMenu? previous = OwnerMenu;
+            base.SetOwnerMenu(menu);
+            if (previous != null && previous != menu)
+            {
+                previous.ExtensionRefresh.Remove(this);
+            }
+
+            if (menu != null && DataGroup != null)
+            {
+                Data.RefresherGroup group = DataGroup;
+                menu.ExtensionRefresh[this] = group.Refresh;
+            }
+        }
+
+        /// <summary>
+        /// An exposed value for data (<c>el[id].&lt;key&gt;</c>): text values first (typed like state), then numbers,
+        /// then bools; the key is matched exactly, then case-insensitively. False when nothing is exposed under it.
+        /// </summary>
+        internal bool TryReadExposed(string key, out object? value)
+        {
+            value = null;
+            string? text = Match(values, key);
+            if (text != null)
+            {
+                value = GetValue(text);
+                return true;
+            }
+
+            string? number = Match(numbers, key);
+            if (number != null)
+            {
+                value = GetNumber(number);
+                return true;
+            }
+
+            string? flag = Match(bools, key);
+            if (flag != null)
+            {
+                value = GetBool(flag);
+                return true;
+            }
+
+            return false;
+        }
+
+        private static string? Match<T>(Dictionary<string, T> table, string key)
+        {
+            if (table.ContainsKey(key))
+            {
+                return key;
+            }
+
+            foreach (string candidate in table.Keys)
+            {
+                if (string.Equals(candidate, key, StringComparison.OrdinalIgnoreCase))
+                {
+                    return candidate;
+                }
+            }
+
+            return null;
+        }
+
         public void Rebuild()
         {
+            if (DataGroup != null)
+            {
+                // a data body registers its refreshers again when it rebuilds (a C# body has none)
+                DataGroup.Clear();
+                DataGroup = null;
+                OwnerMenu?.ExtensionRefresh.Remove(this);
+            }
+
             Clear();
             values.Clear();
             numbers.Clear();

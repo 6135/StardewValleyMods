@@ -40,8 +40,12 @@ namespace UIFramework.Hosting
             {
                 menu.Close();
                 menu.Consumer.Bindings.DropMenu(menu); // SIGNALS
+                MenuUnregistered?.Invoke(menu);
             }
         }
+
+        /// <summary>Raised after a menu was destroyed (<c>DestroyMenu</c>); data UIs rebuild a managed menu that was destroyed from C#.</summary>
+        internal event Action<UIMenu>? MenuUnregistered;
 
         internal IEnumerable<UIMenu> MenusOf(string consumerId)
         {

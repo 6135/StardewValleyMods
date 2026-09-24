@@ -75,6 +75,9 @@ namespace UIFramework.Components
         Action<IUIValueEvent> IUICheckbox.OnValueChanged { get => OnValueChanged!; set => OnValueChanged = value; }
 
         internal override bool Focusable => true;
+
+        // click-once: a mouse click fires it and does not leave it holding focus (Tab / arrows / gamepad still reach it)
+        internal override bool FocusOnClick => false;
         internal override bool ActivateOnEnter => true;
 
         internal string CurrentLabel => Pseudo.Transform(Raise("Label", label, string.Empty) ?? string.Empty);

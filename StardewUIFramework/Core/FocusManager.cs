@@ -42,6 +42,7 @@ namespace UIFramework.Core
 
         internal UIElement? Focused { get; private set; }
 
+
         internal FocusManager(UIMenu menu)
         {
             this.menu = menu;
@@ -197,7 +198,7 @@ namespace UIFramework.Core
             return atEnd ? 0 : index + 1;
         }
 
-        /// <summary>Arrow keys / d-pad: nearest focusable element in the given direction (dx, dy ∈ {-1,0,1}).</summary>
+        /// <summary>Arrow keys / d-pad: nearest focusable element in the given direction (dx, dy âˆˆ {-1,0,1}).</summary>
         internal bool MoveDirection(int dx, int dy)
         {
             List<UIElement> all = FocusableElements();

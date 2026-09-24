@@ -37,7 +37,7 @@ namespace UIFramework.Hosting
         internal static string ExportDirectory { get; set; } = string.Empty;
 
         /// <summary>Key help shown at the bottom of the info panel.</summary>
-        internal const string KeyHelp = "arrows: margin (Shift x8)   +/-: width (Shift: height, Ctrl x8)\nV: visible   U: unhide all   P: pin   E: export   Esc: off";
+        internal const string KeyHelp = "arrows: margin (Shift x8)   +/-: width (Shift: height, Ctrl x8)\nV: visible   U: unhide all   P: pin   E: export C#   J: export JSON   Esc: off";
 
         internal static void Toggle() => SetEnabled(!Enabled);
 
@@ -138,6 +138,9 @@ namespace UIFramework.Hosting
                     return;
                 case Keys.E:
                     Export(menu);
+                    return;
+                case Keys.J:
+                    Export(menu, json: true);
                     return;
                 case Keys.P:
                     TogglePin(menu);
@@ -302,12 +305,12 @@ namespace UIFramework.Hosting
         //  Export
         // ---------------------------------------------------------------------------------------------------------
 
-        /// <summary>Write the builder code for <paramref name="menu"/> to the log, the export folder and (when possible) the clipboard.</summary>
-        internal static void Export(UIMenu menu)
+        /// <summary>Write the builder code (or, with <paramref name="json"/>, the JSON) for <paramref name="menu"/> to the log, the export folder and (when possible) the clipboard.</summary>
+        internal static void Export(UIMenu menu, bool json = false)
         {
-            string code = TreeExporter.Export(menu);
-            UIServices.Log($"Builder code for menu '{menu.Id}' of {menu.Consumer.ModId}:\n{code}", LogLevel.Info);
-            string? path = WriteExportFile(menu, code);
+            string code = json ? TreeExporter.ExportJson(menu) : TreeExporter.Export(menu);
+            UIServices.Log($"{(json ? "JSON" : "Builder code")} for menu '{menu.Id}' of {menu.Consumer.ModId}:\n{code}", LogLevel.Info);
+            string? path = WriteExportFile(menu, code, json ? ".json" : ".cs");
             bool clipboard = TryCopyToClipboard(code);
             UIServices.Log($"Export written to {path ?? "the log only"}{(clipboard ? " and copied to the clipboard" : string.Empty)}.", LogLevel.Info);
         }
@@ -331,7 +334,7 @@ namespace UIFramework.Hosting
 
         }
 
-        private static string? WriteExportFile(UIMenu menu, string code)
+        private static string? WriteExportFile(UIMenu menu, string code, string extension)
         {
             if (ExportDirectory.Length == 0)
             {
@@ -341,7 +344,7 @@ namespace UIFramework.Hosting
             try
             {
                 Directory.CreateDirectory(ExportDirectory);
-                string path = Path.Combine(ExportDirectory, $"{SafeFileName(menu.Consumer.ModId)}-{SafeFileName(menu.Id)}.cs");
+                string path = Path.Combine(ExportDirectory, $"{SafeFileName(menu.Consumer.ModId)}-{SafeFileName(menu.Id)}{extension}");
                 File.WriteAllText(path, code);
                 return path;
             }

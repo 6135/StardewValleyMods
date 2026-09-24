@@ -46,6 +46,12 @@ namespace UIFramework.Core
 
         /// <summary>Item getter for <see cref="TooltipBlockKind.ItemInstance"/>.</summary>
         internal Func<Item>? ItemGetter { get; init; }
+
+        /// <summary>Visibility condition evaluated each draw (null = always shown).</summary>
+        internal Func<bool>? When { get; set; }
+
+        /// <summary>Dynamic text color for title / line blocks; a null result falls back to <see cref="Color"/>.</summary>
+        internal Func<Color?>? ColorFunc { get; set; }
     }
 
     /// <summary>
@@ -55,6 +61,9 @@ namespace UIFramework.Core
     internal sealed class RichTooltip : IUITooltip
     {
         private readonly List<TooltipBlock> blocks = new();
+
+        /// <summary>The block the last builder call added, or null when that call added nothing (so <see cref="WhenLast"/> never lands on an earlier block).</summary>
+        private TooltipBlock? last;
 
         internal IReadOnlyList<TooltipBlock> Blocks => blocks;
 
@@ -71,6 +80,7 @@ namespace UIFramework.Core
         {
             if (texture == null)
             {
+                last = null;
                 return this;
             }
 
@@ -83,6 +93,7 @@ namespace UIFramework.Core
         {
             if (item == null)
             {
+                last = null;
                 return this;
             }
 
@@ -102,12 +113,36 @@ namespace UIFramework.Core
         public IUITooltip Clear()
         {
             blocks.Clear();
+            last = null;
+            return this;
+        }
+
+        /// <summary>Show the most recently added block only while <paramref name="when"/> returns true (no-op when the last builder call added nothing).</summary>
+        internal RichTooltip WhenLast(Func<bool>? when)
+        {
+            if (last != null)
+            {
+                last.When = when;
+            }
+
+            return this;
+        }
+
+        /// <summary>Color the most recently added title / line block through <paramref name="color"/> (no-op when the last builder call added nothing).</summary>
+        internal RichTooltip ColorLast(Func<Color?>? color)
+        {
+            if (last != null)
+            {
+                last.ColorFunc = color;
+            }
+
             return this;
         }
 
         private RichTooltip Add(TooltipBlock block)
         {
             blocks.Add(block);
+            last = block;
             return this;
         }
     }

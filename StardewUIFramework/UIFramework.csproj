@@ -3,7 +3,7 @@
   <PropertyGroup>
     <AssemblyName>UIFramework</AssemblyName>
     <RootNamespace>UIFramework</RootNamespace>
-    <Version>1.2.0</Version>
+    <Version>1.8.0</Version>
     <TargetFramework>net6.0</TargetFramework>
     <Nullable>enable</Nullable>
     <LangVersion>latest</LangVersion>
@@ -24,6 +24,14 @@
 
   <ItemGroup>
     <PackageReference Include="Pathoschild.Stardew.ModBuildConfig" Version="4.4.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- data-driven UIs (v1.3): the JSON models use SMAPI's own Newtonsoft.Json (not bundled with the mod) -->
+    <Reference Include="Newtonsoft.Json">
+      <HintPath>$(GamePath)\smapi-internal\Newtonsoft.Json.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
   </ItemGroup>
 
   <ItemGroup>

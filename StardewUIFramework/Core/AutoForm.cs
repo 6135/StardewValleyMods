@@ -30,7 +30,12 @@ namespace UIFramework.Core
         private readonly Button redoButton;
         private bool refreshing;
 
-        internal AutoForm(string id, object model, ConsumerContext owner) : base(id)
+        internal AutoForm(string id, object model, ConsumerContext owner) : this(id, model, FormReflection.Describe(model), owner)
+        {
+        }
+
+        /// <summary>A form over an explicit field list (accessor-backed fields, e.g. from a data definition) instead of the model's reflected properties.</summary>
+        internal AutoForm(string id, object model, IReadOnlyList<FormProperty> properties, ConsumerContext owner) : base(id)
         {
             Model = model;
             this.owner = owner;
@@ -41,7 +46,7 @@ namespace UIFramework.Core
                 RowSpacing = Spacing,
                 HorizontalAlign = UIAlign.Stretch
             };
-            BuildRows(id);
+            BuildRows(id, properties);
             Add(grid);
 
             buttons = new Stack(id + ".buttons", horizontal: true, spacing: 16)
@@ -67,11 +72,11 @@ namespace UIFramework.Core
         //  Build
         // ---------------------------------------------------------------------------------------------------------
 
-        private void BuildRows(string id)
+        private void BuildRows(string id, IReadOnlyList<FormProperty> properties)
         {
             int row = 0;
             int sections = 0;
-            foreach (FormProperty property in FormReflection.Describe(Model))
+            foreach (FormProperty property in properties)
             {
                 if (property.Section != null)
                 {

@@ -35,5 +35,6 @@
   "a11y.disabled": "disabled",
   "a11y.menu": "Menu",
   "config.inspector-hotkey": "Inspector hotkey",
-  "config.inspector-hotkey.desc": "Toggles the in-game inspector while a framework menu is open: hover elements to see their bounds, margins and properties, nudge them with the keyboard, and press E to export the menu as C# code."
+  "config.inspector-hotkey.desc": "Toggles the in-game inspector while a framework menu is open: hover elements to see their bounds, margins and properties, nudge them with the keyboard, and press E to export the menu as C# code.",
+  "data.invalid-value": "Invalid value."
 }

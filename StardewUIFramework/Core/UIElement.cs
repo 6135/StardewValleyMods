@@ -257,6 +257,7 @@ namespace UIFramework.Core
         public bool IsFocused => OwnerMenu?.Focus.Focused == this;
         public bool IsHovered => OwnerMenu?.Hovered == this;
 
+
         public void Focus()
         {
             if (Focusable && OwnerMenu != null)
@@ -518,6 +519,12 @@ namespace UIFramework.Core
 
         /// <summary>Whether clicking gives keyboard focus.</summary>
         internal virtual bool Focusable => false;
+
+        /// <summary>
+        /// Whether a mouse click leaves this (focusable) element focused. Click-once controls (buttons, checkboxes, dropdowns, sliders)
+        /// return false: they stay reachable by Tab / arrows / gamepad, but a click does not hold focus after it fired.
+        /// </summary>
+        internal virtual bool FocusOnClick => true;
 
         /// <summary>Whether the element wants <see cref="StardewValley.IKeyboardSubscriber"/> text input while focused.</summary>
         internal virtual bool WantsTextInput => false;

@@ -17,6 +17,7 @@ namespace UIFramework.Core
         private const int BoxPadding = 16;
 
         private bool drawBox = true;
+        private int lastScreen = -1;
         private float opacity = 1f;
 
         internal UIHud(string id, ConsumerContext consumer, MenuRegistry registry)
@@ -110,6 +111,9 @@ namespace UIFramework.Core
 
         public bool Interactive { get; set; }
 
+        /// <summary>Drawn on top of an open menu instead of hidden while one is open (input stays world-only).</summary>
+        public bool ShowOverMenus { get; set; }
+
         internal Func<bool>? ShowWhen { get; set; }
         internal Action<IUIHud, double>? OnUpdate { get; set; }
 
@@ -135,6 +139,15 @@ namespace UIFramework.Core
         /// <summary>Re-evaluate <see cref="Visible"/> and <see cref="ShowWhen"/> (once per tick, through the callback guard).</summary>
         internal bool EvaluateShown()
         {
+            // one widget serves every split-screen player: a different screen has another viewport and other
+            // per-screen values, so lay out again (data widgets also re-read their per-screen state here)
+            int screen = StardewModdingAPI.Context.ScreenId;
+            if (screen != lastScreen)
+            {
+                lastScreen = screen;
+                Inner.MarkLayoutDirty();
+            }
+
             IsShown = Visible && (ShowWhen == null || Consumer.Invoke(Inner.Id, "ShowWhen", ShowWhen, true));
             return IsShown;
         }

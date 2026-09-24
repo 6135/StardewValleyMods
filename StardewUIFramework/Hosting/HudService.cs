@@ -47,8 +47,14 @@ namespace UIFramework.Hosting
             helper.Events.Input.CursorMoved += OnCursorMoved;
         }
 
-        /// <summary>Whether HUD widgets are drawn / take input right now: in the world, no menu, no event, vanilla HUD shown.</summary>
-        private static bool HudsActive => Context.IsWorldReady && Game1.activeClickableMenu == null && !Game1.eventUp && Game1.displayHUD;
+        /// <summary>Whether HUD widgets take input right now: in the world, no menu, no event, vanilla HUD shown.</summary>
+        private static bool HudsActive => HudsAllowed && Game1.activeClickableMenu == null;
+
+        /// <summary>Whether HUD widgets may be drawn at all: in the world, no event, vanilla HUD shown.</summary>
+        private static bool HudsAllowed => Context.IsWorldReady && !Game1.eventUp && Game1.displayHUD;
+
+        /// <summary>Whether <paramref name="hud"/> is drawn right now: without a menu, or over one when it asks for that.</summary>
+        private static bool CanDraw(UIHud hud) => HudsAllowed && (Game1.activeClickableMenu == null || hud.ShowOverMenus);
 
         // ---------------------------------------------------------------------------------------------------------
         //  Registry
@@ -71,6 +77,9 @@ namespace UIFramework.Hosting
             return hud;
         }
 
+        /// <summary>Every widget (all consumers), for diagnostics.</summary>
+        internal IEnumerable<UIHud> All => huds.Values;
+
         internal UIHud? Get(string consumerId, string id) => huds.TryGetValue(Key(consumerId, id), out UIHud? hud) ? hud : null;
 
         internal void Destroy(string consumerId, string id)
@@ -78,6 +87,7 @@ namespace UIFramework.Hosting
             if (huds.Remove(Key(consumerId, id), out UIHud? hud))
             {
                 hud.ReleaseInput();
+                hud.Consumer.Bindings.DropMenu(hud.Inner); // signal bindings of the widget's elements
                 ScreenState state = screens.Value;
                 if (state.Dragging == hud)
                 {
@@ -122,17 +132,20 @@ namespace UIFramework.Hosting
             bool active = HudsActive;
             foreach (UIHud hud in huds.Values)
             {
-                if (hud.EvaluateShown() && active)
+                bool shown = hud.EvaluateShown() && CanDraw(hud);
+                if (shown)
                 {
                     hud.Tick(elapsed);
                 }
-                else if (hud.Inner.Hovered != null || hud.Inner.Focus.Focused != null || hud.Inner.Overlay.HasPopups)
+
+                // over a menu a widget is drawn but takes no input
+                if ((!shown || !active) && (hud.Inner.Hovered != null || hud.Inner.Focus.Focused != null || hud.Inner.Overlay.HasPopups))
                 {
                     hud.ReleaseInput();
                 }
                 else
                 {
-                    // hidden and idle: nothing to do
+                    // taking input, or holding none: nothing to release
                 }
             }
 
@@ -147,13 +160,7 @@ namespace UIFramework.Hosting
         {
             if (HudsActive)
             {
-                foreach (UIHud hud in huds.Values)
-                {
-                    if (hud.IsShown)
-                    {
-                        hud.Draw(e.SpriteBatch);
-                    }
-                }
+                DrawHuds(e.SpriteBatch);
             }
 
             // toasts draw here while no menu is open; RenderedActiveMenu takes over while one is (so they stay on top)
@@ -165,9 +172,27 @@ namespace UIFramework.Hosting
 
         private void OnRenderedActiveMenu(object? sender, RenderedActiveMenuEventArgs e)
         {
+            // widgets that stay visible over menus, then toasts on top
+            if (HudsAllowed)
+            {
+                DrawHuds(e.SpriteBatch);
+            }
+
             if (!screens.Value.Toasts.IsEmpty)
             {
                 screens.Value.Toasts.Draw(e.SpriteBatch);
+            }
+        }
+
+        /// <summary>Draw every shown widget that may be drawn now (<see cref="CanDraw"/>).</summary>
+        private void DrawHuds(SpriteBatch b)
+        {
+            foreach (UIHud hud in huds.Values)
+            {
+                if (hud.IsShown && CanDraw(hud))
+                {
+                    hud.Draw(b);
+                }
             }
         }
 

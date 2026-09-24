@@ -89,6 +89,13 @@ namespace UIFramework.Core
         /// <summary>HUD widgets and toasts (null until <see cref="ModEntry"/> wired it).</summary>
         internal static Hosting.HudService? Hud { get; set; }
 
+        // DATA
+        /// <summary>Data-driven menus (null until <see cref="ModEntry"/> wired it; null in tests).</summary>
+        internal static global::UIFramework.Data.DataService? Data { get; set; }
+
+        /// <summary>The C# bridge of data UIs: commands, functions, sources, draw hooks and exposed values (null until <see cref="ModEntry"/> wired it; null in tests).</summary>
+        internal static Hosting.HookRegistry? Hooks { get; set; }
+
         /// <summary>Player-owned window layouts for the current save (null until <see cref="ModEntry"/> wired it).</summary>
         internal static Hosting.WindowLayoutStore? Layouts { get; set; }
 

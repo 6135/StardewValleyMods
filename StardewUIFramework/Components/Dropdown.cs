@@ -200,6 +200,9 @@ namespace UIFramework.Components
         Action<int> IUIDropdown.OnScroll { get => OnScroll!; set => OnScroll = value; }
 
         internal override bool Focusable => true;
+
+        // done with the mouse (pick / drag): a click does not leave it holding focus (Tab / arrows / gamepad still reach it)
+        internal override bool FocusOnClick => false;
         internal override bool ActivateOnEnter => true;
 
         internal override string AccessibleDescription => Accessibility.Compose(

@@ -67,6 +67,9 @@ namespace UIFramework.Components
 
         internal override bool Focusable => true;
 
+        // done with the mouse (pick / drag): a click does not leave it holding focus (Tab / arrows / gamepad still reach it)
+        internal override bool FocusOnClick => false;
+
         internal override string AccessibleDescription => Accessibility.Compose(
             Accessibility.Text("slider", "Slider"),
             $"{Value:0.##} ({Low:0.##} - {High:0.##})",
