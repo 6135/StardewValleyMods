@@ -38,6 +38,7 @@ namespace UIFrameworkExample
         private bool showTips = true;
         private bool playSounds;
         private int clicks;
+        private int greetings;
         private int selectedRow = -1;
 
         // the Day / Season inputs of the form, bound to signals by the signals demo
@@ -113,8 +114,8 @@ namespace UIFrameworkExample
             api.RegisterCommand("greet", call =>
             {
                 string who = call.Args.Length > 0 ? string.Join(" ", call.Args) : settings.FarmName;
-                clicks++;
-                call.SetState("menu.greeting", $"Hello {who}! (C# was called {clicks} time(s))");
+                greetings++;
+                call.SetState("menu.greeting", $"Hello {who}! (C# was called {greetings} time(s))");
                 api.ShowToast($"Hello from C#, {who}!", 2000);
                 Monitor.Log($"Command 'greet' from {call.OwnerModId} ({call.Menu?.Id ?? "no menu"}): {string.Join(" ", call.Args)}", LogLevel.Info);
             });
@@ -146,8 +147,7 @@ namespace UIFrameworkExample
 
             BuildForm(api, demo.Root);
 
-            IUISpacer divider = api.AddSpacer(demo.Root, "divider", 0, 8);
-            divider.Line = true;
+            ItemImageDemo.Divider(api, demo.Root, "divider");
 
             BuildList(api, demo.Root);
             BuildButtons(api, demo);
@@ -167,8 +167,7 @@ namespace UIFrameworkExample
         /// </summary>
         private void BuildSignalsDemo(IStardewUIApi api, IUIMenu demo)
         {
-            IUISpacer divider = api.AddSpacer(demo.Root, "signals.divider", 0, 8);
-            divider.Line = true;
+            ItemImageDemo.Divider(api, demo.Root, "signals.divider");
 
             // two-way: the inputs now read / write the signals (their original setters still update the fields above)
             IUISignal daySignal = api.SignalNumber(day);
@@ -185,7 +184,7 @@ namespace UIFrameworkExample
 
             // a form generated from a POCO: attributes drive sections, ranges, choices and tooltips; Ctrl+Z / Ctrl+Y undo / redo
             IUIForm form = api.AddForm(demo.Root, "settings", settings);
-            form.OnSaved = _ => Monitor.Log($"Settings saved: {settings.FarmName}, day {settings.Day} of {settings.Season}, pets={settings.Pets}, volume={settings.Volume}, {settings.Difficulty}", LogLevel.Info);
+            form.OnSaved = _ => Monitor.Log($"Settings saved: {settings.FarmName}, day {settings.Day} of {settings.Season}, pets={settings.Pets}, {settings.Difficulty}", LogLevel.Info);
             form.OnCancelled = _ => Monitor.Log("Settings cancelled.", LogLevel.Info);
             form.OnChanged = f => Monitor.Log($"Settings changed (dirty={f.IsDirty}, undo={f.CanUndo}, redo={f.CanRedo}).", LogLevel.Trace);
         }
@@ -338,6 +337,7 @@ namespace UIFrameworkExample
         {
             IUIStack buttons = api.AddStack(demo.Root, "buttons", true, 16);
             buttons.HorizontalAlign = UIAlign.Center;
+            buttons.Wrap = true; // a narrow window moves the buttons that do not fit onto another line
             IUIButton ok = api.AddButton(buttons, "ok", () => $"OK ({clicks})", _ =>
             {
                 clicks++;
@@ -345,7 +345,6 @@ namespace UIFrameworkExample
                 Monitor.Log($"OK: name={name} day={day} season={season} seeds={payForSeeds} volume={volume} row={selectedRow}", LogLevel.Info);
                 api.ShowToastWithIcon($"OK pressed {clicks} time(s).", Game1.mouseCursors, new Microsoft.Xna.Framework.Rectangle(128, 256, 16, 16), 3000);
             });
-            ok.Tooltip = () => "Enter also triggers this button.";
             IUIMenu about = BuildAboutMenu(api);
             api.AddButton(buttons, "about", () => "About...", _ => about.OpenAsChild(demo));
             api.AddButton(buttons, "close", () => "Close", _ => demo.Close());
@@ -454,6 +453,8 @@ namespace UIFrameworkExample
         {
             IUISlot footer = api.AddSlot(demo.Root, "demo.footer");
             footer.Horizontal = true;
+            // contributions (and the items inside each) flow onto further lines instead of squeezing one row
+            footer.Wrap = true;
             footer.MaxContributions = 4;
             api.Expose(demo, "name", () => name);
             api.ExposeNumber(demo, "volume", () => volume);
@@ -462,7 +463,7 @@ namespace UIFrameworkExample
             string ownerModId = ModManifest.UniqueID;
             api.ContributeTo(ownerModId, "demo", "demo.footer", (slot, ctx) =>
             {
-                // the button first so the label is measured with what is left and wraps instead of pushing it out
+                // the footer wraps: the label sits beside the button when it fits, otherwise it moves to a line of its own and wraps there
                 api.AddButton(slot, "footer.log", () => "Log", _ => ctx.Invoke("log"));
                 IUILabel info = api.AddLabel(slot, "footer.info", () => $"Contributed: name: {ctx.GetString("name")}, volume: {ctx.GetNumber("volume"):0}");
                 info.Wrap = true;

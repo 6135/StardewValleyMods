@@ -40,10 +40,10 @@ namespace UIFrameworkExample
         };
 
         /// <summary>A stack of 12 gold-quality parsnips: shows the stack number and the quality star.</summary>
-        private readonly Lazy<Item> goldParsnips = new(() => Create("(O)24", 12, SObject.highQuality));
+        private readonly Lazy<Item> goldParsnips = new(() => ItemRegistry.Create("(O)24", 12, SObject.highQuality));
 
         /// <summary>A single iridium-quality parsnip: the star shows, the number doesn't (stack of 1).</summary>
-        private readonly Lazy<Item> iridiumParsnip = new(() => Create("(O)24", 1, SObject.bestQuality));
+        private readonly Lazy<Item> iridiumParsnip = new(() => ItemRegistry.Create("(O)24", 1, SObject.bestQuality));
 
         internal IUIMenu Menu { get; }
 
@@ -57,13 +57,13 @@ namespace UIFrameworkExample
             Menu = api.CreateMenu("items", options);
 
             BuildTintSection(Menu.Root);
-            Divider(Menu.Root, "tint.divider");
+            Divider(api, Menu.Root, "tint.divider");
             BuildOverlaySection(Menu.Root);
-            Divider(Menu.Root, "overlay.divider");
+            Divider(api, Menu.Root, "overlay.divider");
             BuildOptionsSection(Menu.Root);
-            Divider(Menu.Root, "options.divider");
+            Divider(api, Menu.Root, "options.divider");
             BuildDropdownSection(Menu.Root);
-            Divider(Menu.Root, "dropdown.divider");
+            Divider(api, Menu.Root, "dropdown.divider");
             BuildTooltipSection(Menu.Root);
         }
 
@@ -75,7 +75,7 @@ namespace UIFrameworkExample
         private void BuildTintSection(IUIContainer parent)
         {
             Heading(parent, "tint.heading", "Tint: AddImage by id (left) vs AddItemImage (right)");
-            IUIGrid grid = api.AddGrid(parent, "tint.grid", "auto,auto,auto", Rows(products.Length));
+            IUIGrid grid = api.AddGrid(parent, "tint.grid", "auto,auto,auto", Autos(products.Length));
             grid.ColumnSpacing = 24;
             grid.RowSpacing = 8;
             for (int i = 0; i < products.Length; i++)
@@ -100,7 +100,7 @@ namespace UIFrameworkExample
         private void BuildOverlaySection(IUIContainer parent)
         {
             Heading(parent, "overlay.heading", "Overlays: 12 gold parsnips at scales 1-4 (F10 inspector shows the bounds)");
-            IUIGrid grid = api.AddGrid(parent, "overlay.grid", "auto,auto,auto,auto", Rows(Scales.Length + 2));
+            IUIGrid grid = api.AddGrid(parent, "overlay.grid", "auto,auto,auto,auto", Autos(Scales.Length + 2));
             grid.ColumnSpacing = 24;
             grid.RowSpacing = 8;
 
@@ -154,7 +154,7 @@ namespace UIFrameworkExample
             // four cases per line (item row + label row) so the grid fits the menu width
             const int perLine = 4;
             int lines = (cases.Count + perLine - 1) / perLine;
-            IUIGrid grid = api.AddGrid(parent, "options.grid", Columns(perLine), Rows(lines * 2));
+            IUIGrid grid = api.AddGrid(parent, "options.grid", Autos(perLine), Autos(lines * 2));
             grid.ColumnSpacing = 24;
             grid.RowSpacing = 4;
             for (int c = 0; c < cases.Count; c++)
@@ -191,7 +191,7 @@ namespace UIFrameworkExample
                 ("5 choices, fits", few, 8)
             };
 
-            IUIGrid grid = api.AddGrid(parent, "dropdown.grid", "auto,auto", Rows(cases.Length));
+            IUIGrid grid = api.AddGrid(parent, "dropdown.grid", "auto,auto", Autos(cases.Length));
             grid.ColumnSpacing = 24;
             grid.RowSpacing = 8;
             for (int r = 0; r < cases.Length; r++)
@@ -235,7 +235,8 @@ namespace UIFrameworkExample
             label.Wrap = true;
         }
 
-        private void Divider(IUIContainer parent, string id)
+        /// <summary>A full-width divider line (also used by the main demo).</summary>
+        internal static void Divider(IStardewUIApi api, IUIContainer parent, string id)
         {
             IUISpacer spacer = api.AddSpacer(parent, id, 0, 8);
             spacer.Line = true;
@@ -248,9 +249,8 @@ namespace UIFrameworkExample
             element.VerticalAlign = UIAlign.Center;
         }
 
-        private static string Rows(int count) => string.Join(",", Repeat("auto", count));
-
-        private static string Columns(int count) => string.Join(",", Repeat("auto", count));
+        /// <summary>A track list of <paramref name="count"/> auto tracks (rows or columns).</summary>
+        private static string Autos(int count) => string.Join(",", Repeat("auto", count));
 
         private static IEnumerable<string> Repeat(string value, int count)
         {
@@ -264,12 +264,6 @@ namespace UIFrameworkExample
         {
             SObject ingredient = ItemRegistry.Create<SObject>(ingredientId);
             return factory(ItemRegistry.GetObjectTypeDefinition())(ingredient);
-        }
-
-        private static Item Create(string id, int stack, int quality)
-        {
-            Item item = ItemRegistry.Create(id, stack, quality);
-            return item;
         }
     }
 }

@@ -35,7 +35,7 @@
           },
           "Hotkeys": {
             "hud": {
-              "Keys": "LeftControl + F10",
+              "Keys": "LeftControl + H",
               "Actions": "6135.UIFramework_ToggleHud {{ModId}}/status"
             }
           },
@@ -80,7 +80,9 @@
         "{{ModId}}/demo": {
           "Title": "{{i18n:demo.title}}",
           "Width": 800,
-          "Hotkey": "F10",
+          // sizes its height to the content, but the player can still resize it from the bottom-right grip
+          "Resizable": true,
+          "Hotkey": "F6",
           "Spacing": 12,
           "CancelButton": "close",
 
@@ -148,6 +150,8 @@
               "Type": "Stack",
               "Horizontal": true,
               "Spacing": 8,
+              // tabs that do not fit the width continue on the next line
+              "Wrap": true,
               "Children": [
                 { "Id": "tab.form", "Button": "{{i18n:demo.tab.form}}", "Class": "tab", "Enabled": "menu.tab != 'form'", "OnClick": "6135.UIFramework_SetState menu.tab form" },
                 { "Id": "tab.buttons", "Button": "{{i18n:demo.tab.buttons}}", "Class": "tab", "Enabled": "menu.tab != 'buttons'", "OnClick": "6135.UIFramework_SetState menu.tab buttons" },
@@ -463,6 +467,8 @@
               "Horizontal": true,
               "Spacing": 16,
               "HorizontalAlign": "Center",
+              // a narrow window moves the buttons that do not fit onto a second line
+              "Wrap": true,
               "Children": [
                 { "Id": "settings", "Button": "{{i18n:demo.settings}}", "OnClick": "6135.UIFramework_OpenMenuAsChild {{ModId}}/settings" },
                 { "Id": "hud", "Button": "{{i18n:demo.hud}}", "Tooltip": "{{i18n:demo.hud.tip}}", "OnClick": "6135.UIFramework_ToggleHud {{ModId}}/status" },
@@ -821,7 +827,7 @@
       }
     },
 
-    // a HUD widget: shown in the world, toggled with the demo's HUD button, F9 or Ctrl+F10 (owner hotkey)
+    // a HUD widget: shown in the world, toggled with the demo's HUD button or Ctrl+H (owner hotkey)
     {
       "LogName": "UI Framework HUD",
       "Action": "EditData",
@@ -832,7 +838,6 @@
           "X": 16,
           "Y": 16,
           "Spacing": 4,
-          "Hotkey": "F9",
           "ShowWhen": "game.worldReady",
           // stays on top of open menus (like toasts), so the demo's Toggle HUD button shows its effect at once
           "ShowOverMenus": true,
@@ -846,7 +851,7 @@
       }
     },
 
-    // Content Patcher reads UI state back through the token: the settings screen's checkbox and slider edit the
+    // Content Patcher reads UI state back through the token: the settings screen's fields edit the
     // parsnip's description (at the next day start or 'patch update')
     {
       "LogName": "Parsnip note",

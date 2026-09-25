@@ -236,6 +236,21 @@ namespace UIFramework.Api
         /// <summary>Explicit height in UI pixels, or null for "size to content".</summary>
         int? Height { get; set; }
 
+        /// <summary>
+        /// Smallest width in UI pixels (margins excluded), or null for none. The element is measured, arranged and
+        /// reported to its parent (as its minimum width) at least this wide, even when that overflows a narrower slot.
+        /// Wins over <see cref="MaxWidth"/> when larger; ignored while <see cref="Width"/> is set.
+        /// </summary>
+        int? MinWidth { get; set; }
+
+        /// <summary>
+        /// Largest width in UI pixels (margins excluded), or null for none. The content is measured with at most this
+        /// width and never arranged wider (a stretched element stops growing here and sits at the start of its slot);
+        /// its minimum width is capped at it too, so content that cannot fit shrinks, truncates or overflows as it would
+        /// when squeezed. Ignored while <see cref="Width"/> is set; <see cref="MinWidth"/> wins when larger.
+        /// </summary>
+        int? MaxWidth { get; set; }
+
         /// <summary>Horizontal alignment inside the slot given by the parent.</summary>
         UIAlign HorizontalAlign { get; set; }
 
@@ -346,6 +361,13 @@ namespace UIFramework.Api
 
         /// <summary>Default cross-axis alignment for children that did not set their own.</summary>
         UIAlign Alignment { get; set; }
+
+        /// <summary>
+        /// Row only (a column ignores it): break onto further lines instead of overflowing when the children do not fit
+        /// the width. Spacing separates lines too, each line is as tall as its tallest child and starts at the left edge;
+        /// the row's minimum width becomes its widest child's. Default false.
+        /// </summary>
+        bool Wrap { get; set; }
     }
 
     /// <summary>
@@ -433,6 +455,13 @@ namespace UIFramework.Api
         /// <summary>Wrap to the available width (or to <see cref="IUIElement.Width"/>).</summary>
         bool Wrap { get; set; }
 
+        /// <summary>
+        /// A single-line label may shorten its text with "..." to fit a narrow space: its minimum width becomes the
+        /// shortest fitted form of the text instead of the whole line, so a squeezed row can take width from it. Default
+        /// false (the whole line is kept). No effect on wrapping or rich-text labels.
+        /// </summary>
+        bool Shrink { get; set; }
+
         /// <summary>Horizontal text alignment inside the label's bounds.</summary>
         UIAlign TextAlign { get; set; }
 
@@ -479,6 +508,13 @@ namespace UIFramework.Api
         // RICHTEXT
         /// <summary>Parse markup in <see cref="Text"/> (same syntax as <see cref="IUILabel.RichText"/>; links are not clickable on buttons). Default false.</summary>
         bool RichText { get; set; }
+
+        /// <summary>
+        /// The button may shorten its text with "..." to fit a narrow space: its minimum width becomes the shortest
+        /// fitted form of the text instead of the whole text. Default false (the whole text is kept). No effect with
+        /// <see cref="RichText"/>.
+        /// </summary>
+        bool Shrink { get; set; }
     }
 
     /// <summary>A boolean toggle.</summary>
@@ -491,6 +527,12 @@ namespace UIFramework.Api
 
         string ClickSound { get; set; }
         Action<IUIValueEvent> OnValueChanged { get; set; }
+
+        /// <summary>
+        /// The checkbox may shorten its label with "..." to fit a narrow space: its minimum width becomes the box plus
+        /// the shortest fitted form of the label instead of the whole label. Default false (the whole label is kept).
+        /// </summary>
+        bool Shrink { get; set; }
     }
 
     /// <summary>Single-line text entry.</summary>
@@ -558,6 +600,13 @@ namespace UIFramework.Api
 
         Action<IUIValueEvent> OnValueChanged { get; set; }
         Action<int> OnScroll { get; set; }
+
+        /// <summary>
+        /// The dropdown may shorten its option labels with "..." to fit a narrow space: its minimum width becomes the
+        /// arrow plus the shortest fitted form of its widest option. Default false: it keeps the width that shows every
+        /// option whole (never more than its default width of 300, which it takes when there is room).
+        /// </summary>
+        bool Shrink { get; set; }
     }
 
     /// <summary>A horizontal slider over a numeric range.</summary>
@@ -591,6 +640,13 @@ namespace UIFramework.Api
     {
         /// <summary>Return the desired size given the available size.</summary>
         Vector2 Measure(Vector2 available);
+
+        /// <summary>
+        /// The narrowest width the component can be drawn at without its content overflowing (used, for example, to
+        /// stop the player resizing a window smaller than its content). Return the desired width if it cannot shrink.
+        /// Must not change any state.
+        /// </summary>
+        float MinimumWidth { get; }
 
         /// <summary>Draw with the absolute bounds already resolved. Called in the overlay pass instead when <see cref="WantsOverlay"/> is true.</summary>
         void Draw(SpriteBatch b, Rectangle bounds);
@@ -653,6 +709,12 @@ namespace UIFramework.Api
         // HUD
         /// <summary>Let the player move, resize and collapse the window; the result persists per save (default true).</summary>
         bool PlayerLayout { get; set; }
+
+        /// <summary>
+        /// Let the player resize the window even when it sizes to its content (no fixed <see cref="Width"/> and
+        /// <see cref="Height"/>). Fixed-size windows are always resizable. Default false; needs <see cref="PlayerLayout"/>.
+        /// </summary>
+        bool Resizable { get; set; }
     }
 
     /// <summary>A screen. Build its tree under <see cref="Root"/>, then <see cref="Open"/>.</summary>
@@ -718,10 +780,18 @@ namespace UIFramework.Api
         // HUD
         /// <summary>
         /// Let the player drag the window by its title strip, collapse it with the button next to the close button and
-        /// (when <see cref="Width"/> and <see cref="Height"/> are fixed) resize it from the bottom-right corner. The
-        /// result is saved per save file and re-applied whenever the menu opens (default true; needs <see cref="DrawBox"/>).
+        /// (when <see cref="Width"/> and <see cref="Height"/> are fixed, or <see cref="Resizable"/> is on) resize it from the
+        /// bottom-right corner. The result is saved per save file and re-applied whenever the menu opens (default true;
+        /// needs <see cref="DrawBox"/>).
         /// </summary>
         bool PlayerLayout { get; set; }
+
+        /// <summary>
+        /// Let the player resize the window even when it sizes to its content. Once resized, the window keeps the
+        /// player's size; <see cref="IStardewUIApi.ResetPlayerLayout"/> (or <c>ui_layout_reset</c>) returns it to
+        /// sizing to its content. Fixed-size windows are always resizable. Default false; needs <see cref="PlayerLayout"/>.
+        /// </summary>
+        bool Resizable { get; set; }
     }
 
     // =================================================================================================================
@@ -1132,6 +1202,13 @@ namespace UIFramework.Api
 
         /// <summary>Layout hint: cap the slot's measured height in UI pixels (null = unlimited).</summary>
         int? MaxHeight { get; set; }
+
+        /// <summary>
+        /// Layout hint, row only (<see cref="Horizontal"/>): break onto further lines instead of overflowing, both the
+        /// contributions and the items inside each one (same rules as <see cref="IUIStack.Wrap"/>). Each contribution's
+        /// own row picks it up when it is built (whenever the menu opens). Default false.
+        /// </summary>
+        bool Wrap { get; set; }
 
         /// <summary>Evaluated every tick; false hides the slot (null = always visible).</summary>
         Func<bool> VisiblePredicate { get; set; }
