@@ -13,7 +13,6 @@
 // ---------------------------------------------------------------------------------------------------------------------
 #pragma warning disable CS1591 // Missing XML comment: verbatim copy of the UI Framework API file
 
-
 using System;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
