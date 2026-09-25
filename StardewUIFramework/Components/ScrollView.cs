@@ -217,6 +217,17 @@ namespace UIFramework.Components
             return new Vector2(w, h);
         }
 
+        /// <summary>
+        /// The widest child's minimum plus the scrollbar column. A fit-content viewport reserves the column whenever
+        /// the scrollbar is enabled, not only while it overflows: at its narrowest the content is at its tallest, which
+        /// is exactly when the scrollbar appears and takes that width from the content.
+        /// </summary>
+        protected override float MinWidthCore()
+        {
+            int reserved = showScrollbar ? ScrollbarGadget.ReservedWidth : 0;
+            return MaxChildMinWidth() + reserved;
+        }
+
         protected override void ArrangeCore()
         {
             // the final height is known now; keep the offset valid before positioning anything

@@ -102,6 +102,21 @@ namespace UIFramework.Core
         /// </summary>
         internal virtual ConsumerContext? ComponentOwner => null;
 
+        /// <summary>
+        /// The widest minimum width among the children (hidden ones report 0): the minimum of every container whose
+        /// children share its full width (overlapping panels, columns).
+        /// </summary>
+        protected float MaxChildMinWidth()
+        {
+            float min = 0;
+            foreach (UIElement child in children)
+            {
+                min = Math.Max(min, child.MeasureMinWidth());
+            }
+
+            return min;
+        }
+
         /// <summary>Default horizontal alignment for a child that did not set its own (stacks use this for the cross axis).</summary>
         internal virtual UIAlign DefaultChildHorizontalAlign(UIElement child) => UIAlign.Start;
 

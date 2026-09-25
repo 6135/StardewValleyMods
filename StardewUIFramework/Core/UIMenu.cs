@@ -26,6 +26,12 @@ namespace UIFramework.Core
         private const int BoxInsetBottom = 56;
         private const int TitleReserve = 80; // the title scroll is 72 px tall and drawn 64 px above the box
 
+        /// <summary>Width the title scroll adds around its text (<c>SpriteText</c>'s 12 px end caps at 4x, one per side).</summary>
+        private const int TitleScrollCaps = 2 * 12 * 4;
+
+        /// <summary>Room kept free on each side between the title (scroll) and the menu's edge.</summary>
+        private const int TitleMargin = 8;
+
         private readonly MenuRegistry registry;
         private int? width, height;
         private UIAnchor anchor = UIAnchor.Center;
@@ -43,6 +49,13 @@ namespace UIFramework.Core
         private bool CentersY => anchor is UIAnchor.Center or UIAnchor.MiddleLeft or UIAnchor.MiddleRight;
         private Func<string>? title;
         private UIElement? announcedHover;
+
+        // the title as last fitted by FittedTitle, keyed by the source text, width budget and draw path
+        private string? fittedTitleSource;
+        private int fittedTitleBudget = -1;
+        private bool fittedTitleScroll;
+        private string fittedTitle = string.Empty;
+        private float fittedTitleWidth;
 
         internal UIMenu(string id, ConsumerContext consumer, MenuRegistry registry)
         {
@@ -207,6 +220,8 @@ namespace UIFramework.Core
         // HUD: player-owned layout
         public bool PlayerLayout { get; set; } = true;
 
+        public bool Resizable { get; set; }
+
         /// <summary>Collapsed by the player: only the window's title strip is drawn and the tree takes no input.</summary>
         internal bool Collapsed
         {
@@ -239,13 +254,23 @@ namespace UIFramework.Core
         /// <summary>The consumer's own placement, captured before a player layout was applied (null = none applied yet).</summary>
         internal WindowLayout? ConsumerLayout { get; set; }
 
-        /// <summary>Whether the player may resize the window: both dimensions are fixed.</summary>
-        internal bool IsResizable => width.HasValue && height.HasValue;
+        /// <summary>Whether the player may resize the window: both dimensions are fixed, or the consumer opted in with <see cref="Resizable"/>.</summary>
+        internal bool IsResizable => Resizable || (width.HasValue && height.HasValue);
 
-        /// <summary>Smallest size the player may resize to: the content's width plus chrome, and enough height for the viewport to scroll a few rows.</summary>
-        internal Point MinimumSize => new(
-            (int)Math.Ceiling(Viewport.DesiredSize.X) + InsetLeft + InsetRight,
-            Math.Min((int)Math.Ceiling(Viewport.DesiredSize.Y), MinimumViewportHeight) + InsetTop + InsetBottom);
+        /// <summary>
+        /// Smallest size the player may resize the window to: the narrowest width its content can take without
+        /// overflowing (<see cref="UIElement.MeasureMinWidth"/>) but never less than <paramref name="chromeWidth"/>, and
+        /// enough height for the viewport to scroll a few rows. A pure query: nothing is re-measured or re-arranged.
+        /// </summary>
+        /// <param name="chromeWidth">Width the window's own controls need (collapse / close buttons, resize grip).</param>
+        internal Point MinimumSize(int chromeWidth)
+        {
+            int contentW = (int)Math.Ceiling(Viewport.MeasureMinWidth());
+            int contentH = Math.Min((int)Math.Ceiling(Viewport.DesiredSize.Y), MinimumViewportHeight);
+            return new Point(
+                Math.Max(contentW + InsetLeft + InsetRight, chromeWidth),
+                contentH + InsetTop + InsetBottom);
+        }
 
         /// <summary>Height below which a resized window is not useful (three rows + scrollbar arrows).</summary>
         private const int MinimumViewportHeight = 160;
@@ -503,12 +528,14 @@ namespace UIFramework.Core
             {
                 if (drawBox)
                 {
-                    // the scroll graphic spans [y - 12, y + 60]; keep it just above the frame
-                    SpriteText.drawStringWithScrollCenteredAt(b, titleText, Bounds.Center.X, Math.Max(12, Bounds.Y - 68));
+                    // the scroll graphic spans [y - 12, y + 60]; keep it just above the frame, never wider than it
+                    string shown = FittedTitle(titleText, Bounds.Width - (2 * TitleMargin) - TitleScrollCaps, scroll: true);
+                    SpriteText.drawStringWithScrollCenteredAt(b, shown, Bounds.Center.X, Math.Max(12, Bounds.Y - 68));
                 }
                 else
                 {
-                    DrawHelper.Text(b, titleText, UIFont.Dialogue, new Vector2(Bounds.Center.X - (UIServices.Text.Measure(UIFont.Dialogue, titleText, 1f).X / 2f), Bounds.Y + 8), Theme.TextColor, false, 1f);
+                    string shown = FittedTitle(titleText, Bounds.Width - (2 * TitleMargin), scroll: false);
+                    DrawHelper.Text(b, shown, UIFont.Dialogue, new Vector2(Bounds.Center.X - (fittedTitleWidth / 2f), Bounds.Y + 8), Theme.TextColor, false, 1f);
                 }
             }
 
@@ -529,6 +556,49 @@ namespace UIFramework.Core
                 DrawHelper.DebugBounds(b, Bounds, Id, Color.Red);
             }
         }
+
+        /// <summary>
+        /// <paramref name="text"/> as the title can show it in <paramref name="budget"/> pixels: whole when it fits,
+        /// otherwise its longest prefix + "..." (just "..." when even one character does not fit). Measured with
+        /// <c>SpriteText</c> for the scroll banner (<paramref name="scroll"/>) or the dialogue font otherwise; the result
+        /// and its width (<see cref="fittedTitleWidth"/>) are cached until the text, budget or path changes.
+        /// </summary>
+        private string FittedTitle(string text, int budget, bool scroll)
+        {
+            if (text == fittedTitleSource && budget == fittedTitleBudget && scroll == fittedTitleScroll)
+            {
+                return fittedTitle;
+            }
+
+            fittedTitleSource = text;
+            fittedTitleBudget = budget;
+            fittedTitleScroll = scroll;
+            fittedTitle = text;
+            if (TitleWidth(text, scroll) > budget)
+            {
+                const string Ellipsis = "...";
+                int lo = 0, hi = text.Length;
+                while (lo < hi)
+                {
+                    int mid = (lo + hi + 1) / 2;
+                    if (TitleWidth(text.Substring(0, mid).TrimEnd() + Ellipsis, scroll) <= budget)
+                    {
+                        lo = mid;
+                    }
+                    else
+                    {
+                        hi = mid - 1;
+                    }
+                }
+                fittedTitle = text.Substring(0, lo).TrimEnd() + Ellipsis;
+            }
+
+            fittedTitleWidth = TitleWidth(fittedTitle, scroll);
+            return fittedTitle;
+        }
+
+        /// <summary>Drawn width of a title string: <c>SpriteText</c> for the scroll banner, the dialogue font otherwise.</summary>
+        private static float TitleWidth(string text, bool scroll) => scroll ? SpriteText.getWidthOfString(text) : UIServices.Text.Measure(UIFont.Dialogue, text, 1f).X;
 
         /// <summary>The vanilla dialogue box, or the theme's panel box when the theme restyles boxes (tint, texture or solid fill).</summary>
         private void DrawChrome(SpriteBatch b)

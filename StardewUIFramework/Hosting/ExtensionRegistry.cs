@@ -135,6 +135,11 @@ namespace UIFramework.Hosting
         private string Describe(UIMenu menu, Slot slot)
         {
             var hints = new List<string> { slot.Horizontal ? "row" : "column" };
+            if (slot.Horizontal && slot.Wrap)
+            {
+                hints.Add("wrap");
+            }
+
             if (slot.MaxHeight.HasValue)
             {
                 hints.Add("maxHeight=" + slot.MaxHeight.Value);
@@ -205,7 +210,7 @@ namespace UIFramework.Hosting
 
         private void BuildContribution(UIMenu menu, Slot slot, Contribution c, string slotKey)
         {
-            var host = new Stack(slot.Id + "." + c.Contributor.ModId, slot.Horizontal, spacing: 8) { Contributor = c.Contributor };
+            var host = new Stack(slot.Id + "." + c.Contributor.ModId, slot.Horizontal, spacing: 8) { Contributor = c.Contributor, Wrap = slot.Wrap };
             slot.Add(host);
             var context = new ScreenContext(ExposuresOf(menu), c.Contributor);
             RunExternal(menu, c.Contributor, slotKey.Replace('|', '.'), "Contribute", () => c.Build(host, context));

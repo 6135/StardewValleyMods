@@ -274,6 +274,9 @@ namespace UIFramework.Components
             return new Vector2(width, height);
         }
 
+        /// <summary>A column: as narrow as its widest child.</summary>
+        protected override float MinWidthCore() => MaxChildMinWidth();
+
         protected override void ArrangeCore()
         {
             int cursor = Bounds.Y;

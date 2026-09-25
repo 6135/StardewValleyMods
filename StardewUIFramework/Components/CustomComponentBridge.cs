@@ -36,6 +36,9 @@ namespace UIFramework.Components
             return new Vector2(System.Math.Max(0, size.X), System.Math.Max(0, size.Y));
         }
 
+        /// <summary>The narrowest width the implementation can be drawn at (<see cref="IUICustomComponent.MinimumWidth"/>), never negative.</summary>
+        internal float MinimumWidth => System.Math.Max(0, Get("Custom.MinimumWidth", () => implementation.MinimumWidth, 0f));
+
         internal void Draw(SpriteBatch b, Rectangle bounds) => Run("Custom.Draw", () => implementation.Draw(b, bounds));
 
         internal void Update(Rectangle bounds, double elapsedMs) => Run("Custom.Update", () => implementation.Update(bounds, elapsedMs));

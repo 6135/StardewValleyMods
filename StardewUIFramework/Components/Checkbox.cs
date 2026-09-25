@@ -20,6 +20,7 @@ namespace UIFramework.Components
         private Action<bool>? setter;
         private bool ownValue;
         private Func<string>? label;
+        private bool shrink;
         private string measuredLabel = string.Empty;
 
         internal Checkbox(string id, Func<bool>? getter, Action<bool>? setter) : base(id)
@@ -64,6 +65,22 @@ namespace UIFramework.Components
         }
 
         Func<string> IUICheckbox.Label { get => label!; set => LabelFunc = value; }
+
+        /// <summary>Let the minimum width drop to the fitted label (<see cref="DrawHelper.FitTextMinWidth"/>) instead of the whole label.</summary>
+        public bool Shrink
+        {
+            get => shrink;
+            set
+            {
+                if (shrink == value)
+                {
+                    return;
+                }
+
+                shrink = value;
+                InvalidateLayout();
+            }
+        }
 
         /// <summary>null = theme default, empty = silent.</summary>
         internal string? ClickSound { get; set; }
@@ -133,8 +150,25 @@ namespace UIFramework.Components
             }
 
             Vector2 textSize = UIServices.Text.Measure(Style.Font, measuredLabel, 1f);
-            return new Vector2(box + Theme.Space(LabelGap) + textSize.X, Math.Max(box, textSize.Y));
+            return new Vector2(WidthFor(textSize.X), Math.Max(box, textSize.Y));
         }
+
+        // the label never wraps: the minimum keeps it whole (the natural width MeasureCore reports); with Shrink it may go
+        // down to its fitted minimum, and a narrower checkbox shrinks / truncates it when drawn (FitText)
+        protected override float MinWidthCore()
+        {
+            string current = CurrentLabel;
+            if (current.Length == 0)
+            {
+                return BoxSize;
+            }
+
+            UIFont font = Style.Font;
+            return WidthFor(shrink ? DrawHelper.FitTextMinWidth(current, font, 1f) : (float)Math.Ceiling(UIServices.Text.Measure(font, current, 1f).X));
+        }
+
+        /// <summary>Box + gap + a label <paramref name="labelWidth"/> wide.</summary>
+        private static float WidthFor(float labelWidth) => BoxSize + Theme.Space(LabelGap) + labelWidth;
 
         protected override void DrawCore(SpriteBatch b)
         {

@@ -68,6 +68,9 @@ namespace UIFramework.Components
             return new Vector2(SpriteSize * scale, SpriteSize * scale);
         }
 
+        // drawn at its natural scale unless an explicit size (already handled by the caller) sets the square
+        protected override float MinWidthCore() => SpriteSize * scale;
+
         protected override void DrawCore(SpriteBatch b)
         {
             if (Bounds.Width <= 0 || Bounds.Height <= 0)

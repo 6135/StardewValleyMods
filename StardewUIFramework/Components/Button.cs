@@ -24,6 +24,7 @@ namespace UIFramework.Components
         private Rectangle? iconSource;
         private float iconScale = 4f;
         private bool richText;
+        private bool shrink;
         private RichLayout? richLayout;
         private string measuredText = string.Empty;
 
@@ -107,6 +108,22 @@ namespace UIFramework.Components
             }
         }
 
+        /// <summary>Let the minimum width drop to the fitted text (<see cref="DrawHelper.FitTextMinWidth"/>) instead of the whole text.</summary>
+        public bool Shrink
+        {
+            get => shrink;
+            set
+            {
+                if (shrink == value)
+                {
+                    return;
+                }
+
+                shrink = value;
+                InvalidateLayout();
+            }
+        }
+
         internal override bool Focusable => true;
 
         // click-once: a mouse click fires it and does not leave it holding focus (Tab / arrows / gamepad still reach it)
@@ -152,14 +169,34 @@ namespace UIFramework.Components
             measuredText = CurrentText;
             Vector2 textSize = MeasureText(measuredText);
             Vector2 iconSize = IconSize;
-            float w = textSize.X + iconSize.X + (textSize.X > 0 && iconSize.X > 0 ? Theme.Space(IconGap) : 0) + (DrawBox ? (2 * Theme.Space(PadX)) : 0);
             float h = Math.Max(textSize.Y, iconSize.Y) + (DrawBox ? (2 * Theme.Space(PadY)) : 0);
             if (DrawBox)
             {
                 h = Math.Max(h, MinHeight);
             }
 
-            return new Vector2(w, h);
+            return new Vector2(ContentWidth(textSize.X), h);
+        }
+
+        // the whole text (the natural width MeasureCore reports), so a squeezed row takes width from elements that can
+        // give it without losing anything; with Shrink, plain text may go down to its fitted minimum (drawing shrinks /
+        // truncates it with FitText). Rich text is laid out as one unshrinkable line, so it always keeps its full width.
+        protected override float MinWidthCore()
+        {
+            string current = CurrentText;
+            float textWidth = current.Length == 0
+                ? 0
+                : richText ? Rendering.RichText.Measure(current, Font, 1f, 0).X
+                : shrink ? DrawHelper.FitTextMinWidth(current, Font, 1f)
+                : (float)Math.Ceiling(UIServices.Text.Measure(Font, current, 1f).X);
+            return ContentWidth(textWidth);
+        }
+
+        /// <summary>Text + icon + the gap between them + the box padding, for a text <paramref name="textWidth"/> wide.</summary>
+        private float ContentWidth(float textWidth)
+        {
+            float iconWidth = IconSize.X;
+            return textWidth + iconWidth + (textWidth > 0 && iconWidth > 0 ? Theme.Space(IconGap) : 0) + (DrawBox ? (2 * Theme.Space(PadX)) : 0);
         }
 
         protected override void DrawCore(SpriteBatch b)

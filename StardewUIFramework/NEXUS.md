@@ -30,7 +30,13 @@ settings pages, HUD widgets, additions to other mods' menus) without writing any
   shrinks (a line shown on hover, a tab switch). Hovering any part of a list or grid row shows the row's tooltip.
 - Content pack authors: `ShowOverMenus` keeps a HUD widget visible on top of open menus; named tooltips
   (`Owners` > `Tooltips`, used with `{ "From": "name" }`); an image's `Sprite` can change per row (`${row.sprite}`).
-- Mod authors: `IUIHud.ShowOverMenus`; `ImportData` / `ImportDataFile` build the menus before returning, so
+- Players: resizing a window now lets it get narrower down to what its content needs; before, a window with
+  stretched content (grids, full-width rows) could not be made narrower at all. Grabbing the resize grip no longer
+  enlarges a window on its own. In narrow windows, rows of buttons move onto a second line, form labels wrap
+  instead of pushing controls past the edge, text is never cut off just to make room (only when the screen itself
+  is too small), a long title is shortened with "...", and lists and data grids no longer draw outside their box.
+- Mod authors: `Resizable` (C# and data, default off) lets players resize a window that fits its content, not just
+  fixed-size ones; `IUICustomComponent.MinimumWidth` (new, required) reports a custom component's narrowest width; `Wrap` on stacks (C# `IUIStack.Wrap`, data `"Wrap": true` on `Stack` / `Repeat` / `Outlet`) lets a row flow onto new lines (slots too: `IUISlot.Wrap`); `MinWidth` / `MaxWidth` on every element; `Shrink` lets a button, checkbox, dropdown or label shorten its text with "..." in narrow spaces; `IUIHud.ShowOverMenus`; `ImportData` / `ImportDataFile` build the menus before returning, so
   `GetMenu` and `BindToggleHotkey` work right after the import. `ImportDataFile` now takes a full path
   (`Path.Combine(helper.DirectoryPath, "assets/ui.json")`); relative paths are no longer resolved.
 - Fixes: framework trigger actions no longer report "failed" after they succeeded (buttons stopped responding after

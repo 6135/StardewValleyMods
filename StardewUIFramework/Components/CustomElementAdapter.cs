@@ -36,6 +36,8 @@ namespace UIFramework.Components
 
         protected override Vector2 MeasureCore(Vector2 available) => bridge.Measure(available);
 
+        protected override float MinWidthCore() => bridge.MinimumWidth;
+
         protected override void DrawCore(SpriteBatch b) => bridge.Draw(b, Bounds);
 
         internal override void Update(double elapsedMs) => bridge.Update(Bounds, elapsedMs);

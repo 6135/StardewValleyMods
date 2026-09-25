@@ -162,6 +162,27 @@ namespace UIFramework.Rendering
             return shownSize.X;
         }
 
+        /// <summary>
+        /// The narrowest width <see cref="FitText(SpriteBatch, string, UIFont, Rectangle, Color, bool, float, UIAlign)"/> can
+        /// draw <paramref name="text"/> in and still show something readable: the whole text at the smallest fit scale when
+        /// it is that short, otherwise its first character plus "..." at that scale. Pure; the minimum width of the
+        /// controls that draw a single fitted line when they opt into <c>Shrink</c> (button, checkbox, dropdown,
+        /// single-line label), and always of a data grid header.
+        /// </summary>
+        internal static float FitTextMinWidth(string? text, UIFont font, float scale)
+        {
+            if (string.IsNullOrEmpty(text))
+            {
+                return 0;
+            }
+
+            float smallest = MinFitScale * scale;
+            float whole = UIServices.Text.Measure(font, text, smallest).X;
+            float truncated = UIServices.Text.Measure(font, text.Substring(0, 1) + "...", smallest).X;
+            // rounded up: layout hands out whole pixels, and a fraction short would truncate one step further
+            return (float)Math.Ceiling(Math.Min(whole, truncated));
+        }
+
         /// <summary>The longest prefix of <paramref name="text"/> + "..." that fits in <paramref name="width"/> (may be just "...").</summary>
         private static string Truncate(string text, UIFont font, float scale, int width)
         {

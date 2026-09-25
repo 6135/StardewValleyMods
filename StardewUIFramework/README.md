@@ -131,8 +131,10 @@ Every framework window can be adjusted by the player (unless the mod that owns i
 
 - **Move** it by dragging its title banner or the top border of the box.
 - **Collapse** it to its title strip with the arrow button next to the close button; click again to expand.
-- **Resize** windows that have a fixed size by dragging the dotted grip in the bottom-right corner (it never gets
-  smaller than its content).
+- **Resize** a window by dragging the dotted grip in the bottom-right corner. It gets narrower until its content
+  can't shrink any further (text wraps, rows of buttons move onto a second line, wide columns shrink), and shorter
+  down to a few rows; content that no longer fits scrolls. Windows with a fixed size always have the grip; windows that fit their content have it only when the mod
+  allows it.
 - Interactive HUD widgets (small overlays some mods draw during play) can be dragged the same way.
 
 Positions, sizes and collapsed states are stored in the save file (host player only; farmhands keep them for the
@@ -282,12 +284,21 @@ milliseconds), `OnKey` and `OnScroll` are menu-level callbacks.
 
 Positions are never hard-coded. Every container measures its children and arranges them, and the whole tree is
 re-laid out when the window is resized, when a size-affecting property changes, when the tree changes, or when you
-call `InvalidateLayout()`.
+call `InvalidateLayout()`. Every element can also report its minimum width, the narrowest it can be laid out at
+without its content overflowing (wrapping text at its longest word, stretched and star-sized parts at what they
+contain); the player's resize grip uses it, so a window never gets narrower than its content allows.
+By default nothing loses text to make room: buttons, checkboxes, dropdowns and single-line labels report their whole
+text as their minimum, so a window gets narrower only through text that wraps, rows with `Wrap` that flow onto new
+lines, grids sharing their columns, and sliders / text inputs taking less room. Set `Shrink` on a button, checkbox,
+dropdown or label to let it shorten its text with "..." instead. `MinWidth` / `MaxWidth` on any element bound its width
+(a fixed `Width` wins over both; `MinWidth` wins over `MaxWidth`). If a window is physically narrower than its
+content (a small screen), text still shrinks to 70 % and then ends in "..." rather than overflowing, and a long menu
+title is cut off with "..." so its banner is never wider than the window.
 
 | Container       | Created with                                                       | Behaviour                                                                                                                                                                                                       |
 |-----------------|--------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `IUIStack`      | `AddStack(parent, id, horizontal, spacing)`                        | Row or column with `Spacing` between children; `Alignment` is the default cross-axis alignment.                                                                                                                 |
-| `IUIGrid`       | `AddGrid(parent, id, columns, rows)`                               | Rows and columns from track strings; children choose a cell with `Row`, `Column`, `RowSpan`, `ColumnSpan`. `ColumnSpacing` / `RowSpacing` add gaps.                                                             |
+| `IUIStack`      | `AddStack(parent, id, horizontal, spacing)`                        | Row or column with `Spacing` between children; `Alignment` is the default cross-axis alignment. A row with `Wrap` starts a new line when the next child doesn't fit.                                                                                                                 |
+| `IUIGrid`       | `AddGrid(parent, id, columns, rows)`                               | Rows and columns from track strings; children choose a cell with `Row`, `Column`, `RowSpan`, `ColumnSpan`. `ColumnSpacing` / `RowSpacing` add gaps. Auto columns get their content's natural width when there is room and wrap their text when there isn't; star columns share what is left and their content is measured at the final column width.                                                             |
 | `IUIPanel`      | `AddPanel(parent, id, drawBox, padding)`                           | Optional 9-slice box plus padding; children overlap and fill the padded area.                                                                                                                                   |
 | `IUICanvas`     | `AddCanvas(parent, id)`                                            | Pixel-exact escape hatch: children are placed at their own `X` / `Y`.                                                                                                                                           |
 | `IUIScrollView` | `AddScrollView(parent, id, viewportHeight)`                        | Clips its content to `ViewportHeight` and scrolls it vertically with a scrollbar (arrows, draggable thumb) and the mouse wheel. `ScrollOffset`, `MaxScroll`, `ScrollStep`, `ScrollTo`, `ScrollBy`, `OnScroll`.   |
@@ -441,6 +452,7 @@ you only measure, draw and react:
 | Member                                            | Description                                                                                 |
 |---------------------------------------------------|---------------------------------------------------------------------------------------------|
 | `Vector2 Measure(Vector2 available)`              | Return the desired size given the available size.                                           |
+| `float MinimumWidth`                              | The narrowest width you can be drawn at without overflowing (return the desired width if you cannot shrink). Must not change state. |
 | `void Draw(SpriteBatch b, Rectangle bounds)`      | Draw with the absolute bounds already resolved (in the overlay pass when `WantsOverlay`).   |
 | `void Update(Rectangle bounds, double elapsedMs)` | Called every tick.                                                                          |
 | `bool OnClick(int x, int y, bool rightButton)`    | Return `true` if the click was handled (stops bubbling).                                    |
@@ -597,7 +609,8 @@ A custom component can embed built-in elements the same way. The `AddCustom(pare
 overload calls `build` once with a container (`"<id>.host"`, a column) the component owns; the framework lays out,
 draws, focuses and hit-tests those children like any others. The implementation draws first (its chrome), then the
 host's children; the element measures as the larger of the two, or as the host alone when the implementation
-returns `Vector2.Zero` from `Measure`:
+returns `Vector2.Zero` from `Measure`. Its minimum width is likewise the larger of the implementation's
+`MinimumWidth` and the host's (a pure frame like `FrameBox` returns 0):
 
 ```csharp
 // FrameBox : IUICustomComponent draws a vanilla 9-slice frame and returns Vector2.Zero from Measure
@@ -849,10 +862,12 @@ slide up when a newer one arrives. Toasts are drawn from `Display.RenderedHud` w
 
 #### Player-owned layout
 
-Windows are movable, collapsible and (when fixed-size) resizable by the player, and the result is saved per save
-file under the key `"<yourModId>/<menuId>"`. This needs no code; set `PlayerLayout = false` on the menu or its
-options to opt out, and call `ResetPlayerLayout(menu)` to drop the saved layout and restore the anchor / position /
-size you set. A saved position is applied when the menu opens (before `OnOpen`), so values you set in `OnOpen`
+Windows are movable, collapsible and resizable by the player, and the result is saved per save file under the key
+`"<yourModId>/<menuId>"`. This needs no code; set `PlayerLayout = false` on the menu or its options to opt out, and
+call `ResetPlayerLayout(menu)` to drop the saved layout and restore the anchor / position / size you set.
+Fixed-size windows (both `Width` and `Height` set) always get the resize grip. A window that fits its content only
+gets it with `Resizable = true` (default `false`); once the player resizes it, it keeps that size and scrolls its
+content, until `ResetPlayerLayout` (or `ui_layout_reset`) makes it fit its content again. A saved position is applied when the menu opens (before `OnOpen`), so values you set in `OnOpen`
 override it. Interactive HUD widgets save their dragged anchor offset under `"hud:<yourModId>/<hudId>"` the same way.
 
 #### Themes and accessibility
@@ -966,7 +981,7 @@ sources, draw hooks, models, composites) to data by name.
          "Entries": {
            "{{ModId}}/hello": {
              "Title": "{{i18n:hello.title}}",
-             "Hotkey": "F10",
+             "Hotkey": "F6",
              "State": { "clicks": 0 },
              "Children": [
                { "Id": "text", "Label": "Clicked ${menu.clicks} times on day ${game.day}" },
@@ -1019,7 +1034,7 @@ unless a C# menu took its key.
 
 | Field(s)                                                                  | Meaning                                                                        |
 |---------------------------------------------------------------------------|--------------------------------------------------------------------------------|
-| `Title`, `Width`, `Height`, `ShowCloseButton`, `Modal`, `DimBackground`, `Anchor`, `X`, `Y`, `DrawBox`, `Padding`, `CloseOnEscape`, `PlayerLayout` | The `IUIMenuOptions` of the menu |
+| `Title`, `Width`, `Height`, `ShowCloseButton`, `Modal`, `DimBackground`, `Anchor`, `X`, `Y`, `DrawBox`, `Padding`, `CloseOnEscape`, `PlayerLayout`, `Resizable` | The `IUIMenuOptions` of the menu |
 | `Horizontal`, `Spacing`, `Alignment`                                      | The root stack                                                                 |
 | `DefaultButton`, `CancelButton`                                           | Element ids for Enter / Escape                                                 |
 | `Hotkey`                                                                  | A toggle keybind (`"LeftControl + F8"`)                                        |
@@ -1061,21 +1076,21 @@ are the C# API's names, and every field that takes a value also takes an express
 
 | Type                                                        | Type-specific fields                                                                       |
 |-------------------------------------------------------------|--------------------------------------------------------------------------------------------|
-| `Stack`                                                     | `Horizontal`, `Spacing`, `Alignment`                                                       |
+| `Stack`                                                     | `Horizontal`, `Spacing`, `Alignment`, `Wrap` (a row flows onto new lines when it runs out of width) |
 | `Grid`                                                      | `Columns`, `Rows` (track strings: `"auto, *, 120"`), `ColumnSpacing`, `RowSpacing`          |
 | `Panel`                                                     | `DrawBox`, `Padding`                                                                       |
 | `Canvas`                                                    | children use `X`, `Y`                                                                      |
 | `ScrollView`                                                | `ViewportHeight`, `ScrollStep`, `ShowScrollbar`, `OnScroll`                                |
-| `Slot`                                                      | `Horizontal`, `MaxHeight`, `MaxContributions` (an extension slot others contribute to)     |
+| `Slot`                                                      | `Horizontal`, `Wrap`, `MaxHeight`, `MaxContributions` (an extension slot others contribute to) |
 | `Spacer`                                                    | `Line` (draw a divider)                                                                    |
-| `Label`                                                     | `Text`, `Font`, `Color`, `Shadow`, `Wrap`, `TextAlign`, `Scale`, `RichText`, `OnLink`      |
-| `Button`                                                    | `Text`, `Font`, `Icon`, `IconScale`, `DrawBox`, `RichText`, `ClickSound`, `HoverSound`     |
+| `Label`                                                     | `Text`, `Font`, `Color`, `Shadow`, `Wrap`, `TextAlign`, `Scale`, `RichText`, `OnLink`, `Shrink`      |
+| `Button`                                                    | `Text`, `Font`, `Icon`, `IconScale`, `DrawBox`, `RichText`, `ClickSound`, `HoverSound`, `Shrink`     |
 | `Image`                                                     | `Sprite`, `Source`, `Scale`, `Tint`                                                        |
 | `ItemImage`                                                 | `Item` (id, item query or an expression giving an item), `Quality`, `Count`, `Stack`, `Scale`, `DrawShadow`, `Alpha`, `Tint` |
-| `Checkbox`                                                  | `Label`, `Value`, `Bind`, `ClickSound`, `OnValueChanged`                                   |
+| `Checkbox`                                                  | `Label`, `Value`, `Bind`, `ClickSound`, `OnValueChanged`, `Shrink`                                   |
 | `TextInput`                                                 | `Value`, `Bind`, `Placeholder`, `MaxLength`, `Texture`, `Validate`, `OnInvalid`, `OnValueChanged`, `OnSubmit` |
 | `NumberInput`                                               | `Value`, `Bind`, `Min`, `Max`, `Step`, `Clamp`, `Decimals`, `Texture`, `Validate`, `OnInvalid`, `OnValueChanged`, `OnSubmit` |
-| `Dropdown`                                                  | `Value`, `Bind`, `Choices`, `Labels`, `MaxVisible`, `ChoicesSource`, `ChoiceValue`, `ChoiceLabel`, `OnValueChanged`, `OnScroll` |
+| `Dropdown`                                                  | `Value`, `Bind`, `Choices`, `Labels`, `MaxVisible`, `ChoicesSource`, `ChoiceValue`, `ChoiceLabel`, `OnValueChanged`, `OnScroll`, `Shrink` |
 | `Slider`                                                    | `Value`, `Bind`, `Min`, `Max`, `Step`, `OnValueChanged`                                    |
 | `Switch`                                                    | `Switch` (an expression); children carry `Case`                                            |
 | `Repeat`, `List`, `DataGrid`                                | See [Collections](#collections)                                                            |
@@ -1084,7 +1099,7 @@ are the C# API's names, and every field that takes a value also takes an express
 
 **Every element** also takes `Condition` (a game state query, checked when the menu opens and on `_Refresh`; the
 element is hidden while it fails), `Visible`, `Enabled`, `Tooltip`, `TooltipTitle`, `RichTooltip`, `Tag`, `Sealed`,
-`AccessibleName`, `Margin` / `MarginLeft` / `MarginTop` / `MarginRight` / `MarginBottom`, `Width`, `Height`,
+`AccessibleName`, `Margin` / `MarginLeft` / `MarginTop` / `MarginRight` / `MarginBottom`, `Width`, `Height`, `MinWidth`, `MaxWidth`,
 `HorizontalAlign`, `VerticalAlign`, `X` / `Y` (in a canvas), `Row` / `Column` / `RowSpan` / `ColumnSpan` (in a grid),
 `Style`, `Class`, the events `OnClick`, `OnRightClick`, `OnHover`, `OnHoverEnd`, `OnFocus`, `OnBlur`, `Keys`, the
 structure fields `If`, `Case`, `With`, `Out`, the draw hooks `DrawExtra` / `DrawOverlay` and `Outlet`.
@@ -1261,7 +1276,8 @@ and `"As": "fruit"` adds the name `fruit` (plus `fruitIndex`); nested collection
 Item values expose members too (`row.item.displayName`).
 
 - **`Repeat`** (`{ "Repeat": "menu.items", "As": "it", "Horizontal": true, "Children": [ ... ] }`) builds its
-  children once per row, non-virtualized (ids `<repeat>.<n>.<child>`); use it for short lists and nested layouts.
+  children once per row, non-virtualized (ids `<repeat>.<n>.<child>`); use it for short lists and nested layouts. It is
+  a stack, so `Horizontal`, `Spacing` and `Wrap` apply (a horizontal `Repeat` with `Wrap` flows into a grid of tiles).
 - **`List`** is virtualized: `Source`, `RowTemplate` (the elements of one row), `RowHeight`, `VisibleRows`,
   `Selectable`, `BindSelected` (a state value holding the selected index, two-way), `OnValueChanged` (`event.index`,
   `event.row`) and `OnScroll`. Row elements are built under the row container's id (`list.row3.name`), never the
@@ -1579,6 +1595,7 @@ Common surface of every element in a menu tree.
 | `void SetMargin(int left, int top, int right, int bottom)`   | Set each margin.                                                                                        |
 | `int? Width`                                                 | Explicit width in UI pixels, or `null` for "size to content".                                           |
 | `int? Height`                                                | Explicit height in UI pixels, or `null` for "size to content".                                          |
+| `int? MinWidth`, `int? MaxWidth`                             | Bounds on the width when `Width` is not set (`null` = none). `MinWidth` wins when they conflict; the element can overflow its slot to honour it. |
 | `UIAlign HorizontalAlign`                                    | Horizontal alignment inside the slot given by the parent.                                               |
 | `UIAlign VerticalAlign`                                      | Vertical alignment inside the slot given by the parent.                                                 |
 | `int X`                                                      | X position, only used when the parent is an `IUICanvas`.                                                |
@@ -1631,6 +1648,7 @@ padded area):
 | `bool Horizontal`   | Row (`true`) or column (`false`).                                     |
 | `int Spacing`       | Gap between children in UI pixels.                                    |
 | `UIAlign Alignment` | Default cross-axis alignment for children that did not set their own. |
+| `bool Wrap`         | Rows only: start a new line when the next child doesn't fit the width, with `Spacing` between lines too (default `false`). A wrapping row is only as narrow as its widest child, so it never pins a window's minimum width. |
 
 `IUIGrid : IUIContainer` (rows and columns; track definitions are comma separated: `auto`, `120px` or `120`, `*`,
 `2*`; children pick a cell through `IUIElement.Row`, `Column` and the span properties):
@@ -1680,6 +1698,7 @@ padded area):
 | Member              | Description                                             |
 |---------------------|---------------------------------------------------------|
 | `Func<string> Text` | Text, evaluated every frame.                            |
+| `bool Shrink`       | Single-line only: may shorten its text with "..." to fit a narrow space (default `false`). |
 | `UIFont Font`       | Font.                                                   |
 | `Color? Color`      | Text color (`null` = style / theme).                    |
 | `bool Shadow`       | Draw with a shadow.                                     |
@@ -1703,6 +1722,7 @@ padded area):
 | Member                  | Description                                                    |
 |-------------------------|----------------------------------------------------------------|
 | `Func<string> Text`     | Button text.                                                   |
+| `bool Shrink`           | May shorten its text with "..." to fit a narrow space (default `false`). |
 | `UIFont Font`           | Font.                                                          |
 | `Texture2D Icon`        | Optional icon texture.                                         |
 | `Rectangle? IconSource` | Source rectangle of the icon.                                  |
@@ -1717,6 +1737,7 @@ padded area):
 | Member                                 | Description                                  |
 |----------------------------------------|----------------------------------------------|
 | `bool Value`                           | Current state.                               |
+| `bool Shrink`                          | May shorten its label with "..." to fit a narrow space (default `false`). |
 | `Func<string> Label`                   | Optional text drawn to the right of the box. |
 | `string ClickSound`                    | Sound cue on click.                          |
 | `Action<IUIValueEvent> OnValueChanged` | Raised when the state changes.               |
@@ -1752,6 +1773,7 @@ padded area):
 | Member                                 | Description                                                  |
 |----------------------------------------|--------------------------------------------------------------|
 | `int SelectedIndex`                    | Index of the selected choice.                                |
+| `bool Shrink`                          | May shorten the shown choice with "..." to fit a narrow space (default `false`; otherwise its minimum shows every choice whole). |
 | `string SelectedValue`                 | Value of the selected choice.                                |
 | `int MaxVisible`                       | Rows shown at once when open (the list scrolls beyond that, with a scroll indicator). |
 | `bool IsOpen`                          | Whether the list is open.                                    |
@@ -1801,6 +1823,7 @@ the menu.
 | `int Padding`          | Inner padding between the box border and the root container.       |
 | `bool CloseOnEscape`   | Escape (or the menu key) closes the menu (default `true`).         |
 | `bool PlayerLayout`    | Let the player move / collapse / resize the window (default `true`). |
+| `bool Resizable`       | Let the player resize the window even when it fits its content (default `false`; fixed-size windows are always resizable). |
 
 #### `IUIMenu`
 
@@ -1835,6 +1858,7 @@ A screen. Build its tree under `Root`, then `Open`.
 | `IUIElement Find(string id)`        | Find an element by id anywhere in the tree, or `null`.                                 |
 | `void SetPosition(int x, int y)`    | Move the menu (sets `Anchor` to `Explicit`).                                           |
 | `bool PlayerLayout`                 | Let the player move / collapse / resize the window; persists per save (default `true`, needs `DrawBox`). |
+| `bool Resizable`                    | Let the player resize the window even when it fits its content (default `false`, needs `PlayerLayout`). |
 
 #### Slot interfaces
 
@@ -1845,6 +1869,7 @@ contributions and `VisiblePredicate`, if any, returns true):
 | Member                         | Description                                                                    |
 |--------------------------------|--------------------------------------------------------------------------------|
 | `bool Horizontal`              | Layout hint: lay contributions out in a row instead of a column (default `false`). |
+| `bool Wrap`                    | With `Horizontal`: contributions flow onto new lines when they don't fit (default `false`). |
 | `int? MaxHeight`               | Layout hint: cap the slot's measured height in UI pixels (`null` = unlimited).  |
 | `Func<bool> VisiblePredicate`  | Evaluated every tick; `false` hides the slot (`null` = always visible).         |
 | `int MaxContributions`         | Most contributions accepted, in priority order (0 = unlimited).                 |
@@ -2137,7 +2162,7 @@ v1.1 additions, in the order they appear in the file (a consumer's copy may incl
 | `string[] ListComposites()`                                                                                                                           | Names of every defined composite.                                                                     |
 | `void UndefineComposite(string name)`                                                                                                                 | Remove a composite this mod defined (definitions of other mods are left alone).                       |
 | `IUIComposite AddComposite(IUIContainer parent, string id, string compositeName, IUICompositeArgs args)`                                              | Instantiate a composite: a host container is added and the builder fills it; an unknown name leaves it empty (logged) until `Rebuild` after it was defined. |
-| `IUIElement AddCustom(IUIContainer parent, string id, IUICustomComponent implementation, Action<IUIContainer> build)`                                 | A custom component that embeds built-in elements: `build` runs once with a container (`"<id>.host"`) the component owns; the implementation draws first, the element measures as the larger of the two. |
+| `IUIElement AddCustom(IUIContainer parent, string id, IUICustomComponent implementation, Action<IUIContainer> build)`                                 | A custom component that embeds built-in elements: `build` runs once with a container (`"<id>.host"`) the component owns; the implementation draws first, the element measures (and reports its minimum width) as the larger of the two. |
 | `IUITooltip CreateTooltip()`                                                                                                                          | Create an empty rich tooltip builder; assign it to `IUIElement.RichTooltip`.                          |
 | `string[] ListThemes()`                                                                                                                               | Names of the themes defined in the `Mods/6135.UIFramework/Themes` asset (Content Patcher packs can add to it). |
 | `string ActiveTheme { get; }`                                                                                                                         | Name of the theme every framework menu currently uses.                                                |

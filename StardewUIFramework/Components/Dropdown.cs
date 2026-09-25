@@ -31,7 +31,15 @@ namespace UIFramework.Components
         /// <summary>Height of the closed box and of every row in the open list at text scale 1.</summary>
         internal const int DropdownRowHeight = 44;
 
+        /// <summary>Preferred (natural) width; the dropdown narrows below it when its slot is smaller, down to <see cref="MinWidthCore"/>.</summary>
         private const int DefaultWidth = 300;
+
+        /// <summary>
+        /// Smallest text box width (inside the padding) the minimum width allows: room for the box's 3-slice corners and
+        /// a couple of characters plus "..." at the smallest fit scale, whatever the options are.
+        /// </summary>
+        private const int MinTextWidth = 40;
+
         private const int ButtonWidth = 48;
         private const int TextPadX = 4;
         private const int TextPadY = 8;
@@ -59,6 +67,10 @@ namespace UIFramework.Components
         private int maxVisible = 5;
         private int highlightIndex = -1;
         private int activePosition;
+        private bool shrink;
+
+        /// <summary>Label-driven width of the open list, measured when it opens (see <see cref="NaturalListWidth"/>).</summary>
+        private int openListWidth;
 
         internal Dropdown(string id, Func<string[]>? choices, Func<string[]>? labels, Func<string>? getter, Action<string>? setter) : base(id)
         {
@@ -124,6 +136,22 @@ namespace UIFramework.Components
         {
             get => GetChoice(SelectedIndex);
             set => SelectedIndex = Array.IndexOf(choices, value);
+        }
+
+        /// <summary>Let the minimum width drop to the fitted form of the widest option (<see cref="DrawHelper.FitTextMinWidth"/>).</summary>
+        public bool Shrink
+        {
+            get => shrink;
+            set
+            {
+                if (shrink == value)
+                {
+                    return;
+                }
+
+                shrink = value;
+                InvalidateLayout();
+            }
         }
 
         public int MaxVisible
@@ -266,6 +294,7 @@ namespace UIFramework.Components
                 return;
             }
 
+            openListWidth = NaturalListWidth();
             UIServices.PlaySound(OpenSoundCue);
             Focus();
             OwnerMenu.Overlay.OpenPopup(this);
@@ -306,7 +335,26 @@ namespace UIFramework.Components
         //  Layout / draw
         // ---------------------------------------------------------------------------------------------------------
 
-        protected override Vector2 MeasureCore(Vector2 available) => new(DefaultWidth, RowHeight);
+        // DefaultWidth is a preference: a narrower slot gets a narrower dropdown, and Stretch (handled by Arrange) fills it
+        protected override Vector2 MeasureCore(Vector2 available) => new(Math.Max(0, Math.Min(available.X, DefaultWidth)), RowHeight);
+
+        // the arrow button plus a text box wide enough for every option whole, capped at DefaultWidth (the natural width
+        // MeasureCore reports when there is room, so the minimum never exceeds it: options too long for that are fitted
+        // even then). With Shrink, the text box only needs the narrowest fitted form (FitText) of the widest-reaching
+        // option. Either way never below MinTextWidth, so the 3-slice box keeps its corners and some room for "..."
+        protected override float MinWidthCore()
+        {
+            UIFont font = Style.Font;
+            float text = MinTextWidth;
+            for (int i = 0; i < choices.Length; i++)
+            {
+                string label = Pseudo.Transform(GetLabel(i));
+                text = Math.Max(text, shrink ? DrawHelper.FitTextMinWidth(label, font, 1f) : (float)Math.Ceiling(UIServices.Text.Measure(font, label, 1f).X));
+            }
+
+            float width = ButtonWidth + (2 * TextPadX) + text;
+            return shrink ? width : Math.Min(width, DefaultWidth);
+        }
 
         /// <summary>Row height including the extra room scaled text needs.</summary>
         private int RowHeight => DropdownRowHeight + Theme.ExtraTextHeight(Style.Font);
@@ -314,15 +362,40 @@ namespace UIFramework.Components
         /// <summary>Width of the text box part (the arrow button takes the rest).</summary>
         private int BoxWidth => Math.Max(0, Bounds.Width - ButtonWidth);
 
-        /// <summary>Absolute bounds of the open list, clamped so it never leaves the screen.</summary>
+        /// <summary>
+        /// Width the open list needs to show every label unshrunk (text + padding + the scroll indicator's strip when
+        /// it overflows), capped at the text box width of a <see cref="DefaultWidth"/> dropdown so an unsqueezed dropdown
+        /// opens exactly as before. Measured once per <see cref="Open"/>, so a squeezed dropdown still opens a readable list.
+        /// </summary>
+        private int NaturalListWidth()
+        {
+            UIFont font = Style.Font;
+            float widest = 0;
+            for (int i = 0; i < choices.Length; i++)
+            {
+                widest = Math.Max(widest, UIServices.Text.Measure(font, Pseudo.Transform(GetLabel(i)), 1f).X);
+            }
+
+            int reserved = HasOverflow ? IndicatorWidth + IndicatorGap : 0;
+            int natural = (int)Math.Ceiling(widest) + (2 * TextPadX) + reserved;
+            return Math.Min(natural, DefaultWidth - ButtonWidth);
+        }
+
+        /// <summary>
+        /// Absolute bounds of the open list: as wide as the text box, or wider when a squeezed box is narrower than the
+        /// labels need (the popup is an overlay, so it can outgrow the control), clamped so it never leaves the screen.
+        /// </summary>
         private Rectangle ListBounds
         {
             get
             {
+                Point viewport = UIServices.ViewportSize();
                 int rows = Math.Min(maxVisible, choices.Length);
                 int height = rows * RowHeight;
-                int y = Math.Min(Bounds.Y, UIServices.ViewportSize().Y - height);
-                return new Rectangle(Bounds.X, Math.Max(0, y), BoxWidth, height);
+                int width = Math.Min(Math.Max(BoxWidth, openListWidth), viewport.X);
+                int x = Math.Min(Bounds.X, viewport.X - width);
+                int y = Math.Min(Bounds.Y, viewport.Y - height);
+                return new Rectangle(Math.Max(0, x), Math.Max(0, y), width, height);
             }
         }
 

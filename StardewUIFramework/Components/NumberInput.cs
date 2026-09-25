@@ -365,6 +365,9 @@ namespace UIFramework.Components
 
         protected override Vector2 MeasureCore(Vector2 available) => TextBoxDrawing.Measure(texture, Style.Font);
 
+        // the box is 3-slice and the text clips from the left, so it narrows to the caps plus a few characters
+        protected override float MinWidthCore() => TextBoxDrawing.MinWidth(Style.Font);
+
         protected override void DrawCore(SpriteBatch b)
         {
             ResolvedStyle style = Style;

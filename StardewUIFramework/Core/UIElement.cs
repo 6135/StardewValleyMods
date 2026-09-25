@@ -24,6 +24,7 @@ namespace UIFramework.Core
         private bool enabled = true;
         private int marginLeft, marginTop, marginRight, marginBottom;
         private int? width, height;
+        private int? minWidth, maxWidth;
         private UIAlign horizontalAlign = UIAlign.Start;
         private UIAlign verticalAlign = UIAlign.Start;
         private int x, y, row, column, rowSpan = 1, columnSpan = 1;
@@ -203,6 +204,48 @@ namespace UIFramework.Core
             }
         }
 
+        /// <summary>Lower bound of the content width (null = none; negative values count as 0). A fixed <see cref="Width"/> ignores it.</summary>
+        public int? MinWidth
+        {
+            get => minWidth;
+            set
+            {
+                minWidth = value.HasValue ? Math.Max(0, value.Value) : null;
+                InvalidateLayout();
+            }
+        }
+
+        /// <summary>Upper bound of the content width (null = none; negative values count as 0). A fixed <see cref="Width"/> ignores it.</summary>
+        public int? MaxWidth
+        {
+            get => maxWidth;
+            set
+            {
+                maxWidth = value.HasValue ? Math.Max(0, value.Value) : null;
+                InvalidateLayout();
+            }
+        }
+
+        /// <summary>
+        /// Clamp a content width (without margins) into [<see cref="MinWidth"/>, <see cref="MaxWidth"/>]: capped at the
+        /// maximum first, then raised to the minimum, so the minimum wins when it exceeds the maximum. Callers apply it
+        /// only when no fixed <see cref="Width"/> is set.
+        /// </summary>
+        private float ClampWidth(float value)
+        {
+            if (maxWidth.HasValue)
+            {
+                value = Math.Min(value, maxWidth.Value);
+            }
+
+            if (minWidth.HasValue)
+            {
+                value = Math.Max(value, minWidth.Value);
+            }
+
+            return value;
+        }
+
         /// <summary>True once the consumer explicitly set <see cref="HorizontalAlign"/>.</summary>
         internal bool HorizontalAlignSet { get; private set; }
 
@@ -353,7 +396,11 @@ namespace UIFramework.Core
             }
         }
 
-        /// <summary>Measure pass: returns the desired size (including margins) for <paramref name="available"/> (including margins).</summary>
+        /// <summary>
+        /// Measure pass: returns the desired size (including margins) for <paramref name="available"/> (including margins).
+        /// A fixed <see cref="Width"/> is offered and reported as is; otherwise the content is offered the available
+        /// width clamped into [<see cref="MinWidth"/>, <see cref="MaxWidth"/>] and its desired width is clamped the same way.
+        /// </summary>
         internal Vector2 Measure(Vector2 available)
         {
             if (!Visible)
@@ -365,21 +412,14 @@ namespace UIFramework.Core
             var inner = new Vector2(
                 Math.Max(0, available.X - marginLeft - marginRight),
                 Math.Max(0, available.Y - marginTop - marginBottom));
-            if (width.HasValue)
-            {
-                inner.X = width.Value;
-            }
-
+            inner.X = width ?? ClampWidth(inner.X);
             if (height.HasValue)
             {
                 inner.Y = height.Value;
             }
 
             Vector2 core = MeasureCore(inner);
-            if (width.HasValue)
-            {
-                core.X = width.Value;
-            }
+            core.X = width ?? ClampWidth(core.X);
 
             if (height.HasValue)
             {
@@ -395,7 +435,39 @@ namespace UIFramework.Core
         /// <summary>Report the content size (without margins) for the given content-available size.</summary>
         protected abstract Vector2 MeasureCore(Vector2 available);
 
-        /// <summary>Arrange pass: <paramref name="slot"/> is the absolute rectangle allotted by the parent (including margins).</summary>
+        /// <summary>
+        /// Minimum-width pass: the narrowest width (including margins) this element can be arranged at without its
+        /// content overflowing, whatever width it is currently given. Unlike <see cref="Measure"/> this is a pure query:
+        /// it reads the tree and changes nothing, so it can run at any time (the player resize grip asks it once per drag).
+        /// A fixed <see cref="Width"/> is the minimum; otherwise <see cref="MinWidthCore"/> raised to <see cref="MinWidth"/>
+        /// and capped at <see cref="MaxWidth"/> (the minimum wins when it exceeds the maximum). A cap below the content's
+        /// own minimum is honoured: the content then overflows or falls back to shrinking / truncating its text.
+        /// </summary>
+        internal float MeasureMinWidth()
+        {
+            if (!Visible)
+            {
+                return 0;
+            }
+
+            float core = width ?? ClampWidth(MinWidthCore());
+            return Math.Max(0, core) + marginLeft + marginRight;
+        }
+
+        /// <summary>
+        /// The narrowest content width (without margins) the element can take: fixed parts at their size, text at its
+        /// longest unbreakable word when it wraps (its full line when it does not, or its fitted "..." form for a text
+        /// control with <c>Shrink</c> on), and stretched / star-sized parts at
+        /// the minimum of what they contain. Must not change any state.
+        /// </summary>
+        protected abstract float MinWidthCore();
+
+        /// <summary>
+        /// Arrange pass: <paramref name="slot"/> is the absolute rectangle allotted by the parent (including margins).
+        /// The width is the fixed <see cref="Width"/> when set; otherwise the slot's (Stretch) or the desired width within
+        /// the slot, clamped into [<see cref="MinWidth"/>, <see cref="MaxWidth"/>] and aligned inside the slot by
+        /// <see cref="HorizontalAlign"/> (a stretched element capped at its maximum is placed at the start).
+        /// </summary>
         internal void Arrange(Rectangle slot)
         {
             if (!Visible)
@@ -413,7 +485,7 @@ namespace UIFramework.Core
             UIAlign ha = ResolvedHorizontalAlign;
             UIAlign va = ResolvedVerticalAlign;
 
-            int w = width ?? (ha == UIAlign.Stretch ? availW : Math.Min(desiredW, availW));
+            int w = width ?? (int)ClampWidth(ha == UIAlign.Stretch ? availW : Math.Min(desiredW, availW));
             int h = height ?? (va == UIAlign.Stretch ? availH : Math.Min(desiredH, availH));
 
             int px = slot.X + marginLeft + LayoutEngine.AlignOffset(ha, availW, w);

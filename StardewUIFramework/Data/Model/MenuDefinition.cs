@@ -66,6 +66,9 @@ namespace UIFramework.Data.Model
         /// <summary>Let the player move / resize / collapse the window (default true).</summary>
         public string? PlayerLayout { get; set; }
 
+        /// <summary>Let the player resize the window even when it sizes to its content (default false; fixed-size windows are always resizable).</summary>
+        public string? Resizable { get; set; }
+
         /// <summary>Lay the root's children out in a row instead of a column.</summary>
         public string? Horizontal { get; set; }
 

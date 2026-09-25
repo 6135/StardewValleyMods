@@ -52,6 +52,15 @@ namespace UIFramework.Components
             return size;
         }
 
+        /// <summary>Characters the narrowest box still shows (the text clips from the left, keeping the caret end visible).</summary>
+        private const string MinVisibleText = "000";
+
+        /// <summary>
+        /// Narrowest box width: both caps (or the caps-and-caret inset the text is clipped to, if wider) plus room for
+        /// <see cref="MinVisibleText"/> in <paramref name="font"/>. Pure.
+        /// </summary>
+        internal static float MinWidth(UIFont font) => Math.Max(2 * CapWidth, TextInset) + UIServices.Text.Measure(font, MinVisibleText, 1f).X;
+
         /// <summary>The texture to draw: <paramref name="custom"/> or the vanilla one. <paramref name="sizeChanged"/> is true when the vanilla size assumption was wrong (re-layout).</summary>
         internal static Texture2D Resolve(Texture2D? custom, out bool sizeChanged)
         {
@@ -296,6 +305,9 @@ namespace UIFramework.Components
         // ---------------------------------------------------------------------------------------------------------
 
         protected override Vector2 MeasureCore(Vector2 available) => TextBoxDrawing.Measure(texture, Style.Font);
+
+        // the box is 3-slice and the text clips from the left, so it narrows to the caps plus a few characters
+        protected override float MinWidthCore() => TextBoxDrawing.MinWidth(Style.Font);
 
         protected override void DrawCore(SpriteBatch b)
         {

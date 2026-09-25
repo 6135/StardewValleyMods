@@ -391,6 +391,16 @@ namespace UIFramework.Rendering
             return Layout(Parse(markup), font, scale, maxWidth).Size;
         }
 
+        /// <summary>
+        /// The narrowest width <paramref name="markup"/> can wrap to: its widest unbreakable piece (a word, an icon, or
+        /// the part of a word in one style). Laying out at 1 px puts every piece on its own line, so the break rules stay
+        /// those of <see cref="Layout"/>.
+        /// </summary>
+        internal static float MinWidth(string? markup, UIFont font, float scale)
+        {
+            return Measure(markup, font, scale, 1).X;
+        }
+
         /// <summary>Break the document into lines: wraps on spaces, a span may continue across lines, icons are line-height squares.</summary>
         internal static RichLayout Layout(RichDocument document, UIFont font, float scale, int maxWidth)
         {

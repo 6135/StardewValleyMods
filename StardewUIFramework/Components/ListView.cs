@@ -296,6 +296,13 @@ namespace UIFramework.Components
             return new Vector2(width, visibleRows * EffectiveRowHeight);
         }
 
+        /// <summary>
+        /// The widest minimum among the rows that exist (the visible window: rows past the end are hidden and report
+        /// 0, items scrolled out have no row to ask) plus the always-reserved scrollbar column. Scrolling can bring in
+        /// a wider row, so the minimum follows what is on screen.
+        /// </summary>
+        protected override float MinWidthCore() => MaxChildMinWidth() + ScrollbarGadget.ReservedWidth;
+
         protected override void ArrangeCore()
         {
             Rectangle content = ContentRect;
@@ -344,7 +351,13 @@ namespace UIFramework.Components
                     }
                 }
             }
-            DrawChildren(b);
+            // rows have a fixed height and the list can be squeezed below their content: clip them to the row viewport
+            Rectangle content = ContentRect;
+            if (content.Width > 0 && content.Height > 0)
+            {
+                DrawHelper.WithScissor(b, content, () => DrawChildren(b));
+            }
+
             if (ScrollbarVisible)
             {
                 scrollbar.Draw(b);

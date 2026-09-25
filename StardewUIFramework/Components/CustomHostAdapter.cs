@@ -55,6 +55,9 @@ namespace UIFramework.Components
             return size;
         }
 
+        /// <summary>Like the measure: the larger of the implementation's reported minimum and the host's.</summary>
+        protected override float MinWidthCore() => Math.Max(bridge.MinimumWidth, MaxChildMinWidth());
+
         protected override void ArrangeCore()
         {
             foreach (UIElement child in Children)

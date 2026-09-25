@@ -126,6 +126,7 @@ namespace UIFramework.Data.Building
             applier.ApplyOr(def.Padding, ValueParsers.Int, 0, scope, path.Field("Padding"), v => m.Padding = v);
             applier.ApplyOr(def.CloseOnEscape, ValueParsers.Bool, true, scope, path.Field("CloseOnEscape"), v => m.CloseOnEscape = v);
             applier.ApplyOr(def.PlayerLayout, ValueParsers.Bool, true, scope, path.Field("PlayerLayout"), v => m.PlayerLayout = v);
+            applier.ApplyOr(def.Resizable, ValueParsers.Bool, false, scope, path.Field("Resizable"), v => m.Resizable = v);
 
             // root stack
             applier.ApplyOr(def.Horizontal, ValueParsers.Bool, false, scope, path.Field("Horizontal"), v => menu.Root.Horizontal = v);
@@ -696,11 +697,13 @@ namespace UIFramework.Data.Building
                     a.Apply(def.Horizontal, ValueParsers.Bool, scope, path.Field("Horizontal"), v => slot.Horizontal = v);
                     a.Apply(def.MaxHeight, ValueParsers.OptionalInt, scope, path.Field("MaxHeight"), v => slot.MaxHeight = v);
                     a.Apply(def.MaxContributions, ValueParsers.Int, scope, path.Field("MaxContributions"), v => slot.MaxContributions = v);
+                    a.Apply(def.Wrap, ValueParsers.Bool, scope, path.Field("Wrap"), v => slot.Wrap = v);
                     break;
                 case IUIStack stack:
                     a.Apply(def.Horizontal, ValueParsers.Bool, scope, path.Field("Horizontal"), v => stack.Horizontal = v);
                     a.Apply(def.Spacing, ValueParsers.Int, scope, path.Field("Spacing"), v => stack.Spacing = v);
                     a.Apply(def.Alignment, ValueParsers.Align, scope, path.Field("Alignment"), v => stack.Alignment = v);
+                    a.Apply(def.Wrap, ValueParsers.Bool, scope, path.Field("Wrap"), v => stack.Wrap = v);
                     break;
                 case IUIGrid grid:
                     a.Apply(GridTracks(def.Columns), ValueParsers.Text, scope, path.Field("Columns"), v => grid.Columns = v);
@@ -731,6 +734,7 @@ namespace UIFramework.Data.Building
                     a.Apply(def.TextAlign, ValueParsers.Align, scope, path.Field("TextAlign"), v => label.TextAlign = v);
                     a.Apply(def.Scale, ValueParsers.Float, scope, path.Field("Scale"), v => label.Scale = v);
                     a.Apply(def.RichText, ValueParsers.Bool, scope, path.Field("RichText"), v => label.RichText = v);
+                    a.Apply(def.Shrink, ValueParsers.Bool, scope, path.Field("Shrink"), v => label.Shrink = v);
                     break;
                 case IUIButton button:
                     a.Apply(def.Font, ValueParsers.Font, scope, path.Field("Font"), v => button.Font = v);
@@ -740,6 +744,7 @@ namespace UIFramework.Data.Building
                     a.Apply(def.HoverSound, ValueParsers.Text, scope, path.Field("HoverSound"), v => button.HoverSound = v);
                     a.Apply(def.DrawBox, ValueParsers.Bool, scope, path.Field("DrawBox"), v => button.DrawBox = v);
                     a.Apply(def.RichText, ValueParsers.Bool, scope, path.Field("RichText"), v => button.RichText = v);
+                    a.Apply(def.Shrink, ValueParsers.Bool, scope, path.Field("Shrink"), v => button.Shrink = v);
                     break;
                 case IUIImage image:
                     a.Apply(def.Source?.Shorthand, ValueParsers.RectangleValue, scope, path.Field("Source"), v => image.Source = v);
@@ -761,6 +766,7 @@ namespace UIFramework.Data.Building
                     }
 
                     a.Apply(def.ClickSound, ValueParsers.Text, scope, path.Field("ClickSound"), v => checkbox.ClickSound = v);
+                    a.Apply(def.Shrink, ValueParsers.Bool, scope, path.Field("Shrink"), v => checkbox.Shrink = v);
                     break;
                 case IUITextInput text:
                     Func<string>? placeholder = a.Text(def.Placeholder, scope, path.Field("Placeholder"));
@@ -778,6 +784,7 @@ namespace UIFramework.Data.Building
                     break;
                 case IUIDropdown dropdown:
                     a.Apply(def.MaxVisible, ValueParsers.Int, scope, path.Field("MaxVisible"), v => dropdown.MaxVisible = v);
+                    a.Apply(def.Shrink, ValueParsers.Bool, scope, path.Field("Shrink"), v => dropdown.Shrink = v);
                     break;
                 case IUISlider slider:
                     a.Apply(def.Step, ValueParsers.Number, scope, path.Field("Step"), v => slider.Step = v);
@@ -872,6 +879,8 @@ namespace UIFramework.Data.Building
             a.Apply(def.MarginBottom, ValueParsers.Int, scope, path.Field("MarginBottom"), v => e.MarginBottom = v);
             a.Apply(def.Width, ValueParsers.OptionalInt, scope, path.Field("Width"), v => e.Width = v);
             a.Apply(def.Height, ValueParsers.OptionalInt, scope, path.Field("Height"), v => e.Height = v);
+            a.Apply(def.MinWidth, ValueParsers.OptionalInt, scope, path.Field("MinWidth"), v => e.MinWidth = v);
+            a.Apply(def.MaxWidth, ValueParsers.OptionalInt, scope, path.Field("MaxWidth"), v => e.MaxWidth = v);
             a.Apply(def.HorizontalAlign, ValueParsers.Align, scope, path.Field("HorizontalAlign"), v => e.HorizontalAlign = v);
             a.Apply(def.VerticalAlign, ValueParsers.Align, scope, path.Field("VerticalAlign"), v => e.VerticalAlign = v);
             a.Apply(def.X, ValueParsers.Int, scope, path.Field("X"), v => e.X = v);

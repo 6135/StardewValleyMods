@@ -68,7 +68,8 @@ namespace UIFramework.Api
                 DrawBox = options.DrawBox,
                 Padding = options.Padding,
                 CloseOnEscape = options.CloseOnEscape,
-                PlayerLayout = options.PlayerLayout // HUD
+                PlayerLayout = options.PlayerLayout, // HUD
+                Resizable = options.Resizable
             };
             menus.Register(consumer.ModId, menu);
             return menu;

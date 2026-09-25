@@ -71,6 +71,9 @@ namespace UIFramework.Components
             return new Vector2(w + (2 * p), h + (2 * p));
         }
 
+        /// <summary>The widest child's minimum (children overlap) plus the padding on both sides.</summary>
+        protected override float MinWidthCore() => MaxChildMinWidth() + (2 * EffectivePadding);
+
         protected override void ArrangeCore()
         {
             Rectangle content = ContentBounds;

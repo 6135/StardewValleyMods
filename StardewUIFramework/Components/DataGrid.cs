@@ -61,6 +61,12 @@ namespace UIFramework.Components
         private bool sortDescending;
         private Func<int, bool>? filter;
 
+        // column resolve scratch, reused between layouts (reallocated when the column count changes)
+        private GridTrack[] resolveTracks = Array.Empty<GridTrack>();
+        private float[] resolveAuto = Array.Empty<float>();
+        private float[] fitMin = Array.Empty<float>();
+        private float[] fitNatural = Array.Empty<float>();
+
         internal DataGrid(string id, int rowHeight, int visibleRows, Func<int>? rowCount) : base(id)
         {
             this.rowHeight = Math.Max(1, rowHeight);
@@ -544,15 +550,33 @@ namespace UIFramework.Components
             return new Vector2(width, headerHeight + (visibleRows * EffectiveRowHeight));
         }
 
-        /// <summary>Resolve every column's width against <paramref name="contentWidth"/> (star columns absorb the rest); returns the total.</summary>
+        /// <summary>
+        /// Resolve every column's width against <paramref name="contentWidth"/> (star columns absorb the rest); returns
+        /// the total. Auto columns take their content width, unless together they want more than the star and pixel
+        /// columns' minimums leave: then that room is shared by <see cref="FitAutoColumns"/>.
+        /// </summary>
         private float ResolveColumns(float contentWidth)
         {
-            var tracks = new GridTrack[columns.Count];
-            var auto = new float[columns.Count];
-            for (int j = 0; j < columns.Count; j++)
+            int count = columns.Count;
+            if (resolveTracks.Length != count)
+            {
+                resolveTracks = new GridTrack[count];
+                resolveAuto = new float[count];
+                fitMin = new float[count];
+                fitNatural = new float[count];
+            }
+
+            GridTrack[] tracks = resolveTracks;
+            float[] auto = resolveAuto;
+            for (int j = 0; j < count; j++)
             {
                 tracks[j] = columns[j].Track;
                 auto[j] = tracks[j].Type == GridTrack.Kind.Pixels ? 0 : AutoWidth(j);
+            }
+
+            if (!float.IsInfinity(contentWidth) && !float.IsNaN(contentWidth))
+            {
+                FitAutoColumns(contentWidth);
             }
 
             float[] sizes = LayoutEngine.ResolveTracks(tracks, auto, contentWidth);
@@ -565,16 +589,74 @@ namespace UIFramework.Components
             return total;
         }
 
+        /// <summary>
+        /// Keep the auto columns inside <paramref name="contentWidth"/>: when their content widths (raised to
+        /// <see cref="DataGridColumn.MinWidth"/>) do not fit what the pixel columns and the star columns' minimums
+        /// (<see cref="StarMinSpace"/>) leave, share that room by <see cref="LayoutEngine.DistributeWidth"/> — every
+        /// auto column its minimum (<see cref="ColumnMinWidth"/>) first, then the rest by how much its content wants
+        /// beyond it — and write the shares into the auto sizes <see cref="ResolveColumns"/> resolves. With room to
+        /// spare nothing changes (and no minimum is computed).
+        /// </summary>
+        private void FitAutoColumns(float contentWidth)
+        {
+            int count = columns.Count;
+            float reserved = 0, naturalTotal = 0;
+            bool anyStar = false;
+            for (int j = 0; j < count; j++)
+            {
+                DataGridColumn column = columns[j];
+                switch (column.Track.Type)
+                {
+                    case GridTrack.Kind.Pixels:
+                        reserved += ColumnMinWidth(j);
+                        break;
+                    case GridTrack.Kind.Auto:
+                        naturalTotal += Math.Max(resolveAuto[j], column.MinWidth);
+                        break;
+                    default:
+                        anyStar = true;
+                        break;
+                }
+            }
+
+            // star columns keep room for their minimums; without any, the pixel and auto columns alone decide
+            if (!anyStar && reserved + naturalTotal <= contentWidth)
+            {
+                return;
+            }
+
+            if (anyStar)
+            {
+                reserved += StarMinSpace();
+            }
+
+            if (reserved + naturalTotal <= contentWidth)
+            {
+                return;
+            }
+
+            for (int j = 0; j < count; j++)
+            {
+                bool auto = columns[j].Track.Type == GridTrack.Kind.Auto;
+                fitMin[j] = auto ? ColumnMinWidth(j) : 0;
+                fitNatural[j] = auto ? Math.Max(resolveAuto[j], columns[j].MinWidth) : 0;
+            }
+
+            // the shares are written straight over the natural widths (the helper allows it)
+            LayoutEngine.DistributeWidth(fitMin, fitNatural, contentWidth - reserved, fitNatural);
+            for (int j = 0; j < count; j++)
+            {
+                if (columns[j].Track.Type == GridTrack.Kind.Auto)
+                {
+                    resolveAuto[j] = fitNatural[j];
+                }
+            }
+        }
+
         /// <summary>Content width of a column: the header (plus sort arrow) or the widest visible cell, with padding.</summary>
         private float AutoWidth(int column)
         {
-            DataGridColumn col = columns[column];
-            float width = UIServices.Text.Measure(UIFont.Small, col.HeaderText, 1f).X;
-            if (col.Sortable)
-            {
-                width += ArrowGap + (Theme.ScrollUpArrow.Width * ArrowScale);
-            }
-
+            float width = HeaderWidth(columns[column]);
             var unbounded = new Vector2(float.PositiveInfinity, EffectiveRowHeight);
             foreach (DataGridRow row in rows)
             {
@@ -585,6 +667,123 @@ namespace UIFramework.Components
             }
             return width + (2 * CellPadX);
         }
+
+        /// <summary>Width of a column's header title, plus the sort arrow when the column sorts (no padding).</summary>
+        private float HeaderWidth(DataGridColumn column)
+        {
+            float width = UIServices.Text.Measure(UIFont.Small, column.HeaderText, 1f).X;
+            if (column.Sortable)
+            {
+                width += ArrowGap + (Theme.ScrollUpArrow.Width * ArrowScale);
+            }
+
+            return width;
+        }
+
+        /// <summary>
+        /// Narrowest width a column's header can take: its title fitted like <see cref="DrawHeaderText"/> draws it
+        /// (<see cref="DrawHelper.FitTextMinWidth"/>), plus the sort arrow when the column sorts (no padding). Unlike the
+        /// cells (single-line labels, which keep their whole text), a header may shorten: it only names the column, and
+        /// <see cref="DataGridColumn.MinWidth"/> or a pixel column is how a consumer keeps it whole.
+        /// </summary>
+        private float HeaderMinWidth(DataGridColumn column)
+        {
+            float width = DrawHelper.FitTextMinWidth(column.HeaderText, UIFont.Small, 1f);
+            if (column.Sortable)
+            {
+                width += ArrowGap + (Theme.ScrollUpArrow.Width * ArrowScale);
+            }
+
+            return width;
+        }
+
+        /// <summary>
+        /// Narrowest total column width that fits, mirroring <see cref="ResolveColumns"/> without resolving anything:
+        /// pixel columns at their width, auto and star columns at their content minimum (<see cref="MinContentWidth"/>),
+        /// each raised to its <see cref="DataGridColumn.MinWidth"/>. Star columns split the space left by weight, so
+        /// that space must give every star column at least its minimum width.
+        /// </summary>
+        internal float ColumnsMinWidth()
+        {
+            float fixedTotal = 0;
+            for (int j = 0; j < columns.Count; j++)
+            {
+                if (columns[j].Track.Type != GridTrack.Kind.Star)
+                {
+                    fixedTotal += ColumnMinWidth(j);
+                }
+            }
+
+            return (float)Math.Ceiling(fixedTotal + StarMinSpace());
+        }
+
+        /// <summary>
+        /// Narrowest width of one column: a pixel column at its width, any other at its content minimum
+        /// (<see cref="MinContentWidth"/>), raised to its <see cref="DataGridColumn.MinWidth"/>.
+        /// </summary>
+        private float ColumnMinWidth(int column)
+        {
+            DataGridColumn c = columns[column];
+            float min = c.Track.Type == GridTrack.Kind.Pixels ? c.Track.Value : MinContentWidth(column);
+            return Math.Max(min, c.MinWidth);
+        }
+
+        /// <summary>
+        /// Width the star columns need: weighted ones split their space by weight, so it must give every one of them
+        /// at least its minimum; a weightless star column never gets a share, only its minimum.
+        /// </summary>
+        private float StarMinSpace()
+        {
+            float starTotal = 0, weightless = 0, starSpace = 0;
+            for (int j = 0; j < columns.Count; j++)
+            {
+                GridTrack track = columns[j].Track;
+                if (track.Type != GridTrack.Kind.Star)
+                {
+                    continue;
+                }
+
+                if (track.Value > 0)
+                {
+                    starTotal += track.Value;
+                }
+                else
+                {
+                    weightless += ColumnMinWidth(j);
+                }
+            }
+
+            for (int j = 0; j < columns.Count; j++)
+            {
+                GridTrack track = columns[j].Track;
+                if (track.Type == GridTrack.Kind.Star && track.Value > 0)
+                {
+                    starSpace = Math.Max(starSpace, ColumnMinWidth(j) * starTotal / track.Value);
+                }
+            }
+
+            return weightless + starSpace;
+        }
+
+        /// <summary>
+        /// Minimum content width of a column: like <see cref="AutoWidth"/>, but with the header's fitted minimum
+        /// (<see cref="HeaderMinWidth"/>) and asking the visible cells for their minimum instead of measuring them.
+        /// </summary>
+        private float MinContentWidth(int column)
+        {
+            float width = HeaderMinWidth(columns[column]);
+            foreach (DataGridRow row in rows)
+            {
+                if (row.Visible && column < row.Cells.Count)
+                {
+                    width = Math.Max(width, row.Cells[column].MeasureMinWidth());
+                }
+            }
+            return width + (2 * CellPadX);
+        }
+
+        /// <summary>The columns' minimum plus the always-reserved scrollbar column.</summary>
+        protected override float MinWidthCore() => ColumnsMinWidth() + ScrollbarGadget.ReservedWidth;
 
         protected override void ArrangeCore()
         {
@@ -638,10 +837,13 @@ namespace UIFramework.Components
 
         protected override void DrawCore(SpriteBatch b)
         {
-            DrawHeader(b);
-            DrawRowBackgrounds(b);
-            DrawChildren(b);
-            DrawDividers(b);
+            // columns wider than the content area are cut at its edge instead of running over the scrollbar / frame
+            Rectangle content = ContentRect;
+            if (content.Width > 0 && content.Height > 0)
+            {
+                DrawHelper.WithScissor(b, content, () => DrawContent(b));
+            }
+
             if (ScrollbarVisible)
             {
                 scrollbar.Draw(b);
@@ -651,6 +853,15 @@ namespace UIFramework.Components
             {
                 DrawHelper.Outline(b, RowsRect, DividerActiveColor * 0.6f, 2);
             }
+        }
+
+        /// <summary>Header, row backgrounds, cells and column dividers (drawn clipped to <see cref="ContentRect"/>).</summary>
+        private void DrawContent(SpriteBatch b)
+        {
+            DrawHeader(b);
+            DrawRowBackgrounds(b);
+            DrawChildren(b);
+            DrawDividers(b);
         }
 
         /// <summary>Header box, hover tint on sortable headers, bold titles and the sort arrow.</summary>

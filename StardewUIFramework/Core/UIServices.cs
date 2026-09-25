@@ -16,6 +16,12 @@ namespace UIFramework.Core
         /// <summary>Wrap <paramref name="text"/> so no line exceeds <paramref name="width"/> pixels.</summary>
         string Wrap(UIFont font, string text, int width);
 
+        /// <summary>
+        /// Width of the widest piece <see cref="Wrap"/> never breaks (a word, or a single character in languages
+        /// wrapped per character) at <paramref name="scale"/>: the narrowest width wrapped text fits in.
+        /// </summary>
+        float LongestWord(UIFont font, string text, float scale);
+
         float LineHeight(UIFont font);
     }
 
@@ -36,6 +42,38 @@ namespace UIFramework.Core
         public string Wrap(UIFont font, string text, int width)
         {
             return Game1.parseText(text ?? string.Empty, GetFont(font), Math.Max(1, (int)(width / Theme.FontScale)));
+        }
+
+        // Game1.parseText breaks Japanese / Chinese / Thai between any two characters, other languages on spaces and line breaks
+        public float LongestWord(UIFont font, string text, float scale)
+        {
+            if (string.IsNullOrEmpty(text))
+            {
+                return 0;
+            }
+
+            LocalizedContentManager.LanguageCode language = LocalizedContentManager.CurrentLanguageCode;
+            bool perCharacter = language is LocalizedContentManager.LanguageCode.ja or LocalizedContentManager.LanguageCode.zh or LocalizedContentManager.LanguageCode.th;
+            float widest = 0;
+            int start = 0;
+            for (int i = 0; i <= text.Length; i++)
+            {
+                bool breakHere = i == text.Length || text[i] == ' ' || text[i] == '\n' || text[i] == '\r';
+                if (!breakHere && !perCharacter)
+                {
+                    continue;
+                }
+
+                int end = breakHere ? i : i + 1;
+                if (end > start)
+                {
+                    widest = Math.Max(widest, Measure(font, text.Substring(start, end - start), scale).X);
+                }
+
+                start = end + (breakHere ? 1 : 0);
+            }
+
+            return widest;
         }
 
         public float LineHeight(UIFont font) => GetFont(font).LineSpacing * Theme.FontScale;

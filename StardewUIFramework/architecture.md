@@ -25,7 +25,7 @@ Progress against §13. Update this table when a phase or item changes; §13 stay
 | 4 — Overlay, dropdown, tooltips | Done | `UIFramework` | `OverlayLayer`, Dropdown (click‑outside close + swallow, one open at a time), tooltip delay + `drawHoverText`, `OnDrawOverlay`. |
 | 5 — Grid, ScrollView, List | Done | `UIFramework` | Grid `auto/px/*` + spans, ScrollView (scissor, arrows, thumb drag, wheel), virtualized ListView with selection. |
 | 6 — Custom components + polish | Done | `UIFramework` | `IUICustomComponent` + `CustomElementAdapter` (`AddCustom`), `OnDrawExtra`, styles/theme, debug overlay (`ui_debug`), `PerScreen` open‑menu list, close‑all on title/save load. Example mod has a custom gauge. |
-| 7 — Port Profit Calculator | Built, awaiting in‑game parity check | `UIFramework` (merged from `UIFramework-ProfitCalculator`) | `ProfitCalculator/main/ui/framework/` (`FrameworkMainMenu`, `FrameworkResultsMenu`, `ProfitCalculatorSettings`) behind `ModConfig.UseUIFramework` (default on, optional manifest dependency, GMCM toggle); legacy screens remain the fallback and `main/ui/**` is kept until parity is confirmed. Results are a sortable `IUIDataGrid` (sprite + name, profit, profit/day, seed / fertilizer loss, harvests, duration) with a rich tooltip per row (`RowTooltip`), built from `CropInfo` only — nothing from the legacy `main/ui` classes is used by the port any more. |
+| 7 — Port Profit Calculator | Done | `develop` | Profit Calculator 2.1.0 builds both screens from data (`ProfitCalculator/assets/ui.json`, imported by `ProfitCalculatorDataUI`); the legacy `IClickableMenu` screens and the C# framework port were removed. Results are a sortable `DataGrid` with a shared row tooltip (`Owners` > `Tooltips.crop`). Checked in game 2026-09-24. |
 | 8 — Docs and release | Done (Nexus upload pending) | `UIFramework` | `StardewUIFramework/README.md` (player + modder guide, full API reference), `NEXUS.md` page text, `Doxyfile` (`cd StardewUIFramework && doxygen Doxyfile` → `docs/api`, git‑ignored), root README rows + build note. ModBuildConfig already zips each mod on build. |
 | v1.1 — Rich tooltips, rich text, pseudo‑loc (§9, §16.2) | Done | `v2-integration` | `CreateTooltip()` builder (`IUITooltip`: title, lines, icon, item, money, divider) on `IUIElement.RichTooltip`, drawn by `Rendering/TooltipRenderer`; `[b]`/`[color]`/`[icon]`/`[link]` markup (`Rendering/RichText`) on labels/buttons (`RichText`, `OnLink`); `ModConfig.PseudoLocalize` + `ui_pseudoloc` (`Rendering/PseudoLocalizer`). |
 | v1.1 — Extension slots + screen context (§16.1) | Done | `v2-integration` | `AddSlot`, `ContributeTo` (priority, `MaxContributions`, vetoes), `ListSlots`, `Expose*`/`ExposeCommand`/`Publish` → `IUIScreenContext`, `OnScreenBuilt`, `IUIElement.Sealed` (`Hosting/ExtensionRegistry`, `Core/Sealing`); contributions rebuilt on every open; `ui_slots`. |
@@ -41,12 +41,12 @@ Progress against §13. Update this table when a phase or item changes; §13 stay
 | v1.6 — C# bridge (§17.8) | Done | `develop` | `Hosting/HookRegistry` + `Data/Bridge/**`; the `// BEGIN DATA` API region (`RegisterCommand`, `RegisterFunction`, `DefineDataSource`, `ExposeModel` / `ExposeRows` / `ExposeSignal` / `ExposeComputed`, `RegisterDrawHook`, `ImportData` / `ImportDataFile(watch)`, `RunAction`, `DataState`), custom tags, `CompositeArgs` conversion; Profit Calculator keeps its main menu in `assets/ui.json`. |
 | v1.7 — Cross‑mod data (§17.8) | Done | `develop` | `Composites` / `Contributions` assets (`DataComposites`, `CompositeBuilder`, `ContributionBuilder`, `DecorationApplier`), templates with typed `Params` and named outlets, dynamic includes, menu `Expose` / `Commands`, `_Invoke` / `_Publish`. |
 | v1.7 — Data tooling and docs (§17.9) | Done | `develop` | `Core/Export/**` (`TreeModel`, `TreeModelReader`, `CSharpEmitter` with unchanged output, `JsonEmitter`), inspector **J** and `ui_export … json`; README "Data‑driven UIs" reference, NEXUS page, manifest description, this §17. |
-| v1.8 — Structural fixes from in-game testing | Done (in-game check pending) | `develop` | Trigger actions return a null error on success (the game treats any error as a failure); click-once controls (`UIElement.FocusOnClick` false: Button, Checkbox, Dropdown, Slider) no longer keep focus after a mouse click; tooltips inherit from the nearest ancestor (`UIMenu.TooltipOwner`) and the delay only restarts when the tooltip changes; named tooltips (`Owners[id].Tooltips`, `{ "From": name }`); an `Image` `Sprite` is a live value (reference text, `Texture2D` or `(Texture2D, Rectangle)`), and live values of the target type pass through as is; imports build their menus before returning; `ImportDataFile` takes full paths (no reflection into SMAPI internals); `IUIHud.ShowOverMenus`. |
+| v1.8 — Structural fixes from in-game testing | Done (checked in game 2026-09-24) | `develop` | Trigger actions return a null error on success (the game treats any error as a failure); click-once controls (`UIElement.FocusOnClick` false: Button, Checkbox, Dropdown, Slider) no longer keep focus after a mouse click; tooltips inherit from the nearest ancestor (`UIMenu.TooltipOwner`) and the delay only restarts when the tooltip changes; named tooltips (`Owners[id].Tooltips`, `{ "From": name }`); an `Image` `Sprite` is a live value (reference text, `Texture2D` or `(Texture2D, Rectangle)`), and live values of the target type pass through as is; imports build their menus before returning; `ImportDataFile` takes full paths (no reflection into SMAPI internals); `IUIHud.ShowOverMenus`; `Resizable` (menu option / data field, default false) gives content-sized windows the player resize grip (`UIMenu.IsResizable`), used by the pack's demo menu; the minimum-width pass (§5, `UIElement.MeasureMinWidth`, `IUICustomComponent.MinimumWidth`) bounds the resize grip by what the content really needs; controls shrink with fitted text, `Stack.Wrap`, the two-pass grid measure and zero-width star fallback, data-grid and list clipping, and the fitted title banner (§5). |
 
 Known gaps / follow‑ups:
 
 - Window chrome (fixed): `Game1.drawDialogueBox` draws its frame 64 px below the `y` it is given, so `UIMenu.DrawChrome` offsets the call and the top inset is 56 px like the sides; tall windows reserve the title banner and scroll their content: `UIMenu.Viewport` is a fit‑content `ScrollView` that hosts `Root` (a real tree element — inspector, dumps, hit‑testing — but not the root's API `Parent`), invisible while the content fits.
-- In‑game acceptance (§14: UI scales 75/100/150 %, resize, gamepad reach) still to be run for the Profit Calculator port, and none of the v1.1 features has been exercised in game yet (built only).
+- In‑game: Profit Calculator and both example mods were checked in game on 2026-09-24 (focus, Escape, HUD over menus, tooltips, actions, state, cross‑mod, game-window resize). The §14 checks at UI scales 75/100/150 % and gamepad reach are still to be run.
 - `TextInput` has no caret movement (Left/Right fall through to focus traversal; the caret is always at the end).
 - Gamepad support relies on vanilla snapping (`populateClickableComponentList` with `SNAP_AUTOMATIC`); `receiveGamePadButton` adds nothing of its own.
 - `HotkeyService` listens to `Input.ButtonsChanged` + `KeybindList.JustPressed()` rather than `Input.ButtonPressed` (§6.3); equivalent for consumers.
@@ -208,6 +208,10 @@ Two‑phase, WPF‑style but minimal:
 
 1. **Measure**: each element returns its desired size given an available size. Leaves measure their content (text via `SpriteFont.MeasureString`, textures via source rect × scale). Containers measure children.
 2. **Arrange**: parent assigns each child a final `Rectangle` (relative to the parent), applying `Margin`, `HorizontalAlign`/`VerticalAlign` and `Anchor`.
+3. **Minimum width** (v1.8, a pure query outside the two phases): `UIElement.MeasureMinWidth()` returns the narrowest width an element can be arranged at without overflowing, whatever width it has now. Leaves report their intrinsic size (wrapping text: its longest word; fill elements: 0); containers combine their children's minimums (a column: the widest; a row: the sum plus spacing; grids and data grids: pixel tracks at their size, auto and star tracks at their content's minimum). Custom components report `IUICustomComponent.MinimumWidth`. `UIMenu.MinimumSize` uses it to bound the player's resize grip (never above the size the drag started at, so the grip itself never enlarges a window). It cannot be derived from Measure, because stretched and star-sized content reports the width it is given. By default nothing loses text: buttons, checkboxes, single-line labels and dropdowns (every choice whole) report their full text as their minimum; with `Shrink` they report `DrawHelper.FitTextMinWidth` (the text at 70 %, or its first character plus "...") instead. Data-grid headers always use the fitted minimum (the column's own `MinWidth` protects them). Sliders measure `min(available, default)`; text inputs need room for about three characters. `MinWidth` / `MaxWidth` on any element clamp its offered, desired, minimum and arranged widths (`UIElement.ClampWidth`: cap at `MaxWidth`, then raise to `MinWidth`; a fixed `Width` wins over both). FitText's shrink-then-"..." remains the fallback when a window is physically narrower than its content.
+4. **Wrapping rows** (v1.8): a horizontal `Stack` with `Wrap` breaks onto a new line when the next child would not fit, with `Spacing` between children and between lines; each line is as tall as its tallest child and lines start at the stack's left edge. Its minimum width is its widest child.
+5. **Sharing too little width** (v1.8): one rule, `LayoutEngine.DistributeWidth`, used by rows (a horizontal `Stack` without `Wrap`), grid auto columns and data-grid auto columns: every item gets its minimum first, then the rest is shared by how much each wants beyond its minimum. With enough room everyone gets their natural width, so nothing changes; items given less than their natural width are re-measured at their share (wrapping text wraps).
+6. **Grid measure** (v1.8): pass 1 measures pixel-column children at their pixel width and the others to find each column's natural width; auto columns then share the room left after pixel columns, spacing and the star columns' minimums (rule 5); pass 2 re-measures star and spanning children at their resolved cell width before the rows are sized. When pixel and auto tracks already fill the width, star tracks get 0 (`LayoutEngine.ResolveTracks`), never their content width. A spanning child's excess goes to the weighted star tracks in its span when it has any.
 
 Absolute screen `Bounds` are derived (parent absolute origin + local rect) and cached; a `LayoutDirty` flag bubbles up when any property affecting size changes, when the tree changes, or when the window resizes.
 
@@ -279,6 +283,7 @@ Three tiers so most consumers never subclass anything:
    public interface IUICustomComponent
    {
        Vector2 Measure(Vector2 available);            // desired size
+       float MinimumWidth { get; }                     // narrowest width without overflowing (v1.8)
        void Draw(SpriteBatch b, Rectangle bounds);     // absolute bounds already resolved
        void Update(Rectangle bounds, double elapsedMs);
        bool OnClick(int x, int y, bool rightButton);   // true = handled
@@ -656,19 +661,32 @@ Goal: a content pack defines complete, interactive screens **without C#** and lo
 - `config.*` is global across saves; the Content Patcher token only updates at Content Patcher's update points.
 - Auto‑generated ids cannot be targeted reliably by patches, decorations or `el[id]`.
 - A contributor's data contributions and its own C# `ContributeTo` / `OnScreenBuilt` for the same slot or menu must not overlap.
-- The optional extras of the plan (interaction state layers, transitions, visual transforms, new components such as tabs and expanders, floating attachments, confirmations, size constraints) are not implemented.
+- The optional extras of the plan (interaction state layers, transitions, visual transforms, new components such as tabs and expanders, floating attachments, confirmations, percentage sizes) are not implemented; `MinWidth` / `MaxWidth` arrived in v1.8.
 
-## 18. To do: differentiation
+## 18. To do
+
+### 18.1 Differentiation
 
 Direction: the framework for content-pack authors, players and cross-mod UI, rather than competing on C# markup.
+Already in place: `ui_schema` (JSON Schemas, v1.3), shorthands (v1.3), inspector **J** / `ui_export … json` (v1.7).
 
-- [ ] **JSON Schema for data assets.** Publish a schema for `Menus`, `Huds`, `Owners`, `Sprites`, `Composites` and
-  `Contributions` so editors give autocomplete and inline errors; link it from the Content Pack Guide.
+- [ ] **Publish the JSON Schemas.** Host the `ui_schema` output at a stable URL in the repository so a pack can set
+  `"$schema"` without running the command first; put it at the top of the Content Pack Guide.
 - [ ] **Starter templates and a quick-start page.** Copy-ready packs (settings page, shop, quest board, HUD counter)
   and a "first menu in 10 minutes" wiki page.
-- [ ] **Less verbose JSON.** Shorthand forms and sensible defaults, with templates as the main way to build screens.
-- [ ] **Inspector saves JSON.** Let the in-game inspector/editor export pack data, not only C# builder code.
+- [ ] **Less verbose JSON.** More shorthand forms and defaults, with templates as the main way to build screens.
+- [ ] **Inspector edits go back to the pack.** Today JSON export goes to `Mods/UIFramework/export`, the log and the
+  clipboard; let the inspector write the nudged values into the pack's own file (or a `From` file) so no copy-paste
+  is needed.
 - [ ] **Pitch player features.** Lead the Nexus page and wiki with remembered window positions, shared themes and
   screen reader support.
 - [ ] **Close the polish gap.** Tabs, expanders, a confirmation dialog and simple transitions (see §17.10).
 - [ ] **Rename the display name.** Pick a distinct mod name; keep the `6135.UIFramework` id.
+
+### 18.2 Open items
+
+- [ ] §14 checks in game: UI scales 75/100/150 %, gamepad reach.
+- [ ] Player resize: check the corner grip in game on the pack's demo menu (`"Resizable": true`, content-sized): drag,
+  minimum size, content scrolls once smaller, saved per save, `ui_layout_reset` makes it fit its content again.
+- [ ] Nexus upload of 1.8 (and Profit Calculator 2.1.0).
+- [ ] Wiki source links point at `master`; the data-driven UI code is only on `develop` until it is merged.

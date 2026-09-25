@@ -52,6 +52,7 @@ namespace UIFramework.Core.Export
             rootNode.Properties.Add(Bool("Horizontal", root.Horizontal, false));
             rootNode.Properties.Add(Int("Spacing", root.Spacing, DefaultSpacing));
             rootNode.Properties.Add(Enum("Alignment", root.Alignment, root.Alignment == UIAlign.Start));
+            rootNode.Properties.Add(Bool("Wrap", root.Wrap, false));
             rootNode.Properties.Add(Margin(root));
             rootNode.Properties.Add(OptionalInt("Width", root.Width));
             rootNode.Properties.Add(OptionalInt("Height", root.Height));
@@ -71,6 +72,7 @@ namespace UIFramework.Core.Export
             o.Add(Int("Padding", menu.Padding, 0));
             o.Add(Bool("CloseOnEscape", menu.CloseOnEscape, true));
             o.Add(Bool("PlayerLayout", menu.PlayerLayout, true));
+            o.Add(Bool("Resizable", menu.Resizable, false));
 
             List<TreeProperty> ev = model.Events;
             ev.Add(Todo("OnOpen", menu.OnOpen));
@@ -203,6 +205,7 @@ namespace UIFramework.Core.Export
                     p.Add(Bool("Horizontal", slot.Horizontal, false));
                     p.Add(OptionalInt("MaxHeight", slot.MaxHeight));
                     p.Add(Int("MaxContributions", slot.MaxContributions, 0));
+                    p.Add(Bool("Wrap", slot.Wrap, false));
                     p.Add(TreeProperty.Literal("VetoedContributors", TreeValueKind.StringList, slot.VetoedContributors, slot.VetoedContributors.Length == 0));
                     p.Add(Todo("VisiblePredicate", slot.VisiblePredicate));
                     break;
@@ -210,6 +213,7 @@ namespace UIFramework.Core.Export
                     p.Add(Bool("Horizontal", stack.Horizontal, false));
                     p.Add(Int("Spacing", stack.Spacing, DefaultSpacing));
                     p.Add(Enum("Alignment", stack.Alignment, stack.Alignment == UIAlign.Start));
+                    p.Add(Bool("Wrap", stack.Wrap, false));
                     break;
                 case Grid grid:
                     p.Add(TreeProperty.Literal("Columns", TreeValueKind.String, grid.Columns, grid.Columns == "*"));
@@ -269,6 +273,7 @@ namespace UIFramework.Core.Export
                     p.Add(Enum("TextAlign", l.TextAlign, l.TextAlign == UIAlign.Start));
                     p.Add(Float("Scale", l.Scale, 1f));
                     p.Add(Bool("RichText", l.RichText, false));
+                    p.Add(Bool("Shrink", l.Shrink, false));
                     p.Add(Todo("OnLink", l.OnLink));
                     break;
                 case Image i:
@@ -289,11 +294,13 @@ namespace UIFramework.Core.Export
                     p.Add(Sound("ClickSound", b.ClickSound));
                     p.Add(Sound("HoverSound", b.HoverSound));
                     p.Add(Bool("RichText", b.RichText, false));
+                    p.Add(Bool("Shrink", b.Shrink, false));
                     break;
                 case Checkbox c:
                     p.Add(TreeProperty.Evaluated("Value", TreeValueKind.Bool, c.Value, true));
                     p.Add(Text("Label", c.Id, "Export.Label", c.LabelFunc));
                     p.Add(Sound("ClickSound", c.ClickSound));
+                    p.Add(Bool("Shrink", c.Shrink, false));
                     p.Add(Todo("OnValueChanged", c.OnValueChanged));
                     break;
                 case TextInput t:
@@ -367,6 +374,7 @@ namespace UIFramework.Core.Export
             p.Add(TreeProperty.Evaluated("Labels", TreeValueKind.StringList, labels, !sameLabels));
             p.Add(TreeProperty.Evaluated("Value", TreeValueKind.String, d.SelectedValue, true));
             p.Add(Int("MaxVisible", d.MaxVisible, 5));
+            p.Add(Bool("Shrink", d.Shrink, false));
             p.Add(Todo("OnValueChanged", d.OnValueChanged));
             p.Add(Todo("OnScroll", d.OnScroll));
         }
@@ -452,6 +460,9 @@ namespace UIFramework.Core.Export
                 p.Add(OptionalInt("Width", e.Width));
                 p.Add(OptionalInt("Height", e.Height));
             }
+
+            p.Add(OptionalInt("MinWidth", e.MinWidth));
+            p.Add(OptionalInt("MaxWidth", e.MaxWidth));
 
             p.Add(Enum("HorizontalAlign", e.HorizontalAlign, !e.HorizontalAlignSet));
             p.Add(Enum("VerticalAlign", e.VerticalAlign, !e.VerticalAlignSet));

@@ -21,6 +21,9 @@ namespace UIFramework.Components
         private const int DefaultWidth = 192;
         private const int DefaultHeight = 24;
 
+        /// <summary>The minimum width, in knob widths (see <see cref="MinWidthCore"/>).</summary>
+        private const int MinKnobWidths = 3;
+
         private Func<double>? getter;
         private Action<double>? setter;
         private double ownValue;
@@ -165,7 +168,11 @@ namespace UIFramework.Components
         //  Layout / draw
         // ---------------------------------------------------------------------------------------------------------
 
-        protected override Vector2 MeasureCore(Vector2 available) => new(DefaultWidth, DefaultHeight);
+        // DefaultWidth is a preference: a narrower slot gets a shorter track, and Stretch (handled by Arrange) fills it
+        protected override Vector2 MeasureCore(Vector2 available) => new(Math.Max(0, Math.Min(available.X, DefaultWidth)), DefaultHeight);
+
+        // three knob widths: two knob widths of travel, still enough to drag and to tell the ends apart
+        protected override float MinWidthCore() => MinKnobWidths * KnobWidth;
 
         protected override void DrawCore(SpriteBatch b)
         {

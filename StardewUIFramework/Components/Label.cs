@@ -17,12 +17,16 @@ namespace UIFramework.Components
         private Func<string>? text;
         private UIFont? font;
         private bool wrap;
+        private bool shrink;
         private bool richText;
         private float scale = 1f;
         private string measuredText = string.Empty;
         private string displayText = string.Empty;
         private RichLayout? richLayout;
         private int wrapWidth = -1;
+
+        /// <summary>Width of the text as last wrapped / laid out by <see cref="Reflow"/>.</summary>
+        private float laidOutWidth;
 
         internal Label(string id, Func<string>? text) : base(id)
         {
@@ -66,6 +70,25 @@ namespace UIFramework.Components
                 }
 
                 wrap = value;
+                InvalidateLayout();
+            }
+        }
+
+        /// <summary>
+        /// Single line only: let the minimum width drop to the fitted text (<see cref="DrawHelper.FitTextMinWidth"/>)
+        /// instead of the whole line. Wrapping and rich-text labels ignore it.
+        /// </summary>
+        public bool Shrink
+        {
+            get => shrink;
+            set
+            {
+                if (shrink == value)
+                {
+                    return;
+                }
+
+                shrink = value;
                 InvalidateLayout();
             }
         }
@@ -132,14 +155,54 @@ namespace UIFramework.Components
         private Vector2 Reflow(string current)
         {
             UIFont f = Font;
+            Vector2 size;
             if (richText)
             {
                 richLayout = Rendering.RichText.Layout(Rendering.RichText.Parse(current), f, scale, wrapWidth);
-                return richLayout.Size;
+                size = richLayout.Size;
+            }
+            else
+            {
+                displayText = wrapWidth > 0 ? UIServices.Text.Wrap(f, current, (int)(wrapWidth / scale)) : current;
+                size = UIServices.Text.Measure(f, displayText, scale);
             }
 
-            displayText = wrapWidth > 0 ? UIServices.Text.Wrap(f, current, (int)(wrapWidth / scale)) : current;
-            return UIServices.Text.Measure(f, displayText, scale);
+            laidOutWidth = size.X;
+            return size;
+        }
+
+        // wrapped: the widest unbreakable piece; single line: the whole line (the natural width MeasureCore reports),
+        // or with Shrink the fitted minimum of a plain line (drawing shrinks / truncates it with FitText); rich layouts
+        // are drawn as laid out and never truncate, so a rich single line always keeps the whole line
+        protected override float MinWidthCore()
+        {
+            string current = CurrentText;
+            UIFont f = Font;
+            if (richText)
+            {
+                return wrap ? Rendering.RichText.MinWidth(current, f, scale) : Rendering.RichText.Measure(current, f, scale, 0).X;
+            }
+
+            if (wrap)
+            {
+                return UIServices.Text.LongestWord(f, current, scale);
+            }
+
+            return shrink ? DrawHelper.FitTextMinWidth(current, f, scale) : (float)Math.Ceiling(UIServices.Text.Measure(f, current, scale).X);
+        }
+
+        // a wrapping label breaks its lines at the width it was measured with; when the parent arranges it narrower
+        // than its widest wrapped line (squeezed below its desired size), re-wrap at the final width so no line draws
+        // past it. Layout-time only, and only when the lines would actually overflow.
+        protected override void ArrangeCore()
+        {
+            if (!wrap || Bounds.Width <= 0 || Bounds.Width >= Math.Ceiling(laidOutWidth))
+            {
+                return;
+            }
+
+            wrapWidth = Bounds.Width;
+            Reflow(measuredText);
         }
 
         protected override void DrawCore(SpriteBatch b)

@@ -58,6 +58,9 @@ namespace UIFramework.Components
             return new Vector2(available.X, available.Y);
         }
 
+        /// <summary>The cells sit on the grid's columns, so a row is as narrow as the columns can get.</summary>
+        protected override float MinWidthCore() => owner.ColumnsMinWidth();
+
         protected override void ArrangeCore()
         {
             // a column added / removed since the last refresh is reconciled by the next Refresh; skip the mismatch
@@ -89,6 +92,9 @@ namespace UIFramework.Components
             }
             return new Vector2(w, h);
         }
+
+        /// <summary>Children overlap: as narrow as the widest child.</summary>
+        protected override float MinWidthCore() => MaxChildMinWidth();
 
         protected override void ArrangeCore()
         {

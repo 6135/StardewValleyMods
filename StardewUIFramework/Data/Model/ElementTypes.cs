@@ -39,7 +39,7 @@ namespace UIFramework.Data.Model
         internal static readonly string[] Common =
         {
             "Type", "Id", "Condition", "Visible", "Enabled", "Tooltip", "TooltipTitle", "Tag", "Sealed", "AccessibleName",
-            "Margin", "MarginLeft", "MarginTop", "MarginRight", "MarginBottom", "Width", "Height", "HorizontalAlign", "VerticalAlign",
+            "Margin", "MarginLeft", "MarginTop", "MarginRight", "MarginBottom", "Width", "Height", "MinWidth", "MaxWidth", "HorizontalAlign", "VerticalAlign",
             "X", "Y", "Row", "Column", "RowSpan", "ColumnSpan", "Cell", "Span", "Style",
             "OnClick", "OnRightClick", "OnHover", "OnHoverEnd", "OnFocus", "OnBlur",
             "If", "Case", "With", "Out", "Class", "Keys", "RichTooltip", "DrawExtra", "DrawOverlay", "Outlet"
@@ -48,24 +48,24 @@ namespace UIFramework.Data.Model
         /// <summary>Type-specific members, by canonical type name.</summary>
         private static readonly Dictionary<string, string[]> Specific = new(StringComparer.OrdinalIgnoreCase)
         {
-            [Stack] = new[] { "Children", "Horizontal", "Spacing", "Alignment" },
+            [Stack] = new[] { "Children", "Horizontal", "Spacing", "Alignment", "Wrap" },
             [Grid] = new[] { "Children", "Columns", "Rows", "ColumnSpacing", "RowSpacing" },
             [Panel] = new[] { "Children", "DrawBox", "Padding" },
             [Canvas] = new[] { "Children" },
             [ScrollView] = new[] { "Children", "ViewportHeight", "ScrollStep", "ShowScrollbar", "OnScroll" },
-            [Slot] = new[] { "Horizontal", "MaxHeight", "MaxContributions" },
+            [Slot] = new[] { "Horizontal", "MaxHeight", "MaxContributions", "Wrap" },
             [Spacer] = new[] { "Line" },
-            [Label] = new[] { "Text", "Label", "Font", "Color", "Shadow", "Wrap", "TextAlign", "Scale", "RichText", "OnLink" },
-            [Button] = new[] { "Text", "Button", "Font", "Icon", "IconScale", "ClickSound", "HoverSound", "DrawBox", "RichText" },
+            [Label] = new[] { "Text", "Label", "Font", "Color", "Shadow", "Wrap", "TextAlign", "Scale", "RichText", "OnLink", "Shrink" },
+            [Button] = new[] { "Text", "Button", "Font", "Icon", "IconScale", "ClickSound", "HoverSound", "DrawBox", "RichText", "Shrink" },
             [Image] = new[] { "Sprite", "Image", "Source", "Scale", "Tint" },
             [ItemImage] = new[] { "Item", "Quality", "Count", "Scale", "Stack", "DrawShadow", "Alpha", "Tint" },
-            [Checkbox] = new[] { "Label", "Checkbox", "Text", "Value", "Bind", "ClickSound", "OnValueChanged" },
+            [Checkbox] = new[] { "Label", "Checkbox", "Text", "Value", "Bind", "ClickSound", "OnValueChanged", "Shrink" },
             [TextInput] = new[] { "Value", "Bind", "Placeholder", "MaxLength", "Texture", "Validate", "OnInvalid", "OnValueChanged", "OnSubmit" },
             [NumberInput] = new[] { "Value", "Bind", "Min", "Max", "Step", "Clamp", "Decimals", "Texture", "Validate", "OnInvalid", "OnValueChanged", "OnSubmit" },
-            [Dropdown] = new[] { "Value", "Bind", "Choices", "Labels", "MaxVisible", "ChoicesSource", "ChoiceValue", "ChoiceLabel", "OnValueChanged", "OnScroll" },
+            [Dropdown] = new[] { "Value", "Bind", "Choices", "Labels", "MaxVisible", "ChoicesSource", "ChoiceValue", "ChoiceLabel", "OnValueChanged", "OnScroll", "Shrink" },
             [Slider] = new[] { "Value", "Bind", "Min", "Max", "Step", "OnValueChanged" },
             [Switch] = new[] { "Children", "Switch" },
-            [Repeat] = new[] { "Children", "Repeat", "As", "Horizontal", "Spacing", "Alignment" },
+            [Repeat] = new[] { "Children", "Repeat", "As", "Horizontal", "Spacing", "Alignment", "Wrap" },
             [List] = new[] { "Source", "As", "RowTemplate", "RowHeight", "VisibleRows", "Selectable", "BindSelected", "OnValueChanged", "OnScroll" },
             [DataGrid] = new[]
             {
@@ -75,7 +75,7 @@ namespace UIFramework.Data.Model
             [Form] = new[] { "Fields", "Model", "ShowButtons", "OnSaved", "OnCancelled", "OnChanged" },
             [Composite] = new[] { "Children", "Composite", "Args", "ContentTarget", "On" },
             [Template] = new[] { "Children", "Template", "Args" },
-            [Outlet] = new[] { "Children", "Horizontal", "Spacing", "Alignment" }
+            [Outlet] = new[] { "Children", "Horizontal", "Spacing", "Alignment", "Wrap" }
         };
 
         /// <summary>Every type name, in documentation order.</summary>

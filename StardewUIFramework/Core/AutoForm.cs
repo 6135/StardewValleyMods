@@ -94,7 +94,7 @@ namespace UIFramework.Core
             }
         }
 
-        /// <summary>A gap (except before the first row) and a dialogue-font title spanning both columns.</summary>
+        /// <summary>A gap (except before the first row) and a dialogue-font title spanning both columns (wrapping, so a long title never sets the form's minimum width).</summary>
         private void AddSection(string id, string title, ref int row)
         {
             if (row > 0)
@@ -110,6 +110,7 @@ namespace UIFramework.Core
             var header = new Label(id, () => title)
             {
                 Font = UIFont.Dialogue,
+                Wrap = true,
                 Row = row++,
                 ColumnSpan = 2
             };
@@ -406,6 +407,9 @@ namespace UIFramework.Core
 
             return new Vector2(width, height + (Spacing * Math.Max(0, visible - 1)));
         }
+
+        /// <summary>A column: as narrow as its widest child (the field grid or the button row).</summary>
+        protected override float MinWidthCore() => MaxChildMinWidth();
 
         protected override void ArrangeCore()
         {

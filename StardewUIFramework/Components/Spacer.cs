@@ -23,6 +23,9 @@ namespace UIFramework.Components
 
         protected override Vector2 MeasureCore(Vector2 available) => new(0, Line ? LineThickness : 0);
 
+        // no content of its own: without a fixed width it takes whatever it is stretched to
+        protected override float MinWidthCore() => 0;
+
         protected override void DrawCore(SpriteBatch b)
         {
             if (!Line || Bounds.Width <= 0 || Bounds.Height <= 0)

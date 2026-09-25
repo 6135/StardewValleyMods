@@ -119,6 +119,12 @@ namespace UIFramework.Data.Model
         /// <summary>Fixed height in pixels ("auto" or empty = measured). On a Spacer, its height.</summary>
         public string? Height { get; set; }
 
+        /// <summary>Smallest width in pixels, margins excluded ("auto" or empty = none; wins over MaxWidth, ignored with a fixed Width).</summary>
+        public string? MinWidth { get; set; }
+
+        /// <summary>Largest width in pixels, margins excluded ("auto" or empty = none; ignored with a fixed Width).</summary>
+        public string? MaxWidth { get; set; }
+
         /// <summary>Horizontal alignment in the parent's slot: Start, Center, End or Stretch.</summary>
         public string? HorizontalAlign { get; set; }
 
@@ -259,8 +265,11 @@ namespace UIFramework.Data.Model
         /// <summary>Label: draw the text shadow.</summary>
         public string? Shadow { get; set; }
 
-        /// <summary>Label: wrap to the available width.</summary>
+        /// <summary>Label: wrap the text to the available width. Stack / Repeat / Outlet / Slot (rows only): wrap the children onto further lines when they do not fit (default false).</summary>
         public string? Wrap { get; set; }
+
+        /// <summary>Button / Checkbox / Dropdown / single-line Label: may shorten the text with "..." to fit a narrow space (default false: the minimum width keeps the whole text).</summary>
+        public string? Shrink { get; set; }
 
         /// <summary>Label: text alignment inside the label (Start, Center, End).</summary>
         public string? TextAlign { get; set; }

@@ -22,5 +22,6 @@ namespace UIFramework.Api
 
         // HUD
         public bool PlayerLayout { get; set; } = true;
+        public bool Resizable { get; set; }
     }
 }
