@@ -14,7 +14,6 @@ namespace UIFramework.Hosting
     /// </summary>
     internal sealed class ScreenExposures
     {
-        
         private readonly Dictionary<string, Func<string>> strings = new();
         private readonly Dictionary<string, Func<double>> numbers = new();
         private readonly Dictionary<string, Func<bool>> bools = new();

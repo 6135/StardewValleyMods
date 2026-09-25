@@ -143,7 +143,7 @@ namespace UIFramework.Data.Expressions
                     return false; // a custom format
                 }
 
-                precision = Math.Min(precision * 10 + (c - '0'), MaxFormatPrecision + 1);
+                precision = Math.Min((precision * 10) + (c - '0'), MaxFormatPrecision + 1);
             }
 
             return precision > MaxFormatPrecision;
