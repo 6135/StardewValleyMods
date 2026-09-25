@@ -1,7 +1,13 @@
 # Changelog
 
-## Unreleased
+## 2.1.0
 
+- The calculator's screens (settings, results and machine results) are now UI Framework data in `assets/ui.json`
+  instead of C# code. The C# side only supplies what it computes: the settings model, the produce types, the result
+  rows, the Calculate / Reset commands and the translation and number formatting functions.
+- The results show each crop's own sprite, and hovering any part of a row (including the sprite) shows the row's
+  details. Both results screens share one tooltip definition.
+- Requires UI Framework 1.8.0 or later.
 - Split-screen: each player has their own settings and results; one player's Calculate no longer replaces the other's
   results. The plant list is built once, by the main screen.
 - One broken (usually modded) plant no longer stops the calculation or its whole builder: it is skipped and logged once
@@ -24,10 +30,12 @@
 - The tooltip delay option now says its unit: frames (60 = 1 second).
 - French: added the 12 missing translations of the tree and machine features.
 - The settings screen refreshes only when a setting changes (`ProfitCalculatorSettings` raises `PropertyChanged`).
-- Requires UI Framework 1.8.0 or later (`ExposeModelSource`).
 
 ### Removed
 
+- The C# menu builders `ProfitCalculatorMainMenu` and `ProfitCalculatorResultsMenu`, replaced by the data screens.
+- The `UseDataUI` config option (and its Generic Mod Config Menu entry and translations) that switched between the two.
+- `Utils.IsTreeProduceType`, only used by the removed results screen.
 - The unused manual crop fields `IsRaisedCrop`, `IsBushCrop` and `IsGiantCrop` (they are ignored if still present).
 - `Utils.GetTranslatedSeason`, `GetTranslatedFertilizerQuality`, `GetAllTranslatedSeasons`,
   `GetAllTranslatedFertilizerQualities`, `GetSeasonDays` and `PriceFromObjectID`, unused since the port.
@@ -37,18 +45,3 @@
 - Leftover files: the "Profit Calculator Vintage" manifest, `README.txt`, `assets/readme.md` and
   `assets/text_box_small.png`; the old screenshots moved to `Page Files/ProfitCalculator/`.
 - The XML documentation file is no longer shipped in the mod folder, and Harmony is no longer enabled.
-
-## 2.1.0
-
-- The calculator's screens (settings, results and machine results) are now UI Framework data in `assets/ui.json`
-  instead of C# code. The C# side only supplies what it computes: the settings model, the produce types, the result
-  rows, the Calculate / Reset commands and the translation and number formatting functions.
-- The results show each crop's own sprite, and hovering any part of a row (including the sprite) shows the row's
-  details. Both results screens share one tooltip definition.
-- Requires UI Framework 1.8.0 or later.
-
-### Removed
-
-- The C# menu builders `ProfitCalculatorMainMenu` and `ProfitCalculatorResultsMenu`, replaced by the data screens.
-- The `UseDataUI` config option (and its Generic Mod Config Menu entry and translations) that switched between the two.
-- `Utils.IsTreeProduceType`, only used by the removed results screen.
