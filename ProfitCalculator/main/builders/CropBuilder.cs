@@ -2,6 +2,7 @@
 using ProfitCalculator.main.models;
 using StardewModdingAPI;
 using StardewValley;
+using System;
 using System.Collections.Generic;
 using CropData = ProfitCalculator.main.models.CropData;
 using SObject = StardewValley.Object;
@@ -28,10 +29,17 @@ namespace ProfitCalculator.main.builders
             Monitor?.Log($"Crops loaded: {loadedCrops.Count}", LogLevel.Debug);
             foreach (var crop in loadedCrops)
             {
-                PlantData? cropData = BuildCrop(crop.Value, crop.Key);
-                if (cropData != null)
+                try
                 {
-                    crops.TryAdd(crop.Key, cropData);
+                    PlantData? cropData = BuildCrop(crop.Value, crop.Key);
+                    if (cropData != null)
+                    {
+                        crops.TryAdd(crop.Key, cropData);
+                    }
+                }
+                catch (Exception e)
+                {
+                    Monitor?.Log($"Skipping crop '{crop.Key}': it could not be built.\n{e}", LogLevel.Warn);
                 }
             }
             return crops;

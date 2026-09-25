@@ -20,9 +20,9 @@ namespace UIFramework.Data.Building
     internal sealed class DecorationApplier
     {
         private readonly DataBuilder builder;
-        private readonly IValueResolver resolver;
+        private readonly ExpressionValueResolver resolver;
 
-        internal DecorationApplier(DataBuilder builder, IValueResolver resolver)
+        internal DecorationApplier(DataBuilder builder, ExpressionValueResolver resolver)
         {
             this.builder = builder;
             this.resolver = resolver;

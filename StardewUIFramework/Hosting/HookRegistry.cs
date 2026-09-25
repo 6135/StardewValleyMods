@@ -16,17 +16,17 @@ namespace UIFramework.Hosting
     /// <summary>
     /// The C# bridge of data UIs (v1.6): commands, functions, row sources, draw hooks and exposed values (signals,
     /// computeds, models, rows) registered by C# mods and reached from data by name. Everything is keyed
-    /// <c>owner/name</c> (ordinal; a case-insensitive match is the fallback) and runs under the owner's callback guard.
+    /// <c>owner/name</c> (case-insensitive) and runs under the owner's callback guard.
     /// Any pack may use <c>ModId/name</c>; the owner's own data may use the short name. Follows
     /// <see cref="CompositeRegistry"/>: process-wide, the owner is remembered and only it can replace or remove a hook.
     /// </summary>
     internal sealed class HookRegistry
     {
-        private readonly Dictionary<string, Hook<Action<IUIDataCall>>> commands = new(StringComparer.Ordinal);
-        private readonly Dictionary<string, Hook<Func<string[], string>>> functions = new(StringComparer.Ordinal);
-        private readonly Dictionary<string, Hook<Action<SpriteBatch, Rectangle, IUIDataCall>>> draws = new(StringComparer.Ordinal);
-        private readonly Dictionary<string, DataSourceHandle> sources = new(StringComparer.Ordinal);
-        private readonly Dictionary<string, ExposedValue> values = new(StringComparer.Ordinal);
+        private readonly Dictionary<string, Hook<Action<IUIDataCall>>> commands = new(StringComparer.OrdinalIgnoreCase);
+        private readonly Dictionary<string, Hook<Func<string[], string>>> functions = new(StringComparer.OrdinalIgnoreCase);
+        private readonly Dictionary<string, Hook<Action<SpriteBatch, Rectangle, IUIDataCall>>> draws = new(StringComparer.OrdinalIgnoreCase);
+        private readonly Dictionary<string, DataSourceHandle> sources = new(StringComparer.OrdinalIgnoreCase);
+        private readonly Dictionary<string, ExposedValue> values = new(StringComparer.OrdinalIgnoreCase);
 
         /// <summary>A registered delegate and the mod that registered it.</summary>
         internal sealed record Hook<T>(ConsumerContext Owner, string Name, T Delegate);
@@ -85,26 +85,8 @@ namespace UIFramework.Hosting
 
         private static string Key(ConsumerContext owner, string name) => owner.ModId + "/" + name;
 
-        /// <summary>Find <paramref name="key"/> ordinally, else case-insensitively.</summary>
-        private static bool TryFind<T>(Dictionary<string, T> table, string key, out T value)
-        {
-            if (table.TryGetValue(key, out value!))
-            {
-                return true;
-            }
-
-            foreach ((string candidate, T entry) in table)
-            {
-                if (string.Equals(candidate, key, StringComparison.OrdinalIgnoreCase))
-                {
-                    value = entry;
-                    return true;
-                }
-            }
-
-            value = default!;
-            return false;
-        }
+        /// <summary>Find <paramref name="key"/> (the tables compare case-insensitively).</summary>
+        private static bool TryFind<T>(Dictionary<string, T> table, string key, out T value) => table.TryGetValue(key, out value!);
 
         /// <summary>Add, replace or (with null) remove an entry; keys contain the owner, so a mod only ever touches its own hooks.</summary>
         private static void Set<T>(Dictionary<string, T> table, string key, T? value) where T : class
@@ -173,6 +155,13 @@ namespace UIFramework.Hosting
             {
                 NotifyStructureChanged(); // forms built over the model (and model binds) are rebuilt
             }
+        }
+
+        /// <summary>A model resolved through <paramref name="model"/> at every read (a per-screen model: <c>() =&gt; perScreen.Value</c>).</summary>
+        internal void ExposeModelSource(ConsumerContext owner, string name, Func<object>? model)
+        {
+            Expose(owner, name, model == null ? null : ExposedValue.ForModelSource(model));
+            NotifyStructureChanged(); // forms built over the model (and model binds) are rebuilt
         }
 
         internal void ExposeRows(ConsumerContext owner, string name, Func<object[]>? rows) => Expose(owner, name, rows == null ? null : ExposedValue.ForRows(rows));
@@ -382,32 +371,38 @@ namespace UIFramework.Hosting
         //  Exposed values
         // ---------------------------------------------------------------------------------------------------------
 
-        /// <summary>A signal, computed, model or row list exposed to data under a name.</summary>
+        /// <summary>A signal, computed, model (or model source) or row list exposed to data under a name.</summary>
         private sealed class ExposedValue
         {
             private readonly IUIComputed? computed;
+            private readonly object? model;
+            private readonly Func<object>? modelSource;
             private readonly Func<object[]>? rows;
             private readonly Action changed = BumpData;
 
-            private ExposedValue(IUISignal? signal, IUIComputed? computed, object? model, Func<object[]>? rows)
+            private ExposedValue(IUISignal? signal, IUIComputed? computed, object? model, Func<object>? modelSource, Func<object[]>? rows)
             {
                 Signal = signal;
                 this.computed = computed;
-                Model = model;
+                this.model = model;
+                this.modelSource = modelSource;
                 this.rows = rows;
             }
 
-            internal static ExposedValue ForSignal(IUISignal signal) => new(signal, null, null, null);
-            internal static ExposedValue ForComputed(IUIComputed computed) => new(null, computed, null, null);
-            internal static ExposedValue ForModel(object model) => new(null, null, model, null);
-            internal static ExposedValue ForRows(Func<object[]> rows) => new(null, null, null, rows);
+            internal static ExposedValue ForSignal(IUISignal signal) => new(signal, null, null, null, null);
+            internal static ExposedValue ForComputed(IUIComputed computed) => new(null, computed, null, null, null);
+            internal static ExposedValue ForModel(object model) => new(null, null, model, null, null);
+            internal static ExposedValue ForModelSource(Func<object> source) => new(null, null, null, source, null);
+            internal static ExposedValue ForRows(Func<object[]> rows) => new(null, null, null, null, rows);
 
             internal ConsumerContext Owner { get; set; } = ConsumerContext.None;
             internal string Name { get; set; } = string.Empty;
             internal IUISignal? Signal { get; }
-            internal object? Model { get; }
 
-            internal string KindName => Signal != null ? "signal" : computed != null ? "computed" : Model != null ? "model" : "rows";
+            /// <summary>The exposed model: the object itself, or what the model source returns now (read under the owner's guard).</summary>
+            internal object? Model => modelSource == null ? model : Owner.Invoke<object?>("hook:" + Name, "model", modelSource, null);
+
+            internal string KindName => Signal != null ? "signal" : computed != null ? "computed" : model != null || modelSource != null ? "model" : "rows";
 
             /// <summary>Subscribe to change notifications (signals, computeds; models are watched when read).</summary>
             internal void Attach()
@@ -437,10 +432,17 @@ namespace UIFramework.Hosting
                     return StateAddress.Infer(Owner.Invoke<string?>("hook:" + Name, "computed", () => value.Value, null));
                 }
 
-                if (Model != null)
+                if (model != null || modelSource != null)
                 {
-                    isVolatile = !ModelAccessor.Watch(Model);
-                    return ModelAccessor.ToValue(Model);
+                    object? current = Model;
+                    if (current == null)
+                    {
+                        isVolatile = true; // a source may return an object later
+                        return DataValue.Null;
+                    }
+
+                    isVolatile = !ModelAccessor.Watch(current);
+                    return ModelAccessor.ToValue(current);
                 }
 
                 return DataValue.FromList(ReadRows());

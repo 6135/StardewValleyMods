@@ -41,6 +41,74 @@ namespace UIFramework.Data.Building
             return scope.WithLocals(locals);
         }
 
+        /// <summary>
+        /// True when the field <paramref name="raw"/> (a bare expression or template) reads nothing but a row's locals
+        /// (<c>row</c>, <c>index</c>, the <paramref name="alias"/> and its index) and literals, so its value in a row
+        /// scope depends on the row alone. Function calls may read anything, so they count as more.
+        /// </summary>
+        internal static bool ReadsOnlyRow(string? raw, string? alias)
+        {
+            if (raw == null || ValueParsers.TryParseBool(raw, out _))
+            {
+                return true;
+            }
+
+            Template template = Template.ParseField(raw);
+            if (template.Errors.Count > 0)
+            {
+                return false;
+            }
+
+            string? name = string.IsNullOrWhiteSpace(alias) ? null : alias.Trim();
+            foreach (TemplateSegment segment in template.Segments)
+            {
+                if (segment.Expression != null && (segment.Expression.Root == null || !ReadsOnlyRow(segment.Expression.Root, name)))
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        private static bool ReadsOnlyRow(Node node, string? alias)
+        {
+            switch (node)
+            {
+                case LiteralNode:
+                    return true;
+                case PathNode path:
+                {
+                    string? root = path.Parts[0].Key;
+                    if (root != RowName && root != IndexName && (alias == null || (root != alias && root != alias + "Index")))
+                    {
+                        return false;
+                    }
+
+                    foreach (PathPart part in path.Parts)
+                    {
+                        if (part.Index != null && !ReadsOnlyRow(part.Index, alias))
+                        {
+                            return false;
+                        }
+                    }
+
+                    return true;
+                }
+
+                case MemberNode member:
+                    return ReadsOnlyRow(member.Target, alias) && (member.Index == null || ReadsOnlyRow(member.Index, alias));
+                case UnaryNode unary:
+                    return ReadsOnlyRow(unary.Operand, alias);
+                case BinaryNode binary:
+                    return ReadsOnlyRow(binary.Left, alias) && ReadsOnlyRow(binary.Right, alias);
+                case ConditionalNode conditional:
+                    return ReadsOnlyRow(conditional.Condition, alias) && ReadsOnlyRow(conditional.WhenTrue, alias) && ReadsOnlyRow(conditional.WhenFalse, alias);
+                default:
+                    return false;
+            }
+        }
+
         /// <summary>A field row (case-insensitive keys), wrapped as an opaque value whose members expressions read.</summary>
         internal static DataValue Object(Dictionary<string, DataValue> fields) => DataValue.Opaque(new RowFields(fields));
 
@@ -148,27 +216,26 @@ namespace UIFramework.Data.Building
         /// <summary>The row of an item: id, qualifiedId, name, displayName, description, price, category, quality, stack, type and the item itself (item).</summary>
         internal static DataValue ForItem(Item item)
         {
+            // description and price are costly (up to MaxRows items per query): read on demand (ItemRowFields)
             var fields = new Dictionary<string, DataValue>(StringComparer.OrdinalIgnoreCase)
             {
                 ["id"] = DataValue.FromString(item.ItemId),
                 ["qualifiedId"] = DataValue.FromString(item.QualifiedItemId),
                 ["name"] = DataValue.FromString(item.Name),
                 ["displayName"] = DataValue.FromString(item.DisplayName),
-                ["description"] = DataValue.FromString(SafeDescription(item)),
-                ["price"] = DataValue.FromNumber(item.salePrice()),
                 ["category"] = DataValue.FromNumber(item.Category),
                 ["quality"] = DataValue.FromNumber(item.Quality),
                 ["stack"] = DataValue.FromNumber(item.Stack),
                 ["type"] = DataValue.FromString(item.TypeDefinitionId),
                 ["item"] = DataValue.Opaque(item)
             };
-            return Object(fields);
+            return DataValue.Opaque(new ItemRowFields(fields, item));
         }
 
         /// <summary>A member of an item value (<c>row.item.displayName</c>, <c>${someItem.price}</c>).</summary>
         internal static bool TryItemMember(Item item, string member, out DataValue value)
         {
-            value = member.ToLowerInvariant() switch
+            value = State.ScopeRoots.Lower(member) switch
             {
                 "id" or "itemid" => DataValue.FromString(item.ItemId),
                 "qualifiedid" => DataValue.FromString(item.QualifiedItemId),
@@ -313,7 +380,7 @@ namespace UIFramework.Data.Building
     }
 
     /// <summary>The fields of a row (case-insensitive). Expressions read them as members (<c>row.name</c>).</summary>
-    internal sealed class RowFields : Dictionary<string, DataValue>, IReadOnlyDictionary<string, DataValue>
+    internal class RowFields : Dictionary<string, DataValue>, IReadOnlyDictionary<string, DataValue>
     {
         internal RowFields(IDictionary<string, DataValue> fields) : base(fields, StringComparer.OrdinalIgnoreCase)
         {
@@ -332,5 +399,16 @@ namespace UIFramework.Data.Building
 
             return "{" + string.Join(", ", Keys) + "}";
         }
+    }
+
+    /// <summary>The fields of an item row; the costly members (<c>description</c>, <c>price</c>) are read from the item when asked for.</summary>
+    internal sealed class ItemRowFields : RowFields
+    {
+        internal ItemRowFields(IDictionary<string, DataValue> fields, Item item) : base(fields)
+        {
+            Item = item;
+        }
+
+        internal Item Item { get; }
     }
 }

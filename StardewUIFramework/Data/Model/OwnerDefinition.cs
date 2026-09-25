@@ -28,6 +28,12 @@ namespace UIFramework.Data.Model
         /// <summary>Named rich tooltips, used by any RichTooltip / RowTooltip of this owner with <c>{ "From": "name" }</c>.</summary>
         public Dictionary<string, TooltipDefinition>? Tooltips { get; set; }
 
+        /// <summary>
+        /// "true" lets other mods' and packs' data write this owner's <c>config.*</c> and <c>player.*</c> values
+        /// (<c>config[owner].x</c>); without it only the owner's own data can.
+        /// </summary>
+        public string? SharedState { get; set; }
+
         /// <summary>Fields that match no member (typos).</summary>
         [JsonExtensionData]
         public IDictionary<string, JToken>? Unknown { get; set; }

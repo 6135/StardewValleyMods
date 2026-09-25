@@ -122,8 +122,8 @@ Type these in the SMAPI console. The ones marked *(mod authors)* are diagnostics
 | `ui_schema`                            | Write JSON Schemas of the data format to `Mods/UIFramework/schema` (editor autocomplete). *(mod authors)*                                           |
 | `ui_state [list\|get\|set\|reset] ...` | List, read, write or reset the state of data UIs (`menu[owner/menu].x`, `session[owner].x`, `config[owner].x`...). *(mod authors)*                 |
 
-The bundled example mod adds `ui_demo` (open its demo menu) and `ui_hud` (toggle its HUD widget) when it is
-installed.
+The bundled example mod adds `uiex_demo` (open its demo menu), `uiex_items` (open its item image demo) and
+`uiex_hud` (toggle its HUD widget) when it is installed; the two menus only open once a save is loaded.
 
 ### Moving, collapsing and resizing windows
 
@@ -152,7 +152,7 @@ ones slide up when a newer one arrives. They stay visible on top of menus.
 - Works in single player, multiplayer and split-screen.
 - No Harmony patches. The mod only reacts to SMAPI events and to the menus it opens itself.
 - Textures come from the vanilla content pipeline (`LooseSprites/textBox`, `Game1.mouseCursors`,
-  `Game1.menuTexture`) plus a bundled `assets/text_box_small.png`, so Content Patcher packs can retexture them.
+  `Game1.menuTexture`) plus a bundled `assets/text_box_small.png` (the `Mods/6135.UIFramework/TextBoxSmall` asset), so Content Patcher packs can retexture them.
 
 ## For modders
 
@@ -167,8 +167,10 @@ screens in JSON and offer code to data by name ([C# bridge](#c-bridge-and-hybrid
 2. Declare the dependency in your `manifest.json`:
 
    ```json
-   "Dependencies": [ { "UniqueID": "6135.UIFramework", "MinimumVersion": "1.1.0", "IsRequired": true } ]
+   "Dependencies": [ { "UniqueID": "6135.UIFramework", "MinimumVersion": "1.8.0", "IsRequired": true } ]
    ```
+
+   Set `MinimumVersion` to the framework version you build against (see [Versioning](#versioning)).
 
 3. Request the API once the game has launched:
 
@@ -234,13 +236,13 @@ public class ModEntry : Mod
 }
 ```
 
-The [example mod](../UIFrameworkExample/ModEntry.cs) in this repository goes further: a two-column form with one of
+The [example mod](../UIFrameworkExample/DemoMenu.cs) in this repository goes further: a two-column form with one of
 every input type, a virtualized list with selection, a custom-drawn component
-([`VolumeGauge.cs`](../UIFrameworkExample/VolumeGauge.cs)), OK/Close buttons and a `ui_demo` console command, plus
-one demo per v1.1 feature: a composite "money field" and a hand-drawn frame around built-in checkboxes
+([`VolumeGauge.cs`](../UIFrameworkExample/VolumeGauge.cs)), OK/Close buttons and a `uiex_demo` console command, plus
+one demo per feature: a composite "money field" and a hand-drawn frame around built-in checkboxes
 ([`FrameBox.cs`](../UIFrameworkExample/FrameBox.cs)), an extension slot the mod contributes to itself, a sortable
 data grid, a rich-text header and a rich tooltip, signals bound to the form inputs, a Save / Cancel / Undo / Redo
-form generated from [`DemoSettings.cs`](../UIFrameworkExample/DemoSettings.cs), a draggable HUD widget (`ui_hud`)
+form generated from [`DemoSettings.cs`](../UIFrameworkExample/DemoSettings.cs), a draggable HUD widget (`uiex_hud`)
 and a theme dropdown. It compiles against the copied API file only. The samples in the sections below are adapted
 from it.
 
@@ -266,7 +268,7 @@ Menu chrome and placement come from `IUIMenuOptions` / the same properties on `I
 - `Title` (drawn on the vanilla scroll banner above the box), `DrawBox` (the vanilla dialogue box), `ShowCloseButton`.
 - `Width` / `Height`: fixed size, or `null` to fit the content. The result is clamped to the UI viewport.
 - `Anchor` (`Center` by default, or an edge / corner) or `Explicit` with `X` / `Y`; `SetPosition(x, y)` switches to
-  `Explicit`. While a menu is open, a centered axis keeps the position of its first layout (1.8): content that grows or
+  `Explicit`. While a menu is open, a centered axis keeps the position of its first layout: content that grows or
   shrinks (a line shown on hover, a tab switch) extends the window from where it is instead of re-centering it under
   the cursor. It is centered again when it reopens, the game window is resized or its position properties change.
 - `Modal` (default `true`). When it is `false`, a click outside the box closes the menu.
@@ -363,7 +365,7 @@ Routing of a click:
 2. The deepest visible, enabled element under the cursor is the target (scroll views only hit inside their
    viewport). A target you keep typing into or navigating (text and number inputs, data grids, custom components
    with `WantsFocus`) takes keyboard focus; clicking anything else clears focus. Click-once controls (buttons,
-   checkboxes, dropdowns, sliders) do their job on the click and do not keep focus (1.8), so they are not left
+   checkboxes, dropdowns, sliders) do their job on the click and do not keep focus, so they are not left
    highlighted and one Escape still closes the menu. Tab, arrows and the gamepad still move focus onto them.
 3. The event is delivered to the target, then bubbles to each ancestor until someone sets `IUIEvent.Handled = true`
    (buttons, checkboxes, dropdowns and custom components that return `true` from `OnClick` mark their own clicks
@@ -385,10 +387,13 @@ The menu draws in two passes: the tree in order, then an overlay pass for anythi
 siblings (an open dropdown list, `OnDrawOverlay` callbacks, custom components with `WantsOverlay`). Overlay elements
 also get first pick at input. Only one dropdown is open at a time; opening another closes the first. Dropdowns show
 `MaxVisible` rows and scroll beyond that; the open list is clamped to the screen. When there are more choices than
-`MaxVisible`, the open list shows a compact scroll indicator on its right edge (1.2): up / down arrows, dimmed at
+`MaxVisible`, the open list shows a compact scroll indicator on its right edge: up / down arrows, dimmed at
 either end, and a thumb sized to the visible share of the list. Clicking an arrow scrolls one row and clicking the
 track jumps there. Tooltips are suppressed while a
-popup is open.
+popup is open. A list opened with the mouse holds keyboard focus only while it is open and gives it back when it
+closes, so one Escape still closes the menu afterwards. A dropdown's own `OnKey` runs before its built-in arrow /
+Enter handling, and while closed it picks up a choices delegate that returns a different array (the selected value
+is kept when it still exists).
 
 #### Focus, keyboard and gamepad navigation
 
@@ -421,7 +426,7 @@ value goes back to the config default). It is drawn with the vanilla `IClickable
 with icons, item rows, money or colored lines, set `RichTooltip` instead (see
 [Rich text and rich tooltips](#rich-text-and-rich-tooltips)).
 
-Tooltips are inherited (1.8): an element without one shows its nearest ancestor's, so an image or label inside a
+Tooltips are inherited: an element without one shows its nearest ancestor's, so an image or label inside a
 data grid row shows the row's tooltip, and a tooltip on a stack covers everything in it. Moving the cursor between
 elements that share a tooltip does not restart the delay.
 
@@ -474,7 +479,10 @@ described under [Composites](#composites).
 `UnregisterHotkey(id)` removes it. `BindToggleHotkey(menu, keybindList)` opens or closes a menu with one key; pass an
 empty string to unbind. Keybind lists use SMAPI's `KeybindList` string syntax, so you can feed values straight from
 your Generic Mod Config Menu settings: `"F9"`, `"LeftControl + F8"`, `"LeftControl + F8, LeftShift + F9"`. An invalid
-string is logged as a warning and ignored.
+string is logged as a warning and removes the binding registered under that id. Hotkeys do not fire while the player
+is typing (chat, a vanilla text box or a framework text input). A toggle hotkey looks its menu up when the key is
+pressed and is dropped when that menu is destroyed or replaced (`DestroyMenu`, or `CreateMenu` with the same id), so
+bind it again after re-creating a menu.
 
 #### Extension slots and screen context
 
@@ -551,7 +559,8 @@ throws is logged and muted.
 
 A composite is a subtree packaged under a global name so that *any* mod can instantiate it without sharing an
 assembly; the framework is the only DLL anyone references. Define it once with `DefineComposite(name, build)`
-(convention: `"<ModId>.<Name>"`; defining an existing name replaces it, `UndefineComposite` removes one of yours,
+(prefix the name with your mod id: `"<ModId>.<Name>"`; defining one of your own names again replaces it, a name
+another mod defined is refused with a warning, `UndefineComposite` removes one of yours,
 `HasComposite` / `ListComposites` query the registry, `ui_composites` prints it). The builder receives an
 `IUICompositeHost` (the container it fills, laid out as a column) and an `IUICompositeArgs` bag:
 
@@ -631,8 +640,8 @@ Labels and buttons parse a small markup language when `RichText = true` (default
 | Markup                                   | Effect                                                                                                    |
 |------------------------------------------|-----------------------------------------------------------------------------------------------------------|
 | `[b]...[/b]`                             | Bold (drawn with `Utility.drawBoldText`).                                                                 |
-| `[color=#RRGGBB]...[/color]`             | Colored span; `#RRGGBBAA` is accepted too.                                                                |
-| `[color=red]...[/color]`                 | Named colors: `red`, `green`, `blue`, `gray` / `grey`, `white`, `black`, `yellow`, `orange`, `purple`.    |
+| `[color=#RRGGBB]...[/color]`             | Colored span; `#RRGGBBAA` and `R,G,B[,A]` are accepted too.                                               |
+| `[color=red]...[/color]`                 | Any XNA color name (`red`, `yellow`, `orange`, `Wheat`...; the same names data and theme color fields take), plus `grey`. |
 | `[icon=(O)24]`                           | Inline sprite of a vanilla item, by qualified item id.                                                    |
 | `[link=name]...[/link]`                  | Clickable span (blue, orange while hovered, underlined); labels raise `OnLink` with `name`.                |
 | `[[` / `]]`                              | Literal `[` / `]`.                                                                                        |
@@ -820,9 +829,7 @@ public sealed class DemoSettings
     public bool Pets { get; set; } = true;
 
     [Section("Game")]
-    [Tooltip("0-100")]
-    public double Volume { get; set; } = 50;
-
+    [Tooltip("How hard the farm is: Easy to VeryHard.")]
     public Difficulty Difficulty { get; set; } = Difficulty.Normal;
 
     public string? ValidateFarmName(string value) =>
@@ -853,7 +860,7 @@ box behind the content (`DrawBox`, `Opacity`). It hides itself while any menu is
 vanilla HUD is hidden, plus whenever `Visible` is false or `ShowWhen` returns false. With `Interactive = true` it
 receives hover and clicks while no menu is open (the game only loses a click that an element handled) and the player
 can drag it; the offset is saved with the game. HUD widgets never take keyboard focus, so text inputs in them are
-display-only. `OnUpdate` runs every tick while shown.
+display-only. `OnUpdate` runs once per game tick while shown (once in total, not once per split-screen player).
 
 `ShowToast(text)`, `ShowToast(text, durationMs)` and `ShowToastWithIcon(text, icon, source, durationMs)` queue
 notifications in the bottom-left corner: at most five are shown, each fades in and out over 200 ms and older ones
@@ -869,6 +876,29 @@ Fixed-size windows (both `Width` and `Height` set) always get the resize grip. A
 gets it with `Resizable = true` (default `false`); once the player resizes it, it keeps that size and scrolls its
 content, until `ResetPlayerLayout` (or `ui_layout_reset`) makes it fit its content again. A saved position is applied when the menu opens (before `OnOpen`), so values you set in `OnOpen`
 override it. Interactive HUD widgets save their dragged anchor offset under `"hud:<yourModId>/<hudId>"` the same way.
+
+#### Split-screen
+
+One `IUIMenu` serves every split-screen player: its tree, options and callbacks are shared, but it is open per
+screen. `IsOpen`, `Open`, `Close`, `OpenMenu` / `CloseMenu` / `IsOpen(id)` and toggle hotkeys act on the player whose
+screen is current, so each player opens and closes the menu on their own, and hover, focus, open popups and the
+collapsed state are per player too. A HUD widget is shown or hidden per screen (a menu open, an event) and is hovered
+and dragged per player; its `OnUpdate` runs once per game tick, not once per player.
+
+Your delegates run on the screen that draws or raises them, so keep per-player data in a `PerScreen<T>` and read its
+`.Value` there:
+
+```csharp
+private readonly PerScreen<CropSettings> settings = new(() => new CropSettings());
+private readonly PerScreen<List<CropRow>> rows = new(() => new List<CropRow>());
+
+ui.ExposeModelSource("settings", () => settings.Value);        // resolved at every read: each player's own object
+ui.ExposeRows("rows", () => rows.Value.Cast<object>().ToArray()); // read on the screen that shows the rows
+ui.RegisterCommand("recalc", call => rows.Value = Calculate(settings.Value)); // commands run on the calling screen
+```
+
+`ExposeModel(name, object)` shares one object between every player; use `ExposeModelSource` when each player needs
+their own.
 
 #### Themes and accessibility
 
@@ -912,8 +942,9 @@ before a translation exists. Nothing in your code changes: the transformation ha
 #### Inspector and debug console
 
 The inspector is a devtools-style overlay for framework menus. Toggle it with the `ui_inspect` console command or
-the `InspectorHotkey` keybind (`F10` by default, configurable in GMCM) while a framework menu is open. While it is
-on, the menu stops routing input and instead:
+the `InspectorHotkey` keybind (`F10` by default, configurable in GMCM); the hotkey only works while a framework menu
+is open. The inspector is per split-screen player: one player inspecting leaves the other player's menus alone. While
+it is on, the menu stops routing input and instead:
 
 - every element's bounds are outlined (containers blue, leaves green, the inspected element orange with a
   translucent fill), margins are drawn as tinted bands and grid tracks as dotted lines;
@@ -944,7 +975,7 @@ element id and event name.
 
 #### Data-driven UIs (JSON)
 
-Since v1.3 every screen can also be written as **JSON data** instead of C#. A Content Patcher pack edits the
+Every screen can also be written as **JSON data** instead of C#. A Content Patcher pack edits the
 framework's data assets, and the framework builds each entry through its owner's own API instance: the same
 components, layout, themes, player layout, accessibility and inspector as a C# menu. Nothing about the result is
 second class. A C# mod can pick either half, or mix them: keep its UIs in JSON and hand code (commands, functions, row
@@ -957,14 +988,14 @@ sources, draw hooks, models, composites) to data by name.
 - Genuine code (custom drawing, custom components, data computed in C#) is registered once by a C# mod and
   **referenced by name** from any pack.
 
-`[CP] UI Framework Example` in this repository is a complete pack that uses every feature below.
+`[CP] UI Framework Example` in this repository is a complete pack that uses most features below.
 
 ##### Getting started (Content Patcher pack)
 
 1. Make a Content Patcher pack whose manifest depends on the framework:
 
    ```json
-   "Dependencies": [ { "UniqueID": "6135.UIFramework", "MinimumVersion": "1.7.0" } ],
+   "Dependencies": [ { "UniqueID": "6135.UIFramework", "MinimumVersion": "1.8.0" } ],
    "ContentPackFor": { "UniqueID": "Pathoschild.ContentPatcher" }
    ```
 
@@ -1014,10 +1045,10 @@ validation while you type.
 |-------------------------------------|----------------------------|----------------------------------------------------------------------------------------------|
 | `Menus`                             | `<owner>/<menu id>`        | Menu options, state, events and the element tree                                             |
 | `Huds`                              | `<owner>/<hud id>`         | HUD widgets                                                                                  |
-| `Owners`                            | `<mod id>`                 | Per-owner settings: `TooltipDelayMs`, `DefaultStyle`, style `Classes`, global `Hotkeys`, `Templates` |
+| `Owners`                            | `<mod id>`                 | Per-owner settings: `TooltipDelayMs`, `DefaultStyle`, style `Classes`, global `Hotkeys`, `Templates`, `Tooltips`, `SharedState` |
 | `Sprites`                           | `<owner>/<name>`           | Named images: `Texture`, `Source`, `Border` (3x3 box), `Scale`, `Tint`                        |
-| `Composites`                        | `<ModId>.<Name>` (global)  | Data composites, usable from data and from C# `AddComposite` (v1.7)                           |
-| `Contributions`                     | `<contributor>/<name>`     | Slot contributions, event subscriptions and decorations for another mod's menu (v1.7)         |
+| `Composites`                        | `<ModId>.<Name>` (global)  | Data composites, usable from data and from C# `AddComposite`                                  |
+| `Contributions`                     | `<contributor>/<name>`     | Slot contributions, event subscriptions and decorations for another mod's menu              |
 | `TextBoxSmall` (texture)            |                            | The bundled small text box, for input `Texture` fields                                       |
 
 A C# mod's `ImportData` / `ImportDataFile` JSON is the base layer of these assets, so packs can patch it too. Any pack
@@ -1037,7 +1068,7 @@ unless a C# menu took its key.
 | `Title`, `Width`, `Height`, `ShowCloseButton`, `Modal`, `DimBackground`, `Anchor`, `X`, `Y`, `DrawBox`, `Padding`, `CloseOnEscape`, `PlayerLayout`, `Resizable` | The `IUIMenuOptions` of the menu |
 | `Horizontal`, `Spacing`, `Alignment`                                      | The root stack                                                                 |
 | `DefaultButton`, `CancelButton`                                           | Element ids for Enter / Escape                                                 |
-| `Hotkey`                                                                  | A toggle keybind (`"LeftControl + F8"`)                                        |
+| `Hotkey`                                                                  | A toggle keybind (`"LeftControl + F8"`); it respects `Condition` and, when the player is busy, waits until they are free |
 | `Condition`                                                               | A game state query checked whenever data opens the menu                        |
 | `State`, `StateLifetime`, `Computed`, `Watch`, `Sources`                  | See [State](#state-scopes) and [Collections](#collections)                    |
 | `Templates`, `Expose`, `Commands`                                         | See [Templates and composites](#templates-and-composites) and [Contributions](#contributions-and-decorations) |
@@ -1050,15 +1081,21 @@ unless a C# menu took its key.
 `State`, `Sources`, `Computed`, `Watch`, `OnUpdate` + `UpdateIntervalMs` and `Children`. Edits rebuild a HUD in place
 and keep the position the player dragged it to.
 
-**Owner entry fields** (`Owners`): `TooltipDelayMs`, `DefaultStyle` (a style), `Classes` (named styles used by
-`"Class": "header big"`, merged in order before the inline `Style`), `Hotkeys`
-(`{ "id": { "Keys": "LeftControl + J", "Condition": "...", "Actions": [ ... ] } }`) and `Templates`. The owner of a
-hybrid mod shares one context between C# and data: a field set here overrides the C# `SetTooltipDelay` /
+**Owner entry fields** (`Owners`): `TooltipDelayMs`, `DefaultStyle` (a style of literal values: `${...}` in it is
+evaluated once, with a warning), `Classes` (named styles used by `"Class": "header big"`, merged in order before the
+inline `Style`), `Hotkeys` (`{ "id": { "Keys": "LeftControl + J", "Condition": "...", "Actions": [ ... ] } }`),
+`Templates`, `Tooltips` (see [Rich tooltips and forms](#rich-tooltips-and-forms)) and `SharedState`: other mods' and
+packs' data may write this owner's `config.*` / `player.*` values (`config[owner].x`) only when it is `"true"`;
+without it only the owner's own data can (C#, the console and trigger actions outside a UI are not restricted). The
+owner of a hybrid mod shares one context between C# and data: a field set here overrides the C# `SetTooltipDelay` /
 `SetDefaultStyle`, a field left out keeps the C# value, and removing the entry restores it.
 
 **Styles** (`Style`, `DefaultStyle`, `Classes`): `Font` (`small`, `dialogue`, `tiny`), `TextColor`, `HoverColor`,
 `BoxTexture`, `BoxSource`, `BoxScale`, `Padding`, `TextShadow`, `ClickSound`, `HoverSound`. Colors are `#RRGGBB`,
-`#RRGGBBAA`, `R,G,B[,A]` or a color name.
+`#RRGGBBAA`, `R,G,B[,A]` or a color name. `Padding` is only read by `Panel`, and the box fields (`BoxTexture`,
+`BoxSource`, `BoxScale`) only by `Panel` and `Button`; containers pass their style on to their children, and
+`ui_validate` warns when a leaf element (a label, input, image...) sets a field it does not draw with. A `TextColor`
+from a style or class replaces the theme's text color (disabled text is drawn at half of it).
 
 **Image references** work everywhere a texture is taken (`Image`, button `Icon`, input `Texture`,
 `Style.BoxTexture`, toasts, tooltip icons):
@@ -1089,9 +1126,9 @@ are the C# API's names, and every field that takes a value also takes an express
 | `ItemImage`                                                 | `Item` (id, item query or an expression giving an item), `Quality`, `Count`, `Stack`, `Scale`, `DrawShadow`, `Alpha`, `Tint` |
 | `Checkbox`                                                  | `Label`, `Value`, `Bind`, `ClickSound`, `OnValueChanged`, `Shrink`                                   |
 | `TextInput`                                                 | `Value`, `Bind`, `Placeholder`, `MaxLength`, `Texture`, `Validate`, `OnInvalid`, `OnValueChanged`, `OnSubmit` |
-| `NumberInput`                                               | `Value`, `Bind`, `Min`, `Max`, `Step`, `Clamp`, `Decimals`, `Texture`, `Validate`, `OnInvalid`, `OnValueChanged`, `OnSubmit` |
+| `NumberInput`                                               | `Value`, `Bind`, `Min` (default 0), `Max` (default 999,999), `Step` (1), `Clamp` (default on), `Decimals`, `Texture`, `Validate`, `OnInvalid`, `OnValueChanged`, `OnSubmit` |
 | `Dropdown`                                                  | `Value`, `Bind`, `Choices`, `Labels`, `MaxVisible`, `ChoicesSource`, `ChoiceValue`, `ChoiceLabel`, `OnValueChanged`, `OnScroll`, `Shrink` |
-| `Slider`                                                    | `Value`, `Bind`, `Min`, `Max`, `Step`, `OnValueChanged`                                    |
+| `Slider`                                                    | `Value`, `Bind`, `Min` (default 0), `Max` (default 100), `Step`, `OnValueChanged`          |
 | `Switch`                                                    | `Switch` (an expression); children carry `Case`                                            |
 | `Repeat`, `List`, `DataGrid`                                | See [Collections](#collections)                                                            |
 | `Form`                                                      | See [Rich tooltips and forms](#rich-tooltips-and-forms)                                    |
@@ -1132,9 +1169,12 @@ structure fields `If`, `Case`, `With`, `Out`, the draw hooks `DrawExtra` / `Draw
   i18n strings. Vanilla tokens are explicit (`token('[LocalizedText ...]')`, `loc('Strings/UI:Key')`), because their
   `[...]` syntax collides with rich text.
 - **The language** has literals, paths (`menu.x`, `row.item.displayName`, `list[0]`), `+ - * / %`, comparisons,
-  `&& || !`, `?:` and string concatenation. It is sandboxed: no loops, no assignment, no reflection, capped depth and
-  size. Results are cached per screen and state change; anything volatile (`gsq`, `hovered`, C# functions and
-  models) is cached once per tick.
+  `&& || !`, `?:` and string concatenation. Brackets hold an expression (`row[menu.col]`, `list[i]`); only right
+  after `menu session player stat config el ctx model` are they a raw key (`menu[Owner/menu].x`, `el[my.id].value`).
+  It is sandboxed: no loops, no assignment, no reflection, capped depth and size. Results are cached per screen and
+  state change; anything volatile (`gsq`, `hovered`, C# functions and models) is cached once per tick.
+- **Formatting.** `format()` precisions are capped at 30 (`F31` is an error); `money()` always formats the English
+  way (`1,234g`).
 
 | Functions                  | Names                                                                                           |
 |----------------------------|-------------------------------------------------------------------------------------------------|
@@ -1149,11 +1189,13 @@ structure fields `If`, `Case`, `With`, `Out`, the draw hooks `DrawExtra` / `Draw
 ##### State scopes
 
 State replaces getters / setters, signals and computeds. Values are kept per split-screen player and survive menu
-rebuilds and hot reloads.
+rebuilds and hot reloads. State names are case-insensitive in every scope (`menu.Count` is `menu.count`).
+`player.*` and `config.*` are stored as text and read back as a number only when the text is exactly that number's
+canonical form (`12`, `0.5`), so text such as `007` or `1.` stays text; `true` / `false` read as flags.
 
 | Root                          | What it holds                                                                                   |
 |-------------------------------|-------------------------------------------------------------------------------------------------|
-| `menu.x`                      | Per menu. `"StateLifetime": "Open"` on the menu resets it on each open (default `Session`)       |
+| `menu.x`                      | Per menu. `"StateLifetime": "Open"` on the menu resets it each time the menu really opens (not on `_Refresh` or a hot reload; default `Session`) |
 | `session.x`                   | Per owner, until the return to title                                                            |
 | `player.x`                    | `Game1.player.modData["<owner>/x"]`: saved, synced, readable by vanilla `PLAYER_MOD_DATA`         |
 | `stat.x`                      | The player's stats (vanilla `PLAYER_STAT` / `IncrementStat`)                                     |
@@ -1230,8 +1272,8 @@ A failing entry is logged against the owner once. `@ModId/command args` is short
 - `[6135.UIFramework_State <key>]` puts state into dialogue, mail and other tokenizable text.
 - With Content Patcher installed, `{{6135.UIFramework/State: <owner>/<key>}}` exposes state to patches (add
   `6135.UIFramework` as a dependency), e.g. `"When": { "6135.UIFramework/State: {{ModId}}/config.showNote": "true" }`,
-  so a pack's settings screen can drive its own patches. It updates at Content Patcher's normal update points (day
-  start, `patch update`).
+  so a pack's settings screen can drive its own patches. Its value only changes at Content Patcher's update points
+  (day start, location change, `patch update`), not the moment the state changes.
 
 **Map tiles:** `6135.UIFramework_OpenMenu <owner/menu>` is also a tile `Action` and a `TouchAction` (and works in
 `Data/Buildings` `ActionTiles`). An `Action` is clicked and lives on the `Buildings` layer, which only has tiles on
@@ -1303,13 +1345,13 @@ alone), and a DataGrid takes the same as `RowTooltip` with `row.*` in scope. Blo
 `{ "Type": "Divider" }` and `{ "Type": "Money", "Amount": "${row.price}" }`. Every block takes `"When": "expr"` and is
 only shown while it holds.
 
-**Named tooltips (1.8).** An owner's `Owners` entry can hold `"Tooltips": { "crop": { "MaxWidth": 420, "Blocks": [...] } }`,
+**Named tooltips.** An owner's `Owners` entry can hold `"Tooltips": { "crop": { "MaxWidth": 420, "Blocks": [...] } }`,
 and any `RichTooltip` / `RowTooltip` of that owner uses one with `{ "From": "crop" }` (its own blocks, if any, follow;
 its own `MaxWidth` wins). Values still evaluate in the scope that shows the tooltip, so two grids can share one
 row tooltip. Tooltips are also inherited: an image or label inside a row shows the row's tooltip, so cells do not
 need their own copy.
 
-**Live images (1.8).** An `Image`'s `Sprite` is a value like any other field: a literal reference, or a
+**Live images.** An `Image`'s `Sprite` is a value like any other field: a literal reference, or a
 `${...}` that gives a reference string, a `Texture2D` or a `Tuple<Texture2D, Rectangle>` (the usual game sprite
 pair), so a row template can show a different sprite per row (`"Sprite": "${row.Crop.Sprite}"`). A C# row's
 `Rectangle` / `Color` values work the same way in `Source` / `Tint`.
@@ -1317,9 +1359,10 @@ pair), so a row template can show a different sprite per row (`"Sprite": "${row.
 **Forms.** `{ "Type": "Form", "Fields": [ ... ], "ShowButtons": true, "OnSaved": [...], "OnCancelled": [...],
 "OnChanged": [...] }` is an auto-form over state: each field is `{ "Id", "Bind": "config.volume", "Kind": "Checkbox" |
 "Number" | "Integer" | "Text" | "Dropdown", "Label", "Tooltip", "Section", "Value" (default), "Min", "Max",
-"Choices", "ReadOnly", "Validate" }`. Edits write the bound value right away; Cancel restores the values of the last
-Save, and the form keeps an undo / redo history (`el[form].dirty`, `canUndo`, `canRedo`). `"Model": "settings"`
-instead of `Fields` builds the form over a C# model, exactly like `AddForm`.
+"Choices", "ReadOnly", "Validate" }` (`Kind` is one of those five; an `Integer` field's range defaults to the whole
+`int` range, a `Number` field's to -999,999..999,999). Edits write the bound value right away; Cancel restores the
+values of the last Save, and the form keeps an undo / redo history (`el[form].dirty`, `canUndo`, `canRedo`).
+`"Model": "settings"` instead of `Fields` builds the form over a C# model, exactly like `AddForm`.
 
 ##### Templates and composites
 
@@ -1355,7 +1398,8 @@ instead of `Fields` builds the form over a C# model, exactly like `AddForm`.
 - Body ids are prefixed with the instance id (`money.title`); the instance's children keep their ids and the caller's
   scope. Inputs without `Bind` inside a body keep one value per instance. Children for an outlet the body does not
   declare are added at the end of the instance with a warning.
-- `ui_validate` reports missing `Required` arguments, unknown arguments and literals of the wrong type.
+- A parameter's `Type` is `string`, `number`, `bool` or `any` (another name is warned about and the value is used as
+  is). `ui_validate` reports missing `Required` arguments, unknown arguments and literals of the wrong type.
 
 **Data composites** (`Composites`, keyed by global name `<ModId>.<Name>`) have the same `Params` / body / outlets,
 plus `Expose`, `Commands` and `Publish`. They are registered next to C# composites, so data uses them as custom tags
@@ -1375,7 +1419,7 @@ rebuilds every live instance in place.
   ],
   "Expose": { "value": "args.value" },                          // el[id].value, IUIComposite.GetNumber("value")
   "Commands": { "reset": "6135.UIFramework_SetState args.value 0" }, // _Invoke #id.reset, IUIComposite.Invoke("reset")
-  "Publish": [ "changed" ]                                      // documentation of the events the body raises
+  "Publish": [ "changed" ]                                      // the events the body raises; ui_validate checks instances' "On" against it
 }
 // instance side: "On" hears the composite's events (IUIComposite.Subscribe in C#)
 { "Id": "field", "Type": "{{ModId}}.MoneyField", "value": "menu.money", "On": { "changed": "..." } }
@@ -1436,6 +1480,7 @@ may use it that way, and the owner's own data may write the short name.
 | `DefineDataSource("rows")` (`Count`, `Text`, `Number`, `Item`, `Refresh()`) | `"Source": "hook:ModId/rows"`, cells read `row.<field>`, `row.item`   |
 | `ExposeRows("crops", () => list.ToArray())`        | `"Source": "hook:ModId/crops"`, cells read the objects' members (`row.Profit`, `row.Item`)     |
 | `ExposeModel("settings", settings)`                | `model.settings.Day` (own data), `model[ModId/settings].Day`; `"Bind": "model.settings.Day"`; `{ "Type": "Form", "Model": "settings" }` |
+| `ExposeModelSource("settings", () => settings.Value)` | The same, with the object resolved at every read (one per split-screen player over a `PerScreen<T>`) |
 | `ExposeSignal("x", signal)`, `ExposeComputed(...)` | `@ModId/x` (read-only; data refreshes when it changes)                                        |
 | `RegisterDrawHook("glow", (b, bounds, call) => ...)` | `"DrawExtra": "ModId/glow"` (after the element's content) or `"DrawOverlay": ...` (above the menu) |
 | `DefineComposite("ModId.Gauge", ...)`              | A custom tag or `"Type": "Composite"` (see [Templates and composites](#templates-and-composites)) |
@@ -1444,8 +1489,11 @@ may use it that way, and the owner's own data may write the short name.
 
 - **Commands** get an `IUIDataCall`: `Args` (interpolated), `OwnerModId`, `Menu`, `Element`, `Row` (your object for
   `ExposeRows` rows, the item for item rows, a dictionary for JSON rows) and `RowIndex`, plus `Evaluate(expr)`,
-  `GetState(key)` / `SetState(key, value)` in the caller's scope. Data re-evaluates after every command.
-- **Functions** can be registered (or replaced) at any time; cached results are dropped when they are.
+  `GetState(key)` / `SetState(key, value)` in the caller's scope. Data re-evaluates after every command. Commands are
+  public: any pack, mail or trigger action can run them (`6135.UIFramework_Invoke`) with any arguments, so validate
+  `Args`, and act on the calling player's state (a command runs on the screen that raised it).
+- **Functions** can be registered (or replaced) at any time; registering one invalidates every cached data value, so
+  all data UIs re-read their values on the next tick (register again after a language change to refresh text).
 - **Models** are read by public properties and fields (case-insensitive) with the same conversions as forms (integers
   round, enums by name). An object implementing `INotifyPropertyChanged` / `INotifyCollectionChanged` refreshes data
   when it notifies; other model reads are re-evaluated once per tick. Exposed rows are read again whenever data state
@@ -1705,7 +1753,7 @@ padded area):
 | `bool Wrap`         | Wrap to the available width (or to `IUIElement.Width`). |
 | `UIAlign TextAlign` | Horizontal text alignment inside the label's bounds.    |
 | `float Scale`       | Text scale.                                             |
-| `bool RichText`     | Parse markup in `Text`: `[color=#RRGGBB]...[/color]` (or `red`, `green`, `blue`, `gray`), `[b]...[/b]`, `[icon=(O)24]`, `[link=name]...[/link]`; `[[` / `]]` are literal brackets. Default `false`. |
+| `bool RichText`     | Parse markup in `Text`: `[color=...]...[/color]` (`#RRGGBB[AA]`, `R,G,B[,A]`, an XNA color name or `grey`), `[b]...[/b]`, `[icon=(O)24]`, `[link=name]...[/link]`; `[[` / `]]` are literal brackets. Default `false`. |
 | `Action<string> OnLink` | Raised with the link name when a `[link=name]` span is clicked (`RichText` only).             |
 
 `IUIImage : IUIElement` (a texture, or a region of one):
@@ -1761,7 +1809,7 @@ padded area):
 | `double Value`                         | Current value.                                                                        |
 | `double Min`, `Max`                    | Range.                                                                                |
 | `double Step`                          | Increment for Up/Down and the wheel.                                                  |
-| `bool Clamp`                           | Keep the value inside `Min` / `Max`.                                                  |
+| `bool Clamp`                           | Keep the value inside `Min` / `Max`. While typing, a number still short of the range ("1" on the way to "12" with a minimum of 5) stays uncommitted; Enter and focus loss commit it clamped. |
 | `int Decimals`                         | Decimal places accepted / displayed (0 = integers only).                              |
 | `Func<double, bool> Validate`          | Called with the prospective new value before it is applied; return `false` to reject. |
 | `Texture2D Texture`                    | Custom box texture (`null` = vanilla text box).                                       |
@@ -1777,7 +1825,7 @@ padded area):
 | `string SelectedValue`                 | Value of the selected choice.                                |
 | `int MaxVisible`                       | Rows shown at once when open (the list scrolls beyond that, with a scroll indicator). |
 | `bool IsOpen`                          | Whether the list is open.                                    |
-| `void Open()`, `void Close()`          | Open / close the list.                                       |
+| `void Open()`, `void Close()`          | Open / close the list. A list opened with the mouse holds focus while open (the arrows move the highlight) and gives it back when it closes. |
 | `void RefreshChoices()`                | Re-evaluate the choices / labels delegates.                  |
 | `int ChoiceCount`                      | Number of choices.                                           |
 | `string GetChoice(int index)`          | Value at `index`.                                            |
@@ -1969,7 +2017,7 @@ Create with `CreateTooltip()` and assign to `IUIElement.RichTooltip`.
 | `IUITooltip Line(Func<string> text, Color color)`           | A line of (rich) text in `color`.                                         |
 | `IUITooltip Icon(Texture2D texture, Rectangle? source, float scale)` | A block icon drawn on its own row.                               |
 | `IUITooltip Item(string qualifiedItemId)`                   | A vanilla item's sprite and display name on one row (qualified id, e.g. `(O)24`). |
-| `IUITooltip ItemInstance(Func<Item> item)` (v1.2)           | An item instance's sprite, drawn with `drawInMenu` so tints are kept, and its display name. Null skips the row. |
+| `IUITooltip ItemInstance(Func<Item> item)`                  | An item instance's sprite, drawn with `drawInMenu` so tints are kept, and its display name. Null skips the row. |
 | `IUITooltip Divider()`                                      | A horizontal rule.                                                        |
 | `IUITooltip Money(Func<int> amount)`                        | A coin icon followed by the amount, like vanilla shop tooltips.           |
 | `IUITooltip MaxWidth(int px)`                               | Wrap lines wider than this many UI pixels (0 = only the screen limits the width). |
@@ -1988,11 +2036,11 @@ Create with `CreateTooltip()` and assign to `IUIElement.RichTooltip`.
 | `bool Resizable`                        | The divider right of the header can be dragged to resize the column.                                             |
 | `int MinWidth`                          | Smallest width in UI pixels (resize floor, also applied to the resolved track).                                  |
 | `UIAlign Align`                         | Horizontal alignment of the header and of the default text cells.                                                |
-| `Func<int, string> Text`                | Cell text for a row index (used when `BuildCell` is `null`; also the default sort key).                          |
+| `Func<int, string> Text`                | Cell text for a row index (used when `BuildCell` is `null`; also the default sort key). A delegate that throws is muted for that row only. |
 | `Func<int, string> SortKey`             | String sort key for a row index (`null` = sort by `Text`). Ignored when `SortNumber` is set.                     |
 | `Func<int, double> SortNumber`          | Numeric sort key for a row index; when set the column sorts numerically.                                         |
 | `Action<int, IUIContainer> BuildCell`   | Custom cell renderer: build elements into the cell container instead of a text label.                            |
-| `Func<int, string> CellTooltip`         | Tooltip for a cell (`null` = none; an empty string hides the tooltip for that row).                              |
+| `Func<int, string> CellTooltip`         | Tooltip for a cell (`null` = none; an empty string hides the tooltip for that row). A delegate that throws is muted for that row only. |
 
 `IUIDataGrid : IUIContainer` (virtualized table with a header row, sortable / resizable columns, filtering, row
 selection and keyboard navigation; rows are addressed by their **underlying** index, sorting and filtering only
@@ -2091,7 +2139,7 @@ A HUD widget (see [HUD widgets and toasts](#hud-widgets-and-toasts)).
 | `int X`, `int Y`                  | Offset added to the anchor position (positive = right / down); verbatim position for `Explicit`. |
 | `int? Width`, `int? Height`       | Fixed size, or `null` to fit content.                                                |
 | `bool DrawBox`                    | Draw a vanilla panel box with padding behind the content (default `true`).           |
-| `bool ShowOverMenus` (1.8)        | Keep the widget drawn on top of an open menu, like toasts (default `false`: hidden while a menu is open). It takes no input over a menu. |
+| `bool ShowOverMenus`              | Keep the widget drawn on top of an open menu, like toasts (default `false`: hidden while a menu is open). It takes no input over a menu. |
 | `float Opacity`                   | Opacity of the box, 0..1 (default 1); content is always opaque.                      |
 | `bool Interactive`                | Receive hover / clicks while no menu is open and let the player drag the widget.     |
 | `Func<bool> ShowWhen`             | Evaluated every tick; `false` hides the widget (`null` = always).                    |
@@ -2106,7 +2154,7 @@ Entry point. One instance per consumer mod; every id you register is private to 
 
 | Member                                                                                                                                                | Description                                                                                           |
 |-------------------------------------------------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------|
-| `string ApiVersion`                                                                                                                                   | Semantic version of this API (`1.7.0`).                                                               |
+| `string ApiVersion`                                                                                                                                   | Semantic version of the installed framework (its manifest version).                                   |
 | `IUIMenuOptions CreateMenuOptions()`                                                                                                                  | New options bag with the defaults listed under `IUIMenuOptions`.                                      |
 | `IUIMenu CreateMenu(string id, IUIMenuOptions options)`                                                                                               | Create (or replace) a menu.                                                                           |
 | `IUIMenu CreateMenu(string id)`                                                                                                                       | Create a menu with default options.                                                                   |
@@ -2129,7 +2177,7 @@ Entry point. One instance per consumer mod; every id you register is private to 
 | `IUINumberInput AddNumberInput(IUIContainer parent, string id, Func<double> get, Action<double> set, double min, double max, double step, bool clamp)` | Add a bound number input (`min` / `max` are swapped if reversed).                                     |
 | `IUIDropdown AddDropdown(IUIContainer parent, string id, Func<string[]> choices, Func<string[]> labels, Func<string> get, Action<string> set)`         | Add a bound dropdown; `labels` may be `null` to display the values.                                   |
 | `IUISlider AddSlider(IUIContainer parent, string id, Func<double> get, Action<double> set, double min, double max)`                                   | Add a bound slider (`min` / `max` are swapped if reversed).                                           |
-| `IUISpacer AddSpacer(IUIContainer parent, string id, int width, int height)`                                                                          | Add empty space (negative sizes become 0).                                                            |
+| `IUISpacer AddSpacer(IUIContainer parent, string id, int width, int height)`                                                                          | Add empty space; a width or height of 0 (or less) leaves that axis unset, so the spacer (or its `Line`) stretches. |
 | `IUIElement AddCustom(IUIContainer parent, string id, IUICustomComponent implementation)`                                                             | Add a consumer-implemented component.                                                                 |
 | `IUIElement Find(IUIMenu menu, string id)`                                                                                                            | Find an element by id anywhere in the menu, or `null`.                                                |
 | `void Remove(IUIElement element)`                                                                                                                     | Detach an element from its parent.                                                                    |
@@ -2141,7 +2189,7 @@ Entry point. One instance per consumer mod; every id you register is private to 
 | `IUIStyle CreateStyle()`                                                                                                                              | New empty style.                                                                                      |
 | `void SetDefaultStyle(IUIStyle style)`                                                                                                                | Default style for every element this consumer creates (`null` = theme).                               |
 
-v1.1 additions, in the order they appear in the file (a consumer's copy may include a subset):
+Slots, composites, themes, accessibility, data grids, signals, forms, HUDs and toasts, in the order they appear in the file:
 
 | Member                                                                                                                                                | Description                                                                                           |
 |-------------------------------------------------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------|
@@ -2157,7 +2205,7 @@ v1.1 additions, in the order they appear in the file (a consumer's copy may incl
 | `void Publish(IUIMenu menu, string eventName)`                                                                                                        | Raise an event of one of your menus to every contributor that subscribed to it; each handler is guarded. |
 | `void OnScreenBuilt(string ownerModId, string menuId, Action<IUIMenu> decorate)`                                                                      | Inspect and adjust a menu after it is built: runs every time it opens, after all slot contributions and before layout; sealed elements are hidden from it. One decorator per (mod, menu); `null` removes it. |
 | `IUICompositeArgs CreateCompositeArgs()`                                                                                                              | Create an empty argument bag for `AddComposite`.                                                      |
-| `void DefineComposite(string name, Action<IUICompositeHost, IUICompositeArgs> build)`                                                                 | Register a reusable composite under a global name (convention `"<ModId>.<Name>"`); defining an existing name replaces it. |
+| `void DefineComposite(string name, Action<IUICompositeHost, IUICompositeArgs> build)`                                                                 | Register a reusable composite under a global name (prefix it with your mod id: `"<ModId>.<Name>"`); defining one of your names again replaces it, a name another mod defined is refused (logged as a warning). |
 | `bool HasComposite(string name)`                                                                                                                      | Whether a composite with that name is defined (by any mod).                                           |
 | `string[] ListComposites()`                                                                                                                           | Names of every defined composite.                                                                     |
 | `void UndefineComposite(string name)`                                                                                                                 | Remove a composite this mod defined (definitions of other mods are left alone).                       |
@@ -2196,44 +2244,34 @@ v1.1 additions, in the order they appear in the file (a consumer's copy may incl
 | `void ShowToastWithIcon(string text, Texture2D icon, Rectangle? source, int durationMs)`                                                              | Show a notification with an icon (`source` `null` = whole texture).                                   |
 | `void ResetPlayerLayout(IUIMenu menu)`                                                                                                                | Forget the player's saved position / size / collapsed state for `menu` and restore the values you set. |
 
-v1.2 additions:
+Item images:
 
 | Member | Description |
 |--------|-------------|
 | `IUIItemImage AddItemImage(IUIContainer parent, string id, Func<Item> item, float scale)` | An item instance drawn with the game's `drawInMenu`, so flavored goods (wine, jelly, pickles) keep their color tint. `item` is read every frame; null draws nothing. 16 x 16 at scale 1. |
 | `IUITooltip.ItemInstance(Func<Item> item)` | Tooltip row with an item instance's sprite (tint kept) and display name, e.g. "Starfruit Wine". |
 
-v1.6 additions (the C# bridge of data UIs; see [C# bridge and hybrid mods](#c-bridge-and-hybrid-mods)):
+The C# bridge of data UIs (see [C# bridge and hybrid mods](#c-bridge-and-hybrid-mods)):
 
 | Member | Description |
 |--------|-------------|
 | `bool RunAction(string action)` | Run one trigger action (vanilla, `6135.UIFramework_*`, another mod's, or `@owner/command args`) in your mod's scope; false (logged) when it failed. |
-| `void ImportData(string json)` | Import data UIs (`Menus`, `Huds`, `Sprites`, `Owner`) as the base layer of the data assets; keys without an owner get your mod id. Adds / replaces entries. The menus are built before it returns (1.8), so `GetMenu` / `BindToggleHotkey` work on the next line. |
+| `void ImportData(string json)` | Import data UIs (`Menus`, `Huds`, `Sprites`, `Owner`) as the base layer of the data assets; keys without an owner get your mod id. Adds / replaces entries. The menus are built before it returns, so `GetMenu` / `BindToggleHotkey` work on the next line. |
 | `void ImportDataFile(string path, bool watch)` | Import a JSON file by full path (`Path.Combine(helper.DirectoryPath, "assets/ui.json")`); with `watch` it is re-imported when saved and open menus rebuild in place. |
-| `void RegisterCommand(string name, Action<IUIDataCall> run)` | A command data runs with `@ModId/name args` or `6135.UIFramework_Invoke ModId/name`. |
+| `void RegisterCommand(string name, Action<IUIDataCall> run)` | A command data runs with `@ModId/name args` or `6135.UIFramework_Invoke ModId/name`. Any data can call it with any arguments, so validate `Args`. |
 | `void UnregisterCommand(string name)` | Remove a command. |
-| `void RegisterFunction(string name, Func<string[], string> function)` | A function expressions call as `@ModId/name(...)`. |
+| `void RegisterFunction(string name, Func<string[], string> function)` | A function expressions call as `@ModId/name(...)`. Registering (or registering again) invalidates every cached data value. |
 | `IUIDataSource DefineDataSource(string name)` | A C# row source (`hook:ModId/name`): set `Count`, `Text`, `Number`, `Item`; call `Refresh()` when rows change. |
 | `void ExposeSignal(string name, IUISignal signal)` / `void ExposeComputed(string name, IUIComputed computed)` | Read-only values `@ModId/name`; data refreshes when they change. |
-| `void ExposeModel(string name, object model)` | A plain object read (and bound, and edited by a `Form`) by reflection: `model.name.Path` / `model[ModId/name].Path`. Null removes it. |
-| `void ExposeRows(string name, Func<object[]> rows)` | A list of plain objects as a row source (`hook:ModId/name`, cells read `row.Member`). |
+| `void ExposeModel(string name, object model)` | A plain object read (and bound, and edited by a `Form`) by reflection: `model.name.Path` / `model[ModId/name].Path`. One object serves every split-screen player. Null removes it. |
+| `void ExposeModelSource(string name, Func<object> model)` | Like `ExposeModel`, but `model` is called at every read, so each split-screen player can see their own object (`() => settings.Value` over a `PerScreen<T>`). A `Form` edits the object returned when it was built. Null removes it. |
+| `void ExposeRows(string name, Func<object[]> rows)` | A list of plain objects as a row source (`hook:ModId/name`, cells read `row.Member`); read on the screen that shows the rows, so return the current player's rows. |
 | `void RegisterDrawHook(string name, Action<SpriteBatch, Rectangle, IUIDataCall> draw)` | Custom drawing for data elements' `DrawExtra` / `DrawOverlay`. |
 | `IUISignal DataState(string key)` | A live signal view of a data state value (`session.x`, `config.x`, `menu[owner/menu].x`...) on the current screen. |
 
 `IUIDataCall`: `Name`, `Args`, `OwnerModId`, `Menu`, `Element`, `Row`, `RowIndex`, `Evaluate(expression)`,
 `GetState(key)`, `SetState(key, value)`. `IUIDataSource`: `Name`, `Count`, `Text` (`(row, field) → text`, null =
 unknown field), `Number` (`(row, field) → number`, used when `Text` is unset or gives null), `Item`, `Refresh()`.
-
-v1.8 additions:
-
-| Member | Description |
-|--------|-------------|
-| `bool IUIHud.ShowOverMenus` | Keep a HUD widget drawn on top of an open menu (like toasts) instead of hiding it; it takes no input over a menu. |
-
-v1.8 behaviour changes (no new members): click-once controls (buttons, checkboxes, dropdowns, sliders) no longer keep
-keyboard focus after a mouse click; tooltips are inherited from the nearest ancestor that has one; `ImportData` /
-`ImportDataFile` build the imported menus before returning, and `ImportDataFile` takes a full path
-(`Path.Combine(helper.DirectoryPath, ...)`).
 
 `IUIItemImage` adds `Item` (`Func<Item>`), `Scale`, `Stack` (`UIItemStack.Hide` / `Quality` / `NumberAndQuality`),
 `DrawShadow`, `Alpha` and `Tint` to the usual `IUIElement` members (overlays are hidden below 32 px, scale 2). With an explicit width / height the item is
@@ -2242,7 +2280,7 @@ drawn as a square fitting the bounds.
 Argument checks: ids must be non-empty; `parent` must be a container created by the framework and must belong to
 one of *your* menus (adding to another mod's menu throws `InvalidOperationException`, unless you are a slot
 contributor adding to the container you were handed, a registered decorator adding outside a sealed subtree, or the
-defining mod of a composite adding to its host); `itemCount`, `buildRow`, `choices`, `onPressed`, `rowCount`,
+defining mod of a composite adding to or removing from its host); `itemCount`, `buildRow`, `choices`, `onPressed`, `rowCount`,
 `model`, `compute`, the `build` callbacks of `ContributeTo` / `DefineComposite` / `AddCustom`, the bound elements and
 sources of `Bind*` and custom `implementation` must not be `null` (`OnScreenBuilt` accepts `null` to remove a
 decorator).
@@ -2267,16 +2305,10 @@ API:
 
 ### Versioning
 
-`IStardewUIApi.ApiVersion` returns a semantic version string (currently `1.8.0`; v1.3 to v1.5 added data-driven UIs without changing the C# API, v1.6 added the `// BEGIN DATA` regions, v1.7 added cross-mod data without changing the C# API, v1.8 added `IUIHud.ShowOverMenus`). Members are only ever **added**,
-never renamed or removed: additive changes bump the minor version, and a breaking change would ship as a new
-`IStardewUIApi2` interface alongside the old one. A consumer's copy of the interface may be a subset of the
-framework's, so you can keep an older copy of `IStardewUIApi.cs` and only update it when you need new members. Set
-`MinimumVersion` in your manifest to the framework version that introduced the members you use: everything under
-"v1.1 additions" in the API file (the `// BEGIN <FEATURE> members` / `types` regions and the `// SLOTS`,
-`// RICHTEXT`, `// THEME`, `// HUD` tagged members at the end of `IUIElement`, `IUILabel`, `IUIButton`,
-`IUIMenuOptions` and `IUIMenu`) needs `1.1.0`, and the `// BEGIN ITEMIMAGE` regions plus `IUITooltip.ItemInstance`
-(v1.2) need `1.2.0`, the `// BEGIN DATA` regions (v1.6) need `1.6.0`, and the `// HUDOVERMENUS` tagged member of `IUIHud` (v1.8) needs `1.8.0`; older copies of the file still work against
-newer versions.
+Set `MinimumVersion` in your manifest to the framework version you build against (currently `1.8.0`), the version
+your copy of `IStardewUIApi.cs` came with. `IStardewUIApi.ApiVersion` returns the installed framework's version (from
+its manifest). Members are only ever **added**, never renamed or removed: additive changes bump the minor version,
+and a breaking change would ship as a new `IStardewUIApi2` interface alongside the old one.
 
 ### Generating the API reference
 
@@ -2323,16 +2355,16 @@ honest. When the API file changes, copy it to `UIFrameworkExample/Api/IStardewUI
 |-----------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | `Api/Public/IStardewUIApi.cs`     | The public API (copy this).                                                                                                                                                                                                                                                       |
 | `Api/`                            | Per-consumer facade (`StardewUIApi`) and the menu options bag.                                                                                                                                                                                                                    |
-| `Core/`                           | Element tree, layout engine, focus manager, overlay layer, event router; v1.1: sealing rules, signals and bindings, auto-form generation and reflection, rich tooltip model, HUD model, accessibility announcements, tree dump / exporter, perf counters.                          |
-| `Components/`                     | Built-in elements (Label, Button, TextInput, NumberInput, Checkbox, Dropdown, Slider, Image, Spacer, Stack, Grid, Panel, Canvas, ScrollView, ListView, custom adapter); v1.1: Slot, Composite, DataGrid (+ columns / rows), the custom-host adapter for `AddCustom(..., build)`.  |
-| `Hosting/`                        | `MenuHost : IClickableMenu`, hotkey service, menu registry; v1.1: extension registry (slots, exposures, decorators), composite registry, HUD service, toast layer, player layout controller and window layout store, inspector, debug console.                                     |
-| `Rendering/`                      | Drawing helpers, the theme (asset data, resolution, switcher), rich text parser / layout, tooltip renderer, pseudo-localizer, inspector renderer.                                                                                                                                  |
-| `Data/`                           | Data-driven UIs (v1.3+): `Model/` (JSON definitions), `Loading/` (asset reading, validation, schema), `Expressions/` (lexer, parser, evaluator, functions), `State/` (state store, scope roots, `config.*`), `Building/` (menu / HUD / collection / form / tooltip / composite / contribution builders), `Actions/` (trigger actions, queries, tokens, tile actions), `Bridge/` (C# hooks, models, imports); `DataService` ties them together. |
-| `Integrations/`                   | Generic Mod Config Menu, Stardew Access and Content Patcher API copies.                                                                                                                                                                                                                            |
-| `assets/`                         | Bundled texture (`text_box_small.png`) and the default themes (`themes.json`).                                                                                                                                                                                                    |
+| `Core/`                           | Element tree, layout engine, focus manager, overlay layer, event router, sealing rules, signals and bindings, auto-form generation and reflection, rich tooltip model, HUD model, accessibility announcements, tree dump / exporter, perf counters.                          |
+| `Components/`                     | Built-in elements (Label, Button, TextInput, NumberInput, Checkbox, Dropdown, Slider, Image, Spacer, Stack, Grid, Panel, Canvas, ScrollView, ListView, custom adapter, Slot, Composite, DataGrid (+ columns / rows), the custom-host adapter for `AddCustom(..., build)`.  |
+| `Hosting/`                        | `MenuHost : IClickableMenu`, hotkey service, menu registry, extension registry (slots, exposures, decorators), composite registry, HUD service, toast layer, player layout controller and window layout store, inspector, debug console.                                     |
+| `Rendering/`                      | Drawing helpers, text box drawing, the theme (asset data, resolution, switcher and theme asset provider), rich text parser / layout, tooltip renderer, pseudo-localizer, inspector renderer.                                                                                                                                  |
+| `Data/`                           | Data-driven UIs: `Model/` (JSON definitions), `Loading/` (asset reading, validation, schema), `Expressions/` (lexer, parser, evaluator, functions), `State/` (state store, scope roots, `config.*`), `Building/` (menu / HUD / collection / form / tooltip / composite / contribution builders), `Actions/` (trigger actions, queries, tokens, tile actions), `Bridge/` (C# hooks, models, imports); `DataService` ties them together. |
+| `Integrations/`                   | The Generic Mod Config Menu page (`ConfigMenu.cs`), the Stardew Access connection (`ScreenReader.cs`) and the GMCM, Stardew Access and Content Patcher API copies.                                                                                                                                                     |
+| `assets/`                         | Bundled texture (`text_box_small.png`) and the default themes (`themes.json`).                                                                                                                                                                                                                                          |
 | `i18n/`                           | Translations: config labels, form buttons, screen reader phrases.                                                                                                                                                                                                                 |
-| `architecture.md`                 | Design document, implementation plan, the v1.1 roadmap (§16) and the data-driven UI design (§17).                                                                                                                                                                                                                  |
+| `architecture.md`                 | Design document, implementation plan, the feature roadmap (§16) and the data-driven UI design (§17).                                                                                                                                                                                                                  |
 | `code-review.md`                  | Review notes and polish backlog.                                                                                                                                                                                                                                                  |
 | `Doxyfile`                        | Doxygen configuration for the API reference.                                                                                                                                                                                                                                      |
-| `../UIFrameworkExample/`          | The example consumer mod (`ModEntry.cs`, `DemoSettings.cs`, `FrameBox.cs`, `VolumeGauge.cs`) with its own copy of the API file. |
+| `../UIFrameworkExample/`          | The example consumer mod (`ModEntry.cs`, `DemoMenu.cs`, `ItemImageDemo.cs`, `DemoSettings.cs`, `FrameBox.cs`, `VolumeGauge.cs`, `i18n/`) with its own copy of the API file. |
 | `../[CP] UI Framework Example/`   | The example Content Patcher pack: data menus, a HUD, a settings screen, templates, a data composite and contributions, plus a hybrid menu over the example mod's C# hooks.                                                                                                                                                   |

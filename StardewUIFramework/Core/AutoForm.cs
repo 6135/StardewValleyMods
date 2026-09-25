@@ -280,7 +280,8 @@ namespace UIFramework.Core
         private bool ValidateValue(FormField field, object value)
         {
             string generic = Text("form.invalid", "Invalid value");
-            string? message = owner.Invoke(field.Control.Id, "Validate", () => FormReflection.Validate(Model, field.Property, value, generic), null);
+            // a faulting validator rejects the value (the generic message) instead of letting it through
+            string? message = owner.Invoke(field.Control.Id, "Validate", () => FormReflection.Validate(Model, field.Property, value, generic), generic);
             field.ShowError(message);
             return message == null;
         }
@@ -289,6 +290,9 @@ namespace UIFramework.Core
         internal T Guard<T>(string elementId, string eventName, Func<T> func, T fallback) => owner.Invoke(elementId, eventName, func, fallback);
 
         internal void Guard(string elementId, string eventName, Action action) => owner.Invoke(elementId, eventName, action);
+
+        /// <summary>Read a field through <paramref name="getter"/> under the guard without allocating (runs every frame).</summary>
+        internal object? ReadModel(string elementId, Func<object, object?> getter) => owner.InvokeWith(string.Empty, elementId, "get", static s => s.getter(s.model), (getter, model: Model), (object?)null);
 
         private void AfterChange()
         {

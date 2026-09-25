@@ -25,10 +25,9 @@ namespace UIFramework.Data.Building
     internal sealed class ContributionBuilder
     {
         private readonly DataBuilder builder;
-        private readonly IValueResolver resolver;
+        private readonly ExpressionValueResolver resolver;
         private readonly ConsumerContexts contexts;
         private readonly Func<string, StardewUIApi> facades;
-        private readonly ExtensionRegistry extensions;
         private readonly MenuRegistry menus;
         private readonly DecorationApplier decorations;
         private readonly Dictionary<string, DataContributionRuntime> runtimes = new(StringComparer.Ordinal);
@@ -36,13 +35,12 @@ namespace UIFramework.Data.Building
         private readonly Dictionary<string, MenuRegistration> decorators = new(StringComparer.Ordinal);
         private string combinedHash = string.Empty;
 
-        internal ContributionBuilder(DataBuilder builder, IValueResolver resolver, ConsumerContexts contexts, Func<string, StardewUIApi> facades, ExtensionRegistry extensions, MenuRegistry menus)
+        internal ContributionBuilder(DataBuilder builder, ExpressionValueResolver resolver, ConsumerContexts contexts, Func<string, StardewUIApi> facades, MenuRegistry menus)
         {
             this.builder = builder;
             this.resolver = resolver;
             this.contexts = contexts;
             this.facades = facades;
-            this.extensions = extensions;
             this.menus = menus;
             decorations = new DecorationApplier(builder, resolver);
         }
@@ -91,6 +89,17 @@ namespace UIFramework.Data.Building
                 runtime.Reported.Clear();
                 next[entry.Key] = runtime;
                 affected.Add((entry.TargetOwner, entry.TargetMenu));
+            }
+
+            // replaced or removed runtimes: stop refreshing the slot elements they built
+            var kept = new HashSet<DataContributionRuntime>(next.Values);
+            foreach (DataContributionRuntime old in runtimes.Values)
+            {
+                if (!kept.Contains(old))
+                {
+                    old.SlotGroup.Clear();
+                    menus.Get(old.TargetOwner, old.TargetMenu)?.ExtensionRefresh.Remove(old);
+                }
             }
 
             runtimes.Clear();
@@ -224,12 +233,21 @@ namespace UIFramework.Data.Building
             internal RefresherGroup Group { get; }
             internal UIMenu? AppliedTo { get; set; }
 
-            /// <summary>The handler subscribed per event, with the screen context it was subscribed through.</summary>
-            internal Dictionary<string, (ScreenContext Screen, Action Handler)> Subscriptions { get; } = new(StringComparer.Ordinal);
+            /// <summary><see cref="UIMenu.RebuildCount"/> of <see cref="AppliedTo"/> when the undo steps were recorded.</summary>
+            internal int AppliedRebuild { get; set; }
 
-            /// <summary>Restore the tree (undo steps in reverse order) and stop refreshing live decoration values.</summary>
+            /// <summary>
+            /// Restore the tree (undo steps in reverse order) and stop refreshing live decoration values. Undo steps
+            /// recorded against a tree the menu has since rebuilt are dropped without running: they would re-insert
+            /// elements of the old tree.
+            /// </summary>
             internal void Restore()
             {
+                if (AppliedTo != null && AppliedTo.RebuildCount != AppliedRebuild)
+                {
+                    Undo.Clear();
+                }
+
                 for (int i = Undo.Count - 1; i >= 0; i--)
                 {
                     try
@@ -247,16 +265,6 @@ namespace UIFramework.Data.Building
                 AppliedTo?.ExtensionRefresh.Remove(this);
                 AppliedTo?.InvalidateLayout();
                 AppliedTo = null;
-            }
-
-            internal void UnsubscribeAll()
-            {
-                foreach ((string eventName, (ScreenContext screen, Action handler)) in Subscriptions)
-                {
-                    screen.Unsubscribe(eventName, handler);
-                }
-
-                Subscriptions.Clear();
             }
         }
 
@@ -286,13 +294,12 @@ namespace UIFramework.Data.Building
                 registration.Items.Add(runtime);
             }
 
-            // registrations that disappeared: restore the tree, drop the subscriptions and the decorator
+            // registrations that disappeared: restore the tree and drop the decorator (the framework drops its subscriptions)
             foreach ((string key, MenuRegistration old) in decorators)
             {
                 if (!current.ContainsKey(key))
                 {
                     old.Restore();
-                    old.UnsubscribeAll();
                     facades(old.Contributor).OnScreenBuilt(old.Owner, old.MenuId, null!);
                 }
             }
@@ -323,6 +330,7 @@ namespace UIFramework.Data.Building
             }
 
             registration.AppliedTo = menu;
+            registration.AppliedRebuild = menu.RebuildCount;
             if (registration.Group.Count > 0)
             {
                 RefresherGroup group = registration.Group;
@@ -332,7 +340,7 @@ namespace UIFramework.Data.Building
             Subscribe(registration, menu, contributor);
         }
 
-        /// <summary>Exactly one handler per contributor, menu and event: the previous one is unsubscribed before the new one is subscribed.</summary>
+        /// <summary>Exactly one handler per contributor, menu and event: the framework drops a decorator's previous subscriptions before it runs again.</summary>
         private static void Subscribe(MenuRegistration registration, UIMenu menu, ConsumerContext contributor)
         {
             var handlers = new Dictionary<string, List<DataContributionRuntime>>(StringComparer.Ordinal);
@@ -360,7 +368,6 @@ namespace UIFramework.Data.Building
                 }
             }
 
-            registration.UnsubscribeAll();
             var screen = new ScreenContext(ScopeRootsExposures(menu), contributor);
             foreach ((string eventName, List<DataContributionRuntime> list) in handlers)
             {
@@ -368,7 +375,6 @@ namespace UIFramework.Data.Building
                 string name = eventName;
                 Action handler = () => RunHandlers(subscribers, menu, name);
                 screen.Subscribe(name, handler);
-                registration.Subscriptions[name] = (screen, handler);
             }
         }
 

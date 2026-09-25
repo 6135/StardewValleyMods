@@ -64,7 +64,7 @@ namespace UIFramework.Data.Model
                     // a nested array is a group of actions without a condition
                     return new ActionDefinition { Actions = Read(token, serializer) };
                 default:
-                    string text = token.ToString();
+                    string text = JsonText.Of(token);
                     return string.IsNullOrWhiteSpace(text) ? null : new ActionDefinition { Action = text };
             }
         }
@@ -113,12 +113,12 @@ namespace UIFramework.Data.Model
                     var items = new List<string>();
                     foreach (JToken item in token)
                     {
-                        items.Add(item.Type == JTokenType.Null ? string.Empty : item.ToString());
+                        items.Add(item.Type == JTokenType.Null ? string.Empty : JsonText.Of(item));
                     }
                     return items;
                 default:
                     var split = new List<string>();
-                    foreach (string part in token.ToString().Split(','))
+                    foreach (string part in JsonText.Of(token).Split(','))
                     {
                         string trimmed = part.Trim();
                         if (trimmed.Length > 0)
@@ -164,7 +164,7 @@ namespace UIFramework.Data.Model
                 JTokenType.Null or JTokenType.Undefined => null,
                 JTokenType.Array or JTokenType.Object => token.ToString(Formatting.None),
                 JTokenType.Boolean => (bool)token ? "True" : "False",
-                _ => token.ToString()
+                _ => JsonText.Of(token)
             };
         }
 

@@ -114,9 +114,6 @@ namespace UIFramework.Core
         /// <summary>Framework configuration.</summary>
         internal static ModConfig Config { get; set; } = new();
 
-        /// <summary>Mod content helper, used to load bundled assets through the content pipeline (so Content Patcher can retexture them).</summary>
-        internal static IModContentHelper? ModContent { get; set; }
-
         /// <summary>Game content helper.</summary>
         internal static IGameContentHelper? GameContent { get; set; }
 
@@ -144,13 +141,9 @@ namespace UIFramework.Core
         internal static Action<string>? Announcer { get; set; }
 
         private static Texture2D? textBoxTexture;
-        private static Texture2D? smallTextBoxTexture;
 
         /// <summary>The vanilla text box texture (<c>LooseSprites\textBox</c>).</summary>
         internal static Texture2D TextBoxTexture => textBoxTexture ??= GameContent?.Load<Texture2D>("LooseSprites\\textBox") ?? Game1.content.Load<Texture2D>("LooseSprites\\textBox");
-
-        /// <summary>The bundled small text box texture (<c>assets/text_box_small.png</c>).</summary>
-        internal static Texture2D SmallTextBoxTexture => smallTextBoxTexture ??= ModContent?.Load<Texture2D>("assets/text_box_small.png") ?? TextBoxTexture;
 
         internal static void Log(string message, LogLevel level = LogLevel.Trace) => Monitor?.Log(message, level);
     }

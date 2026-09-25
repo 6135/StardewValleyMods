@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using Microsoft.Xna.Framework;
 using StardewModdingAPI;
 using UIFramework.Api;
 using UIFramework.Core;
@@ -10,12 +9,12 @@ namespace UIFramework.Components
 {
     /// <summary>
     /// An instance of a composite (architecture.md §16.1): the host container the definition's builder fills, laid
-    /// out as a column. The same object is the <see cref="IUICompositeHost"/> the builder sees (where it exposes
+    /// out as a column (a vertical <see cref="Stack"/> without spacing). The same object is the <see cref="IUICompositeHost"/> the builder sees (where it exposes
     /// values, commands and events) and the <see cref="IUIComposite"/> the user holds (where it reads them). The
     /// builder runs under the defining mod's guard, and the defining mod's API instance may add children here even
     /// though the menu belongs to another mod (see <see cref="ComponentOwner"/>).
     /// </summary>
-    internal sealed class Composite : UIContainer, IUIComposite, IUICompositeHost
+    internal sealed class Composite : Stack, IUIComposite, IUICompositeHost
     {
         private readonly CompositeRegistry registry;
         private readonly CompositeArgs args;
@@ -26,7 +25,7 @@ namespace UIFramework.Components
         private readonly Dictionary<string, List<Action>> subscribers = new(StringComparer.Ordinal);
         private ConsumerContext? owner;
 
-        internal Composite(string id, string compositeName, CompositeArgs args, CompositeRegistry registry) : base(id)
+        internal Composite(string id, string compositeName, CompositeArgs args, CompositeRegistry registry) : base(id, horizontal: false, spacing: 0)
         {
             CompositeName = compositeName;
             this.args = args;
@@ -51,9 +50,6 @@ namespace UIFramework.Components
 
         /// <summary>The mod whose builder last filled this composite (null until built or when the definition vanished).</summary>
         internal override ConsumerContext? ComponentOwner => owner;
-
-        // a composite is layout-only like a stack: clicks on gaps fall through unless it has its own handlers
-        protected override bool IsHitTestVisible => HasPointerHandlers;
 
         // ---------------------------------------------------------------------------------------------------------
         //  Building
@@ -251,47 +247,5 @@ namespace UIFramework.Components
 
         /// <summary>Exposed delegates belong to the defining mod, so its guard runs them (falling back to the menu's consumer).</summary>
         private ConsumerContext Guard => owner ?? Consumer;
-
-        // ---------------------------------------------------------------------------------------------------------
-        //  Layout (a column, no spacing)
-        // ---------------------------------------------------------------------------------------------------------
-
-        protected override Vector2 MeasureCore(Vector2 available)
-        {
-            float width = 0, height = 0;
-            foreach (UIElement child in Children)
-            {
-                if (!child.Visible)
-                {
-                    continue;
-                }
-
-                Vector2 size = child.Measure(available);
-                width = Math.Max(width, size.X);
-                height += size.Y;
-            }
-
-            return new Vector2(width, height);
-        }
-
-        /// <summary>A column: as narrow as its widest child.</summary>
-        protected override float MinWidthCore() => MaxChildMinWidth();
-
-        protected override void ArrangeCore()
-        {
-            int cursor = Bounds.Y;
-            foreach (UIElement child in Children)
-            {
-                if (!child.Visible)
-                {
-                    child.Arrange(new Rectangle(Bounds.X, Bounds.Y, 0, 0));
-                    continue;
-                }
-
-                int extent = (int)Math.Ceiling(child.DesiredSize.Y);
-                child.Arrange(new Rectangle(Bounds.X, cursor, Bounds.Width, extent));
-                cursor += extent;
-            }
-        }
     }
 }

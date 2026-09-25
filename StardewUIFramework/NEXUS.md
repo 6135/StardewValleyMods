@@ -23,48 +23,35 @@ settings pages, HUD widgets, additions to other mods' menus) without writing any
   `ui_debug` toggles the debug overlay, `ui_list` lists the framework menus that are open.
 - Works in single player, multiplayer and split-screen. No Harmony patches.
 
-## What's new in 1.8
+## What's in 1.8.0 (first release)
 
-- Players: clicking a button, checkbox, dropdown or slider no longer leaves it highlighted, and one Escape closes the
-  menu; Tab and the arrow keys still show where focus is. A centered window no longer jumps when its content grows or
-  shrinks (a line shown on hover, a tab switch). Hovering any part of a list or grid row shows the row's tooltip.
-- Content pack authors: `ShowOverMenus` keeps a HUD widget visible on top of open menus; named tooltips
-  (`Owners` > `Tooltips`, used with `{ "From": "name" }`); an image's `Sprite` can change per row (`${row.sprite}`).
-- Players: resizing a window now lets it get narrower down to what its content needs; before, a window with
-  stretched content (grids, full-width rows) could not be made narrower at all. Grabbing the resize grip no longer
-  enlarges a window on its own. In narrow windows, rows of buttons move onto a second line, form labels wrap
-  instead of pushing controls past the edge, text is never cut off just to make room (only when the screen itself
-  is too small), a long title is shortened with "...", and lists and data grids no longer draw outside their box.
-- Mod authors: `Resizable` (C# and data, default off) lets players resize a window that fits its content, not just
-  fixed-size ones; `IUICustomComponent.MinimumWidth` (new, required) reports a custom component's narrowest width; `Wrap` on stacks (C# `IUIStack.Wrap`, data `"Wrap": true` on `Stack` / `Repeat` / `Outlet`) lets a row flow onto new lines (slots too: `IUISlot.Wrap`); `MinWidth` / `MaxWidth` on every element; `Shrink` lets a button, checkbox, dropdown or label shorten its text with "..." in narrow spaces; `IUIHud.ShowOverMenus`; `ImportData` / `ImportDataFile` build the menus before returning, so
-  `GetMenu` and `BindToggleHotkey` work right after the import. `ImportDataFile` now takes a full path
-  (`Path.Combine(helper.DirectoryPath, "assets/ui.json")`); relative paths are no longer resolved.
-- Fixes: framework trigger actions no longer report "failed" after they succeeded (buttons stopped responding after
-  the first click); UI Framework now lists Content Patcher as an optional dependency, so its token is accepted.
-
-## What's new in 1.3 to 1.7
-
-- Content pack authors: data-driven UIs. Menus, HUD widgets, settings screens, reusable templates and components, and
-  additions to other mods' menus, all written as Content Patcher data, with live expressions, named state (including
-  per-save and cross-save settings), trigger actions, game state queries and hot reload (`patch reload` keeps an open
-  menu open).
-- Mod authors: keep your screens in JSON and offer your code to data by name (commands, functions, row sources,
-  models, draw hooks, composites); export any menu, C# or data, as JSON from the inspector.
-
-## What's new in 1.2
-
-- Mod authors: an item element (and a tooltip row) that draws an actual item instance, so flavored goods like
-  Starfruit Wine or Blueberry Jelly show their real colors.
-- Players: dropdowns with more choices than fit now show a small scrollbar, so it's clear the list scrolls.
-
-## What's new in 1.1
-
-- Players: four themes (`default`, `dark`, `high-contrast`, `colorblind`; content packs can add more), text scaling
-  and reduced motion, screen reader announcements through Stardew Access, windows you can drag, collapse and resize
-  (remembered per save), and toast notifications.
-- Mod authors: extension slots so other mods can add UI to your screens, shareable composite components, a
-  sortable / filterable data grid, signals and auto-generated forms with undo / redo, rich text and rich tooltips,
-  HUD widgets, and an in-game inspector that exports a menu as C# code.
+- Players:
+  - Four themes (`default`, `dark`, `high-contrast`, `colorblind`; content packs can add more), text scaling and
+    reduced motion, and screen reader announcements through Stardew Access.
+  - Windows you can drag, collapse and resize (remembered per save), and toast notifications.
+  - Keyboard, mouse and gamepad navigation. Clicking a control doesn't leave it highlighted, and one Escape closes the
+    menu. Hovering any part of a list or grid row shows the row's tooltip.
+  - Windows adapt to their size: rows of buttons wrap, form labels wrap, long titles are shortened with "...", and
+    dropdowns with more choices than fit show a scrollbar.
+  - Split-screen: each player opens their own menus, with their own focus, hover, popups, HUD state and inspector.
+- Content pack authors:
+  - Complete, interactive screens as Content Patcher data: menus, HUD widgets, settings screens, reusable templates
+    and components, and additions to other mods' menus.
+  - Live expressions, named state (per menu, per session, per save and cross-save settings), trigger actions, game
+    state queries, map tile actions, a Content Patcher token and hot reload (`patch reload` keeps an open menu open).
+  - Named tooltips (`Owners` > `Tooltips`), per-row images (`${row.sprite}`), `ShowOverMenus` for HUD widgets, and
+    `SharedState` to let other packs write your `config.*` / `player.*` values.
+  - `ui_validate` points at every mistake by path, and `ui_schema` gives your editor autocomplete.
+- Mod authors:
+  - Menus from typed handles (`AddGrid`, `AddButton`, `AddDropdown`, ...), getter/setter bindings, callbacks for every
+    interaction, and custom components through an interface.
+  - Extension slots so other mods can add UI to your screens, shareable composite components, a sortable / filterable
+    data grid, signals and auto-generated forms with undo / redo, rich text and rich tooltips, item images (flavored
+    goods keep their colors), and HUD widgets.
+  - Keep your screens in JSON and offer your code to data by name: commands, functions, row sources, models
+    (`ExposeModel`, or `ExposeModelSource` for a per-player model), draw hooks and composites.
+  - Adaptive layout: `Resizable`, `Wrap`, `MinWidth` / `MaxWidth` and `Shrink`.
+  - An in-game inspector that exports any menu, C# or data, as C# code or JSON.
 
 ## For content pack authors
 

@@ -88,15 +88,18 @@ namespace UIFramework.Hosting
             {
                 hud.ReleaseInput();
                 hud.Consumer.Bindings.DropMenu(hud.Inner); // signal bindings of the widget's elements
-                ScreenState state = screens.Value;
-                if (state.Dragging == hud)
+                foreach (KeyValuePair<int, ScreenState> pair in screens.GetActiveValues())
                 {
-                    state.Dragging = null;
-                }
+                    ScreenState state = pair.Value;
+                    if (state.Dragging == hud)
+                    {
+                        state.Dragging = null;
+                    }
 
-                if (state.Pressed == hud)
-                {
-                    state.Pressed = null;
+                    if (state.Pressed == hud)
+                    {
+                        state.Pressed = null;
+                    }
                 }
             }
         }
@@ -126,6 +129,7 @@ namespace UIFramework.Hosting
         private void OnUpdateTicked(object? sender, UpdateTickedEventArgs e)
         {
             double elapsed = Game1.currentGameTime?.ElapsedGameTime.TotalMilliseconds ?? 1000.0 / 60;
+            long frame = Game1.currentGameTime?.TotalGameTime.Ticks ?? e.Ticks; // the same for every screen within one game tick
             ScreenState state = screens.Value;
             state.Toasts.Update(elapsed);
 
@@ -135,7 +139,7 @@ namespace UIFramework.Hosting
                 bool shown = hud.EvaluateShown() && CanDraw(hud);
                 if (shown)
                 {
-                    hud.Tick(elapsed);
+                    hud.Tick(elapsed, frame);
                 }
 
                 // over a menu a widget is drawn but takes no input

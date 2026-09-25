@@ -6,6 +6,7 @@ using Microsoft.Xna.Framework.Input;
 using StardewModdingAPI;
 using StardewModdingAPI.Utilities;
 using StardewValley;
+using StardewValley.Menus;
 using UIFramework.Components;
 using UIFramework.Core;
 using UIFramework.Rendering;
@@ -27,11 +28,19 @@ namespace UIFramework.Hosting
         private static KeybindList hotkey = new();
         private static string hotkeySource = string.Empty;
 
-        /// <summary>Whether the inspector is on (menus then suppress their normal input).</summary>
-        internal static bool Enabled { get; private set; }
+        // per split-screen player: one player inspecting does not take over the other player's menus
+        private static readonly PerScreen<bool> enabled = new();
+        private static readonly PerScreen<UIElement?> pinned = new();
+
+        /// <summary>Whether the inspector is on for the current screen (its menus then suppress their normal input).</summary>
+        internal static bool Enabled => enabled.Value;
 
         /// <summary>Element the user pinned (click / P) so the panel stays on it while the cursor moves; null = follow the cursor.</summary>
-        internal static UIElement? Pinned { get; private set; }
+        internal static UIElement? Pinned
+        {
+            get => pinned.Value;
+            private set => pinned.Value = value;
+        }
 
         /// <summary>Folder that receives <c>&lt;consumer&gt;-&lt;menu&gt;.cs</c> exports (empty = no file).</summary>
         internal static string ExportDirectory { get; set; } = string.Empty;
@@ -41,11 +50,11 @@ namespace UIFramework.Hosting
 
         internal static void Toggle() => SetEnabled(!Enabled);
 
-        internal static void SetEnabled(bool enabled)
+        internal static void SetEnabled(bool on)
         {
-            Enabled = enabled;
+            enabled.Value = on;
             Pinned = null;
-            UIServices.Log($"Inspector {(enabled ? "enabled" : "disabled")}.", LogLevel.Info);
+            UIServices.Log($"Inspector {(on ? "enabled" : "disabled")}.", LogLevel.Info);
         }
 
         /// <summary>Parse a keybind list string, falling back to an unbound list when it is invalid.</summary>
@@ -54,7 +63,7 @@ namespace UIFramework.Hosting
             return KeybindList.TryParse(text ?? string.Empty, out KeybindList? parsed, out _) ? parsed : new KeybindList();
         }
 
-        /// <summary>Called on <c>Input.ButtonsChanged</c>: toggles the inspector when the configured hotkey was just pressed.</summary>
+        /// <summary>Called on <c>Input.ButtonsChanged</c>: toggles the inspector when the configured hotkey was just pressed while a framework menu is open.</summary>
         internal static void OnButtonsChanged()
         {
             string source = UIServices.Config.InspectorHotkey ?? string.Empty;
@@ -64,10 +73,24 @@ namespace UIFramework.Hosting
                 hotkey = ParseHotkey(source);
             }
 
-            if (hotkey.JustPressed())
+            if (hotkey.JustPressed() && FrameworkMenuActive())
             {
                 Toggle();
             }
+        }
+
+        /// <summary>Whether the current screen's active menu chain contains a framework menu.</summary>
+        private static bool FrameworkMenuActive()
+        {
+            for (IClickableMenu? m = Game1.activeClickableMenu; m != null; m = m.GetChildMenu())
+            {
+                if (m is MenuHost)
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         // ---------------------------------------------------------------------------------------------------------

@@ -23,6 +23,9 @@ namespace UIFramework.Components
         private bool shrink;
         private string measuredLabel = string.Empty;
 
+        /// <summary>Size of <see cref="measuredLabel"/> as last measured, reused by the draw.</summary>
+        private Vector2 measuredLabelSize;
+
         internal Checkbox(string id, Func<bool>? getter, Action<bool>? setter) : base(id)
         {
             this.getter = getter;
@@ -142,15 +145,22 @@ namespace UIFramework.Components
 
         protected override Vector2 MeasureCore(Vector2 available)
         {
-            measuredLabel = CurrentLabel;
             int box = BoxSize;
+            Vector2 textSize = MeasureLabel(CurrentLabel, Style.Font);
             if (measuredLabel.Length == 0)
             {
                 return new Vector2(box, box);
             }
 
-            Vector2 textSize = UIServices.Text.Measure(Style.Font, measuredLabel, 1f);
             return new Vector2(WidthFor(textSize.X), Math.Max(box, textSize.Y));
+        }
+
+        /// <summary>Measure <paramref name="current"/> and remember it as <see cref="measuredLabel"/> / <see cref="measuredLabelSize"/>.</summary>
+        private Vector2 MeasureLabel(string current, UIFont font)
+        {
+            measuredLabel = current;
+            measuredLabelSize = current.Length == 0 ? Vector2.Zero : UIServices.Text.Measure(font, current, 1f);
+            return measuredLabelSize;
         }
 
         // the label never wraps: the minimum keeps it whole (the natural width MeasureCore reports); with Shrink it may go
@@ -183,15 +193,19 @@ namespace UIFramework.Components
             string current = CurrentLabel;
             if (current != measuredLabel)
             {
-                measuredLabel = current;
-                InvalidateLayout();
+                // bound label changed since layout: re-flow the menu only when its size changed
+                Vector2 before = measuredLabelSize;
+                if (MeasureLabel(current, style.Font) != before)
+                {
+                    InvalidateLayout();
+                }
             }
             if (current.Length == 0)
             {
                 return;
             }
 
-            Vector2 textSize = UIServices.Text.Measure(style.Font, current, 1f);
+            Vector2 textSize = measuredLabelSize;
             Color textColor = Enabled ? style.TextColor : style.DisabledTextColor;
             int textX = Bounds.X + box + Theme.Space(LabelGap);
             var textRect = new Rectangle(textX, (int)(Bounds.Y + ((Bounds.Height - textSize.Y) / 2f)), Math.Max(0, Bounds.Right - textX), (int)textSize.Y);

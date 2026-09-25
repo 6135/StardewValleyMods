@@ -5,25 +5,14 @@
 	  <AssemblyName>ProfitCalculator</AssemblyName>
 	  <RootNamespace>ProfitCalculator</RootNamespace>
 	  <Version>2.1.0</Version>
-	  <EnableHarmony>true</EnableHarmony>
+	  <EnableHarmony>false</EnableHarmony>
 	  <GamePath>$(STARDEW_GAME_DIR)</GamePath>
 	  <GenerateDocumentationFile>true</GenerateDocumentationFile>
+	  <!-- the XML docs are for development; don't ship them to players -->
+	  <IgnoreModFilePatterns>\.xml$</IgnoreModFilePatterns>
 	  <!-- keep generated files out of the compile globs even when obj/bin are redirected (parallel builds) -->
 	  <DefaultItemExcludes>$(DefaultItemExcludes);obj/**;bin/**</DefaultItemExcludes>
   </PropertyGroup>
-
-  <ItemGroup>
-    <Compile Remove="manualCrops.json\**" />
-    <EmbeddedResource Remove="manualCrops.json\**" />
-    <None Remove="FakesAssemblies\**" />
-    <None Remove="manualCrops.json\**" />
-  </ItemGroup>
-	
-	<ItemGroup>
-		<None Include="i18n\default.json" />
-		<!-- the data-driven screens (UI Framework data imported at launch, see ProfitCalculatorDataUI) -->
-		<None Include="assets\ui.json" CopyToOutputDirectory="PreserveNewest" />
-	</ItemGroup>
 
 	<ItemGroup>
     <PackageReference Include="Pathoschild.Stardew.ModBuildConfig" Version="4.4.0" />

@@ -15,8 +15,7 @@ namespace UIFramework.Data.Loading
         internal static string Of(object? definition, params string[] extra)
         {
             string json = JsonConvert.SerializeObject(definition, DataAssetReader.Settings);
-            using var sha = SHA256.Create();
-            byte[] bytes = sha.ComputeHash(Encoding.UTF8.GetBytes(json + "|" + string.Join("|", extra)));
+            byte[] bytes = SHA256.HashData(Encoding.UTF8.GetBytes(json + "|" + string.Join("|", extra)));
             return Convert.ToHexString(bytes, 0, 16);
         }
     }

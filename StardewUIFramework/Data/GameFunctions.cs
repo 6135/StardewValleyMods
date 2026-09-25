@@ -1,13 +1,15 @@
 using System;
 using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 using Microsoft.Xna.Framework;
 using StardewValley;
 using StardewValley.TokenizableStrings;
 using UIFramework.Api;
 using UIFramework.Core;
+using UIFramework.Data.Expressions;
 using UIFramework.Data.State;
 
-namespace UIFramework.Data.Expressions
+namespace UIFramework.Data
 {
     /// <summary>
     /// The game and UI functions of data expressions, registered into <see cref="FunctionRegistry.Default"/> by the
@@ -24,6 +26,9 @@ namespace UIFramework.Data.Expressions
     /// </summary>
     internal static class GameFunctions
     {
+        /// <summary>The last <c>bounds()</c> value per element, reused while the bounds are unchanged (values are never mutated).</summary>
+        private static readonly ConditionalWeakTable<UIElement, BoundsValue> LastBounds = new();
+
         /// <summary>Register the functions into <paramref name="registry"/>.</summary>
         internal static void Register(FunctionRegistry registry, DataService data)
         {
@@ -60,13 +65,20 @@ namespace UIFramework.Data.Expressions
                 }
 
                 Rectangle r = ((IUIElement)element).Bounds;
-                return DataValue.Opaque(new Dictionary<string, DataValue>(StringComparer.OrdinalIgnoreCase)
+                BoundsValue last = LastBounds.GetValue(element, _ => new BoundsValue());
+                if (last.Value.IsNull || last.Rectangle != r)
                 {
-                    ["x"] = DataValue.FromNumber(r.X),
-                    ["y"] = DataValue.FromNumber(r.Y),
-                    ["width"] = DataValue.FromNumber(r.Width),
-                    ["height"] = DataValue.FromNumber(r.Height)
-                });
+                    last.Rectangle = r;
+                    last.Value = DataValue.Opaque(new Dictionary<string, DataValue>(StringComparer.OrdinalIgnoreCase)
+                    {
+                        ["x"] = DataValue.FromNumber(r.X),
+                        ["y"] = DataValue.FromNumber(r.Y),
+                        ["width"] = DataValue.FromNumber(r.Width),
+                        ["height"] = DataValue.FromNumber(r.Height)
+                    });
+                }
+
+                return last.Value;
             }, isVolatile: true);
 
             registry.Register("itemName", 1, 1, (c, a) =>
@@ -85,6 +97,12 @@ namespace UIFramework.Data.Expressions
             }
 
             return args.Length == 0 ? scope.Element : ScopeRoots.FindElement(scope, args[0].AsString());
+        }
+
+        private sealed class BoundsValue
+        {
+            internal Rectangle Rectangle;
+            internal DataValue Value;
         }
     }
 }

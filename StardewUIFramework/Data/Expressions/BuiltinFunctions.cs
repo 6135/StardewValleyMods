@@ -20,6 +20,7 @@ namespace UIFramework.Data.Expressions
     {
         /// <summary>Longest accepted <c>format()</c> pattern.</summary>
         private const int MaxFormatLength = 64;
+        private const int MaxFormatPrecision = 30;
 
         /// <summary>Register every built-in into <paramref name="registry"/>.</summary>
         internal static void RegisterAll(FunctionRegistry registry)
@@ -108,6 +109,12 @@ namespace UIFramework.Data.Expressions
                 context.Fail($"format() pattern is longer than {MaxFormatLength} characters.");
             }
 
+            // a huge precision would build a huge string before the length check could reject it
+            if (PrecisionTooLarge(pattern))
+            {
+                context.Fail($"format(): the precision of '{pattern}' is above {MaxFormatPrecision}.");
+            }
+
             try
             {
                 return context.Text(args[0].AsNumber().ToString(pattern, CultureInfo.InvariantCulture));
@@ -119,7 +126,30 @@ namespace UIFramework.Data.Expressions
             }
         }
 
-        /// <summary>Vanilla-style money text: rounded, invariant thousands separators, <c>g</c> suffix (<c>1,234g</c>).</summary>
+        /// <summary>True for a standard format (one letter plus digits, <c>"F2"</c>) whose precision is above <see cref="MaxFormatPrecision"/>.</summary>
+        private static bool PrecisionTooLarge(string pattern)
+        {
+            if (pattern.Length < 2 || !((pattern[0] >= 'A' && pattern[0] <= 'Z') || (pattern[0] >= 'a' && pattern[0] <= 'z')))
+            {
+                return false;
+            }
+
+            int precision = 0;
+            for (int i = 1; i < pattern.Length; i++)
+            {
+                char c = pattern[i];
+                if (c < '0' || c > '9')
+                {
+                    return false; // a custom format
+                }
+
+                precision = Math.Min(precision * 10 + (c - '0'), MaxFormatPrecision + 1);
+            }
+
+            return precision > MaxFormatPrecision;
+        }
+
+        /// <summary>Money text in English form whatever the game language: rounded, invariant thousands separators, <c>g</c> suffix (<c>1,234g</c>).</summary>
         internal static string Money(double amount)
         {
             double rounded = Math.Round(Math.Clamp(amount, -1e15, 1e15), MidpointRounding.AwayFromZero);

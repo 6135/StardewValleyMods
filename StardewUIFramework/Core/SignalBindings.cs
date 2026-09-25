@@ -32,11 +32,17 @@ namespace UIFramework.Core
             }
 
             kinds[kind] = binding;
+            element.BindingOwner = this; // so detaching the element drops this table's bindings, whoever owns the menu
         }
 
         /// <summary>Dispose every binding on <paramref name="element"/>.</summary>
         internal void Drop(UIElement element)
         {
+            if (element.BindingOwner == this)
+            {
+                element.BindingOwner = null;
+            }
+
             if (!table.Remove(element, out var kinds))
             {
                 return;

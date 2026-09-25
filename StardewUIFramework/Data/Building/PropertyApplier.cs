@@ -5,18 +5,18 @@ using UIFramework.Data.Loading;
 namespace UIFramework.Data.Building
 {
     /// <summary>
-    /// The single path every data value takes into an element or menu. It asks the <see cref="IValueResolver"/> for a
+    /// The single path every data value takes into an element or menu. It asks the <see cref="ExpressionValueResolver"/> for a
     /// <see cref="ValueSource{T}"/>, applies it once, and when the source is dynamic (v1.4 expressions) registers it
     /// with the current refresh group (the menu's, or an If / Switch page subtree's) so it is re-applied every tick. The builder never looks at raw values itself, so
     /// making a property dynamic needs no builder change.
     /// </summary>
     internal sealed class PropertyApplier
     {
-        private readonly IValueResolver resolver;
+        private readonly ExpressionValueResolver resolver;
         private readonly RefresherGroup group;
         private readonly DataMessageLog log;
 
-        internal PropertyApplier(IValueResolver resolver, RefresherGroup group, DataMessageLog log)
+        internal PropertyApplier(ExpressionValueResolver resolver, RefresherGroup group, DataMessageLog log)
         {
             this.resolver = resolver;
             this.group = group;
@@ -27,7 +27,7 @@ namespace UIFramework.Data.Building
         internal DataMessageLog Log => log;
 
         /// <summary>The value resolver.</summary>
-        internal IValueResolver Resolver => resolver;
+        internal ExpressionValueResolver Resolver => resolver;
 
         /// <summary>The refresh list dynamic values are registered in.</summary>
         internal RefresherGroup Group => group;

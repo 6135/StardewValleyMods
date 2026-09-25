@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using Microsoft.Xna.Framework;
+using StardewModdingAPI;
 using StardewValley;
 using StardewValley.ItemTypeDefinitions;
 using UIFramework.Api;
@@ -9,8 +10,8 @@ using SObject = StardewValley.Object;
 namespace UIFrameworkExample
 {
     /// <summary>
-    /// Test screen for the v1.2 item elements (<see cref="IStardewUIApi.AddItemImage"/> and
-    /// <see cref="IUITooltip.ItemInstance"/>): press F7 or run <c>ui_items</c>. It shows
+    /// Demo screen for the v1.2 item elements (<see cref="IStardewUIApi.AddItemImage"/> and
+    /// <see cref="IUITooltip.ItemInstance"/>): press F7 or run <c>uiex_items</c>. It shows
     /// <list type="bullet">
     /// <item>flavored goods drawn by id (<c>AddImage</c>, no tint) next to the same instance drawn with <c>AddItemImage</c>;</item>
     /// <item>every <see cref="UIItemStack"/> overlay at scales 1 to 4, each framed by a boxed panel (the inspector, F10, outlines the exact bounds);</item>
@@ -29,6 +30,7 @@ namespace UIFrameworkExample
         private static readonly UIItemStack[] StackModes = { UIItemStack.Hide, UIItemStack.Quality, UIItemStack.NumberAndQuality };
 
         private readonly IStardewUIApi api;
+        private readonly ITranslationHelper translations;
 
         // flavored products: (label, base id drawn untinted for comparison, instance); instances are created lazily
         private readonly (string Label, string BaseId, Lazy<Item> Item)[] products =
@@ -47,23 +49,24 @@ namespace UIFrameworkExample
 
         internal IUIMenu Menu { get; }
 
-        internal ItemImageDemo(IStardewUIApi api)
+        internal ItemImageDemo(IStardewUIApi api, ITranslationHelper translations)
         {
             this.api = api;
+            this.translations = translations;
 
             IUIMenuOptions options = api.CreateMenuOptions();
-            options.Title = () => "Item images (v1.2)";
+            options.Title = () => translations.Get("items.title").ToString();
             options.Width = 760;
             Menu = api.CreateMenu("items", options);
 
             BuildTintSection(Menu.Root);
-            Divider(api, Menu.Root, "tint.divider");
+            DemoMenu.Divider(api, Menu.Root, "tint.divider");
             BuildOverlaySection(Menu.Root);
-            Divider(api, Menu.Root, "overlay.divider");
+            DemoMenu.Divider(api, Menu.Root, "overlay.divider");
             BuildOptionsSection(Menu.Root);
-            Divider(api, Menu.Root, "options.divider");
+            DemoMenu.Divider(api, Menu.Root, "options.divider");
             BuildDropdownSection(Menu.Root);
-            Divider(api, Menu.Root, "dropdown.divider");
+            DemoMenu.Divider(api, Menu.Root, "dropdown.divider");
             BuildTooltipSection(Menu.Root);
         }
 
@@ -74,7 +77,7 @@ namespace UIFrameworkExample
         /// <summary>One row per product: its name, the sprite by id (untinted) and the instance (tinted).</summary>
         private void BuildTintSection(IUIContainer parent)
         {
-            Heading(parent, "tint.heading", "Tint: AddImage by id (left) vs AddItemImage (right)");
+            Heading(parent, "tint.heading", "items.tint");
             IUIGrid grid = api.AddGrid(parent, "tint.grid", "auto,auto,auto", Autos(products.Length));
             grid.ColumnSpacing = 24;
             grid.RowSpacing = 8;
@@ -99,7 +102,7 @@ namespace UIFrameworkExample
         /// </summary>
         private void BuildOverlaySection(IUIContainer parent)
         {
-            Heading(parent, "overlay.heading", "Overlays: 12 gold parsnips at scales 1-4 (F10 inspector shows the bounds)");
+            Heading(parent, "overlay.heading", "items.overlay");
             IUIGrid grid = api.AddGrid(parent, "overlay.grid", "auto,auto,auto,auto", Autos(Scales.Length + 2));
             grid.ColumnSpacing = 24;
             grid.RowSpacing = 8;
@@ -137,7 +140,7 @@ namespace UIFrameworkExample
         /// <summary>The remaining <see cref="IUIItemImage"/> options, each labelled, all at scale 3.</summary>
         private void BuildOptionsSection(IUIContainer parent)
         {
-            Heading(parent, "options.heading", "Options (scale 3)");
+            Heading(parent, "options.heading", "items.options");
             Item Wine() => products[0].Item.Value;
             var cases = new List<(string Label, Action<IUIItemImage> Setup, Func<Item> Item)>
             {
@@ -176,7 +179,7 @@ namespace UIFrameworkExample
         /// </summary>
         private void BuildDropdownSection(IUIContainer parent)
         {
-            Heading(parent, "dropdown.heading", "Dropdowns: scroll indicator when choices overflow");
+            Heading(parent, "dropdown.heading", "items.dropdowns");
             string[] many = new string[24];
             for (int i = 0; i < many.Length; i++)
             {
@@ -227,19 +230,13 @@ namespace UIFrameworkExample
         //  Helpers
         // -------------------------------------------------------------------------------------------------------------
 
-        private void Heading(IUIContainer parent, string id, string text)
+        /// <summary>A section heading with the translation of <paramref name="key"/>.</summary>
+        private void Heading(IUIContainer parent, string id, string key)
         {
-            IUILabel label = api.AddLabel(parent, id, () => text);
+            IUILabel label = api.AddLabel(parent, id, () => translations.Get(key).ToString());
             label.Font = UIFont.Dialogue;
             // long headings continue on the next line instead of being cut off with an ellipsis
             label.Wrap = true;
-        }
-
-        /// <summary>A full-width divider line (also used by the main demo).</summary>
-        internal static void Divider(IStardewUIApi api, IUIContainer parent, string id)
-        {
-            IUISpacer spacer = api.AddSpacer(parent, id, 0, 8);
-            spacer.Line = true;
         }
 
         private static void Place(IUIElement element, int row, int column)

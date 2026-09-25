@@ -20,6 +20,11 @@ namespace UIFramework.Hosting
         private const int ButtonHeight = 48;
         private const int ButtonGap = 8;
 
+        // where IClickableMenu.initializeUpperRightCloseButton puts the close button: its left edge 36 px left of the
+        // window's right edge, its top 8 px above the window's top edge
+        private const int CloseButtonInsetRight = 36;
+        private const int CloseButtonRaise = 8;
+
         private enum Mode
         {
             None,
@@ -69,8 +74,8 @@ namespace UIFramework.Hosting
                 return;
             }
 
-            int right = closeButton != null ? closeButton.bounds.X - ButtonGap : menu.Bounds.Right - 36 + ButtonWidth;
-            var bounds = new Rectangle(right - ButtonWidth, menu.Bounds.Y - 8, ButtonWidth, ButtonHeight);
+            int right = closeButton != null ? closeButton.bounds.X - ButtonGap : menu.Bounds.Right - CloseButtonInsetRight + ButtonWidth;
+            var bounds = new Rectangle(right - ButtonWidth, menu.Bounds.Y - CloseButtonRaise, ButtonWidth, ButtonHeight);
             Rectangle source = menu.Collapsed ? Theme.ScrollDownArrow : Theme.ScrollUpArrow;
             if (collapseButton == null)
             {
@@ -150,7 +155,7 @@ namespace UIFramework.Hosting
         {
             menu.Collapsed = !menu.Collapsed;
             UIServices.PlaySound(Theme.DropdownCloseSound);
-            UIServices.Layouts?.Remember(menu);
+            UIServices.Layouts?.Remember(menu, moved: false);
         }
 
         private void Begin(Mode newMode, int x, int y)
@@ -199,7 +204,7 @@ namespace UIFramework.Hosting
             }
 
             mode = Mode.None;
-            UIServices.Layouts?.Remember(menu);
+            UIServices.Layouts?.Remember(menu, moved: true);
         }
     }
 }

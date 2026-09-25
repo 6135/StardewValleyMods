@@ -51,6 +51,12 @@ namespace ProfitCalculator.main.models
         /// <summary> Drops used to price each tapper output, by qualified item id. </summary>
         private readonly Dictionary<string, DropInformation.Drop> priceDrops = new(StringComparer.OrdinalIgnoreCase);
 
+        /// <summary> Days between outputs of the first tap item, shown when the simulation picks no output. </summary>
+        private readonly int defaultRegrowDays;
+
+        /// <summary> Last simulation, reused while the calculation and its inputs don't change. </summary>
+        private Simulation? cachedSimulation;
+
         /// <summary>
         /// Constructor for <c>WildTreeData</c> class. It's used to create a new instance of the class.
         /// </summary>
@@ -90,6 +96,7 @@ namespace ProfitCalculator.main.models
                 MaxHarvests = Math.Max(MinHarvests, first.MaxStack);
                 RegrowDays = Math.Max(1, first.DaysUntilReady);
             }
+            defaultRegrowDays = RegrowDays;
         }
 
         /// <summary> Id of the tree in <c>Data/WildTrees</c>. </summary>
@@ -105,9 +112,33 @@ namespace ProfitCalculator.main.models
         /// </summary>
         private sealed class Simulation
         {
-            public Simulation(int window)
+            public Simulation(int revision, UtilsSeason plantingSeason, int plantingDay, int window, float timeMultiplier, bool fertilized)
             {
+                Revision = revision;
+                PlantingSeason = plantingSeason;
+                PlantingDay = plantingDay;
+                TimeMultiplier = timeMultiplier;
+                Fertilized = fertilized;
                 RevenueByDay = new double[window];
+            }
+
+            /// <summary> <see cref="Calculator.Revision"/> the simulation was made for (prices depend on the settings and the player). </summary>
+            public int Revision { get; }
+
+            public UtilsSeason PlantingSeason { get; }
+
+            public int PlantingDay { get; }
+
+            public float TimeMultiplier { get; }
+
+            public bool Fertilized { get; }
+
+            public int Window => RevenueByDay.Length;
+
+            public bool Matches(int revision, UtilsSeason plantingSeason, int plantingDay, int window, float timeMultiplier, bool fertilized)
+            {
+                return Revision == revision && PlantingSeason == plantingSeason && PlantingDay == plantingDay && Window == window
+                    && TimeMultiplier == timeMultiplier && Fertilized == fertilized;
             }
 
             /// <summary> Days after planting on which the tree matures and the tapper is placed, or -1 if it doesn't mature in the window. </summary>
@@ -156,20 +187,44 @@ namespace ProfitCalculator.main.models
         }
 
         /// <summary>
-        /// Simulates the window day by day. Day <c>t</c> goes from 0 (the planting day) to the window minus 1. The tree grows
-        /// overnight, so the first growth happens on day 1. Also updates <see cref="PlantData.Days"/> (days to mature) and
-        /// <see cref="PlantData.RegrowDays"/> (days between outputs) so the results tooltip shows them.
+        /// The simulation for a planting date with the current settings, reused within one calculation. Also sets
+        /// <see cref="PlantData.Days"/> (days to mature) and <see cref="PlantData.RegrowDays"/> (days between outputs) from
+        /// it so the results tooltip shows them.
         /// </summary>
         /// <param name="plantingSeason"> Planting Season of type UtilsSeason <see cref="UtilsSeason"/></param>
         /// <param name="plantingDay"> Planting day of the month.</param>
         /// <returns> The simulation. </returns>
         private Simulation Simulate(UtilsSeason plantingSeason, int plantingDay)
         {
+            int revision = Calc?.Revision ?? 0;
             int window = TotalAvailableDays(plantingSeason, plantingDay);
-            Simulation simulation = new(window);
-            bool greenhouse = plantingSeason == UtilsSeason.Greenhouse;
-            bool fertilized = Fertilized;
             float timeMultiplier = TapperTimeMultiplier;
+            bool fertilized = Fertilized;
+            Simulation? simulation = cachedSimulation;
+            if (simulation is null || !simulation.Matches(revision, plantingSeason, plantingDay, window, timeMultiplier, fertilized))
+            {
+                simulation = RunSimulation(new Simulation(revision, plantingSeason, plantingDay, window, timeMultiplier, fertilized));
+                cachedSimulation = simulation;
+            }
+            Days = simulation.MatureDay >= 0 ? simulation.MatureDay : window;
+            RegrowDays = simulation.FirstInterval > 0 ? simulation.FirstInterval : defaultRegrowDays;
+            return simulation;
+        }
+
+        /// <summary>
+        /// Simulates the window day by day. Day <c>t</c> goes from 0 (the planting day) to the window minus 1. The tree grows
+        /// overnight, so the first growth happens on day 1.
+        /// </summary>
+        /// <param name="simulation"> The empty simulation, holding the planting date and settings. </param>
+        /// <returns> <paramref name="simulation"/>, filled. </returns>
+        private Simulation RunSimulation(Simulation simulation)
+        {
+            UtilsSeason plantingSeason = simulation.PlantingSeason;
+            int plantingDay = simulation.PlantingDay;
+            int window = simulation.Window;
+            bool greenhouse = plantingSeason == UtilsSeason.Greenhouse;
+            bool fertilized = simulation.Fertilized;
+            float timeMultiplier = simulation.TimeMultiplier;
 
             // growth: expected stages, one growth chance per growing day
             double growthChance = DailyGrowthChance(fertilized);
@@ -191,8 +246,6 @@ namespace ProfitCalculator.main.models
                     }
                 }
             }
-            Days = simulation.MatureDay >= 0 ? simulation.MatureDay : window;
-
             if (simulation.MatureDay < 0 || TreeGameData.TapItems is null)
             {
                 return simulation;
@@ -229,10 +282,6 @@ namespace ProfitCalculator.main.models
                         AddPick(picks, t + 1, "", remaining);
                     }
                 }
-            }
-            if (simulation.FirstInterval > 0)
-            {
-                RegrowDays = simulation.FirstInterval;
             }
             return simulation;
         }

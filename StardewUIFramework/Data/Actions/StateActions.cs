@@ -183,6 +183,13 @@ namespace UIFramework.Data.Actions
                 return false;
             }
 
+            // every caller writes: another owner's persisted state needs that owner's consent
+            if (!data.State.CanWrite(address, scope?.Owner, out string accessError))
+            {
+                error = accessError;
+                return false;
+            }
+
             error = null;
             return true;
         }

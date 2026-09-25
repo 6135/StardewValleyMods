@@ -97,24 +97,32 @@ namespace UIFramework.Components
         /// Draw <paramref name="item"/> filling the <paramref name="size"/> square at <paramref name="square"/>. Items only
         /// lay out correctly at <c>drawInMenu</c> scale 1 (a 64 px slot): below it plain objects shrink toward the
         /// center and colored ones toward the top-left. So the item is drawn at scale 1 at the origin and a transform maps
-        /// that slot onto the square; the overlays are drawn in the same slot space.
+        /// that slot onto the square; the overlays are drawn in the same slot space. At the native 64 px size the slot is
+        /// the square, so it is drawn in place without restarting the batch.
         /// </summary>
         internal static void DrawItem(SpriteBatch b, Item item, Vector2 square, float size, float alpha, UIItemStack stack, Color tint, bool shadow)
         {
+            if (Math.Abs(size - MenuTileSize) < 0.01f)
+            {
+                item.drawInMenu(b, square, 1f, alpha, LayerDepth, StackDrawType.Hide, tint, shadow);
+                DrawOverlays(b, item, square, alpha, stack, tint);
+                return;
+            }
+
             Matrix transform = Matrix.CreateScale(size / MenuTileSize) * Matrix.CreateTranslation(square.X, square.Y, 0f);
             DrawHelper.WithTransform(b, transform, () =>
             {
                 item.drawInMenu(b, Vector2.Zero, 1f, alpha, LayerDepth, StackDrawType.Hide, tint, shadow);
-                DrawOverlays(b, item, alpha, stack, tint);
+                DrawOverlays(b, item, Vector2.Zero, alpha, stack, tint);
             });
         }
 
         /// <summary>
-        /// The quality star and stack number in 64 px slot space. The star is where vanilla draws it (bottom-left); the
-        /// number is right-aligned inside the slot with its bottom level with the star's, instead of vanilla's spot a few
-        /// pixels lower and past the right edge.
+        /// The quality star and stack number in the 64 px slot at <paramref name="slot"/>. The star is where vanilla draws
+        /// it (bottom-left); the number is right-aligned inside the slot with its bottom level with the star's, instead of
+        /// vanilla's spot a few pixels lower and past the right edge.
         /// </summary>
-        private static void DrawOverlays(SpriteBatch b, Item item, float alpha, UIItemStack stack, Color tint)
+        private static void DrawOverlays(SpriteBatch b, Item item, Vector2 slot, float alpha, UIItemStack stack, Color tint)
         {
             if (stack == UIItemStack.Hide)
             {
@@ -127,7 +135,7 @@ namespace UIFramework.Components
                 Rectangle source = quality < 4 ? new Rectangle(338 + ((quality - 1) * 8), 400, 8, 8) : new Rectangle(346, 392, 8, 8);
                 // iridium bobs like in vanilla
                 float bob = quality < 4 ? 0f : ((float)Math.Cos(Game1.currentGameTime.TotalGameTime.Milliseconds * Math.PI / 512.0) + 1f) * 0.05f;
-                b.Draw(Game1.mouseCursors, new Vector2(StarCenterX, StarCenterY + bob), source, tint * alpha, 0f, new Vector2(4f, 4f), OverlayScale * (1f + bob), SpriteEffects.None, LayerDepth);
+                b.Draw(Game1.mouseCursors, slot + new Vector2(StarCenterX, StarCenterY + bob), source, tint * alpha, 0f, new Vector2(4f, 4f), OverlayScale * (1f + bob), SpriteEffects.None, LayerDepth);
             }
 
             int count = item.Stack;
@@ -138,7 +146,7 @@ namespace UIFramework.Components
                 float width = ((digits - 1) * ((5f * OverlayScale) - 1f)) + (5f * OverlayScale);
                 float height = 7f * OverlayScale;
                 float starBottom = StarCenterY + (4f * OverlayScale);
-                Utility.drawTinyDigits(count, b, new Vector2(MenuTileSize - width, starBottom - height), OverlayScale, Math.Min(1f, LayerDepth + 1E-06f), tint * alpha);
+                Utility.drawTinyDigits(count, b, slot + new Vector2(MenuTileSize - width, starBottom - height), OverlayScale, Math.Min(1f, LayerDepth + 1E-06f), tint * alpha);
             }
         }
     }

@@ -15,7 +15,8 @@ namespace UIFramework.Api
     /// </summary>
     public sealed class StardewUIApi : IStardewUIApi
     {
-        public static string Version => "1.8.0";
+        /// <summary>The framework's version (its manifest version, set in <see cref="ModEntry.Entry"/>).</summary>
+        public static string Version { get; internal set; } = string.Empty;
 
         private readonly ConsumerContext consumer;
         private readonly MenuRegistry menus;
@@ -214,7 +215,11 @@ namespace UIFramework.Api
         public void Remove(IUIElement element)
         {
             UIElement e = UIContainer.Unwrap(element);
-            RequireWriteAccess(e);
+            if (e.ParentElement == null || !FillsComponentOf(e.ParentElement))
+            {
+                RequireWriteAccess(e);
+            }
+
             e.ParentElement?.Remove(e);
         }
 
@@ -247,21 +252,25 @@ namespace UIFramework.Api
                 throw new ArgumentException("The menu was not created by this framework.", nameof(menu));
             }
 
-            string id = "__toggle:" + m.Id;
-            if (string.IsNullOrWhiteSpace(keybindList))
+            // the menu is looked up when the key is pressed (by owner and id), so the binding never holds a stale
+            // menu object; destroying or replacing the menu drops the binding (HotkeyService.ForgetMenu)
+            string owner = m.Consumer.ModId;
+            string id = m.Id;
+            hotkeys.RegisterToggle(consumer, owner, id, keybindList, () =>
             {
-                hotkeys.Unregister(consumer, id);
-                return;
-            }
-            hotkeys.Register(consumer, id, keybindList, () =>
-            {
-                if (m.IsOpen)
+                UIMenu? current = menus.Get(owner, id);
+                if (current == null)
                 {
-                    m.Close();
+                    return;
+                }
+
+                if (current.IsOpen)
+                {
+                    current.Close();
                 }
                 else
                 {
-                    m.Open(false);
+                    current.Open(false);
                 }
             });
         }
@@ -346,8 +355,10 @@ namespace UIFramework.Api
         {
             ArgumentNullException.ThrowIfNull(build);
 
-            composites.Define(consumer, RequireId(name), build);
-            UIServices.Hooks?.NotifyStructureChanged(); // data composites of that name rebuild
+            if (composites.Define(consumer, RequireId(name), build))
+            {
+                UIServices.Hooks?.NotifyStructureChanged(); // data composites of that name rebuild
+            }
         }
 
         public bool HasComposite(string name) => composites.Has(name ?? string.Empty);
@@ -695,6 +706,13 @@ namespace UIFramework.Api
 
         public void ExposeModel(string name, object model) => RequireHooks().ExposeModel(consumer, name, model);
 
+        public void ExposeModelSource(string name, Func<object> model)
+        {
+            ArgumentNullException.ThrowIfNull(model);
+
+            RequireHooks().ExposeModelSource(consumer, name, model);
+        }
+
         public void ExposeRows(string name, Func<object[]> rows) => RequireHooks().ExposeRows(consumer, name, rows);
 
         public void RegisterDrawHook(string name, Action<SpriteBatch, Rectangle, IUIDataCall> draw)
@@ -751,7 +769,9 @@ namespace UIFramework.Api
                 RequireWriteAccess(container);
             }
 
-            if (container.OwnerMenu != null && container.OwnerMenu.Root.FindById(element.Id) != null)
+            // a whole-tree walk per added element: only while diagnosing (debug overlay or callback logging)
+            bool diagnosing = UIServices.Config.DebugOverlay || UIServices.Config.LogCallbacks;
+            if (diagnosing && container.OwnerMenu != null && container.OwnerMenu.Root.FindById(element.Id) != null)
             {
                 UIServices.Log($"[{consumer.ModId}] element id '{element.Id}' is already used in menu '{container.OwnerMenu.Id}'; Find() will return the first one.", LogLevel.Debug);
             }

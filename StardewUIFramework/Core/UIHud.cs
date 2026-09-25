@@ -1,6 +1,7 @@
 using System;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
+using StardewModdingAPI.Utilities;
 using UIFramework.Api;
 using UIFramework.Hosting;
 using UIFramework.Rendering;
@@ -11,14 +12,19 @@ namespace UIFramework.Core
     /// A HUD widget: a hidden <see cref="UIMenu"/> that is never opened as an <c>IClickableMenu</c>. The inner menu
     /// supplies the tree, layout (anchor + offset, size policy), focus / overlay / router services and the consumer
     /// context; <see cref="HudService"/> lays it out, draws it from <c>Display.RenderedHud</c> and routes input to it.
+    /// One widget serves every split-screen player: hover, focus and overlay are per screen (the inner menu's view),
+    /// and so is whether the widget is shown; the tree is laid out again for each screen.
     /// </summary>
     internal sealed class UIHud : IUIHud
     {
         private const int BoxPadding = 16;
 
         private bool drawBox = true;
-        private int lastScreen = -1;
         private float opacity = 1f;
+        private readonly PerScreen<bool> shown = new();
+
+        /// <summary>The frame <see cref="OnUpdate"/> last ran in (it runs once per game tick, not once per screen).</summary>
+        private long lastUpdateFrame = long.MinValue;
 
         internal UIHud(string id, ConsumerContext consumer, MenuRegistry registry)
         {
@@ -133,33 +139,29 @@ namespace UIFramework.Core
         //  Per-frame (called by HudService)
         // ---------------------------------------------------------------------------------------------------------
 
-        /// <summary>Whether the widget wants to be drawn this frame (consumer switch and <see cref="ShowWhen"/>), as of the last <see cref="EvaluateShown"/>.</summary>
-        internal bool IsShown { get; private set; }
+        /// <summary>Whether the widget wants to be drawn on the current screen (consumer switch and <see cref="ShowWhen"/>), as of the last <see cref="EvaluateShown"/>.</summary>
+        internal bool IsShown => shown.Value;
 
-        /// <summary>Re-evaluate <see cref="Visible"/> and <see cref="ShowWhen"/> (once per tick, through the callback guard).</summary>
+        /// <summary>Re-evaluate <see cref="Visible"/> and <see cref="ShowWhen"/> for the current screen (once per tick, through the callback guard).</summary>
         internal bool EvaluateShown()
         {
-            // one widget serves every split-screen player: a different screen has another viewport and other
-            // per-screen values, so lay out again (data widgets also re-read their per-screen state here)
-            int screen = StardewModdingAPI.Context.ScreenId;
-            if (screen != lastScreen)
-            {
-                lastScreen = screen;
-                Inner.MarkLayoutDirty();
-            }
-
-            IsShown = Visible && (ShowWhen == null || Consumer.Invoke(Inner.Id, "ShowWhen", ShowWhen, true));
-            return IsShown;
+            bool value = Visible && (ShowWhen == null || Consumer.Invoke(Inner.Id, Inner.Id, "ShowWhen", ShowWhen, true));
+            shown.Value = value;
+            return value;
         }
 
-        /// <summary>Layout if needed, update the tree, raise <see cref="OnUpdate"/>.</summary>
-        internal void Tick(double elapsedMs)
+        /// <summary>
+        /// Layout if needed and update the tree (on every screen), then raise <see cref="OnUpdate"/> once per game tick:
+        /// <paramref name="frame"/> identifies the tick and is the same for every split-screen player.
+        /// </summary>
+        internal void Tick(double elapsedMs, long frame)
         {
             Inner.Tick(elapsedMs);
-            if (OnUpdate != null)
+            if (OnUpdate != null && frame != lastUpdateFrame)
             {
+                lastUpdateFrame = frame;
                 Action<IUIHud, double> cb = OnUpdate;
-                Consumer.Invoke(Inner.Id, "OnUpdate", () => cb(this, elapsedMs));
+                Consumer.InvokeWith(Inner.Id, Inner.Id, "OnUpdate", static s => s.cb(s.hud, s.elapsedMs), (cb, hud: (IUIHud)this, elapsedMs));
             }
         }
 

@@ -17,8 +17,9 @@ namespace UIFramework.Data.Building
     /// split-screen player. <see cref="Update"/> is called by the collection's refresher at the top of every tick; it
     /// re-reads the source only when the UI opens (or <c>_Refresh</c> / <c>_Rebuild</c>) and when what the source reads
     /// changed (the state value of a <c>State</c> source, the evaluated bounds of a <c>Range</c>, the interpolated text of
-    /// an item query), and re-runs <c>Filter</c> / <c>Sort</c> / <c>Limit</c> only when the state epoch moved. It never
-    /// resolves every frame.
+    /// an item query), and re-runs <c>Filter</c> / <c>Sort</c> / <c>Limit</c> when the raw rows changed, or when the state
+    /// epoch moved and they read more than the row (a <c>Filter</c> of <c>row.price &gt; 100</c> never re-runs for a
+    /// state change). It never resolves every frame.
     /// <para>
     /// Kinds: inline <c>Rows</c>, <c>Range</c>, <c>ItemQuery</c> (vanilla <c>ItemQueryResolver</c>), <c>State</c> (a
     /// JSON array held in state), <c>Themes</c>, <c>Asset</c> (a <c>Dictionary&lt;string, string&gt;</c> asset),
@@ -43,6 +44,7 @@ namespace UIFramework.Data.Building
         private readonly HashSet<string> reported = new(StringComparer.Ordinal);
         private int version;
         private DataValue lastValue;
+        private bool? rowOnlyShaping;
 
         private SourceBinding(SourceDefinition def, string kind, DataScope scope, string? alias, DataRuntime runtime, DataPath path, SourceBinding? inner)
         {
@@ -199,14 +201,20 @@ namespace UIFramework.Data.Building
                 rawChanged = false;
             }
 
-            // filter / sort / limit (re-run when the state moved: they may read it)
-            IReadOnlyList<DataValue> rows = rawChanged || cache == null || HasShaping ? Shape(raw) : cache.Rows;
-            bool changed = cache == null || !SameRows(cache.Rows, rows);
+            bool created = cache == null;
             if (cache == null)
             {
                 caches[screen] = cache = new Cache();
             }
 
+            if (rawChanged)
+            {
+                cache.RawScopes = null;
+            }
+
+            // filter / sort / limit (re-run for a state change only when they read more than the row)
+            IReadOnlyList<DataValue> rows = rawChanged || (HasShaping && !ShapingReadsOnlyRows) ? Shape(raw, cache) : cache.Rows;
+            bool changed = created || !SameRows(cache.Rows, rows);
             cache.Key = key;
             cache.Raw = raw;
             cache.Epoch = epoch;
@@ -447,18 +455,23 @@ namespace UIFramework.Data.Building
         //  Filter / sort / limit
         // ---------------------------------------------------------------------------------------------------------
 
-        private IReadOnlyList<DataValue> Shape(IReadOnlyList<DataValue> raw)
+        /// <summary>True when <c>Filter</c>, <c>Sort</c>, <c>SortDescending</c> and <c>Limit</c> read nothing but the row (<c>row</c>, the alias, <c>index</c>) and literals.</summary>
+        private bool ShapingReadsOnlyRows => rowOnlyShaping ??= RowScope.ReadsOnlyRow(def.Filter, alias) && RowScope.ReadsOnlyRow(def.Sort, alias)
+            && RowScope.ReadsOnlyRow(def.SortDescending, alias) && RowScope.ReadsOnlyRow(def.Limit, alias);
+
+        private IReadOnlyList<DataValue> Shape(IReadOnlyList<DataValue> raw, Cache cache)
         {
             if (!HasShaping)
             {
                 return raw;
             }
 
-            IValueResolver resolver = ExpressionValueResolver.Instance;
+            ExpressionValueResolver resolver = ExpressionValueResolver.Instance;
             var kept = new List<(DataValue Row, DataValue Key)>(raw.Count);
+            cache.RawScopes ??= new DataScope?[raw.Count];
             for (int i = 0; i < raw.Count; i++)
             {
-                DataScope rowScope = RowScope.For(scope, raw[i], i, alias);
+                DataScope rowScope = cache.RawScopes[i] ??= RowScope.For(scope, raw[i], i, alias);
                 if (def.Filter != null)
                 {
                     DataValue keep = resolver.Evaluate(def.Filter, rowScope, out string? error);
@@ -572,6 +585,9 @@ namespace UIFramework.Data.Building
             internal IReadOnlyList<DataValue> Rows = Array.Empty<DataValue>();
             internal long Epoch = -1;
             internal DataScope?[]? Scopes;
+
+            /// <summary>The row scopes of <see cref="Raw"/> that Filter and Sort evaluate in (kept while the raw rows are).</summary>
+            internal DataScope?[]? RawScopes;
         }
     }
 }

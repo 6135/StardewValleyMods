@@ -38,20 +38,14 @@ namespace UIFramework.Data.Expressions
     /// <summary>
     /// A case-insensitive table of expression functions. <see cref="Default"/> holds the pure built-ins (see
     /// <see cref="BuiltinFunctions"/>); the data layer registers the game-dependent ones (<c>gsq token loc isOpen
-    /// focused hovered bounds itemName</c>) and C#-registered consumer functions into it, or into a child registry
-    /// whose lookups fall back to its parent.
+    /// focused hovered bounds itemName</c>) and C#-registered consumer functions into it.
     /// </summary>
     internal sealed class FunctionRegistry
     {
         private static FunctionRegistry? defaultRegistry;
 
         private readonly Dictionary<string, FunctionDefinition> functions = new(StringComparer.OrdinalIgnoreCase);
-        private int ownVersion;
-
-        internal FunctionRegistry(FunctionRegistry? parent = null)
-        {
-            Parent = parent;
-        }
+        private int version;
 
         /// <summary>The shared registry, pre-filled with the built-ins.</summary>
         internal static FunctionRegistry Default
@@ -69,11 +63,8 @@ namespace UIFramework.Data.Expressions
             }
         }
 
-        /// <summary>Consulted when a name isn't registered here.</summary>
-        internal FunctionRegistry? Parent { get; }
-
-        /// <summary>Changes whenever this registry or a parent registers or removes a function (invalidates call-site lookup caches).</summary>
-        internal int Version => ownVersion + (Parent?.Version ?? 0);
+        /// <summary>Changes whenever a function is registered (invalidates call-site lookup caches).</summary>
+        internal int Version => version;
 
         /// <summary>
         /// Register (or replace) <paramref name="name"/>. <paramref name="maxArguments"/> of -1 means unlimited.
@@ -87,60 +78,12 @@ namespace UIFramework.Data.Expressions
             }
 
             functions[name] = new FunctionDefinition(name, minArguments, maxArguments, function, isVolatile);
-            ownVersion++;
+            version++;
             return true;
         }
 
-        /// <summary>Remove <paramref name="name"/> from this registry (parents are untouched).</summary>
-        internal bool Unregister(string name)
-        {
-            if (functions.Remove(name))
-            {
-                ownVersion++;
-                return true;
-            }
-
-            return false;
-        }
-
-        /// <summary>Find <paramref name="name"/> here or in a parent.</summary>
-        internal bool TryGet(string name, out FunctionDefinition? function)
-        {
-            if (functions.TryGetValue(name, out function))
-            {
-                return true;
-            }
-
-            if (Parent != null)
-            {
-                return Parent.TryGet(name, out function);
-            }
-
-            function = null;
-            return false;
-        }
-
-        /// <summary>True when <paramref name="name"/> is registered here or in a parent.</summary>
-        internal bool Contains(string name) => TryGet(name, out _);
-
-        /// <summary>Names registered here and in parents (for docs and diagnostics).</summary>
-        internal IEnumerable<string> Names
-        {
-            get
-            {
-                HashSet<string> seen = new(StringComparer.OrdinalIgnoreCase);
-                for (FunctionRegistry? registry = this; registry != null; registry = registry.Parent)
-                {
-                    foreach (string name in registry.functions.Keys)
-                    {
-                        if (seen.Add(name))
-                        {
-                            yield return name;
-                        }
-                    }
-                }
-            }
-        }
+        /// <summary>Find <paramref name="name"/>.</summary>
+        internal bool TryGet(string name, out FunctionDefinition? function) => functions.TryGetValue(name, out function);
 
         private static bool IsValidName(string? name)
         {

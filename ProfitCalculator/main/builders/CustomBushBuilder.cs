@@ -56,7 +56,7 @@ namespace ProfitCalculator.main.builders
                 }
                 catch (Exception e)
                 {
-                    Monitor?.Log($"Error building custom bush {bush?.Id}: {e.Message}", LogLevel.Error);
+                    Monitor?.Log($"Skipping custom bush '{bush?.Id}': it could not be built.\n{e}", LogLevel.Warn);
                 }
             }
             Monitor?.Log($"Custom bushes loaded: {bushes.Count}", LogLevel.Debug);

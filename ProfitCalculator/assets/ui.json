@@ -37,7 +37,7 @@
           { "Type": "Line", "Text": "${@t('produce-type-sold')}: ${row.ProduceName}" },
           { "Type": "Line", "Text": "${@t('produce-count')}: #${@format(row.ProduceCount, '0.##')}" },
           { "Type": "Line", "Text": "${@t('inputs-per-product')}: #${row.InputsPerProduct}", "When": "row.InputsPerProduct > 1" },
-          { "Type": "Line", "Text": "${@t('processing-time')}: ${@format(row.ProcessingDays, '0.#')} ${@t('days')}", "When": "row.ProduceType != 'Raw' && row.ProduceType != 'FruitTrees' && row.ProduceType != 'WildTrees'" },
+          { "Type": "Line", "Text": "${@t('processing-time')}: ${@format(row.ProcessingDays, '0.#')} ${@t('days')}", "When": "!row.IsSoldRaw" },
       
           { "Type": "Divider" },
           { "Type": "Line", "Text": "${@t('grow-time')}: ${row.GrowthTime} ${@t('days')}" },
@@ -45,7 +45,7 @@
           { "Type": "Line", "Text": "${@t('harvest-count')}: #${row.TotalHarvests}" },
           { "Type": "Line", "Text": "${@t('duration')}: ${row.Duration} ${@t('days')}" },
           // the tree views always say when (or that) the seed cost is paid back
-          { "Type": "Line", "Text": "${row.PaybackDay >= 0 ? @t('payback', 'day', row.PaybackDay) : @t('payback-never')}", "When": "row.PaybackDay != -1 || row.ProduceType == 'FruitTrees' || row.ProduceType == 'WildTrees'" },
+          { "Type": "Line", "Text": "${row.PaybackDay >= 0 ? @t('payback', 'day', row.PaybackDay) : @t('payback-never')}", "When": "row.PaybackDay != -1 || row.IsTreeView" },
       
           { "Type": "Divider" },
           { "Type": "Line", "Text": "${@t('min-harvests')}: #${row.Crop.MinHarvests}" },
@@ -55,7 +55,7 @@
       
           { "Type": "Divider" },
           // the tree views always show the whole quality mix (a fruit tree's mix changes with its age)
-          { "Type": "Line", "Text": "${@t('value-normal')}: ${@percent(row.ChanceOfNormalQuality)}", "When": "row.ChanceOfNormalQuality != 0 || row.ProduceType == 'FruitTrees' || row.ProduceType == 'WildTrees'" },
+          { "Type": "Line", "Text": "${@t('value-normal')}: ${@percent(row.ChanceOfNormalQuality)}", "When": "row.ChanceOfNormalQuality != 0 || row.IsTreeView" },
           { "Type": "Line", "Text": "${@t('value-silver')}: ${@percent(row.ChanceOfSilverQuality)}" },
           { "Type": "Line", "Text": "${@t('value-gold')}: ${@percent(row.ChanceOfGoldQuality)}" },
           { "Type": "Line", "Text": "${@t('value-iridium')}: ${@percent(row.ChanceOfIridiumQuality)}", "When": "row.ChanceOfIridiumQuality > 0" }
@@ -75,8 +75,8 @@
       "OnOpen": "@ValidateSettings",
       "Computed": {
         // the rows under the optional ones move down by the number of optional rows shown
-        "notRaw": "model.settings.ProduceType != 'Raw'",
-        "wild": "model.settings.ProduceType == 'WildTrees'",
+        "notRaw": "!model.settings.IsRaw",
+        "wild": "model.settings.IsWildTrees",
         "shift": "(menu.notRaw ? 1 : 0) + (menu.wild ? 2 : 0)"
       },
       "Children": [
@@ -89,7 +89,7 @@
           "RowSpacing": 16,
           "Children": [
             { "Id": "day.label", "Label": "${@t('day')}: ", "Font": "dialogue", "Row": 0, "VerticalAlign": "Center" },
-            { "Id": "day", "Type": "NumberInput", "Bind": "model.settings.Day", "Min": 1, "Max": 28, "Decimals": 0, "Texture": "Mods/6135.UIFramework/TextBoxSmall", "Cell": "0,1", "VerticalAlign": "Center" },
+            { "Id": "day", "Type": "NumberInput", "Bind": "model.settings.Day", "Min": "${model.settings.MinDay}", "Max": "${model.settings.MaxDay}", "Decimals": 0, "Texture": "Mods/6135.UIFramework/TextBoxSmall", "Cell": "0,1", "VerticalAlign": "Center" },
 
             { "Id": "season.label", "Label": "${@t('Season')}: ", "Font": "dialogue", "Row": 1, "VerticalAlign": "Center" },
             {
@@ -120,7 +120,7 @@
             },
 
             { "Id": "years.label", "Label": "${@t('years')}: ", "Font": "dialogue", "Row": 3, "VerticalAlign": "Center", "Visible": "menu.notRaw" },
-            { "Id": "years", "Type": "NumberInput", "Bind": "model.settings.Years", "Min": 1, "Max": 10, "Decimals": 0, "Texture": "Mods/6135.UIFramework/TextBoxSmall", "Cell": "3,1", "VerticalAlign": "Center", "Visible": "menu.notRaw" },
+            { "Id": "years", "Type": "NumberInput", "Bind": "model.settings.Years", "Min": "${model.settings.MinYears}", "Max": "${model.settings.MaxYears}", "Decimals": 0, "Texture": "Mods/6135.UIFramework/TextBoxSmall", "Cell": "3,1", "VerticalAlign": "Center", "Visible": "menu.notRaw" },
 
             { "Id": "heavyTapper.label", "Label": "${@t('heavy-tapper')}: ", "Font": "dialogue", "Row": 4, "VerticalAlign": "Center", "Visible": "menu.wild" },
             { "Id": "heavyTapper", "Type": "Checkbox", "Bind": "model.settings.HeavyTapper", "Cell": "4,1", "VerticalAlign": "Center", "Visible": "menu.wild" },
@@ -215,7 +215,7 @@
               "MinWidth": 180,
               "Sortable": true,
               "Text": "${row.Crop.DisplayName}",
-              // the crop's own sprite (a Tuple<Texture2D, Rectangle> on the C# row) and its name; the row tooltip covers the whole row
+              // the harvest (drawn by the game) and the crop's name; the row tooltip covers the whole row
               "Cell": [
                 {
                   "Id": "line",
@@ -224,7 +224,7 @@
                   "Spacing": 8,
                   "VerticalAlign": "Center",
                   "Children": [
-                    { "Id": "sprite", "Type": "Image", "Sprite": "${row.Crop.Sprite}", "Scale": 3, "VerticalAlign": "Center" },
+                    { "Id": "sprite", "Type": "ItemImage", "Item": "${row.InputItem}", "Scale": 3, "VerticalAlign": "Center" },
                     { "Id": "name", "Label": "${row.Crop.DisplayName}", "VerticalAlign": "Center" }
                   ]
                 }

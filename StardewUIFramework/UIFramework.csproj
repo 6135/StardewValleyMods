@@ -17,7 +17,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <None Include="i18n\default.json" />
     <None Include="assets\**" CopyToOutputDirectory="PreserveNewest" />
     <None Include="Api\Public\IStardewUIApi.cs" />
   </ItemGroup>

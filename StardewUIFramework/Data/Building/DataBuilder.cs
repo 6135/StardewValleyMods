@@ -34,12 +34,12 @@ namespace UIFramework.Data.Building
         private const double DefaultNumberMax = 999999;
         private const double DefaultSliderMax = 100;
 
-        private readonly IValueResolver resolver;
+        private readonly ExpressionValueResolver resolver;
         private readonly SpriteRefs sprites;
         private readonly Func<string, OwnerDefinition?> owners;
         private readonly DataStateStore store;
 
-        internal DataBuilder(IValueResolver resolver, SpriteRefs sprites, Func<string, OwnerDefinition?> owners, DataStateStore store)
+        internal DataBuilder(ExpressionValueResolver resolver, SpriteRefs sprites, Func<string, OwnerDefinition?> owners, DataStateStore store)
         {
             this.resolver = resolver;
             this.sprites = sprites;
@@ -148,20 +148,29 @@ namespace UIFramework.Data.Building
             menu.DefaultButtonElement = FindButton(menu, def.DefaultButton);
             menu.CancelButtonElement = FindButton(menu, def.CancelButton);
 
-            // only unbind a toggle hotkey data bound itself (a C# BindToggleHotkey on the same menu survives rebuilds)
+            // the data toggle goes through DataService.Toggle, so the entry's Condition and the wait-until-free queue
+            // apply; its own id leaves a C# BindToggleHotkey on the same menu alone
             if (def.Hotkey != null && ValueParsers.Keybind.Parse(def.Hotkey, out _))
             {
-                api.BindToggleHotkey(menu, def.Hotkey);
-                runtime.HotkeyBound = true;
+                string key = runtime.Key;
+                api.RegisterHotkey(MenuHotkeyId(runtime.MenuId), def.Hotkey, () =>
+                {
+                    if (UIServices.Data?.Toggle(key, out string error) == false)
+                    {
+                        UIServices.Log($"[{runtime.Owner}] the hotkey of menu '{key}' did nothing: {error}");
+                    }
+                });
             }
-            else if (runtime.HotkeyBound)
+            else
             {
-                api.BindToggleHotkey(menu, string.Empty);
-                runtime.HotkeyBound = false;
+                api.UnregisterHotkey(MenuHotkeyId(runtime.MenuId));
             }
 
             menu.DataRefresh = runtime.Refresh;
         }
+
+        /// <summary>The id of a data menu's toggle hotkey (<c>Hotkey</c>).</summary>
+        internal static string MenuHotkeyId(string menuId) => "menu:" + menuId;
 
         /// <summary>Build a tree into <paramref name="root"/> (HUDs use this with the widget's root stack).</summary>
         internal void BuildTree(StardewUIApi api, DataRuntime runtime, PropertyApplier applier, IUIContainer root, List<ElementDefinition>? children, DataScope scope, DataPath path)
@@ -657,8 +666,10 @@ namespace UIFramework.Data.Building
         private static IUIElement CreateItemImage(StardewUIApi api, IUIContainer parent, string id, ElementDefinition def, DataScope scope, DataPath path, PropertyApplier applier)
         {
             DataValue value = DataValue.Null;
-            int count = Math.Max(1, applier.Initial(def.Count, ValueParsers.Int, 1, scope, path.Field("Count")));
-            int quality = Math.Clamp(applier.Initial(def.Quality, ValueParsers.Int, 0, scope, path.Field("Quality")), 0, 4);
+            int count = 1;
+            int quality = 0;
+            applier.Apply(def.Count, ValueParsers.Int, scope, path.Field("Count"), v => count = Math.Max(1, v));
+            applier.Apply(def.Quality, ValueParsers.Int, scope, path.Field("Quality"), v => quality = Math.Clamp(v, 0, 4));
 
             // the getter goes through the item cache (a dictionary hit once created), so an item that cannot be created
             // yet (an item query on the title screen) is retried instead of staying empty
@@ -721,9 +732,6 @@ namespace UIFramework.Data.Building
                     a.Apply(def.ShowScrollbar, ValueParsers.Bool, scope, path.Field("ShowScrollbar"), v => scroll.ShowScrollbar = v);
                     break;
                 case IUISpacer spacer:
-                    // unset sizes are measured (a Line then stretches with its alignment) instead of the C# API's fixed 0
-                    spacer.Width = null;
-                    spacer.Height = null;
                     a.Apply(def.Line, ValueParsers.Bool, scope, path.Field("Line"), v => spacer.Line = v);
                     break;
                 case IUILabel label:
@@ -779,6 +787,11 @@ namespace UIFramework.Data.Building
                     ApplyTexture(def.Texture, scope, path.Field("Texture"), a, t => text.Texture = t);
                     break;
                 case IUINumberInput number:
+                    // Min / Max / Step / Clamp were passed to the constructor; live values are re-applied here
+                    a.Apply(def.Min, ValueParsers.Number, scope, path.Field("Min"), v => number.Min = v);
+                    a.Apply(def.Max, ValueParsers.Number, scope, path.Field("Max"), v => number.Max = v);
+                    a.Apply(def.Step, ValueParsers.Number, scope, path.Field("Step"), v => number.Step = v);
+                    a.Apply(def.Clamp, ValueParsers.Bool, scope, path.Field("Clamp"), v => number.Clamp = v);
                     a.Apply(def.Decimals, ValueParsers.Int, scope, path.Field("Decimals"), v => number.Decimals = v);
                     ApplyTexture(def.Texture, scope, path.Field("Texture"), a, t => number.Texture = t);
                     break;
@@ -787,6 +800,8 @@ namespace UIFramework.Data.Building
                     a.Apply(def.Shrink, ValueParsers.Bool, scope, path.Field("Shrink"), v => dropdown.Shrink = v);
                     break;
                 case IUISlider slider:
+                    a.Apply(def.Min, ValueParsers.Number, scope, path.Field("Min"), v => slider.Min = v);
+                    a.Apply(def.Max, ValueParsers.Number, scope, path.Field("Max"), v => slider.Max = v);
                     a.Apply(def.Step, ValueParsers.Number, scope, path.Field("Step"), v => slider.Step = v);
                     break;
             }

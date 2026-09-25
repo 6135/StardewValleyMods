@@ -20,17 +20,22 @@ namespace UIFramework.Components
         private Func<int, double>? sortNumber;
         private Action<int, IUIContainer>? buildCell;
         private Func<int, string>? cellTooltip;
+        private bool sortable;
 
         internal DataGridColumn(DataGrid owner, string id, Func<string>? header, string? width)
         {
             this.owner = owner;
             Id = id;
+            GuardKey = owner.Id + "." + id;
             this.header = header;
             this.width = string.IsNullOrWhiteSpace(width) ? "*" : width;
             Track = LayoutEngine.ParseTracks(this.width)[0];
         }
 
         public string Id { get; }
+
+        /// <summary>The consumer-guard element id of the column's delegates (grid id + column id), built once.</summary>
+        internal string GuardKey { get; }
 
         /// <summary>Parsed <see cref="Width"/>.</summary>
         internal GridTrack Track { get; private set; }
@@ -48,7 +53,15 @@ namespace UIFramework.Components
         //  Properties
         // ---------------------------------------------------------------------------------------------------------
 
-        Func<string> IUIDataGridColumn.Header { get => header!; set => header = value; }
+        Func<string> IUIDataGridColumn.Header
+        {
+            get => header!;
+            set
+            {
+                header = value;
+                owner.InvalidateLayout();
+            }
+        }
 
         public string Width
         {
@@ -56,7 +69,21 @@ namespace UIFramework.Components
             set => SetWidth(value);
         }
 
-        public bool Sortable { get; set; }
+        /// <summary>Whether a header click sorts by this column; the header then reserves room for the sort arrow.</summary>
+        public bool Sortable
+        {
+            get => sortable;
+            set
+            {
+                if (sortable == value)
+                {
+                    return;
+                }
+
+                sortable = value;
+                owner.InvalidateLayout();
+            }
+        }
 
         public bool Resizable { get; set; }
 

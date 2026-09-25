@@ -1,4 +1,6 @@
-﻿using ProfitCalculator.main.accessors;
+﻿using ProfitCalculator.apis;
+using ProfitCalculator.main.accessors;
+using ProfitCalculator.main.builders;
 using ProfitCalculator.main.memory;
 using ProfitCalculator.main.models;
 using StardewModdingAPI;
@@ -18,24 +20,23 @@ namespace ProfitCalculator.main
 
         // Properties
         /// <summary>
-        /// List of all crops in the game
+        /// List of all crops in the game. Changed only through <see cref="RebuildCrops"/>, <see cref="SetCrop"/> and
+        /// <see cref="RemoveCrop"/>, which keep the machine catalog in step.
         /// </summary>
-        public Dictionary<string, PlantData> Crops { get; set; }
+        public IReadOnlyDictionary<string, PlantData> Crops => crops;
+
+        private readonly Dictionary<string, PlantData> crops = new();
+
+        /// <summary> Whether game data the plants are built from changed since the last <see cref="RebuildCrops"/>. </summary>
+        private bool cropsDirty;
+
+        /// <summary> Plants whose calculation failed and was logged since the last rebuild, so the log isn't flooded on every Calculate. </summary>
+        private readonly HashSet<string> failedCrops = new();
 
         /// <summary>
         /// Day of the Season
         /// </summary>
         public uint Day { get; set; }
-
-        /// <summary>
-        /// Max days of a Season
-        /// </summary>
-        public uint MaxDay { get; set; }
-
-        /// <summary>
-        /// Min days of a Season
-        /// </summary>
-        public uint MinDay { get; set; }
 
         /// <summary>
         /// UtilsSeason of the year selected
@@ -79,7 +80,8 @@ namespace ProfitCalculator.main
 
         /// <summary>
         /// Number of years (112 days each) trees are simulated over: the window of <see cref="FruitTreesProduceType"/>,
-        /// <see cref="WildTreesProduceType"/> and of fruit trees in machine lists. From 1 to 10.
+        /// <see cref="WildTreesProduceType"/> and of fruit trees in machine lists, within
+        /// <see cref="ProfitCalculatorSettings.MinYears"/> to <see cref="ProfitCalculatorSettings.MaxYears"/>.
         /// </summary>
         public uint Years { get; set; } = 1;
 
@@ -106,19 +108,14 @@ namespace ProfitCalculator.main
         #endregion properties
 
         /// <summary>
-        /// Constructor for the calculator, initializes the list of crops and crop parsers. Instantiates the calculator with default values.
+        /// Increases every time <see cref="SetSettings"/> runs, so plant models can cache work for one calculation.
         /// </summary>
-        public Calculator()
-        {
-            Crops = new Dictionary<string, PlantData>();
-        }
+        public int Revision { get; private set; }
 
         /// <summary>
         /// Sets the settings for the calculator to use when calculating profits.
         /// </summary>
         /// <param name="day"><see cref="Day"/></param>
-        /// <param name="maxDay"><see cref="MaxDay"/></param>
-        /// <param name="minDay"><see cref="MinDay"/></param>
         /// <param name="_season"><see cref="StardewValley.Season"/></param>
         /// <param name="produceType"><see cref="ProduceType"/></param>
         /// <param name="fertilizerQuality"> <see cref="FertilizerQuality"/></param>
@@ -127,17 +124,16 @@ namespace ProfitCalculator.main
         /// <param name="maxMoney"> <see cref="MaxMoney"/></param>
         /// <param name="useBaseStats"> <see cref="UseBaseStats"/></param>
         /// <param name="crossSeason"> <see cref="CrossSeason"/></param>
-        /// <param name="years"> <see cref="Years"/>, clamped to 1-10</param>
+        /// <param name="years"> <see cref="Years"/>, already clamped by <see cref="ProfitCalculatorSettings.ApplyTo"/></param>
         /// <param name="heavyTapper"> <see cref="HeavyTapper"/></param>
         /// <param name="treeFertilizer"> <see cref="TreeFertilizer"/></param>
-        public void SetSettings(uint day, uint maxDay, uint minDay, UtilsSeason _season, string produceType, FertilizerQuality fertilizerQuality, bool payForSeeds, bool payForFertilizer, uint maxMoney, bool useBaseStats, bool crossSeason, uint years, bool heavyTapper, bool treeFertilizer)
+        public void SetSettings(uint day, UtilsSeason _season, string produceType, FertilizerQuality fertilizerQuality, bool payForSeeds, bool payForFertilizer, uint maxMoney, bool useBaseStats, bool crossSeason, uint years, bool heavyTapper, bool treeFertilizer)
         {
-            Years = Math.Clamp(years, 1u, 10u);
+            Revision++;
+            Years = years;
             HeavyTapper = heavyTapper;
             TreeFertilizer = treeFertilizer;
             Day = day;
-            MaxDay = maxDay;
-            MinDay = minDay;
             Season = _season;
             ProduceType = produceType;
             FertilizerQuality = fertilizerQuality;
@@ -156,13 +152,102 @@ namespace ProfitCalculator.main
             }
         }
 
+        #region Plant list
+
         /// <summary>
-        /// Clears the list of crops.
+        /// Rebuilds the plant list from the game data, the <c>ManualCrops</c> asset and the mod API, then invalidates the
+        /// machine catalog. The builders run in order and the first to add an id wins, so manual / API crops override the
+        /// built-in ones. A plant that fails to build is logged and skipped by its builder; the others are kept.
         /// </summary>
-        public void ClearCrops()
+        public void RebuildCrops()
         {
-            Crops.Clear();
+            // start from scratch so crops from a previously loaded save (or edited assets) don't linger
+            crops.Clear();
+            failedCrops.Clear();
+            cropsDirty = false;
+            List<IDataBuilder> builders = new()
+            {
+                new ManualCropBuilder(),
+                new CropBuilder(),
+                new FruitTreeBuilder(),
+                new BushBuilder(),
+                new WildTreeBuilder(),
+            };
+            if (Container.Instance.GetInstance<ICustomBushApi>(ModEntry.UniqueID) != null)
+            {
+                builders.Add(new CustomBushBuilder());
+            }
+            foreach (IDataBuilder builder in builders)
+            {
+                try
+                {
+                    foreach (KeyValuePair<string, PlantData> plant in builder.BuildCrops())
+                    {
+                        crops.TryAdd(plant.Key, plant.Value);
+                    }
+                }
+                catch (Exception e)
+                {
+                    Container.Instance.GetInstance<IMonitor>(ModEntry.UniqueID)?.Log($"Error building crops with {builder.GetType().Name}: {e}", LogLevel.Error);
+                }
+            }
+            // the machine list depends on the crops that were just built
+            InvalidateMachines();
         }
+
+        /// <summary>
+        /// Marks the plant list as out of date (game data it is built from changed); <see cref="RebuildCropsIfDirty"/>
+        /// rebuilds it.
+        /// </summary>
+        public void MarkCropsDirty()
+        {
+            cropsDirty = true;
+        }
+
+        /// <summary>
+        /// Rebuilds the plant list if <see cref="MarkCropsDirty"/> was called since the last <see cref="RebuildCrops"/>.
+        /// </summary>
+        public void RebuildCropsIfDirty()
+        {
+            if (cropsDirty)
+            {
+                RebuildCrops();
+            }
+        }
+
+        /// <summary>
+        /// Adds or replaces the plant <paramref name="id"/> and invalidates the machine catalog.
+        /// </summary>
+        /// <param name="id"> Id of the plant (the seed id for crops). </param>
+        /// <param name="plant"> The plant. </param>
+        public void SetCrop(string id, PlantData plant)
+        {
+            crops[id] = plant;
+            failedCrops.Remove(id);
+            InvalidateMachines();
+        }
+
+        /// <summary>
+        /// Removes the plant <paramref name="id"/> and invalidates the machine catalog.
+        /// </summary>
+        /// <param name="id"> Id of the plant. </param>
+        /// <returns> Whether a plant was removed. </returns>
+        public bool RemoveCrop(string id)
+        {
+            if (!crops.Remove(id))
+            {
+                return false;
+            }
+            InvalidateMachines();
+            return true;
+        }
+
+        private static void InvalidateMachines()
+        {
+            Container.Instance.GetInstance<MachineAccessor>(ModEntry.UniqueID)?.InvalidateCaches();
+        }
+
+        #endregion Plant list
 
         /// <summary>
         /// Retrieves the list of crops as an ordered list by profit.
@@ -188,13 +273,27 @@ namespace ProfitCalculator.main
         public List<CropInfo> RetrieveCropInfos()
         {
             List<CropInfo> cropInfos = new();
-            foreach (PlantData crop in Crops.Values)
+            foreach (KeyValuePair<string, PlantData> entry in crops)
             {
-                if (!IsListed(crop))
+                PlantData crop = entry.Value;
+                CropInfo ci;
+                try
                 {
+                    if (!IsListed(crop))
+                    {
+                        continue;
+                    }
+                    ci = RetrieveCropInfo(crop);
+                }
+                catch (Exception e)
+                {
+                    // one broken (usually modded) plant must not keep the others from being listed
+                    if (failedCrops.Add(entry.Key))
+                    {
+                        Container.Instance.GetInstance<IMonitor>(ModEntry.UniqueID)?.Log($"Skipping plant '{entry.Key}' ({crop.DisplayName}): its profit could not be calculated.\n{e}", LogLevel.Warn);
+                    }
                     continue;
                 }
-                CropInfo ci = RetrieveCropInfo(crop);
                 if (ci.TotalHarvests >= 1)
                 {
                     if (!PayForSeeds || ci.TotalSeedLoss <= MaxMoney)
@@ -244,8 +343,6 @@ namespace ProfitCalculator.main
 
             int growthTime = crop.GrowingDays(FertilizerQuality);
             int regrowthTime = crop.RegrowDays;
-            int productCount = crop.MinHarvests;
-            double chanceOfExtraProduct = crop.AverageExtraCropsFromRandomness();
             double chanceOfNormalQuality = crop.GetCropBaseQualityChance();
             double chanceOfSilverQuality = crop.GetCropSilverQualityChance();
             double chanceOfGoldQuality = crop.GetCropGoldQualityChance();
@@ -264,31 +361,10 @@ namespace ProfitCalculator.main
             }
             Item inputItem = crop.MainDrop(Season)?.Item ?? crop.DropInformation.Drops[0].Item;
             int seedsNeeded = crop.TotalSeedsNeeded();
-            int fertilizerNeeded = FertilizerQuality == FertilizerQuality.None ? 0 : crop.TotalFertilizerNeeded();
+            int fertilizerNeeded = crop.AppliedFertilizerQuality == FertilizerQuality.None ? 0 : crop.TotalFertilizerNeeded();
             int paybackDay = crop.PaybackDay();
 
-            return new CropInfo(crop, totalProfit, profitPerDay, totalSeedLoss, seedLossPerDay, totalFertilizerLoss, fertilizerLossPerDay, produceType, duration, totalHarvests, growthTime, regrowthTime, productCount, chanceOfExtraProduct, chanceOfNormalQuality, chanceOfSilverQuality, chanceOfGoldQuality, chanceOfIridiumQuality, produceName, produceCount, inputsPerProduct, processingDays, seedsNeeded, fertilizerNeeded, produceItem, inputItem, paybackDay);
-        }
-
-        /// <summary>
-        /// Adds a crop to the list of crops.
-        /// </summary>
-        /// <param name="id"> Id of the crop </param>
-        /// <param name="crop"> CropDataExpanded to add </param>
-        public void AddCrop(string id, PlantData crop)
-        {
-            //check if already exists
-            if (!Crops.ContainsKey(id))
-            {
-                try
-                {
-                    Crops.Add(id, crop);
-                }
-                catch (Exception)
-                {
-                    Container.Instance.GetInstance<IMonitor>(ModEntry.UniqueID)?.Log("Failed to add\n" + crop.ToString(), LogLevel.Debug);
-                }
-            }
+            return new CropInfo(crop, totalProfit, profitPerDay, totalSeedLoss, seedLossPerDay, totalFertilizerLoss, fertilizerLossPerDay, produceType, duration, totalHarvests, growthTime, regrowthTime, chanceOfNormalQuality, chanceOfSilverQuality, chanceOfGoldQuality, chanceOfIridiumQuality, produceName, produceCount, inputsPerProduct, processingDays, seedsNeeded, fertilizerNeeded, produceItem, inputItem, paybackDay);
         }
     }
 }

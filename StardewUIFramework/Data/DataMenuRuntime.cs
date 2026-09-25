@@ -10,66 +10,6 @@ using UIFramework.Data.State;
 
 namespace UIFramework.Data
 {
-    /// <summary>Something re-applied by a data menu's refresh hook (<see cref="UIMenu.DataRefresh"/>).</summary>
-    internal interface IDataRefresher
-    {
-        /// <summary>Re-apply; <paramref name="opening"/> is true once per open (and after an in-place rebuild of an open menu).</summary>
-        void Refresh(bool opening);
-    }
-
-    /// <summary>
-    /// An ordered list of refreshers that is itself a refresher. Structural elements (<c>If</c>, <c>Switch</c> pages)
-    /// give their subtree its own group, refreshed only while the subtree is built and dropped with it. A faulting
-    /// refresher is logged once and skipped afterwards.
-    /// </summary>
-    internal sealed class RefresherGroup : IDataRefresher
-    {
-        private readonly List<IDataRefresher> items = new();
-        private readonly HashSet<IDataRefresher> faulted = new();
-        private readonly string owner;
-        private readonly string id;
-
-        internal RefresherGroup(string owner, string id)
-        {
-            this.owner = owner;
-            this.id = id;
-        }
-
-        /// <summary>Number of refreshers (diagnostics).</summary>
-        internal int Count => items.Count;
-
-        internal void Add(IDataRefresher refresher) => items.Add(refresher);
-
-        internal void Clear()
-        {
-            items.Clear();
-            faulted.Clear();
-        }
-
-        public void Refresh(bool opening)
-        {
-            // index loop: refreshing an If can add refreshers to a child group, never to this one
-            for (int i = 0; i < items.Count; i++)
-            {
-                IDataRefresher refresher = items[i];
-                if (faulted.Contains(refresher))
-                {
-                    continue;
-                }
-
-                try
-                {
-                    refresher.Refresh(opening);
-                }
-                catch (Exception ex)
-                {
-                    faulted.Add(refresher);
-                    UIServices.Log($"[{owner}] a data value of '{id}' failed to refresh and is no longer updated: {ex.Message}", LogLevel.Error);
-                }
-            }
-        }
-    }
-
     /// <summary>How long a data menu's <c>menu.*</c> state lives.</summary>
     internal enum StateLifetime
     {
@@ -91,6 +31,8 @@ namespace UIFramework.Data
         private readonly List<(StateAddress Address, List<ActionDefinition> Actions)> watches = new();
         private readonly PerScreen<Dictionary<string, string>> errors = new(() => new Dictionary<string, string>(StringComparer.Ordinal));
         private readonly HashSet<string> computing = new(StringComparer.OrdinalIgnoreCase);
+        private UIMenu? resetMenu;
+        private int resetOpenCount;
 
         protected DataRuntime(string owner, string id, DataPath path)
         {
@@ -159,14 +101,20 @@ namespace UIFramework.Data
             Reported.Clear();
         }
 
-        /// <summary>The refresh hook: bump the open generation (and reset <c>StateLifetime: Open</c> state) when opening, then run every refresher.</summary>
+        /// <summary>
+        /// The refresh hook: bump the open generation when opening, then run every refresher. <c>StateLifetime: Open</c>
+        /// state is reset only on a real open of the menu (<see cref="UIMenu.OpenCount"/> moved), not on a <c>_Refresh</c>
+        /// or an in-place rebuild of the open menu, which keep what the player entered.
+        /// </summary>
         internal void Refresh(UIMenu menu, bool opening)
         {
             if (opening)
             {
                 OpenGeneration++;
-                if (Lifetime == StateLifetime.Open)
+                if (Lifetime == StateLifetime.Open && (resetMenu != menu || resetOpenCount != menu.OpenCount))
                 {
+                    resetMenu = menu;
+                    resetOpenCount = menu.OpenCount;
                     DataStateStore.Active?.ResetContainer(StateScope.Menu, StateKey);
                 }
             }
@@ -224,6 +172,9 @@ namespace UIFramework.Data
         // ---------------------------------------------------------------------------------------------------------
         //  Watches
         // ---------------------------------------------------------------------------------------------------------
+
+        /// <summary>True when the UI has <c>Watch</c>es.</summary>
+        internal bool HasWatches => watches.Count > 0;
 
         /// <summary>Run <paramref name="actions"/> whenever <paramref name="address"/> changes.</summary>
         internal void AddWatch(StateAddress address, List<ActionDefinition> actions) => watches.Add((address, actions));
@@ -318,9 +269,6 @@ namespace UIFramework.Data
 
         /// <summary>The commands the last build exposed (<c>Commands</c>).</summary>
         internal List<string> CommandKeys { get; } = new();
-
-        /// <summary>True when the last build bound the menu's toggle hotkey (<c>Hotkey</c>); only then does a build without one unbind it.</summary>
-        internal bool HotkeyBound { get; set; }
     }
 
     /// <summary>A built data HUD: its definition, the widget and its per-screen data visibility (<c>ShowHud</c> / <c>HideHud</c>).</summary>
@@ -413,12 +361,5 @@ namespace UIFramework.Data
 
         /// <summary>Refreshers of the slot content built the last time the menu opened.</summary>
         internal RefresherGroup SlotGroup { get; }
-    }
-
-    /// <summary>Clock and screen values shared by the data layer (the tick keys volatile expression caches).</summary>
-    internal static class DataEnvironment
-    {
-        /// <summary>The game tick (volatile values are cached within one tick).</summary>
-        internal static long Tick => StardewValley.Game1.ticks;
     }
 }

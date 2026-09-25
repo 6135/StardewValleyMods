@@ -110,7 +110,10 @@ namespace ProfitCalculator.main.accessors
             IMonitor Monitor = Container.Instance.GetInstance<IMonitor>(ModEntry.UniqueID);
             Dictionary<ISalable, ItemStockInformation> stock = new();
             List<ShopItemData> items = shop.Items;
-            if (items == null || items.Count == 0) return stock;
+            if (items == null || items.Count == 0)
+            {
+                return stock;
+            }
 
             Random shopRandom = Utility.CreateDaySaveRandom();
             HashSet<string> stockedItemIds = new();

@@ -10,7 +10,8 @@ namespace UIFramework.Data.State
     /// The <c>config.*</c> scope: one flat string dictionary per owner, global across saves and screens, stored with
     /// <c>helper.Data.WriteJsonFile("data/&lt;owner&gt;.json")</c> in the framework's folder. A file is read the first
     /// time its owner's config is touched and written (debounced) shortly after the last change, so a dragged slider
-    /// does not write the file every frame. Gives content packs a real in-game settings screen.
+    /// does not write the file every frame. Gives content packs a real in-game settings screen. A file that exists but
+    /// cannot be read is never overwritten (changes then last until the game closes), and a failed write is retried.
     /// </summary>
     internal sealed class ConfigStore
     {
@@ -21,6 +22,8 @@ namespace UIFramework.Data.State
         private readonly IMonitor? monitor;
         private readonly Dictionary<string, Dictionary<string, string>> owners = new(StringComparer.OrdinalIgnoreCase);
         private readonly HashSet<string> dirty = new(StringComparer.OrdinalIgnoreCase);
+        private readonly HashSet<string> unreadable = new(StringComparer.OrdinalIgnoreCase);
+        private readonly HashSet<string> failedWrites = new(StringComparer.OrdinalIgnoreCase);
         private int ticksSinceChange;
 
         internal ConfigStore(IDataHelper? data, IMonitor? monitor)
@@ -79,7 +82,7 @@ namespace UIFramework.Data.State
             foreach (string owner in dirty.ToArray())
             {
                 dirty.Remove(owner);
-                if (data == null || !IsSafeFileName(owner))
+                if (data == null || !IsSafeFileName(owner) || unreadable.Contains(owner))
                 {
                     continue;
                 }
@@ -87,10 +90,16 @@ namespace UIFramework.Data.State
                 try
                 {
                     data.WriteJsonFile(FileFor(owner), new Dictionary<string, string>(owners[owner], StringComparer.OrdinalIgnoreCase));
+                    failedWrites.Remove(owner);
                 }
                 catch (Exception ex)
                 {
-                    monitor?.Log($"Could not save the data config of '{owner}': {ex.Message}", LogLevel.Warn);
+                    dirty.Add(owner); // retried after the next debounce delay
+                    ticksSinceChange = 0;
+                    if (failedWrites.Add(owner))
+                    {
+                        monitor?.Log($"Could not save the data config of '{owner}' (retrying): {ex.Message}", LogLevel.Warn);
+                    }
                 }
             }
         }
@@ -121,7 +130,8 @@ namespace UIFramework.Data.State
                 }
                 catch (Exception ex)
                 {
-                    monitor?.Log($"Could not read the data config of '{owner}': {ex.Message}", LogLevel.Warn);
+                    unreadable.Add(owner);
+                    monitor?.Log($"Could not read the data config of '{owner}' ({FileFor(owner)}): {ex.Message}. The file is left as it is: changes are kept until the game closes, but not saved.", LogLevel.Warn);
                 }
             }
 

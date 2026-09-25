@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using StardewModdingAPI;
@@ -125,6 +126,9 @@ namespace UIFramework.Components
 
         public int ColumnCount => columns.Count;
 
+        /// <summary>Display position of an underlying row (after filter and sort), or -1 when it is not shown.</summary>
+        internal int DisplayPositionOf(int row) => row >= 0 && row < position.Length ? position[row] : -1;
+
         public IUIDataGridColumn GetColumn(int index) => columns[index];
 
         public IUIDataGridColumn FindColumn(string columnId) => FindColumnInternal(columnId)!;
@@ -238,14 +242,20 @@ namespace UIFramework.Components
         /// <summary>Run a column delegate through the consumer guard, keyed by grid id + column id.</summary>
         internal T GuardColumn<T>(DataGridColumn column, string eventName, Func<T>? func, T fallback)
         {
-            return Consumer.Invoke(Id + "." + column.Id, eventName, func, fallback);
+            return Consumer.Invoke(column.GuardKey, eventName, func, fallback);
         }
 
         /// <summary>Run a column action through the consumer guard, keyed by grid id + column id.</summary>
         internal void GuardColumn(DataGridColumn column, string eventName, Action? action)
         {
-            Consumer.Invoke(Id + "." + column.Id, eventName, action);
+            Consumer.Invoke(column.GuardKey, eventName, action);
         }
+
+        /// <summary>
+        /// The guard key of one row's per-row column delegates (<c>Text</c>, <c>CellTooltip</c>): a row that throws is
+        /// muted alone instead of blanking the whole column.
+        /// </summary>
+        private static string RowGuardKey(DataGridColumn column, int row) => column.GuardKey + "#" + row.ToString(CultureInfo.InvariantCulture);
 
         // ---------------------------------------------------------------------------------------------------------
         //  Sorting / filtering
@@ -358,13 +368,16 @@ namespace UIFramework.Components
 
         private string[] StringKeys(List<int> list, DataGridColumn column)
         {
-            Func<int, string>? key = column.SortKeyFunc ?? column.TextFunc;
-            string eventName = column.SortKeyFunc != null ? "SortKey" : "Text";
+            Func<int, string>? sortKey = column.SortKeyFunc;
+            Func<int, string>? text = column.TextFunc;
             var keys = new string[list.Count];
             for (int k = 0; k < keys.Length; k++)
             {
                 int row = list[k];
-                keys[k] = key == null ? string.Empty : GuardColumn(column, eventName, () => key(row), string.Empty) ?? string.Empty;
+                // the cell text is guarded per row, like the cells that show it
+                keys[k] = sortKey != null ? GuardColumn(column, "SortKey", () => sortKey(row), string.Empty) ?? string.Empty
+                    : text != null ? Consumer.Invoke(RowGuardKey(column, row), "Text", () => text(row), string.Empty) ?? string.Empty
+                    : string.Empty;
             }
             return keys;
         }
@@ -388,7 +401,7 @@ namespace UIFramework.Components
         {
             while (rows.Count < visibleRows)
             {
-                var row = new DataGridRow(this, $"{Id}.r{rows.Count}");
+                var row = new DataGridRow(this, NewRowId());
                 rows.Add(row);
                 Add(row);
             }
@@ -398,6 +411,51 @@ namespace UIFramework.Components
                 DataGridRow row = rows[last];
                 rows.RemoveAt(last);
                 Remove(row);
+            }
+        }
+
+        /// <summary>
+        /// Id of a new row container: <c>{grid}.r{n}</c> with the lowest free n (scrolling rotates the rows, so the
+        /// last one is not always the highest number).
+        /// </summary>
+        private string NewRowId()
+        {
+            for (int n = 0; ; n++)
+            {
+                string id = $"{Id}.r{n}";
+                if (!rows.Exists(r => r.Id == id))
+                {
+                    return id;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Tree order follows the rows as shown (scrolling rotates the row containers without moving them among the
+        /// children), so Tab reaches cell content top to bottom; any other child comes after.
+        /// </summary>
+        internal override IEnumerable<UIElement> SelfAndDescendants()
+        {
+            yield return this;
+            foreach (DataGridRow row in rows)
+            {
+                foreach (UIElement e in row.SelfAndDescendants())
+                {
+                    yield return e;
+                }
+            }
+
+            foreach (UIElement child in Children)
+            {
+                if (child is DataGridRow)
+                {
+                    continue;
+                }
+
+                foreach (UIElement e in child.SelfAndDescendants())
+                {
+                    yield return e;
+                }
             }
         }
 
@@ -435,10 +493,14 @@ namespace UIFramework.Components
                 return;
             }
 
+            // the per-frame delegates are built here once per row change: the guard key and the inner call are captured
+            // instead of being allocated on every read
+            string? rowKey = column.CellTooltipFunc != null || (column.BuildCellFunc == null && column.TextFunc != null) ? RowGuardKey(column, item) : null;
             Func<int, string>? tooltip = column.CellTooltipFunc;
             if (tooltip != null)
             {
-                cell.Tooltip = () => GuardColumn(column, "CellTooltip", () => tooltip(item), string.Empty);
+                Func<string> readTooltip = () => tooltip(item);
+                cell.Tooltip = () => Consumer.Invoke(rowKey!, "CellTooltip", readTooltip, string.Empty);
             }
 
             Action<int, IUIContainer>? build = column.BuildCellFunc;
@@ -449,7 +511,8 @@ namespace UIFramework.Components
             }
 
             Func<int, string>? text = column.TextFunc;
-            var label = new Label(cell.Id + ".text", text == null ? null : () => GuardColumn(column, "Text", () => text(item), string.Empty) ?? string.Empty)
+            Func<string>? readText = text == null ? null : () => text(item);
+            var label = new Label(cell.Id + ".text", readText == null ? null : () => Consumer.Invoke(rowKey!, "Text", readText, string.Empty) ?? string.Empty)
             {
                 HorizontalAlign = UIAlign.Stretch,
                 TextAlign = column.Align == UIAlign.Stretch ? UIAlign.Start : column.Align
@@ -457,7 +520,7 @@ namespace UIFramework.Components
             cell.Add(label);
         }
 
-        /// <summary>Clamp and apply a first display position; rebuilds the rows whose item changed and raises <see cref="OnScroll"/>. Returns true if it changed.</summary>
+        /// <summary>Clamp and apply a first display position; rotates the rows still shown, rebuilds the rows whose item changed and raises <see cref="OnScroll"/>. Returns true if it changed.</summary>
         private bool SetFirstVisible(int value)
         {
             EnsureFresh();
@@ -469,6 +532,12 @@ namespace UIFramework.Components
 
             int delta = value - firstVisible;
             firstVisible = value;
+            // a short scroll keeps the rows still on screen: rotate the containers and rebuild only the rows that scrolled in
+            if (Math.Abs(delta) < rows.Count)
+            {
+                ListView.Rotate(rows, delta);
+            }
+
             for (int i = 0; i < rows.Count; i++)
             {
                 int pos = firstVisible + i;

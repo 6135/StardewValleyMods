@@ -2,16 +2,17 @@
 //  UI Framework (6135.UIFramework) - public API.
 //
 //  Copy this file into your mod (you may change the namespace), request the API from SMAPI's mod registry with
-//  GetApi<IStardewUIApi>("6135.UIFramework") once the game has launched, and list 6135.UIFramework
-//  (MinimumVersion 1.0.0, IsRequired true) under Dependencies in your manifest.json.
+//  GetApi<IStardewUIApi>("6135.UIFramework") once the game has launched, and list 6135.UIFramework under
+//  Dependencies in your manifest.json with IsRequired true and MinimumVersion set to the framework version you build
+//  against (the version this copy of the file came with).
 //
 //  Everything in this file is proxy-safe (SMAPI/Pintail): interfaces, enums, delegates, primitives and XNA / game types.
 //  Members are only ever added, never renamed or removed; a breaking change would ship as IStardewUIApi2.
 //  Overloads must differ by parameter count, never only by interface type: Pintail resolves overloads by trying to
 //  proxy each interface parameter and throws (instead of moving on) when two interfaces do not match.
 // ---------------------------------------------------------------------------------------------------------------------
-
 #pragma warning disable CS1591 // Missing XML comment: verbatim copy of the UI Framework API file
+
 
 using System;
 using Microsoft.Xna.Framework;
@@ -659,7 +660,10 @@ namespace UIFramework.Api
         /// <summary>Return true if the click was handled (stops bubbling).</summary>
         bool OnClick(int x, int y, bool rightButton);
 
-        /// <summary>Cursor entered (<paramref name="entered"/> = true), moved inside (true), or left (false).</summary>
+        /// <summary>
+        /// The cursor is over the element (<paramref name="entered"/> = true, raised when it enters and on every move
+        /// inside, so it does not tell the two apart) or left it (false). The parameter reads as "inside".
+        /// </summary>
         void OnHover(int x, int y, bool entered);
 
         /// <summary>Key pressed while focused. Return true if handled.</summary>
@@ -709,7 +713,7 @@ namespace UIFramework.Api
         bool CloseOnEscape { get; set; }
 
         // HUD
-        /// <summary>Let the player move, resize and collapse the window; the result persists per save (default true).</summary>
+        /// <summary>Let the player move, resize and collapse the window; the result is stored in the save by the main player (farmhands keep it for the session) (default true).</summary>
         bool PlayerLayout { get; set; }
 
         /// <summary>
@@ -783,8 +787,8 @@ namespace UIFramework.Api
         /// <summary>
         /// Let the player drag the window by its title strip, collapse it with the button next to the close button and
         /// (when <see cref="Width"/> and <see cref="Height"/> are fixed, or <see cref="Resizable"/> is on) resize it from the
-        /// bottom-right corner. The result is saved per save file and re-applied whenever the menu opens (default true;
-        /// needs <see cref="DrawBox"/>).
+        /// bottom-right corner. The result is re-applied whenever the menu opens; the main player's layouts are stored in the
+        /// save, a farmhand's last for the session (default true; needs <see cref="DrawBox"/>).
         /// </summary>
         bool PlayerLayout { get; set; }
 
@@ -847,11 +851,19 @@ namespace UIFramework.Api
 
         // ---- Input ----
 
-        /// <summary>Run <paramref name="onPressed"/> when the keybind list (e.g. <c>"F8"</c>, <c>"LeftControl + F8, LeftShift + F9"</c>) is pressed.</summary>
+        /// <summary>
+        /// Run <paramref name="onPressed"/> when the keybind list (e.g. <c>"F8"</c>, <c>"LeftControl + F8, LeftShift + F9"</c>)
+        /// is pressed; not while the player types in a text field or the chat. An empty or invalid list removes the
+        /// hotkey registered under <paramref name="id"/> (an invalid one is also logged).
+        /// </summary>
         void RegisterHotkey(string id, string keybindList, Action onPressed);
         void UnregisterHotkey(string id);
 
-        /// <summary>Toggle the menu open/closed when the keybind list is pressed (pass an empty string to unbind).</summary>
+        /// <summary>
+        /// Toggle the menu open/closed on the current split-screen player's screen when the keybind list is pressed
+        /// (an empty or invalid list unbinds). The menu is looked up by its owner and id when the key is pressed, and
+        /// the binding is removed when the menu is destroyed or replaced (bind the new menu again).
+        /// </summary>
         void BindToggleHotkey(IUIMenu menu, string keybindList);
 
         // ---- Style / config ----
@@ -1121,6 +1133,9 @@ namespace UIFramework.Api
         /// <summary>
         /// Register a command data can run: <c>"OnClick": "@YourModId/name arg1 arg2"</c> (your own data may write
         /// <c>@name</c>) or <c>6135.UIFramework_Invoke YourModId/name</c>. Replaces an earlier command with the same name.
+        /// Commands are public: any content pack, mail or trigger action can run them with any arguments, so validate
+        /// <see cref="IUIDataCall.Args"/> and never trust them. Data UIs are shared by the split-screen players; act on
+        /// the current player's state (e.g. a <c>PerScreen&lt;T&gt;.Value</c>), since a command runs on the screen that raised it.
         /// </summary>
         void RegisterCommand(string name, Action<IUIDataCall> run);
 
@@ -1130,6 +1145,8 @@ namespace UIFramework.Api
         /// <summary>
         /// Register a function data expressions can call: <c>${@YourModId/name(1, 'a')}</c> (your own data may write
         /// <c>@name(...)</c>). Arguments arrive as text; a numeric / <c>true</c> / <c>false</c> result keeps its type.
+        /// Calls are cached until data state changes; registering (or registering again, e.g. after a language change)
+        /// invalidates every cached data value, so all data UIs re-read their values on the next tick.
         /// </summary>
         void RegisterFunction(string name, Func<string[], string> function);
 
@@ -1150,14 +1167,24 @@ namespace UIFramework.Api
         /// <c>model[YourModId/name].Property</c>, read by reflection (public properties and fields, case-insensitive).
         /// Inputs can bind to it (<c>"Bind": "model.name.Day"</c>) and a <c>Form</c> can edit it (<c>"Model": "name"</c>).
         /// Objects implementing <c>INotifyPropertyChanged</c> / <c>INotifyCollectionChanged</c> refresh data when they
-        /// change; other reads are re-evaluated once per tick. Null removes it.
+        /// change; other reads are re-evaluated once per tick. Null removes it. One object serves every split-screen
+        /// player; for a per-player model use <see cref="ExposeModelSource"/>.
         /// </summary>
         void ExposeModel(string name, object model);
 
         /// <summary>
+        /// Like <see cref="ExposeModel"/>, but the object is resolved through <paramref name="model"/> at every read, so
+        /// each split-screen player can see their own: <c>ExposeModelSource("settings", () =&gt; settings.Value)</c> over
+        /// a <c>PerScreen&lt;T&gt;</c>. Change notifications work per returned object. A <c>Form</c> built over it edits
+        /// the object returned when the form was built. Null removes it.
+        /// </summary>
+        void ExposeModelSource(string name, Func<object> model);
+
+        /// <summary>
         /// Expose a list of plain C# objects as a row source: <c>"Source": "hook:YourModId/name"</c>, cells read
         /// <c>row.Property</c>. <paramref name="rows"/> is read again when the UI opens and whenever data state changes
-        /// (a command ran, a signal changed...). Null removes it.
+        /// (a command ran, a signal changed...). It is read on the screen that shows the rows, so return the current
+        /// split-screen player's rows (e.g. from a <c>PerScreen&lt;T&gt;</c>). Null removes it.
         /// </summary>
         void ExposeRows(string name, Func<object[]> rows);
 
@@ -1677,11 +1704,12 @@ namespace UIFramework.Api
 
         /// <summary>
         /// When true the widget receives hover and clicks while no menu is open (the game only loses the click when an
-        /// element handled it) and the player can drag it to a new position, which persists per save.
+        /// element handled it) and the player can drag it to a new position, which the main player's save keeps (a
+        /// farmhand's lasts for the session).
         /// </summary>
         bool Interactive { get; set; }
 
-        /// <summary>Evaluated every frame; return false to hide the widget (null = always shown).</summary>
+        /// <summary>Evaluated every update tick (on each split-screen player's screen); return false to hide the widget (null = always shown).</summary>
         Func<bool> ShowWhen { get; set; }
 
         // HUDOVERMENUS (v1.8)

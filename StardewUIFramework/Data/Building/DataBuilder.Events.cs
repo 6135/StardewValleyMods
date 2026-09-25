@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using Microsoft.Xna.Framework.Input;
 using StardewModdingAPI;
+using StardewModdingAPI.Utilities;
 using UIFramework.Api;
 using UIFramework.Core;
 using UIFramework.Data.Actions;
@@ -246,17 +247,17 @@ namespace UIFramework.Data.Building
             }
 
             int interval = Math.Max(0, applier.Initial(intervalRaw, ValueParsers.Int, 0, scope, path));
-            double accumulated = 0;
+            var accumulated = new PerScreen<double>(); // a menu can be open on two screens at once
             return (_, elapsed) =>
             {
-                accumulated += elapsed;
-                if (accumulated < interval)
+                accumulated.Value += elapsed;
+                if (accumulated.Value < interval)
                 {
                     return;
                 }
 
-                double since = accumulated;
-                accumulated = 0;
+                double since = accumulated.Value;
+                accumulated.Value = 0;
                 DataActionRunner.Run(actions, scope.WithEvent("OnUpdate", since));
             };
         }

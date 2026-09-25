@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using StardewModdingAPI;
+using StardewModdingAPI.Utilities;
 using UIFramework.Data.State;
 
 namespace UIFramework.Data.Actions
@@ -9,14 +11,15 @@ namespace UIFramework.Data.Actions
     /// The optional Content Patcher token <c>{{6135.UIFramework/State: &lt;owner&gt;/&lt;scope.name&gt;}}</c>, e.g.
     /// <c>{{6135.UIFramework/State: Your.Pack/config.spawnRate}}</c>: patches can use UI state and <c>config.*</c> in
     /// <c>When</c> and text. <c>menu.*</c> needs the qualified form (<c>Your.Pack/menu[Your.Pack/settings].tab</c>).
-    /// <see cref="UpdateContext"/> reports whether any state changed since the last call, so Content Patcher refreshes
-    /// the token at its normal update points (day start, location change, <c>patch update</c>).
+    /// Values are snapshotted per screen and input: <see cref="GetValues"/> returns the snapshot, and only
+    /// <see cref="UpdateContext"/> re-reads it (reporting whether any value changed), as Content Patcher requires; so the
+    /// token changes at Content Patcher's normal update points (day start, location change, <c>patch update</c>).
     /// </summary>
     /// <remarks>Content Patcher calls these members by name (advanced token API); they must stay public.</remarks>
     public sealed class ContentPatcherToken
     {
         private readonly Func<DataStateStore?> store;
-        private long lastChange = -1;
+        private readonly PerScreen<Dictionary<string, string?>> snapshots = new(() => new Dictionary<string, string?>(StringComparer.Ordinal));
 
         internal ContentPatcherToken(Func<DataStateStore?> store)
         {
@@ -61,33 +64,52 @@ namespace UIFramework.Data.Actions
         /// <summary>The token can always be read (values that need a save are empty before one is loaded).</summary>
         public bool IsReady() => store() != null;
 
-        /// <summary>The current value (as text) for the current player.</summary>
+        /// <summary>The value (as text) for the current player, as of the last <see cref="UpdateContext"/> (or of its first read).</summary>
         public IEnumerable<string> GetValues(string? input)
+        {
+            string key = input?.Trim() ?? string.Empty;
+            Dictionary<string, string?> snapshot = snapshots.Value;
+            if (!snapshot.TryGetValue(key, out string? value))
+            {
+                snapshot[key] = value = Read(key);
+            }
+
+            return value == null ? Array.Empty<string>() : new[] { value };
+        }
+
+        /// <summary>Re-read every input used on this screen; true when any value changed.</summary>
+        public bool UpdateContext()
+        {
+            Dictionary<string, string?> snapshot = snapshots.Value;
+            bool changed = false;
+            foreach (string key in snapshot.Keys.ToArray())
+            {
+                string? value = Read(key);
+                if (value != snapshot[key])
+                {
+                    snapshot[key] = value;
+                    changed = true;
+                }
+            }
+
+            return changed;
+        }
+
+        /// <summary>The current value of an input (as text) for the current player, or null.</summary>
+        private string? Read(string input)
         {
             DataStateStore? state = store();
             if (state == null || !TryParse(input, out StateAddress address, out _))
             {
-                yield break;
+                return null;
             }
 
             if ((address.Scope is StateScope.Player or StateScope.Stat) && !Context.IsWorldReady)
             {
-                yield break;
+                return null;
             }
 
-            if (state.TryRead(address, out Expressions.DataValue value, out _) && !value.IsNull)
-            {
-                yield return value.AsString();
-            }
-        }
-
-        /// <summary>True when any UI state changed since the last call.</summary>
-        public bool UpdateContext()
-        {
-            long now = store()?.ChangeCount ?? 0;
-            bool changed = now != lastChange;
-            lastChange = now;
-            return changed;
+            return state.TryRead(address, out Expressions.DataValue value, out _) && !value.IsNull ? value.AsString() : null;
         }
 
         /// <summary>Parse <c>&lt;owner&gt;/&lt;scope.name&gt;</c> into a state address.</summary>

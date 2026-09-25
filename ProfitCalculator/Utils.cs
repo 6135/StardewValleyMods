@@ -1,6 +1,5 @@
 using ProfitCalculator.main;
 using ProfitCalculator.main.memory;
-using StardewModdingAPI;
 using StardewValley;
 using System;
 using SObject = StardewValley.Object;
@@ -15,24 +14,6 @@ namespace ProfitCalculator
     /// </summary>
     public class Utils
     {
-        /// <summary>
-        /// Gets the days of a Season. Unused.
-        /// </summary>
-        /// <param name="season"> The Season to get the days of.</param>
-        /// <returns> The number of days in the Season.</returns>
-        public static int GetSeasonDays(UtilsSeason season)
-        {
-            return season switch
-            {
-                UtilsSeason.Spring => 28,
-                UtilsSeason.Summer => 28,
-                UtilsSeason.Fall => 28,
-                UtilsSeason.Winter => 28,
-                UtilsSeason.Greenhouse => 112,
-                _ => 0,
-            };
-        }
-
         /// <summary>
         /// UtilsSeason enum.
         /// </summary>
@@ -83,6 +64,17 @@ namespace ProfitCalculator
         }
 
         /// <summary>
+        /// Whether <paramref name="produceType"/> is one of the tree views: <see cref="FruitTreesProduceType"/> or
+        /// <see cref="WildTreesProduceType"/>.
+        /// </summary>
+        /// <param name="produceType"> The produce type id. </param>
+        /// <returns> Whether it lists trees only. </returns>
+        public static bool IsTreeView(string? produceType)
+        {
+            return produceType is FruitTreesProduceType or WildTreesProduceType;
+        }
+
+        /// <summary>
         /// Fertilizer quality enum.
         /// </summary>
         public enum FertilizerQuality
@@ -109,65 +101,6 @@ namespace ProfitCalculator
             HyperSpeedGro = -3
         }
 
-        //get Season translated names
-        private static string GetTranslatedName(string str)
-        {
-            //convert string to lowercase
-            str = str.ToLower();
-            var Helper = Container.Instance.GetInstance<IModHelper>(ModEntry.UniqueID);
-            return Helper?.Translation.Get(str) ?? "Error";
-        }
-
-        /// <summary>
-        /// Get translated Season name.
-        /// </summary>
-        /// <param name="season"> The Season to get the translated name of.</param>
-        /// <returns> The translated name of the Season.</returns>
-        public static string GetTranslatedSeason(UtilsSeason season)
-        {
-            return GetTranslatedName(season.ToString());
-        }
-
-        /// <summary>
-        /// Get translated fertilizer quality name.
-        /// </summary>
-        /// <param name="fertilizerQuality"> The fertilizer quality to get the translated name of.</param>
-        /// <returns> The translated name of the fertilizer quality.</returns>
-        public static string GetTranslatedFertilizerQuality(FertilizerQuality fertilizerQuality)
-        {
-            return GetTranslatedName(fertilizerQuality.ToString());
-        }
-
-        /// <summary>
-        /// Get translated Season name. All seasons.
-        /// </summary>
-        /// <returns> Array of all translated Season names.</returns>
-        public static string[] GetAllTranslatedSeasons()
-        {
-            string[] names = Enum.GetNames(typeof(UtilsSeason));
-            string[] translatedNames = new string[names.Length];
-            foreach (string name in names)
-            {
-                translatedNames[Array.IndexOf(names, name)] = GetTranslatedName(name);
-            }
-            return translatedNames;
-        }
-
-        /// <summary>
-        /// Get all translated fertilizer quality names.
-        /// </summary>
-        /// <returns> Array of all translated fertilizer quality names.</returns>
-        public static string[] GetAllTranslatedFertilizerQualities()
-        {
-            string[] names = Enum.GetNames(typeof(FertilizerQuality));
-            string[] translatedNames = new string[names.Length];
-            foreach (string name in names)
-            {
-                translatedNames[Array.IndexOf(names, name)] = GetTranslatedName(name);
-            }
-            return translatedNames;
-        }
-
         /// <summary>
         /// Get prices of each fertilizer quality.
         /// </summary>
@@ -186,12 +119,6 @@ namespace ProfitCalculator
                 FertilizerQuality.HyperSpeedGro => 200,
                 _ => 0,
             };
-        }
-
-        public static int PriceFromObjectID(string id)
-        {
-            var obj = new SObject(id, 1);
-            return obj.Price;
         }
 
         /// <summary>

@@ -52,6 +52,12 @@ namespace UIFramework.Core
         /// </summary>
         internal ConsumerContext Consumer => Sealing.ContributorOf(this) ?? OwnerMenu?.Consumer ?? ConsumerContext.None;
 
+        /// <summary>
+        /// The binding table of the consumer that last bound this element (a slot contributor or composite may bind
+        /// elements in another mod's menu); dropped with the menu owner's bindings when the element is detached.
+        /// </summary>
+        internal SignalBindings? BindingOwner { get; set; }
+
         /// <summary>Set on the container a slot contribution builds into: everything below it is attributed to that mod (v2 slots).</summary>
         internal ConsumerContext? Contributor { get; set; }
 
@@ -332,11 +338,14 @@ namespace UIFramework.Core
         Action<SpriteBatch, Rectangle> IUIElement.OnDrawExtra { get => OnDrawExtra!; set => OnDrawExtra = value; }
         Action<SpriteBatch, Rectangle> IUIElement.OnDrawOverlay { get => OnDrawOverlay!; set => OnDrawOverlay = value; }
 
+        /// <summary>Id of the menu this element is in, for the callback guard's mute keys (empty while detached).</summary>
+        private string GuardMenuId => OwnerMenu?.Id ?? string.Empty;
+
         /// <summary>Invoke a consumer callback through the guard.</summary>
-        protected void Raise(string eventName, Action? action) => Consumer.Invoke(Id, eventName, action);
+        protected void Raise(string eventName, Action? action) => Consumer.Invoke(GuardMenuId, Id, eventName, action);
 
         /// <summary>Invoke a consumer callback that returns a value through the guard.</summary>
-        protected T Raise<T>(string eventName, Func<T>? func, T fallback) => Consumer.Invoke(Id, eventName, func, fallback);
+        protected T Raise<T>(string eventName, Func<T>? func, T fallback) => Consumer.Invoke(GuardMenuId, Id, eventName, func, fallback);
 
         // ---------------------------------------------------------------------------------------------------------
         //  Accessibility
@@ -357,7 +366,7 @@ namespace UIFramework.Core
             {
                 string? title = TooltipTitle == null ? null : Raise("TooltipTitle", TooltipTitle, string.Empty);
                 string? tooltip = Tooltip == null ? null : Raise("Tooltip", Tooltip, string.Empty);
-                return Accessibility.Compose(GetType().Name, title, tooltip);
+                return Accessibility.Compose(Accessibility.Text("element", "Element"), title, tooltip);
             }
         }
 
@@ -370,8 +379,7 @@ namespace UIFramework.Core
         {
             get
             {
-                UIStyle merged = Theme.Default.Merge(Consumer.DefaultStyle).Merge(StyleObject);
-                return new ResolvedStyle(merged);
+                return new ResolvedStyle(Theme.Default, Consumer.DefaultStyle, StyleObject);
             }
         }
 
@@ -514,7 +522,7 @@ namespace UIFramework.Core
             if (DrawsInOverlay && OwnerMenu != null)
             {
                 // the whole self-draw (content, then OnDrawExtra) moves to the overlay pass so their order is kept
-                OwnerMenu.Overlay.RegisterElement(this, DrawSelf);
+                OwnerMenu.Overlay.RegisterElement(this, drawSelf ??= DrawSelf);
             }
             else
             {
@@ -523,9 +531,20 @@ namespace UIFramework.Core
 
             if (OnDrawOverlay != null && OwnerMenu != null)
             {
-                Action<SpriteBatch, Rectangle> cb = OnDrawOverlay;
-                Rectangle bounds = Bounds;
-                OwnerMenu.Overlay.RegisterDraw(sb => Raise("OnDrawOverlay", () => cb(sb, bounds)));
+                OwnerMenu.Overlay.RegisterDraw(drawOverlay ??= DrawOverlayCallback);
+            }
+        }
+
+        // the draw delegates handed to the overlay pass, created once
+        private Action<SpriteBatch>? drawSelf;
+        private Action<SpriteBatch>? drawOverlay;
+
+        /// <summary><see cref="OnDrawOverlay"/> in the overlay pass (same frame, so <see cref="Bounds"/> is unchanged).</summary>
+        private void DrawOverlayCallback(SpriteBatch b)
+        {
+            if (OnDrawOverlay is { } cb)
+            {
+                Consumer.InvokeWith(GuardMenuId, Id, "OnDrawOverlay", static s => s.cb(s.b, s.bounds), (cb, b, bounds: Bounds));
             }
         }
 
@@ -533,11 +552,9 @@ namespace UIFramework.Core
         private void DrawSelf(SpriteBatch b)
         {
             DrawCore(b);
-            if (OnDrawExtra != null)
+            if (OnDrawExtra is { } cb)
             {
-                Action<SpriteBatch, Rectangle> cb = OnDrawExtra;
-                Rectangle bounds = Bounds;
-                Raise("OnDrawExtra", () => cb(b, bounds));
+                Consumer.InvokeWith(GuardMenuId, Id, "OnDrawExtra", static s => s.cb(s.b, s.bounds), (cb, b, bounds: Bounds));
             }
             if (UIServices.Config.DebugOverlay)
             {

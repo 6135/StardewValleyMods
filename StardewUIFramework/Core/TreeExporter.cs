@@ -16,8 +16,5 @@ namespace UIFramework.Core
 
         /// <summary>The data-format (JSON with comments) <c>Menus</c> entry for <paramref name="menu"/>.</summary>
         internal static string ExportJson(UIMenu menu) => JsonEmitter.Emit(TreeModelReader.Read(menu));
-
-        /// <summary>A C# string literal for <paramref name="value"/>.</summary>
-        internal static string Str(string? value) => CSharpEmitter.Str(value);
     }
 }

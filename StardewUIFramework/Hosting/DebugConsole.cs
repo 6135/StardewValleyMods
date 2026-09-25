@@ -6,25 +6,31 @@ using UIFramework.Core;
 using UIFramework.Data;
 using UIFramework.Data.Loading;
 using UIFramework.Data.State;
+using UIFramework.Rendering;
 
 namespace UIFramework.Hosting
 {
     /// <summary>
-    /// The framework's SMAPI console commands (architecture.md §16.2 "Debug console"): <c>ui_list</c>, <c>ui_dump</c>,
-    /// <c>ui_find</c>, <c>ui_perf</c>, <c>ui_inspect</c> and <c>ui_export</c>; with data menus (v1.3) also
+    /// The framework's SMAPI console commands (architecture.md §16.2 "Debug console"): <c>ui_debug</c>, <c>ui_slots</c>,
+    /// <c>ui_composites</c>, <c>ui_pseudoloc</c>, <c>ui_theme</c>, <c>ui_toast</c>, <c>ui_layout_reset</c>, <c>ui_list</c>,
+    /// <c>ui_dump</c>, <c>ui_find</c>, <c>ui_perf</c>, <c>ui_inspect</c> and <c>ui_export</c>; with data menus (v1.3) also
     /// <c>ui_open</c>, <c>ui_close</c>, <c>ui_validate</c>, <c>ui_data</c>, <c>ui_schema</c> and <c>ui_reload</c>, and (v1.4)
     /// <c>ui_state</c>.
     /// </summary>
     internal sealed class DebugConsole
     {
         private readonly MenuRegistry menus;
+        private readonly ExtensionRegistry extensions;
+        private readonly CompositeRegistry composites;
         private readonly IMonitor monitor;
         private readonly DataService? data;
         private readonly string? schemaDirectory;
 
-        internal DebugConsole(MenuRegistry menus, IMonitor monitor, DataService? data = null, string? schemaDirectory = null)
+        internal DebugConsole(MenuRegistry menus, ExtensionRegistry extensions, CompositeRegistry composites, IMonitor monitor, DataService? data = null, string? schemaDirectory = null)
         {
             this.menus = menus;
+            this.extensions = extensions;
+            this.composites = composites;
             this.monitor = monitor;
             this.data = data;
             this.schemaDirectory = schemaDirectory;
@@ -32,6 +38,13 @@ namespace UIFramework.Hosting
 
         internal void Register(ICommandHelper commands)
         {
+            commands.Add("ui_debug", "Toggle the UI Framework debug overlay (element bounds and ids).", (_, _) => ToggleDebugOverlay());
+            commands.Add("ui_slots", "Print the extension slots of every open UI Framework menu (hints and contributors).", (_, _) => Log(extensions.DescribeOpenMenus()));
+            commands.Add("ui_composites", "List the composite components defined through the UI Framework.", (_, _) => ListComposites());
+            commands.Add("ui_pseudoloc", "Toggle UI Framework pseudo-localization (accented, padded strings in every framework menu).", (_, _) => TogglePseudoLocalization());
+            commands.Add("ui_theme", "Switch the UI Framework theme: ui_theme <name> (no argument lists the themes).", (_, args) => ThemeCommand(args));
+            commands.Add("ui_toast", "Show a test toast: ui_toast <text>.", (_, args) => Toast(args));
+            commands.Add("ui_layout_reset", "Forget every player-adjusted window position / size / collapsed state for the current save.", (_, _) => ResetLayouts());
             commands.Add("ui_list", "List the open UI Framework menus: consumer, menu id, host type and element count.", (_, _) => List());
             commands.Add("ui_dump", "Print the element tree of a menu.\n\nUsage: ui_dump [<consumerId> <menuId> | <consumerId>/<menuId>]\nWithout arguments the most recently opened menu is dumped.", (_, args) => Dump(args));
             commands.Add("ui_find", "List every element of the open menus whose id contains the text.\n\nUsage: ui_find <text>", (_, args) => Find(args));
@@ -54,6 +67,71 @@ namespace UIFramework.Hosting
         }
 
         private void Log(string message) => monitor.Log(message, LogLevel.Info);
+
+        // ---------------------------------------------------------------------------------------------------------
+        //  Framework settings and services
+        // ---------------------------------------------------------------------------------------------------------
+
+        private void ToggleDebugOverlay()
+        {
+            ModConfig config = UIServices.Config;
+            config.DebugOverlay = !config.DebugOverlay;
+            Log($"Debug overlay {(config.DebugOverlay ? "enabled" : "disabled")}.");
+        }
+
+        private void TogglePseudoLocalization()
+        {
+            ModConfig config = UIServices.Config;
+            config.PseudoLocalize = !config.PseudoLocalize;
+            Log($"Pseudo-localization {(config.PseudoLocalize ? "enabled" : "disabled")}.");
+        }
+
+        private void ListComposites()
+        {
+            string[] names = composites.List();
+            Log(names.Length == 0 ? "No composites are defined." : $"Composites:\n  {string.Join("\n  ", names)}");
+        }
+
+        private void ThemeCommand(string[] args)
+        {
+            if (args.Length == 0 || string.IsNullOrWhiteSpace(args[0]))
+            {
+                Log($"Active theme: {Theme.ActiveName}. Available: {string.Join(", ", Theme.ThemeNames)}.");
+                return;
+            }
+
+            ThemeSwitcher.Apply(args[0], "ui_theme");
+        }
+
+        private static void Toast(string[] args)
+        {
+            UIServices.Hud?.ShowToast(args.Length == 0 ? "Hello from the UI Framework!" : string.Join(" ", args), null, null, ToastLayer.DefaultDurationMs);
+        }
+
+        /// <summary>Forget every stored layout and put the open windows (current screen) and HUD widgets back where their owners placed them.</summary>
+        private void ResetLayouts()
+        {
+            WindowLayoutStore? layouts = UIServices.Layouts;
+            if (layouts == null)
+            {
+                return;
+            }
+
+            int count = layouts.Count;
+            layouts.Clear();
+            foreach (UIMenu menu in menus.OpenMenus)
+            {
+                layouts.Apply(menu);
+            }
+
+            UIServices.Hud?.ApplyLayouts();
+            if (Context.IsWorldReady)
+            {
+                layouts.Save();
+            }
+
+            Log($"Cleared {count} saved window layout(s).");
+        }
 
         /// <summary>The menu named by <c>&lt;consumerId&gt; &lt;menuId&gt;</c> or <c>&lt;consumerId&gt;/&lt;menuId&gt;</c>, or the most recently opened one; null (logged) when there is none.</summary>
         private UIMenu? Resolve(string[] args)

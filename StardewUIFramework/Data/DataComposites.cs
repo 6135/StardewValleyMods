@@ -38,9 +38,6 @@ namespace UIFramework.Data
         /// <summary>The loaded data composites by name.</summary>
         internal IReadOnlyDictionary<string, DataCompositeRuntime> Runtimes => runtimes;
 
-        /// <summary>The definition of data composite <paramref name="name"/>, if one is loaded.</summary>
-        internal DataCompositeDefinition? Definition(string name) => runtimes.TryGetValue(name, out DataCompositeRuntime? runtime) ? runtime.Definition : null;
-
         /// <summary>
         /// Register or update one entry; returns its state for <c>ui_data</c> (<c>built</c>, <c>rebuilt (n instances)</c>,
         /// <c>unchanged</c> or <c>skipped (C# composite)</c>).
@@ -77,9 +74,22 @@ namespace UIFramework.Data
 
             if (mine == null || existing?.Owner.ModId != owner)
             {
+                // the entry moved to another owner: drop the data layer's registration under the previous one first
+                if (existing != null)
+                {
+                    registry.Undefine(existing.Owner, name);
+                }
+
                 mine = (host, args) => Build(name, host, args);
+                if (!registry.Define(contexts.For(owner), name, mine, isData: true))
+                {
+                    runtimes.Remove(name);
+                    registered.Remove(name);
+                    log.Warn(DataPath.Entry(DataAssets.ShortName(DataAssets.Composites), name), $"composite '{name}' belongs to another mod; this entry is skipped.");
+                    return "skipped (owned by another mod)";
+                }
+
                 registered[name] = mine;
-                registry.Define(contexts.For(owner), name, mine, isData: true);
             }
 
             // instances created before the definition existed (or changed) build the new body now

@@ -21,6 +21,9 @@ namespace UIFramework.Data.Loading
     /// </summary>
     internal sealed class DataValidator
     {
+        private static readonly Dictionary<Type, PropertyInfo[]> ModelPropertyCache = new();
+        private static readonly Dictionary<Type, string[]> ModelNameCache = new();
+
         private readonly Func<string, bool> isLoaded;
         private readonly SpriteRefs sprites;
         private readonly Func<string, OwnerDefinition?> owners;
@@ -107,7 +110,6 @@ namespace UIFramework.Data.Loading
             CheckExposures(def.Expose, def.Commands, path, log);
 
             var types = new Dictionary<string, string>(StringComparer.Ordinal);
-            sourceNames = def.Sources?.Keys;
             CheckChildren(def.Children, menuId, owner, path.Field("Children"), types, log);
 
             CheckButtonRef(def.DefaultButton, types, path.Field("DefaultButton"), log);
@@ -184,6 +186,18 @@ namespace UIFramework.Data.Loading
             if (type == ElementTypes.Composite && def.Composite != null && !ExpressionValueResolver.HasTemplate(def.Composite) && dataComposites(def.Composite.Trim()) is { } dataComposite)
             {
                 CheckArgs("composite", def.Composite.Trim(), dataComposite.Params, def.Args, path, log);
+                if (def.On != null && dataComposite.Publish is { Count: > 0 } published)
+                {
+                    foreach (string eventName in def.On.Keys)
+                    {
+                        if (!published.Contains(eventName.Trim(), StringComparer.Ordinal))
+                        {
+                            string? suggestion = Suggest(eventName, published);
+                            log.Warn(path.Field("On").Field(eventName), $"'{def.Composite}' does not publish '{eventName}' (its Publish lists {string.Join(", ", published)}){(suggestion != null ? $"; did you mean '{suggestion}'?" : string.Empty)}.");
+                        }
+                    }
+                }
+
                 if (def.ContentTarget != null)
                 {
                     log.Warn(path.Field("ContentTarget"), $"'{def.Composite}' is a data composite: its children go into its Outlets (\"Outlet\": \"name\" on a child); ContentTarget is ignored.");
@@ -252,6 +266,13 @@ namespace UIFramework.Data.Loading
             {
                 CheckUnknown(def.Style.Unknown, typeof(StyleDefinition), path.Field("Style"), log);
                 CheckSprite(def.Style.BoxTexture, owner, path.Field("Style").Field("BoxTexture"), log);
+                foreach (PropertyInfo property in ModelProperties(typeof(StyleDefinition)))
+                {
+                    if (property.GetValue(def.Style) != null && !ElementTypes.UsesStyle(type, property.Name))
+                    {
+                        log.Warn(path.Field("Style").Field(property.Name), $"a {type} does not use Style.{property.Name}; it is ignored.");
+                    }
+                }
             }
 
             if (type == ElementTypes.ItemImage)
@@ -873,7 +894,7 @@ namespace UIFramework.Data.Loading
                     // a usable id
                 }
 
-                if (field.Kind != null && field.Kind.Trim().ToLowerInvariant() is not ("checkbox" or "bool" or "number" or "integer" or "text" or "dropdown"))
+                if (field.Kind != null && field.Kind.Trim().ToLowerInvariant() is not ("checkbox" or "number" or "integer" or "text" or "dropdown"))
                 {
                     log.Error(fieldPath.Field("Kind"), $"'{field.Kind}' is not Checkbox, Number, Integer, Text or Dropdown; the field is skipped.");
                 }
@@ -1284,7 +1305,7 @@ namespace UIFramework.Data.Loading
         // ---------------------------------------------------------------------------------------------------------
 
         /// <summary>The parameter types a template / composite may declare.</summary>
-        private static readonly string[] ParamTypes = { "string", "text", "number", "int", "integer", "double", "bool", "boolean", "any" };
+        private static readonly string[] ParamTypes = { "string", "number", "bool", "any" };
 
         /// <summary>Check a set of templates (a menu's or an owner's): parameters and bodies (whose ids are prefixed with the instance's at build time).</summary>
         private void CheckTemplateDefinitions(Dictionary<string, TemplateDefinition>? definitions, string owner, DataPath path, DataMessageLog log)
@@ -1482,16 +1503,16 @@ namespace UIFramework.Data.Loading
 
                 return kind switch
                 {
-                    "number" or "int" or "integer" or "double" => ValueParsers.Number.Parse(text, out _),
-                    "bool" or "boolean" => ValueParsers.Bool.Parse(text, out _),
+                    "number" => ValueParsers.Number.Parse(text, out _),
+                    "bool" => ValueParsers.Bool.Parse(text, out _),
                     _ => true
                 };
             }
 
             return kind switch
             {
-                "number" or "int" or "integer" or "double" => value.Type is JTokenType.Integer or JTokenType.Float,
-                "bool" or "boolean" => value.Type == JTokenType.Boolean,
+                "number" => value.Type is JTokenType.Integer or JTokenType.Float,
+                "bool" => value.Type == JTokenType.Boolean,
                 _ => true
             };
         }
@@ -1782,10 +1803,26 @@ namespace UIFramework.Data.Loading
         //  Typos
         // ---------------------------------------------------------------------------------------------------------
 
-        /// <summary>The members of a definition model a JSON file may set (not the extension data bag).</summary>
-        internal static IEnumerable<PropertyInfo> ModelProperties(Type model)
+        /// <summary>The members of a definition model a JSON file may set (not the extension data bag), reflected once per model.</summary>
+        internal static IReadOnlyList<PropertyInfo> ModelProperties(Type model)
         {
-            return model.GetProperties(BindingFlags.Public | BindingFlags.Instance).Where(p => p.Name != "Unknown" && p.CanWrite);
+            if (!ModelPropertyCache.TryGetValue(model, out PropertyInfo[]? properties))
+            {
+                ModelPropertyCache[model] = properties = model.GetProperties(BindingFlags.Public | BindingFlags.Instance).Where(p => p.Name != "Unknown" && p.CanWrite).ToArray();
+            }
+
+            return properties;
+        }
+
+        /// <summary>The names of <see cref="ModelProperties"/>, built once per model.</summary>
+        private static string[] ModelPropertyNames(Type model)
+        {
+            if (!ModelNameCache.TryGetValue(model, out string[]? names))
+            {
+                ModelNameCache[model] = names = ModelProperties(model).Select(p => p.Name).ToArray();
+            }
+
+            return names;
         }
 
         private static void CheckUnknown(IDictionary<string, JToken>? unknown, Type model, DataPath path, DataMessageLog log)
@@ -1795,7 +1832,7 @@ namespace UIFramework.Data.Loading
                 return;
             }
 
-            string[] known = ModelProperties(model).Select(p => p.Name).ToArray();
+            string[] known = ModelPropertyNames(model);
             foreach (string name in unknown.Keys)
             {
                 if (name.StartsWith('$'))

@@ -7,7 +7,8 @@ namespace UIFramework.Hosting
 {
     /// <summary>
     /// Tracks every menu of every consumer (namespaced by consumer id) and which of them are open on the current
-    /// screen, so the framework can close them all on return-to-title and detect menus the game dropped.
+    /// screen, so the framework can close them all on return-to-title and detect menus the game dropped. The menus
+    /// are shared by the split-screen players; each menu keeps its host and view state per screen (see <see cref="UIMenu"/>).
     /// </summary>
     internal sealed class MenuRegistry
     {
@@ -67,7 +68,11 @@ namespace UIFramework.Hosting
 
         internal void NotifyClosed(UIMenu menu) => open.Remove(menu);
 
-        /// <summary>Close menus whose host the game dropped without telling us (another mod replaced the active menu, etc.).</summary>
+        /// <summary>
+        /// Close menus whose host the game dropped without telling us (another mod replaced the active menu, etc.), and
+        /// menus that were destroyed or replaced while open on this screen (<see cref="Unregister"/> closes them on the
+        /// screen that destroyed them only).
+        /// </summary>
         internal void ValidateOpenMenus()
         {
             for (int i = open.Count - 1; i >= 0; i--)
@@ -81,6 +86,10 @@ namespace UIFramework.Hosting
                 else if (!host.IsStillActive())
                 {
                     host.NotifyDropped();
+                }
+                else if (Get(menu.Consumer.ModId, menu.Id) != menu)
+                {
+                    menu.Close();
                 }
                 else
                 {

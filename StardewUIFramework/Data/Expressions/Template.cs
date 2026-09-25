@@ -47,6 +47,7 @@ namespace UIFramework.Data.Expressions
     {
         private static readonly Dictionary<string, Template> TextCache = new(StringComparer.Ordinal);
         private static readonly Dictionary<string, Template> FieldCache = new(StringComparer.Ordinal);
+        // see CompiledExpression.CacheLock: uncontended on the game's main thread, safe for any other thread
         private static readonly object CacheLock = new();
 
         [ThreadStatic] private static StringBuilder? sharedBuilder;
@@ -70,7 +71,6 @@ namespace UIFramework.Data.Expressions
 
                 hasExpression = true;
                 HasOneTime |= segment.IsOneTime;
-                HasLive |= !segment.IsOneTime;
                 constant &= !segment.IsOneTime && segment.Expression.IsConstant;
             }
 
@@ -100,9 +100,6 @@ namespace UIFramework.Data.Expressions
 
         /// <summary>True when any <c>$:{...}</c> segment is present.</summary>
         internal bool HasOneTime { get; }
-
-        /// <summary>True when any <c>${...}</c> segment is present.</summary>
-        internal bool HasLive { get; }
 
         /// <summary>True when the whole value is one expression, whose typed result <see cref="Evaluate(IExpressionScope, FunctionRegistry?)"/> keeps.</summary>
         internal bool IsSingleExpression { get; }
@@ -424,14 +421,6 @@ namespace UIFramework.Data.Expressions
             ExpressionResult result = Evaluate(scope, functions);
             cache.Store(scope, screen, epoch, tick, result);
             return result;
-        }
-
-        /// <summary>Render to text (single expressions are converted with <see cref="DataValue.AsString"/>).</summary>
-        internal string Render(IExpressionScope scope, out bool isVolatile, FunctionRegistry? functions = null)
-        {
-            ExpressionResult result = Evaluate(scope, functions);
-            isVolatile = result.IsVolatile;
-            return result.Value.AsString();
         }
 
         public override string ToString() => Text;

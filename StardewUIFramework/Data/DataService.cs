@@ -57,6 +57,7 @@ namespace UIFramework.Data
         private readonly DataComposites dataComposites;
         private readonly ContributionBuilder contributions;
         private Dictionary<string, DataCompositeDefinition> compositeDefinitions = new(StringComparer.Ordinal);
+        private DataRuntime[] watchers = Array.Empty<DataRuntime>();
         private bool dirty = true;
         private uint lastReloadTick = uint.MaxValue;
 
@@ -73,17 +74,20 @@ namespace UIFramework.Data
 
             State = new DataStateStore(contexts.For, new ConfigStore(helper.Data, monitor));
             State.Changed += OnStateChanged;
+            State.SharesState = owner => OwnerOf(owner)?.SharedState is { } shared && ValueParsers.TryParseBool(shared, out bool yes) && yes;
             DataStateStore.Active = State;
             DataScope.ContextResolver = contexts.For;
             ScopeRoots.RuntimeResolver = RuntimeByStateKey;
             ScopeRoots.Exposures = extensions.ExposuresOf;
             GameFunctions.Register(FunctionRegistry.Default, this);
 
-            DataActionRunner.Resolver = Resolver;
+            // loc() and itemName() are cached like any value: a language change must re-evaluate them
+            helper.Events.Content.LocaleChanged += (_, _) => State.BumpGlobal();
+
             builder = new DataBuilder(Resolver, sprites, OwnerOf, State);
             hudBuilder = new HudBuilder(builder, Resolver);
             dataComposites = new DataComposites(composites, contexts, FacadeFor, builder);
-            contributions = new ContributionBuilder(builder, Resolver, contexts, FacadeFor, extensions, menus);
+            contributions = new ContributionBuilder(builder, Resolver, contexts, FacadeFor, menus);
 
             // a data menu destroyed from C# is built again on the next reload (unless a C# menu takes its key)
             menus.MenuUnregistered += menu =>
@@ -107,7 +111,7 @@ namespace UIFramework.Data
         private static string HooksHash => (UIServices.Hooks?.StructureVersion ?? 0).ToString(System.Globalization.CultureInfo.InvariantCulture);
 
         /// <summary>The value resolver of every data value (expressions from v1.4).</summary>
-        internal IValueResolver Resolver { get; } = ExpressionValueResolver.Instance;
+        internal ExpressionValueResolver Resolver => ExpressionValueResolver.Instance;
 
         /// <summary>The named state of data UIs.</summary>
         internal DataStateStore State { get; }
@@ -165,14 +169,6 @@ namespace UIFramework.Data
             }
         }
 
-        internal void OnAssetReady(object? sender, AssetReadyEventArgs e)
-        {
-            if (IsWatched(e.NameWithoutLocale))
-            {
-                dirty = true;
-            }
-        }
-
         internal void OnUpdateTicked(object? sender, UpdateTickedEventArgs e)
         {
             // the assets are shared by every split-screen player: reload once per tick
@@ -186,6 +182,7 @@ namespace UIFramework.Data
             if (Context.ScreenId == 0)
             {
                 State.Config.OnUpdateTicked();
+                State.RemoveDeadScreens();
             }
 
             ProcessPendingOpens();
@@ -209,10 +206,10 @@ namespace UIFramework.Data
         /// <summary>Force the assets to be re-read on the next tick (<c>ui_reload</c>).</summary>
         internal void MarkDirty() => dirty = true;
 
-        /// <summary>Run the watches of every data UI on a state change.</summary>
+        /// <summary>Run the watches of every data UI on a state change (the runtimes with watches, listed by the last reload).</summary>
         private void OnStateChanged(int screen, StateAddress address, DataValue oldValue, DataValue newValue)
         {
-            foreach (DataRuntime runtime in built.Values.Cast<DataRuntime>().Concat(huds.Values).ToArray())
+            foreach (DataRuntime runtime in watchers)
             {
                 runtime.OnStateChanged(address, oldValue, newValue);
             }
@@ -230,9 +227,7 @@ namespace UIFramework.Data
             var assetLog = new DataMessageLog();
             Dictionary<string, SpriteDefinition> spriteDefs = reader.ReadSprites(assetLog);
             validator.ValidateSprites(spriteDefs, assetLog);
-            string previousSprites = sprites.Hash;
-            sprites.Load(spriteDefs);
-            bool spritesChanged = previousSprites != sprites.Hash;
+            sprites.Load(spriteDefs); // every entry hash includes the sprites' hash, so a sprite change rebuilds
 
             ReloadOwners(assetLog);
             int changed = ReloadComposites(assetLog);
@@ -258,7 +253,7 @@ namespace UIFramework.Data
 
                 try
                 {
-                    if (Apply(key, def, status, spritesChanged, seen))
+                    if (Apply(key, def, status, seen))
                     {
                         changed++;
                     }
@@ -279,8 +274,9 @@ namespace UIFramework.Data
                 Remove(key);
             }
 
-            changed += ReloadHuds(hudEntries, hudLogs, spritesChanged);
+            changed += ReloadHuds(hudEntries, hudLogs);
             changed += ReloadContributions(assetLog);
+            watchers = built.Values.Cast<DataRuntime>().Concat(huds.Values).Where(r => r.HasWatches).ToArray();
             State.BumpGlobal();
 
             if (changed > 0)
@@ -292,7 +288,7 @@ namespace UIFramework.Data
         }
 
         /// <summary>Validate and build one entry; true when it was built or rebuilt.</summary>
-        private bool Apply(string key, MenuDefinition def, EntryStatus status, bool spritesChanged, HashSet<string> seen)
+        private bool Apply(string key, MenuDefinition def, EntryStatus status, HashSet<string> seen)
         {
             if (!validator.ValidateMenu(key, def, status.Messages, out string owner, out string menuId))
             {
@@ -324,7 +320,7 @@ namespace UIFramework.Data
 
             // the managed menu is no longer registered (a C# DestroyMenu): build a new one, whatever the hash
             bool destroyed = runtime != null && existing != runtime.Menu;
-            if (runtime != null && !destroyed && runtime.Hash == hash && !spritesChanged)
+            if (runtime != null && !destroyed && runtime.Hash == hash)
             {
                 status.Messages = runtime.Messages;
                 status.State = runtime.Menu?.IsOpen == true ? "built (open)" : "built";
@@ -336,22 +332,24 @@ namespace UIFramework.Data
             {
                 runtime ??= new DataMenuRuntime(owner, menuId);
                 runtime.Definition = def;
-                runtime.Hash = hash;
+                runtime.Hash = string.Empty; // set once the build succeeded: a failed build is retried on the next reload
                 runtime.Messages = status.Messages;
                 var menu = (UIMenu)api.CreateMenu(menuId);
                 runtime.Menu = menu;
                 built[runtimeKey] = runtime;
                 builder.BuildMenu(menu, api, runtime);
+                runtime.Hash = hash;
                 status.State = "built";
                 return true;
             }
 
             runtime.Definition = def;
-            runtime.Hash = hash;
+            runtime.Hash = string.Empty;
             runtime.Messages = status.Messages;
             UIMenu target = runtime.Menu!;
             DataMenuRuntime current = runtime;
             target.RebuildInPlace(m => builder.BuildMenu(m, api, current));
+            runtime.Hash = hash;
             status.State = target.IsOpen ? "rebuilt (open)" : "rebuilt";
             return true;
         }
@@ -366,11 +364,7 @@ namespace UIFramework.Data
             StardewUIApi api = FacadeFor(runtime.Owner);
             if (menus.Get(runtime.Owner, runtime.MenuId) == runtime.Menu)
             {
-                if (runtime.HotkeyBound)
-                {
-                    api.BindToggleHotkey(runtime.Menu, string.Empty);
-                }
-
+                api.UnregisterHotkey(DataBuilder.MenuHotkeyId(runtime.MenuId));
                 api.DestroyMenu(runtime.MenuId);
             }
 
@@ -381,7 +375,7 @@ namespace UIFramework.Data
         //  HUDs
         // ---------------------------------------------------------------------------------------------------------
 
-        private int ReloadHuds(Dictionary<string, HudDefinition> entries, Dictionary<string, DataMessageLog> logs, bool spritesChanged)
+        private int ReloadHuds(Dictionary<string, HudDefinition> entries, Dictionary<string, DataMessageLog> logs)
         {
             int changed = 0;
             var seen = new HashSet<string>(StringComparer.Ordinal);
@@ -399,7 +393,7 @@ namespace UIFramework.Data
 
                 try
                 {
-                    if (ApplyHud(key, def, status, spritesChanged, seen))
+                    if (ApplyHud(key, def, status, seen))
                     {
                         changed++;
                     }
@@ -429,7 +423,7 @@ namespace UIFramework.Data
             return changed;
         }
 
-        private bool ApplyHud(string key, HudDefinition def, EntryStatus status, bool spritesChanged, HashSet<string> seen)
+        private bool ApplyHud(string key, HudDefinition def, EntryStatus status, HashSet<string> seen)
         {
             if (!validator.ValidateHud(key, def, status.Messages, out string owner, out string hudId))
             {
@@ -453,20 +447,26 @@ namespace UIFramework.Data
                 return false;
             }
 
-            if (runtime != null && runtime.Hash == hash && !spritesChanged)
+            // the widget is no longer registered (a C# DestroyHud): create a new one, whatever the hash
+            if (runtime?.Hud != null && existing == null)
+            {
+                runtime.Hud = null;
+            }
+            else if (runtime != null && runtime.Hash == hash)
             {
                 status.Messages = runtime.Messages;
                 status.State = "built";
                 return false;
             }
 
-            bool rebuild = runtime != null;
+            bool rebuild = runtime?.Hud != null;
             runtime ??= new DataHudRuntime(owner, hudId);
             runtime.Definition = def;
-            runtime.Hash = hash;
+            runtime.Hash = string.Empty; // set once the build succeeded: a failed build is retried on the next reload
             runtime.Messages = status.Messages;
             huds[runtimeKey] = runtime;
             hudBuilder.Build(api, runtime);
+            runtime.Hash = hash;
             status.State = rebuild ? "rebuilt" : "built";
             return true;
         }
@@ -669,8 +669,14 @@ namespace UIFramework.Data
                     overrides.StyleSet = true;
                 }
 
-                var applier = new PropertyApplier(LiteralValueResolver.Instance, new RefresherGroup(owner, "DefaultStyle"), log);
+                // the owner style is applied once: live values are evaluated now and do not update
+                var group = new RefresherGroup(owner, "DefaultStyle");
+                var applier = new PropertyApplier(Resolver, group, log);
                 api.SetDefaultStyle(builder.BuildStyle(api, def.DefaultStyle, scope, path.Field("DefaultStyle"), applier));
+                if (group.Count > 0)
+                {
+                    log.Warn(path.Field("DefaultStyle"), "DefaultStyle takes literal values only: its ${...} values were evaluated once and do not update.");
+                }
             }
             else if (overrides.StyleSet)
             {

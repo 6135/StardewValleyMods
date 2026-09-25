@@ -119,9 +119,17 @@ namespace UIFramework.Data.Expressions
     /// <summary>Tree-walking evaluator. Sandboxed: it only reads through the scope and calls registered functions.</summary>
     internal static class Evaluator
     {
+        [ThreadStatic] private static int runDepth;
+
         /// <summary>Evaluate <paramref name="root"/>; every failure (including exceptions from scopes and functions) becomes an error result.</summary>
         internal static ExpressionResult Run(Node root, IExpressionScope scope, FunctionRegistry functions)
         {
+            if (runDepth >= ExpressionLimits.MaxNestedRuns)
+            {
+                return ExpressionResult.Failure("Expressions nest too deeply (does a value read itself?).", false);
+            }
+
+            runDepth++;
             ExpressionContext context = ExpressionContext.Rent(scope, functions);
             try
             {
@@ -139,6 +147,7 @@ namespace UIFramework.Data.Expressions
             finally
             {
                 ExpressionContext.Return(context);
+                runDepth--;
             }
         }
 

@@ -50,6 +50,7 @@ namespace UIFramework.Data.Building
             private readonly List<ElementDefinition>? template;
             private readonly DataPath path;
             private readonly Dictionary<UIElement, RefresherGroup> groups = new();
+            private readonly List<KeyValuePair<UIElement, RefresherGroup>> refreshing = new();
 
             internal TemplateRows(DataBuilder builder, BuildContext ctx, List<ElementDefinition>? template, DataPath path)
             {
@@ -80,7 +81,10 @@ namespace UIFramework.Data.Building
             /// <summary>Refresh the live values of the rows that are still attached.</summary>
             internal void Refresh(bool opening)
             {
-                foreach ((UIElement container, RefresherGroup group) in groups.ToArray())
+                // a reused snapshot (this runs every tick); a refresh may remove rows
+                refreshing.Clear();
+                refreshing.AddRange(groups);
+                foreach ((UIElement container, RefresherGroup group) in refreshing)
                 {
                     if (container.OwnerMenu == null)
                     {
@@ -216,6 +220,12 @@ namespace UIFramework.Data.Building
                     return null;
                 }
 
+                if (!store.CanWrite(address, scope.Owner, out string accessError))
+                {
+                    log.Error(path, accessError + " The binding is ignored.");
+                    return null;
+                }
+
                 return new SelectionBinding(address, store, read, write);
             }
 
@@ -266,9 +276,9 @@ namespace UIFramework.Data.Building
             private readonly SourceBinding? source;
             private readonly string? valueExpression;
             private readonly string? labelExpression;
-            private readonly IValueResolver resolver;
+            private readonly ExpressionValueResolver resolver;
 
-            internal SourcedChoices(SourceBinding? source, string? valueExpression, string? labelExpression, IValueResolver resolver)
+            internal SourcedChoices(SourceBinding? source, string? valueExpression, string? labelExpression, ExpressionValueResolver resolver)
             {
                 this.source = source;
                 this.valueExpression = valueExpression;

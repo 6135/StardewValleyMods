@@ -27,7 +27,10 @@ namespace ProfitCalculator
             var Monitor = Container.Instance.GetInstance<IMonitor>(ModEntry.UniqueID);
             var registry = Container.Instance.GetInstance<ManualCropRegistry>(ModEntry.UniqueID);
             if (registry == null)
+            {
                 return false;
+            }
+
             if (string.IsNullOrWhiteSpace(seedItemId) || string.IsNullOrWhiteSpace(harvestItemId) || growthDays <= 0)
             {
                 Monitor?.Log($"API AddCrop rejected: seed '{seedItemId}', harvest '{harvestItemId}', growth days {growthDays}.", LogLevel.Warn);
@@ -47,11 +50,12 @@ namespace ProfitCalculator
             {
                 PlantData? plant = ManualCropBuilder.BuildCrop(seedItemId, definition);
                 if (plant == null)
+                {
                     return false;
+                }
+
                 registry.SetCrop(seedItemId, definition);
-                var calculator = Container.Instance.GetInstance<Calculator>(ModEntry.UniqueID);
-                if (calculator != null)
-                    calculator.Crops[seedItemId] = plant;
+                Container.Instance.GetInstance<Calculator>(ModEntry.UniqueID)?.SetCrop(seedItemId, plant);
                 return true;
             }
 
@@ -64,12 +68,18 @@ namespace ProfitCalculator
         {
             var registry = Container.Instance.GetInstance<ManualCropRegistry>(ModEntry.UniqueID);
             if (registry == null || string.IsNullOrWhiteSpace(seedItemId))
+            {
                 return false;
+            }
+
             seedItemId = ManualCropRegistry.NormalizeId(seedItemId);
             bool removed = registry.RemoveCrop(seedItemId);
-            if (removed && Context.IsWorldReady)
+            var calculator = Container.Instance.GetInstance<Calculator>(ModEntry.UniqueID);
+            if (removed && Context.IsWorldReady && calculator != null)
             {
-                Container.Instance.GetInstance<Calculator>(ModEntry.UniqueID)?.Crops.Remove(seedItemId);
+                calculator.RemoveCrop(seedItemId);
+                // a built-in or asset crop it replaced comes back with the next rebuild (before the next calculation)
+                calculator.MarkCropsDirty();
             }
             return removed;
         }
@@ -79,19 +89,30 @@ namespace ProfitCalculator
         {
             var registry = Container.Instance.GetInstance<ManualCropRegistry>(ModEntry.UniqueID);
             if (registry == null || string.IsNullOrWhiteSpace(seedItemId))
+            {
                 return;
+            }
+
             registry.SetSeedPrice(seedItemId, price);
 
-            // Manual crops store their price on the plant, which ShopAccessor doesn't see, so update loaded plants directly.
-            if (price >= 0 && Context.IsWorldReady)
+            var calculator = Container.Instance.GetInstance<Calculator>(ModEntry.UniqueID);
+            if (!Context.IsWorldReady || calculator == null)
             {
-                var calculator = Container.Instance.GetInstance<Calculator>(ModEntry.UniqueID);
-                if (calculator == null)
-                    return;
-                foreach (string key in ManualCropRegistry.CandidateKeys(seedItemId))
+                return;
+            }
+
+            if (price < 0)
+            {
+                // the loaded plants still hold the removed price; rebuilding them restores the shop price or the manual crop's PurchasePrice
+                calculator.MarkCropsDirty();
+                return;
+            }
+            // Manual crops store their price on the plant, which ShopAccessor doesn't see, so update loaded plants directly.
+            foreach (string key in ManualCropRegistry.CandidateKeys(seedItemId))
+            {
+                if (calculator.Crops.TryGetValue(key, out PlantData? plant))
                 {
-                    if (calculator.Crops.TryGetValue(key, out PlantData? plant))
-                        plant.SeedPrice = price;
+                    plant.SeedPrice = price;
                 }
             }
         }

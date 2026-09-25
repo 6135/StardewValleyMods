@@ -310,7 +310,8 @@ namespace UIFramework.Components
         /// <summary>Scrollbar parts, then the header (resize grip before sort). Returns false when nothing interactive of the grid's own was hit.</summary>
         private bool HandleOwnClick(int px, int py)
         {
-            if (ScrollbarVisible && HandleScrollbarClick(px, py))
+            // arrows step one row, the thumb starts a drag, the track jumps
+            if (ScrollbarVisible && scrollbar.Click(px, py, ScrollWithSound, SetFirstVisibleFromY, ref draggingThumb))
             {
                 return true;
             }
@@ -345,29 +346,6 @@ namespace UIFramework.Components
             bool descending = column.Id == sortColumn && !sortDescending;
             Sort(column.Id, descending);
             UIServices.PlaySound(SortSound ?? DefaultSortSound);
-        }
-
-        /// <summary>Arrows step one row, the thumb starts a drag, the track jumps. Returns false when no scrollbar part was hit.</summary>
-        private bool HandleScrollbarClick(int px, int py)
-        {
-            switch (scrollbar.HitTest(px, py))
-            {
-                case ScrollbarGadget.Part.UpArrow:
-                    ScrollWithSound(-1);
-                    return true;
-                case ScrollbarGadget.Part.DownArrow:
-                    ScrollWithSound(1);
-                    return true;
-                case ScrollbarGadget.Part.Thumb:
-                    draggingThumb = true;
-                    return true;
-                case ScrollbarGadget.Part.Track:
-                    draggingThumb = true;
-                    SetFirstVisibleFromY(py);
-                    return true;
-                default:
-                    return false;
-            }
         }
 
         /// <summary>Scroll by <paramref name="delta"/> rows with the scroll sound when something moved.</summary>

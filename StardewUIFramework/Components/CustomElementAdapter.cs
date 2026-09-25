@@ -27,7 +27,7 @@ namespace UIFramework.Components
             get
             {
                 string? tooltip = Tooltip == null ? null : Raise("Tooltip", Tooltip, string.Empty);
-                return Accessibility.Compose("Custom", tooltip ?? Id);
+                return Accessibility.Compose(Accessibility.Text("custom", "Custom"), tooltip ?? Id);
             }
         }
 

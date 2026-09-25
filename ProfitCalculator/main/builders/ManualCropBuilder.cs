@@ -37,7 +37,9 @@ namespace ProfitCalculator.main.builders
                     foreach (var entry in assetCrops)
                     {
                         if (entry.Value != null)
+                        {
                             definitions[ManualCropRegistry.NormalizeId(entry.Key)] = entry.Value;
+                        }
                     }
                 }
             }
@@ -57,10 +59,17 @@ namespace ProfitCalculator.main.builders
             Dictionary<string, PlantData> crops = new();
             foreach (var entry in definitions)
             {
-                PlantData? plant = BuildCrop(entry.Key, entry.Value);
-                if (plant != null)
+                try
                 {
-                    crops.TryAdd(entry.Key, plant);
+                    PlantData? plant = BuildCrop(entry.Key, entry.Value);
+                    if (plant != null)
+                    {
+                        crops.TryAdd(entry.Key, plant);
+                    }
+                }
+                catch (Exception e)
+                {
+                    Monitor?.Log($"Skipping manual crop '{entry.Key}': it could not be built.\n{e}", LogLevel.Warn);
                 }
             }
             Monitor?.Log($"Manual crops loaded: {crops.Count}", LogLevel.Debug);
@@ -140,12 +149,18 @@ namespace ProfitCalculator.main.builders
         private static Item? ResolveItem(string? id)
         {
             if (string.IsNullOrWhiteSpace(id))
+            {
                 return null;
+            }
+
             id = id.Trim();
             try
             {
                 if (id.StartsWith('('))
+                {
                     return ItemRegistry.Create(id, allowNull: true);
+                }
+
                 return ItemRegistry.Create("(O)" + id, allowNull: true) ?? ItemRegistry.Create(id, allowNull: true);
             }
             catch (Exception)
@@ -163,7 +178,10 @@ namespace ProfitCalculator.main.builders
         {
             List<Season> result = new();
             if (string.IsNullOrWhiteSpace(seasons))
+            {
                 return result;
+            }
+
             foreach (string token in seasons.Split(new[] { ' ', ',' }, StringSplitOptions.RemoveEmptyEntries))
             {
                 if (Enum.TryParse(token, true, out Season season) && Enum.IsDefined(season) && !result.Contains(season))

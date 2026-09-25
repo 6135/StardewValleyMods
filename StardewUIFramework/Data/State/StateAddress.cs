@@ -110,7 +110,8 @@ namespace UIFramework.Data.State
                 return false;
             }
 
-            CompiledExpression expression = CompiledExpression.Compile(text);
+            // not through the parse cache: keys are often interpolated at run time (SetState menu.${...}) and would flood it
+            CompiledExpression expression = CompiledExpression.Parse(text);
             if (expression.Root is not PathNode { StaticPath: { } path })
             {
                 error = expression.Error != null ? $"'{text}' is not a state key: {expression.Error}" : $"'{text}' is not a state key (expected e.g. menu.name or session[owner].name).";
@@ -202,20 +203,23 @@ namespace UIFramework.Data.State
         }
 
         /// <summary>Join <paramref name="path"/> from <paramref name="start"/> with dots (index steps included as their key).</summary>
-        internal static string JoinName(IReadOnlyList<PathSegment> path, int start)
+        internal static string JoinName(IReadOnlyList<PathSegment> path, int start) => JoinName(path, start, path.Count);
+
+        /// <summary>Join the steps <paramref name="start"/> to <paramref name="end"/> (exclusive) of <paramref name="path"/> with dots.</summary>
+        internal static string JoinName(IReadOnlyList<PathSegment> path, int start, int end)
         {
-            if (start >= path.Count)
+            if (start >= end)
             {
                 return string.Empty;
             }
 
-            if (start == path.Count - 1)
+            if (start == end - 1)
             {
                 return path[start].Key;
             }
 
             var builder = new StringBuilder();
-            for (int i = start; i < path.Count; i++)
+            for (int i = start; i < end; i++)
             {
                 if (i > start)
                 {
@@ -228,8 +232,17 @@ namespace UIFramework.Data.State
             return builder.ToString();
         }
 
-        /// <summary>Infer a typed value from text (state defaults, <c>SetState</c>, modData, config): numbers, <c>true</c> / <c>false</c>, else text.</summary>
-        internal static DataValue Infer(string? text)
+        /// <summary>Infer a typed value from text (state defaults, <c>SetState</c>, C# text values): numbers, <c>true</c> / <c>false</c>, else text.</summary>
+        internal static DataValue Infer(string? text) => Infer(text, exactNumbers: false);
+
+        /// <summary>
+        /// Decode a value the store keeps as text (<c>player.*</c> modData, <c>config.*</c>): a number only when the text
+        /// is exactly how a number is written back (<see cref="DataValue.NumberToText"/>), so text such as <c>"007"</c>,
+        /// <c>"1."</c> or <c>"+1"</c> stays text, as it does in <c>menu.*</c> and <c>session.*</c>.
+        /// </summary>
+        internal static DataValue FromStoredText(string? text) => Infer(text, exactNumbers: true);
+
+        private static DataValue Infer(string? text, bool exactNumbers)
         {
             if (text == null)
             {
@@ -237,7 +250,7 @@ namespace UIFramework.Data.State
             }
 
             string trimmed = text.Trim();
-            if (DataValue.TryParseNumber(trimmed, out double number))
+            if (DataValue.TryParseNumber(trimmed, out double number) && (!exactNumbers || DataValue.NumberToText(number) == text))
             {
                 return DataValue.FromNumber(number);
             }

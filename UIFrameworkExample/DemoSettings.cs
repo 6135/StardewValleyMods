@@ -66,6 +66,7 @@ namespace UIFrameworkExample
         public bool Pets { get; set; } = true;
 
         [Section("Game")]
+        [Tooltip("How hard the farm is: Easy to VeryHard.")]
         public Difficulty Difficulty { get; set; } = Difficulty.Normal;
 
         /// <summary>Validators are found by name (<c>Validate</c> + property); returning a string reports an error, null / empty accepts.</summary>

@@ -15,9 +15,9 @@ namespace UIFramework.Data.Building
     internal sealed class HudBuilder
     {
         private readonly DataBuilder builder;
-        private readonly IValueResolver resolver;
+        private readonly ExpressionValueResolver resolver;
 
-        internal HudBuilder(DataBuilder builder, IValueResolver resolver)
+        internal HudBuilder(DataBuilder builder, ExpressionValueResolver resolver)
         {
             this.builder = builder;
             this.resolver = resolver;

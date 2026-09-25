@@ -9,8 +9,8 @@ namespace UIFramework.Data.Building
 {
     /// <summary>
     /// The literal forms data fields accept. Case-insensitive; Newtonsoft turns JSON <c>5</c> / <c>true</c> into
-    /// <c>"5"</c> / <c>"True"</c>, so every kind parses strings. Colors reuse <see cref="ThemeData.ParseColor"/> and
-    /// <see cref="RichText.TryParseColor"/>, rectangles <see cref="ThemeData.ParseRectangle"/>; grid tracks are passed
+    /// <c>"5"</c> / <c>"True"</c>, so every kind parses strings. Colors use <see cref="RichText.TryParseColor"/>
+    /// (the theme parser plus the markup aliases), rectangles <see cref="ThemeData.ParseRectangle"/>; grid tracks are passed
     /// through unchanged (the grid parses them).
     /// </summary>
     internal static class ValueParsers
@@ -160,17 +160,7 @@ namespace UIFramework.Data.Building
             return double.TryParse(text.Trim(), NumberStyles.Float, CultureInfo.InvariantCulture, out value) && !double.IsNaN(value) && !double.IsInfinity(value);
         }
 
-        internal static bool TryParseColor(string text, out Color value)
-        {
-            Color? parsed = ThemeData.ParseColor(text);
-            if (parsed.HasValue)
-            {
-                value = parsed.Value;
-                return true;
-            }
-
-            return RichText.TryParseColor(text.Trim(), out value);
-        }
+        internal static bool TryParseColor(string text, out Color value) => RichText.TryParseColor(text, out value);
 
         private static bool TryParseAlign(string text, out UIAlign value)
         {

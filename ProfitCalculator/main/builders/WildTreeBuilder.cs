@@ -42,7 +42,7 @@ namespace ProfitCalculator.main.builders
                 }
                 catch (Exception e)
                 {
-                    Monitor?.Log($"Failed to build wild tree {tree.Key}: {e.Message}", LogLevel.Debug);
+                    Monitor?.Log($"Skipping wild tree '{tree.Key}': it could not be built.\n{e}", LogLevel.Warn);
                 }
             }
             return trees;

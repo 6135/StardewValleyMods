@@ -129,13 +129,13 @@ namespace UIFramework.Core.Export
             return e switch
             {
                 Slot => TreeKinds.Slot,
+                Composite => TreeKinds.Composite, // a Stack
                 Stack => TreeKinds.Stack,
                 Grid => TreeKinds.Grid,
                 Panel => TreeKinds.Panel,
                 Canvas => TreeKinds.Canvas,
                 ScrollView => TreeKinds.ScrollView,
                 ListView => TreeKinds.List,
-                Composite => TreeKinds.Composite,
                 CustomHostAdapter => TreeKinds.CustomHost,
                 DataGrid => TreeKinds.DataGrid,
                 AutoForm => TreeKinds.Form,
@@ -209,6 +209,11 @@ namespace UIFramework.Core.Export
                     p.Add(TreeProperty.Literal("VetoedContributors", TreeValueKind.StringList, slot.VetoedContributors, slot.VetoedContributors.Length == 0));
                     p.Add(Todo("VisiblePredicate", slot.VisiblePredicate));
                     break;
+                case Composite composite: // a Stack
+                    node.CompositeName = composite.CompositeName;
+                    node.IsDataComposite = composite.IsDataComposite;
+                    ReadArgs(composite, node);
+                    break;
                 case Stack stack:
                     p.Add(Bool("Horizontal", stack.Horizontal, false));
                     p.Add(Int("Spacing", stack.Spacing, DefaultSpacing));
@@ -238,11 +243,6 @@ namespace UIFramework.Core.Export
                     p.Add(Bool("Selectable", list.Selectable, false));
                     p.Add(Todo("OnValueChanged", list.OnValueChanged));
                     p.Add(Todo("OnScroll", list.OnScroll));
-                    break;
-                case Composite composite:
-                    node.CompositeName = composite.CompositeName;
-                    node.IsDataComposite = composite.IsDataComposite;
-                    ReadArgs(composite, node);
                     break;
                 case DataGrid grid:
                     ReadDataGrid(grid, node);

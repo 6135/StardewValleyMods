@@ -260,12 +260,26 @@ namespace UIFramework.Components
             Rectangle viewport = ViewportRect;
             if (viewport.Width > 0 && viewport.Height > 0)
             {
-                DrawHelper.WithScissor(b, viewport, () => DrawChildren(b));
+                DrawHelper.WithScissor(b, viewport, () => DrawVisibleChildren(b, viewport));
             }
 
             if (ScrollbarVisible)
             {
                 scrollbar.Draw(b);
+            }
+        }
+
+        /// <summary>Draw only the children that reach into the viewport; the scissor would hide the others anyway.</summary>
+        private void DrawVisibleChildren(SpriteBatch b, Rectangle viewport)
+        {
+            // index loop: a consumer callback raised from a child's draw may mutate the tree
+            for (int i = 0; i < Children.Count; i++)
+            {
+                UIElement child = Children[i];
+                if (child.Bounds.Intersects(viewport))
+                {
+                    child.Draw(b);
+                }
             }
         }
 
@@ -307,35 +321,14 @@ namespace UIFramework.Components
 
         protected internal override bool HandleClick(UIClickEvent e)
         {
-            if (e.Target == this && e.Button == UIMouseButton.Left && ScrollbarVisible && HandleScrollbarClick(e.X, e.Y))
+            // arrows step, the thumb starts a drag, the track jumps
+            if (e.Target == this && e.Button == UIMouseButton.Left && ScrollbarVisible
+                && scrollbar.Click(e.X, e.Y, direction => ScrollWithSound(direction * scrollStep), SetOffsetFromY, ref dragging))
             {
                 return true;
             }
 
             return base.HandleClick(e);
-        }
-
-        /// <summary>Arrows step, the thumb starts a drag, the track jumps. Returns false when no scrollbar part was hit.</summary>
-        private bool HandleScrollbarClick(int px, int py)
-        {
-            switch (scrollbar.HitTest(px, py))
-            {
-                case ScrollbarGadget.Part.UpArrow:
-                    ScrollWithSound(-scrollStep);
-                    return true;
-                case ScrollbarGadget.Part.DownArrow:
-                    ScrollWithSound(scrollStep);
-                    return true;
-                case ScrollbarGadget.Part.Thumb:
-                    dragging = true;
-                    return true;
-                case ScrollbarGadget.Part.Track:
-                    dragging = true;
-                    SetOffsetFromY(py);
-                    return true;
-                default:
-                    return false;
-            }
         }
 
         /// <summary>Scroll by <paramref name="delta"/> pixels, with the vanilla scroll sound when something moved.</summary>

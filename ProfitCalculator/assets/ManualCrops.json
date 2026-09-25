@@ -17,9 +17,6 @@
   //   "ExtraHarvestChance": 0.0,               // chance for an extra item
   //   "HasQuality": true,                      // affected by quality
   //   "AcceptsFertilizer": true,               // affected by fertilizer
-  //   "IsPaddyCrop": false,                    // paddy crop
-  //   "IsRaisedCrop": false,                   // raised crop (not used yet)
-  //   "IsBushCrop": false,                     // bush crop (not used yet)
-  //   "IsGiantCrop": false                     // giant crop (not used yet)
+  //   "IsPaddyCrop": false                     // paddy crop
   // }
 }

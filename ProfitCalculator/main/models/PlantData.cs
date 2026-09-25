@@ -1,5 +1,3 @@
-using Microsoft.Xna.Framework;
-using Microsoft.Xna.Framework.Graphics;
 using ProfitCalculator.main.accessors;
 using ProfitCalculator.main.memory;
 using StardewModdingAPI;
@@ -9,7 +7,6 @@ using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using static ProfitCalculator.Utils;
-using SObject = StardewValley.Object;
 
 #nullable enable
 
@@ -47,27 +44,6 @@ namespace ProfitCalculator.main.models
             AffectByQuality = affectByQuality;
             AffectByFertilizer = affectByFertilizer;
             DropInformation = dropInformation;
-            Item item = dropInformation.Drops[0].Item;
-            Texture2D spriteSheet;
-            try
-            {
-                spriteSheet = ItemRegistry.GetData(item.itemId.Value).GetTexture();
-            }
-            catch (Exception e)
-            {
-                Container.Instance.GetInstance<IMonitor>(ModEntry.UniqueID)?.Log($"Error loading sprite for {DisplayName}: {e.Message}", LogLevel.Error);
-                spriteSheet = Game1.objectSpriteSheet;
-            }
-
-            Sprite = new(
-                spriteSheet,
-                Game1.getSourceRectForStandardTileSheet(
-                    spriteSheet,
-            item.ParentSheetIndex,
-            SObject.spriteSheetTileSize,
-                    SObject.spriteSheetTileSize
-                    )
-                );
         }
 
         /// <value>Property <c>Seed</c> represents the Seed of the crop.</value>
@@ -116,9 +92,6 @@ namespace ProfitCalculator.main.models
         /// <value>Property <c>DisplayName</c> represents the crop's name.</value>
         public string DisplayName { get; set; }
 
-        /// <value>Property <c>Sprite</c> represents the crop's sprite. It's unused as of now.</value>
-        public Tuple<Texture2D, Rectangle> Sprite { get; set; }
-
         /// <value>Property <c>Seasons</c> available seasons.</value>
         public List<Season> Seasons { get; set; }
 
@@ -127,6 +100,12 @@ namespace ProfitCalculator.main.models
 
         /// <summary> The calculator holding the current settings, if registered. </summary>
         protected static Calculator? Calc => Container.Instance.GetInstance<Calculator>(ModEntry.UniqueID);
+
+        /// <summary>
+        /// The selected fertilizer as it applies to this plant: <see cref="FertilizerQuality.None"/> when the plant doesn't
+        /// accept fertilizer (<see cref="AffectByFertilizer"/>), so neither its quality boost nor its cost counts.
+        /// </summary>
+        public FertilizerQuality AppliedFertilizerQuality => AffectByFertilizer ? Calc?.FertilizerQuality ?? FertilizerQuality.None : FertilizerQuality.None;
 
         #region Growth Values Calculations
 
@@ -254,14 +233,15 @@ namespace ProfitCalculator.main.models
         /// <returns> Average crops per harvest. <c>double</c></returns>
         public virtual double AverageCropsPerHarvest()
         {
-            if (MinHarvests <= 1 && MaxHarvests <= 1)
-            {
-                return 1;
-            }
+            // HarvestMaxIncreasePerFarmingLevel is the number of extra items per farming level, added to the max stack
             int maxHarvestIncrease = 0;
             if (MaxHarvestIncreasePerFarmingLevel > 0)
             {
-                maxHarvestIncrease = (int)((Calc?.FarmingLevel ?? 0) / MaxHarvestIncreasePerFarmingLevel);
+                maxHarvestIncrease = (int)((Calc?.FarmingLevel ?? 0) * MaxHarvestIncreasePerFarmingLevel);
+            }
+            if (MinHarvests <= 1 && MaxHarvests + maxHarvestIncrease <= 1)
+            {
+                return 1;
             }
             int max = Math.Max(MinHarvests, MaxHarvests + maxHarvestIncrease);
             return (MinHarvests + max) / 2.0;
@@ -462,7 +442,7 @@ namespace ProfitCalculator.main.models
         public virtual int TotalFertilizerCost()
         {
             bool payForFertilizer = Container.Instance.GetInstance<Calculator>(ModEntry.UniqueID)?.PayForFertilizer ?? false;
-            FertilizerQuality fertilizerQuality = Container.Instance.GetInstance<Calculator>(ModEntry.UniqueID)?.FertilizerQuality ?? FertilizerQuality.None;
+            FertilizerQuality fertilizerQuality = AppliedFertilizerQuality;
             if (!payForFertilizer)
             {
                 return 0;
@@ -491,7 +471,9 @@ namespace ProfitCalculator.main.models
             uint day = Container.Instance.GetInstance<Calculator>(ModEntry.UniqueID)?.Day ?? 0;
             FertilizerQuality fertilizerQuality = Container.Instance.GetInstance<Calculator>(ModEntry.UniqueID)?.FertilizerQuality ?? FertilizerQuality.None;
             if (RegrowDays > 0 && TotalAvailableDays(season, (int)day) > 0)
+            {
                 return 1;
+            }
             else { return TotalHarvestsWithRemainingDays(season, fertilizerQuality, (int)day); }
         }
 
@@ -499,7 +481,10 @@ namespace ProfitCalculator.main.models
         {
             bool payForSeeds = Container.Instance.GetInstance<Calculator>(ModEntry.UniqueID)?.PayForSeeds ?? false;
             if (!payForSeeds)
+            {
                 return 0;
+            }
+
             int seedsNeeded = TotalSeedsNeeded();
             int seedCost = SeedPrice;
 
@@ -551,8 +536,7 @@ namespace ProfitCalculator.main.models
 
         public virtual double GetCropBaseGoldQualityChance(double limit)
         {
-            FertilizerQuality? FertilizerQuality = Container.Instance.GetInstance<Calculator>(ModEntry.UniqueID)?.FertilizerQuality;
-            FertilizerQuality ??= Utils.FertilizerQuality.None;
+            FertilizerQuality FertilizerQuality = AppliedFertilizerQuality;
 
             var FarmingLevel = Container.Instance.GetInstance<Calculator>(ModEntry.UniqueID)?.FarmingLevel ?? 0;
             int fertilizerQualityLevel = (int)FertilizerQuality > 0 ? (int)FertilizerQuality : 0;
@@ -565,13 +549,13 @@ namespace ProfitCalculator.main.models
 
         public virtual double GetCropBaseQualityChance()
         {
-            FertilizerQuality? FertilizerQuality = Container.Instance.GetInstance<Calculator>(ModEntry.UniqueID)?.FertilizerQuality;
+            FertilizerQuality FertilizerQuality = AppliedFertilizerQuality;
             return FertilizerQuality >= Utils.FertilizerQuality.Deluxe ? 0f : Math.Max(0f, 1f - (GetCropIridiumQualityChance() + GetCropGoldQualityChance() + GetCropSilverQualityChance()));
         }
 
         public virtual double GetCropSilverQualityChance()
         {
-            FertilizerQuality? FertilizerQuality = Container.Instance.GetInstance<Calculator>(ModEntry.UniqueID)?.FertilizerQuality;
+            FertilizerQuality FertilizerQuality = AppliedFertilizerQuality;
             return FertilizerQuality >= Utils.FertilizerQuality.Deluxe ? 1f - (GetCropIridiumQualityChance() + GetCropGoldQualityChance()) : (1f - GetCropIridiumQualityChance()) * (1f - GetCropBaseGoldQualityChance()) * Math.Min(0.75, 2 * GetCropBaseGoldQualityChance());
         }
 
@@ -582,7 +566,7 @@ namespace ProfitCalculator.main.models
 
         public virtual double GetCropIridiumQualityChance()
         {
-            FertilizerQuality? FertilizerQuality = Container.Instance.GetInstance<Calculator>(ModEntry.UniqueID)?.FertilizerQuality;
+            FertilizerQuality FertilizerQuality = AppliedFertilizerQuality;
 
             return FertilizerQuality >= Utils.FertilizerQuality.Deluxe ? GetCropBaseGoldQualityChance() / 2.0 : 0f;
         }

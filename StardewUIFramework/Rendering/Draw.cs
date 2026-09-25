@@ -183,8 +183,35 @@ namespace UIFramework.Rendering
             return (float)Math.Ceiling(Math.Min(whole, truncated));
         }
 
-        /// <summary>The longest prefix of <paramref name="text"/> + "..." that fits in <paramref name="width"/> (may be just "...").</summary>
+        /// <summary>Most truncations kept; the cache is dropped when it grows past this (live text can change every frame).</summary>
+        private const int TruncateCacheLimit = 256;
+
+        /// <summary>
+        /// Truncated lines by (text, font, scale, width) plus the theme font scale measuring depends on, so a squeezed
+        /// label does not rebuild its substrings every frame.
+        /// </summary>
+        private static readonly Dictionary<(string Text, UIFont Font, float Scale, int Width, float FontScale), string> TruncateCache = new();
+
+        /// <summary>The longest prefix of <paramref name="text"/> + "..." that fits in <paramref name="width"/> (may be just "..."); cached.</summary>
         private static string Truncate(string text, UIFont font, float scale, int width)
+        {
+            var key = (text, font, scale, width, Theme.FontScale);
+            if (TruncateCache.TryGetValue(key, out string? cached))
+            {
+                return cached;
+            }
+
+            if (TruncateCache.Count >= TruncateCacheLimit)
+            {
+                TruncateCache.Clear();
+            }
+
+            string shown = TruncateUncached(text, font, scale, width);
+            TruncateCache[key] = shown;
+            return shown;
+        }
+
+        private static string TruncateUncached(string text, UIFont font, float scale, int width)
         {
             const string Ellipsis = "...";
             int lo = 0, hi = text.Length;

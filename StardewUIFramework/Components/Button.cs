@@ -28,6 +28,9 @@ namespace UIFramework.Components
         private RichLayout? richLayout;
         private string measuredText = string.Empty;
 
+        /// <summary>Size of <see cref="measuredText"/> as last measured (with <see cref="richLayout"/> for rich text), reused by the draw.</summary>
+        private Vector2 measuredTextSize;
+
         internal Button(string id, Func<string>? text, Action<IUIClickEvent>? onClick) : base(id)
         {
             this.text = text;
@@ -142,22 +145,29 @@ namespace UIFramework.Components
             }
         }
 
-        /// <summary>Size of <paramref name="current"/> as it will be drawn (plain or rich); a rich layout is kept for the draw.</summary>
-        private Vector2 MeasureText(string current)
+        /// <summary>
+        /// Measure <paramref name="current"/> in <paramref name="f"/> as it will be drawn (plain or rich) and remember it
+        /// as <see cref="measuredText"/> / <see cref="measuredTextSize"/>; a rich layout is kept for the draw.
+        /// </summary>
+        private Vector2 MeasureText(string current, UIFont f)
         {
+            measuredText = current;
             richLayout = null;
             if (current.Length == 0)
             {
-                return Vector2.Zero;
+                measuredTextSize = Vector2.Zero;
             }
-
-            if (!richText)
+            else if (!richText)
             {
-                return UIServices.Text.Measure(Font, current, 1f);
+                measuredTextSize = UIServices.Text.Measure(f, current, 1f);
+            }
+            else
+            {
+                richLayout = Rendering.RichText.Layout(Rendering.RichText.Parse(current), f, 1f, 0);
+                measuredTextSize = richLayout.Size;
             }
 
-            richLayout = Rendering.RichText.Layout(Rendering.RichText.Parse(current), Font, 1f, 0);
-            return richLayout.Size;
+            return measuredTextSize;
         }
 
         internal override string AccessibleDescription => Accessibility.Compose(Accessibility.Text("button", "Button"), CurrentText, Enabled ? null : Accessibility.Text("disabled", "disabled"));
@@ -166,8 +176,7 @@ namespace UIFramework.Components
 
         protected override Vector2 MeasureCore(Vector2 available)
         {
-            measuredText = CurrentText;
-            Vector2 textSize = MeasureText(measuredText);
+            Vector2 textSize = MeasureText(CurrentText, Font);
             Vector2 iconSize = IconSize;
             float h = Math.Max(textSize.Y, iconSize.Y) + (DrawBox ? (2 * Theme.Space(PadY)) : 0);
             if (DrawBox)
@@ -184,11 +193,12 @@ namespace UIFramework.Components
         protected override float MinWidthCore()
         {
             string current = CurrentText;
+            UIFont f = Font;
             float textWidth = current.Length == 0
                 ? 0
-                : richText ? Rendering.RichText.Measure(current, Font, 1f, 0).X
-                : shrink ? DrawHelper.FitTextMinWidth(current, Font, 1f)
-                : (float)Math.Ceiling(UIServices.Text.Measure(Font, current, 1f).X);
+                : richText ? Rendering.RichText.Measure(current, f, 1f, 0).X
+                : shrink ? DrawHelper.FitTextMinWidth(current, f, 1f)
+                : (float)Math.Ceiling(UIServices.Text.Measure(f, current, 1f).X);
             return ContentWidth(textWidth);
         }
 
@@ -208,20 +218,26 @@ namespace UIFramework.Components
                 DrawHelper.StyledBox(b, style, button: true, Bounds, Theme.StateTint(Enabled, highlighted, style.HoverColor));
             }
 
+            UIFont f = font ?? style.Font;
             string current = CurrentText;
             if (current != measuredText)
             {
-                measuredText = current;
-                InvalidateLayout();
+                // bound text changed since layout: re-measure (and re-parse rich text) once, and re-flow the menu
+                // only when the size changed
+                Vector2 before = measuredTextSize;
+                if (MeasureText(current, f) != before)
+                {
+                    InvalidateLayout();
+                }
             }
 
-            DrawContent(b, style, current);
+            DrawContent(b, style, f, current);
         }
 
         /// <summary>Icon then text, centered as one block inside the bounds.</summary>
-        private void DrawContent(SpriteBatch b, ResolvedStyle style, string current)
+        private void DrawContent(SpriteBatch b, in ResolvedStyle style, UIFont f, string current)
         {
-            Vector2 textSize = MeasureText(current);
+            Vector2 textSize = measuredTextSize;
             Vector2 iconSize = IconSize;
             float gap = textSize.X > 0 && iconSize.X > 0 ? Theme.Space(IconGap) : 0;
             // text wider than the box (fixed Width, or squeezed by the parent) is shrunk / truncated to what is left
@@ -251,7 +267,7 @@ namespace UIFramework.Components
             }
             else
             {
-                DrawHelper.FitText(b, current, Font, new Rectangle((int)x, textY, (int)Math.Ceiling(textSize.X), (int)Math.Ceiling(textSize.Y)), textColor, style.TextShadow, 1f, UIAlign.Start);
+                DrawHelper.FitText(b, current, f, new Rectangle((int)x, textY, (int)Math.Ceiling(textSize.X), (int)Math.Ceiling(textSize.Y)), textColor, style.TextShadow, 1f, UIAlign.Start);
             }
         }
 

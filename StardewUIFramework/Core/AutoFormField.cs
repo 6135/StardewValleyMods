@@ -66,7 +66,7 @@ namespace UIFramework.Core
         //  Model access
         // ---------------------------------------------------------------------------------------------------------
 
-        internal object? Read() => form.Guard(Control.Id, "get", () => Property.Getter(form.Model), null);
+        internal object? Read() => form.ReadModel(Control.Id, Property.Getter);
 
         internal void Write(object? value) => form.Guard(Control.Id, "set", () => Property.Setter(form.Model, value));
 

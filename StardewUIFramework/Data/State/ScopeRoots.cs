@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 using Microsoft.Xna.Framework;
 using StardewModdingAPI;
 using StardewValley;
@@ -34,6 +35,12 @@ namespace UIFramework.Data.State
         /// <summary>The exposures of a menu (set by <see cref="DataService"/>).</summary>
         internal static Func<UIMenu, ScreenExposures?>? Exposures { get; set; }
 
+        /// <summary>The <see cref="ElementRef"/> last handed out per element (reused while its runtime is the same: no allocation per read).</summary>
+        private static readonly ConditionalWeakTable<UIElement, ElementRef> ElementRefs = new();
+
+        /// <summary>Elements found by <see cref="FindElement"/>, per menu.</summary>
+        private static readonly ConditionalWeakTable<UIMenu, Dictionary<string, UIElement>> FoundElements = new();
+
         internal static bool TryResolve(DataScope scope, IReadOnlyList<PathSegment> path, out DataValue value, out bool isVolatile)
         {
             value = DataValue.Null;
@@ -64,7 +71,7 @@ namespace UIFramework.Data.State
 
                 case "self":
                     isVolatile = true;
-                    return scope.Element != null && Walk(scope, DataValue.Opaque(new ElementRef(scope.Element, scope.Runtime)), path, 1, ref value, ref isVolatile);
+                    return scope.Element != null && Walk(scope, RefOf(scope.Element, scope.Runtime), path, 1, ref value, ref isVolatile);
 
                 case "el":
                 {
@@ -75,7 +82,7 @@ namespace UIFramework.Data.State
                     }
 
                     UIElement? element = FindElement(scope, path[1].Key);
-                    return element != null && Walk(scope, DataValue.Opaque(new ElementRef(element, scope.Runtime)), path, 2, ref value, ref isVolatile);
+                    return element != null && Walk(scope, RefOf(element, scope.Runtime), path, 2, ref value, ref isVolatile);
                 }
 
                 case "game":
@@ -158,6 +165,8 @@ namespace UIFramework.Data.State
                     return row.Source.TryGetField(row.Index, member.Key, out value);
                 case Building.TemplateArgs args:
                     return args.TryGet(member.Key, out value, out isVolatile);
+                case Building.ItemRowFields itemRow:
+                    return Building.RowScope.TryItemMember(itemRow.Item, member.Key, out value);
                 case Building.RowFields:
                     break;
                 case { } model:
@@ -168,10 +177,36 @@ namespace UIFramework.Data.State
             return false;
         }
 
-        /// <summary>The element <paramref name="id"/> of the scope's menu (or HUD), or null.</summary>
+        /// <summary>
+        /// The element <paramref name="id"/> of the scope's menu (or HUD), or null. Found elements are remembered per
+        /// menu and reused while they are still attached to it, so a live <c>el[id]</c> does not walk the
+        /// tree every tick.
+        /// </summary>
         internal static UIElement? FindElement(DataScope scope, string id)
         {
-            return scope.Menu?.Root.FindById(id);
+            UIMenu? menu = scope.Menu;
+            if (menu == null)
+            {
+                return null;
+            }
+
+            Dictionary<string, UIElement> found = FoundElements.GetValue(menu, _ => new Dictionary<string, UIElement>(StringComparer.Ordinal));
+            if (found.TryGetValue(id, out UIElement? cached) && cached.OwnerMenu == menu)
+            {
+                return cached;
+            }
+
+            UIElement? element = menu.Root.FindById(id);
+            if (element == null)
+            {
+                found.Remove(id);
+            }
+            else
+            {
+                found[id] = element;
+            }
+
+            return element;
         }
 
         /// <summary>Walk the rest of <paramref name="path"/> (from <paramref name="index"/>) over <paramref name="start"/>.</summary>
@@ -262,7 +297,7 @@ namespace UIFramework.Data.State
             // longest dotted name that is a stored value, then member access on it (menu.settings.day → cell "settings.day", else cell "settings" + .day)
             for (int end = path.Count; end > nameStart; end--)
             {
-                string name = StateAddress.JoinName(Slice(path, nameStart, end), 0);
+                string name = StateAddress.JoinName(path, nameStart, end);
                 var address = new StateAddress(stateScope, container, name);
                 if (store.TryRead(address, out DataValue stored, out bool storedVolatile))
                 {
@@ -274,17 +309,6 @@ namespace UIFramework.Data.State
             }
 
             return false;
-        }
-
-        private static IReadOnlyList<PathSegment> Slice(IReadOnlyList<PathSegment> path, int start, int end)
-        {
-            var result = new PathSegment[end - start];
-            for (int i = start; i < end; i++)
-            {
-                result[i - start] = path[i];
-            }
-
-            return result;
         }
 
         // ---------------------------------------------------------------------------------------------------------
@@ -312,7 +336,7 @@ namespace UIFramework.Data.State
             switch (scope.EventArgs)
             {
                 case IUIClickEvent click:
-                    value = name.ToLowerInvariant() switch
+                    value = Lower(name) switch
                     {
                         "x" => DataValue.FromNumber(click.X),
                         "y" => DataValue.FromNumber(click.Y),
@@ -322,7 +346,7 @@ namespace UIFramework.Data.State
                     return !value.IsNull;
 
                 case IUIValueEvent changed:
-                    value = name.ToLowerInvariant() switch
+                    value = Lower(name) switch
                     {
                         "old" or "oldvalue" => TypedOld(changed),
                         "new" or "newvalue" or "value" => TypedNew(changed),
@@ -337,7 +361,7 @@ namespace UIFramework.Data.State
                     return !value.IsNull;
 
                 case IUIKeyEvent key:
-                    value = name.ToLowerInvariant() switch
+                    value = Lower(name) switch
                     {
                         "key" => DataValue.FromString(key.Key.ToString()),
                         "shift" => DataValue.FromBool(key.Shift),
@@ -387,6 +411,37 @@ namespace UIFramework.Data.State
         //  self.* / el[id].*
         // ---------------------------------------------------------------------------------------------------------
 
+        /// <summary>Lower-cased member names, kept so volatile reads of mixed-case names (<c>game.totalMoneyEarned</c>) do not allocate every tick.</summary>
+        private static readonly Dictionary<string, string> LowerNames = new(StringComparer.Ordinal);
+
+        /// <summary>The lower-case form of a member name (cached).</summary>
+        internal static string Lower(string name)
+        {
+            if (!LowerNames.TryGetValue(name, out string? lower))
+            {
+                if (LowerNames.Count >= 1024)
+                {
+                    LowerNames.Clear(); // names built at run time (interpolated paths) cannot grow it without bound
+                }
+
+                LowerNames[name] = lower = name.ToLowerInvariant();
+            }
+
+            return lower;
+        }
+
+        /// <summary>The opaque value of <paramref name="element"/> read in a UI of <paramref name="runtime"/>.</summary>
+        private static DataValue RefOf(UIElement element, DataRuntime? runtime)
+        {
+            if (!ElementRefs.TryGetValue(element, out ElementRef? reference) || reference.Runtime != runtime)
+            {
+                reference = new ElementRef(element, runtime);
+                ElementRefs.AddOrUpdate(element, reference);
+            }
+
+            return DataValue.Opaque(reference);
+        }
+
         /// <summary>An element handed to expressions as an opaque value (members read through <see cref="TryElement"/>).</summary>
         internal sealed class ElementRef
         {
@@ -425,7 +480,7 @@ namespace UIFramework.Data.State
             }
 
             Rectangle bounds = pub.Bounds;
-            value = member.ToLowerInvariant() switch
+            value = Lower(member) switch
             {
                 "id" => DataValue.FromString(e.Id),
                 "visible" => DataValue.FromBool(e.Visible),
@@ -509,7 +564,7 @@ namespace UIFramework.Data.State
         {
             bool ready = Context.IsWorldReady;
             Farmer? player = ready ? Game1.player : null;
-            value = name.ToLowerInvariant() switch
+            value = Lower(name) switch
             {
                 "worldready" => DataValue.FromBool(ready),
                 "screen" => DataValue.FromNumber(Context.ScreenId),
@@ -533,7 +588,7 @@ namespace UIFramework.Data.State
 
         private static bool TryUi(string name, out DataValue value)
         {
-            value = name.ToLowerInvariant() switch
+            value = Lower(name) switch
             {
                 "theme" => DataValue.FromString(Theme.ActiveName),
                 "version" => DataValue.FromString(StardewUIApi.Version),

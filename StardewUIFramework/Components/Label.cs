@@ -22,11 +22,14 @@ namespace UIFramework.Components
         private float scale = 1f;
         private string measuredText = string.Empty;
         private string displayText = string.Empty;
+
+        /// <summary>The wrapped lines of a plain label (null until it wraps onto more than one line), drawn one by one so each is aligned.</summary>
+        private string[]? displayLines;
         private RichLayout? richLayout;
         private int wrapWidth = -1;
 
-        /// <summary>Width of the text as last wrapped / laid out by <see cref="Reflow"/>.</summary>
-        private float laidOutWidth;
+        /// <summary>Size of the text as last wrapped / laid out by <see cref="Reflow"/>.</summary>
+        private Vector2 laidOutSize;
 
         internal Label(string id, Func<string>? text) : base(id)
         {
@@ -148,13 +151,12 @@ namespace UIFramework.Components
         {
             measuredText = CurrentText;
             wrapWidth = wrap ? (int)Math.Floor(available.X) : -1;
-            return Reflow(measuredText);
+            return Reflow(measuredText, Font);
         }
 
-        /// <summary>Wrap / lay out <paramref name="current"/> for the last wrap width and return its size.</summary>
-        private Vector2 Reflow(string current)
+        /// <summary>Wrap / lay out <paramref name="current"/> in <paramref name="f"/> for the last wrap width and return its size.</summary>
+        private Vector2 Reflow(string current, UIFont f)
         {
-            UIFont f = Font;
             Vector2 size;
             if (richText)
             {
@@ -164,10 +166,11 @@ namespace UIFramework.Components
             else
             {
                 displayText = wrapWidth > 0 ? UIServices.Text.Wrap(f, current, (int)(wrapWidth / scale)) : current;
+                displayLines = wrapWidth > 0 && displayText.Contains('\n') ? displayText.Split('\n') : null;
                 size = UIServices.Text.Measure(f, displayText, scale);
             }
 
-            laidOutWidth = size.X;
+            laidOutSize = size;
             return size;
         }
 
@@ -196,27 +199,32 @@ namespace UIFramework.Components
         // past it. Layout-time only, and only when the lines would actually overflow.
         protected override void ArrangeCore()
         {
-            if (!wrap || Bounds.Width <= 0 || Bounds.Width >= Math.Ceiling(laidOutWidth))
+            if (!wrap || Bounds.Width <= 0 || Bounds.Width >= Math.Ceiling(laidOutSize.X))
             {
                 return;
             }
 
             wrapWidth = Bounds.Width;
-            Reflow(measuredText);
+            Reflow(measuredText, Font);
         }
 
         protected override void DrawCore(SpriteBatch b)
         {
+            ResolvedStyle style = Style;
+            UIFont f = font ?? style.Font;
             string current = CurrentText;
             if (current != measuredText || (richText && richLayout == null))
             {
-                // bound text changed since layout: draw the new text now, re-flow next frame
+                // bound text changed since layout: draw the new text now, and re-flow the menu next frame only when
+                // its size changed (a live value of the same width keeps the layout)
                 measuredText = current;
-                Reflow(current);
-                InvalidateLayout();
+                Vector2 before = laidOutSize;
+                if (Reflow(current, f) != before)
+                {
+                    InvalidateLayout();
+                }
             }
 
-            ResolvedStyle style = Style;
             Color color = Color ?? style.TextColor;
             bool shadow = Shadow || style.TextShadow;
             if (richText && richLayout != null)
@@ -227,12 +235,29 @@ namespace UIFramework.Components
 
             if (Wrap)
             {
-                DrawHelper.TextInRect(b, displayText, Font, Bounds, color, shadow, scale, TextAlign);
+                DrawWrapped(b, f, color, shadow);
                 return;
             }
 
             // a single line that got less width than it wanted shrinks a little, then truncates
-            DrawHelper.FitText(b, displayText, Font, Bounds, color, shadow, scale, TextAlign);
+            DrawHelper.FitText(b, displayText, f, Bounds, color, shadow, scale, TextAlign);
+        }
+
+        /// <summary>Wrapped plain text: one block when left-aligned, otherwise line by line so Center / End align each line.</summary>
+        private void DrawWrapped(SpriteBatch b, UIFont f, Color color, bool shadow)
+        {
+            if (displayLines == null || TextAlign == UIAlign.Start || TextAlign == UIAlign.Stretch)
+            {
+                DrawHelper.TextInRect(b, displayText, f, Bounds, color, shadow, scale, TextAlign);
+                return;
+            }
+
+            float lineHeight = UIServices.Text.LineHeight(f) * scale;
+            for (int i = 0; i < displayLines.Length; i++)
+            {
+                var line = new Rectangle(Bounds.X, Bounds.Y + (int)(i * lineHeight), Bounds.Width, (int)Math.Ceiling(lineHeight));
+                DrawHelper.TextInRect(b, displayLines[i], f, line, color, shadow, scale, TextAlign);
+            }
         }
 
         /// <summary>The link under the cursor while hovered, or null.</summary>

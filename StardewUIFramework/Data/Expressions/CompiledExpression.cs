@@ -18,6 +18,13 @@ namespace UIFramework.Data.Expressions
         /// <summary>Evaluation step budget per evaluation (one per node, plus per element for list built-ins).</summary>
         internal const int MaxSteps = 10000;
 
+        /// <summary>
+        /// Maximum number of evaluations running inside each other (a scope read that evaluates another expression,
+        /// e.g. an exposed value). Each evaluation has its own step budget, so this is what stops a value that reads
+        /// itself from overflowing the stack.
+        /// </summary>
+        internal const int MaxNestedRuns = 16;
+
         /// <summary>Maximum length of one expression's source text.</summary>
         internal const int MaxSourceLength = 4096;
 
@@ -78,6 +85,8 @@ namespace UIFramework.Data.Expressions
     internal sealed class CompiledExpression
     {
         private static readonly Dictionary<string, CompiledExpression> Cache = new(StringComparer.Ordinal);
+        // the game compiles on its main thread only; the lock keeps the static cache safe when another thread
+        // compiles (parallel test runs), at no real cost when uncontended. The cache is flushed whole when full.
         private static readonly object CacheLock = new();
 
         private bool constantEvaluated;

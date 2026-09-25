@@ -151,7 +151,14 @@ namespace UIFramework.Data.Loading
             {
                 if (!string.IsNullOrWhiteSpace(key) && entry != null)
                 {
-                    result[key.Trim()] = Clone(entry);
+                    try
+                    {
+                        result[key.Trim()] = Clone(entry);
+                    }
+                    catch (Exception ex)
+                    {
+                        log.Error(DataPath.Entry(DataAssets.ShortName(DataAssets.Sprites), key), $"could not be read: {ex.Message}");
+                    }
                 }
             }
 

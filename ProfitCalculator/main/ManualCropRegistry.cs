@@ -19,7 +19,6 @@ namespace ProfitCalculator.main
 
         private readonly Dictionary<string, ManualCropDefinition> crops = new();
         private readonly Dictionary<string, int> seedPrices = new();
-        private readonly object _lock = new();
 
         /// <summary>
         /// Initializes a new, empty instance of the <see cref="ManualCropRegistry"/> class.
@@ -34,10 +33,7 @@ namespace ProfitCalculator.main
         /// <param name="definition">The crop definition.</param>
         public void SetCrop(string seedItemId, ManualCropDefinition definition)
         {
-            lock (_lock)
-            {
-                crops[NormalizeId(seedItemId)] = definition;
-            }
+            crops[NormalizeId(seedItemId)] = definition;
         }
 
         /// <summary>
@@ -47,10 +43,7 @@ namespace ProfitCalculator.main
         /// <returns>True if a definition was removed.</returns>
         public bool RemoveCrop(string seedItemId)
         {
-            lock (_lock)
-            {
-                return crops.Remove(NormalizeId(seedItemId));
-            }
+            return crops.Remove(NormalizeId(seedItemId));
         }
 
         /// <summary>
@@ -59,10 +52,7 @@ namespace ProfitCalculator.main
         /// <returns>A new dictionary with the registered definitions.</returns>
         public Dictionary<string, ManualCropDefinition> GetCrops()
         {
-            lock (_lock)
-            {
-                return new Dictionary<string, ManualCropDefinition>(crops);
-            }
+            return new Dictionary<string, ManualCropDefinition>(crops);
         }
 
         /// <summary>
@@ -72,19 +62,16 @@ namespace ProfitCalculator.main
         /// <param name="price">The seed price.</param>
         public void SetSeedPrice(string seedItemId, int price)
         {
-            lock (_lock)
+            if (price < 0)
             {
-                if (price < 0)
+                foreach (string key in CandidateKeys(seedItemId))
                 {
-                    foreach (string key in CandidateKeys(seedItemId))
-                    {
-                        seedPrices.Remove(key);
-                    }
+                    seedPrices.Remove(key);
                 }
-                else
-                {
-                    seedPrices[NormalizeId(seedItemId)] = price;
-                }
+            }
+            else
+            {
+                seedPrices[NormalizeId(seedItemId)] = price;
             }
         }
 
@@ -96,14 +83,11 @@ namespace ProfitCalculator.main
         /// <returns>True if an override exists.</returns>
         public bool TryGetSeedPrice(string seedItemId, out int price)
         {
-            lock (_lock)
+            foreach (string key in CandidateKeys(seedItemId))
             {
-                foreach (string key in CandidateKeys(seedItemId))
+                if (seedPrices.TryGetValue(key, out price))
                 {
-                    if (seedPrices.TryGetValue(key, out price))
-                    {
-                        return true;
-                    }
+                    return true;
                 }
             }
             price = 0;

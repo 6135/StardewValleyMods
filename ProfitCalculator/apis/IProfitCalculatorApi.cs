@@ -21,7 +21,7 @@ namespace ProfitCalculator.apis
         bool AddCrop(string seedItemId, string harvestItemId, int growthDays, int regrowDays, string seasons);
 
         /// <summary>
-        /// Removes a crop previously added with <see cref="AddCrop"/>. Built-in crops it replaced come back on the next save load.
+        /// Removes a crop previously added with <see cref="AddCrop"/>. A built-in or asset crop it replaced comes back before the next calculation.
         /// </summary>
         /// <param name="seedItemId">Seed item id used in <see cref="AddCrop"/>.</param>
         /// <returns>True if a crop was removed.</returns>

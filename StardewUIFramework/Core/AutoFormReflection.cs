@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.Linq.Expressions;
 using System.Reflection;
 using System.Text;
 
@@ -35,9 +36,23 @@ namespace UIFramework.Core
             Kind = kind;
             Name = property.Name;
             Type = property.PropertyType;
-            Getter = property.GetValue;
+            Getter = CompileGetter(property);
             Setter = property.SetValue;
             Label = FormReflection.SplitCamelCase(property.Name);
+        }
+
+        /// <summary>A compiled getter for an instance property (read every frame; no reflection or boxing of the call), else <see cref="PropertyInfo.GetValue(object)"/>.</summary>
+        private static Func<object, object?> CompileGetter(PropertyInfo property)
+        {
+            MethodInfo? get = property.GetMethod;
+            if (get == null || get.IsStatic || property.DeclaringType == null || property.GetIndexParameters().Length > 0)
+            {
+                return property.GetValue;
+            }
+
+            ParameterExpression target = Expression.Parameter(typeof(object), "model");
+            Expression read = Expression.Property(Expression.Convert(target, property.DeclaringType), property);
+            return Expression.Lambda<Func<object, object?>>(Expression.Convert(read, typeof(object)), target).Compile();
         }
 
         /// <summary>A field backed by accessors instead of a <see cref="PropertyInfo"/> (e.g. a data-defined form).</summary>

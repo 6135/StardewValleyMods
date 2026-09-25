@@ -33,22 +33,29 @@ namespace UIFramework.Hosting
 
     /// <summary>
     /// Process-wide table of composite definitions. Names are global strings so a composite registered by one mod
-    /// can be instantiated by any other; the defining mod is remembered so only it can remove the definition.
+    /// can be instantiated by any other; the defining mod is remembered so only it can replace or remove the definition.
     /// </summary>
     internal sealed class CompositeRegistry
     {
         private readonly Dictionary<string, CompositeDefinition> definitions = new(StringComparer.Ordinal);
         private readonly List<WeakReference<Composite>> instances = new();
 
-        /// <summary>Register (or replace) a definition.</summary>
-        internal void Define(ConsumerContext owner, string name, Action<IUICompositeHost, IUICompositeArgs> build, bool isData = false)
+        /// <summary>Register a definition, or replace one <paramref name="owner"/> defined; false (logged) when another mod owns the name.</summary>
+        internal bool Define(ConsumerContext owner, string name, Action<IUICompositeHost, IUICompositeArgs> build, bool isData = false)
         {
             if (definitions.TryGetValue(name, out CompositeDefinition? existing))
             {
-                UIServices.Log($"[{owner.ModId}] composite '{name}' (defined by {existing.Owner.ModId}) is replaced.", LogLevel.Debug);
+                if (existing.Owner.ModId != owner.ModId)
+                {
+                    UIServices.Log($"[{owner.ModId}] cannot define composite '{name}': it belongs to {existing.Owner.ModId} (prefix your composite names with your mod id).", LogLevel.Warn);
+                    return false;
+                }
+
+                UIServices.Log($"[{owner.ModId}] composite '{name}' is replaced.", LogLevel.Debug);
             }
 
             definitions[name] = new CompositeDefinition(name, owner, build, isData);
+            return true;
         }
 
         /// <summary>Remember an instance (weakly) so a changed data definition can rebuild it (v1.7).</summary>

@@ -27,43 +27,6 @@ namespace UIFramework.Rendering
         Texture2D IUIStyle.BoxTexture { get => BoxTexture!; set => BoxTexture = value; }
         string IUIStyle.ClickSound { get => ClickSound!; set => ClickSound = value; }
         string IUIStyle.HoverSound { get => HoverSound!; set => HoverSound = value; }
-
-        /// <summary>Copy every member set on <paramref name="over"/> onto a clone of this style.</summary>
-        internal UIStyle Merge(UIStyle? over)
-        {
-            var result = new UIStyle
-            {
-                Font = Font, TextColor = TextColor, HoverColor = HoverColor, BoxTexture = BoxTexture, BoxSource = BoxSource,
-                BoxScale = BoxScale, Padding = Padding, TextShadow = TextShadow, ClickSound = ClickSound, HoverSound = HoverSound
-            };
-            if (over != null)
-            {
-                result.OverlayText(over);
-                result.OverlayBox(over);
-            }
-
-            return result;
-        }
-
-        /// <summary>Take the text / sound members that <paramref name="over"/> sets.</summary>
-        private void OverlayText(UIStyle over)
-        {
-            Font = over.Font ?? Font;
-            TextColor = over.TextColor ?? TextColor;
-            TextShadow = over.TextShadow ?? TextShadow;
-            ClickSound = over.ClickSound ?? ClickSound;
-            HoverSound = over.HoverSound ?? HoverSound;
-        }
-
-        /// <summary>Take the box members that <paramref name="over"/> sets.</summary>
-        private void OverlayBox(UIStyle over)
-        {
-            HoverColor = over.HoverColor ?? HoverColor;
-            BoxTexture = over.BoxTexture ?? BoxTexture;
-            BoxSource = over.BoxSource ?? BoxSource;
-            BoxScale = over.BoxScale ?? BoxScale;
-            Padding = over.Padding ?? Padding;
-        }
     }
 
     /// <summary>
@@ -87,19 +50,21 @@ namespace UIFramework.Rendering
         /// <summary>null = component default, empty = silent.</summary>
         internal readonly string? HoverSound;
 
-        internal ResolvedStyle(UIStyle s)
+        /// <summary>Resolve each member from the first layer that sets it: <paramref name="own"/>, then <paramref name="consumer"/>, then <paramref name="theme"/> (no allocation).</summary>
+        internal ResolvedStyle(UIStyle theme, UIStyle? consumer, UIStyle? own)
         {
-            Font = s.Font ?? UIFont.Small;
-            TextColor = s.TextColor ?? Theme.TextColor;
-            DisabledTextColor = s.TextColor.HasValue ? s.TextColor.Value * 0.5f : Theme.DisabledTextColor;
-            HoverColor = s.HoverColor ?? Theme.HoverColor;
-            BoxTexture = s.BoxTexture;
-            BoxSource = s.BoxSource;
-            BoxScale = s.BoxScale;
-            Padding = s.Padding;
-            TextShadow = s.TextShadow ?? false;
-            ClickSound = s.ClickSound;
-            HoverSound = s.HoverSound;
+            Color? text = own?.TextColor ?? consumer?.TextColor ?? theme.TextColor;
+            Font = own?.Font ?? consumer?.Font ?? theme.Font ?? UIFont.Small;
+            TextColor = text ?? Theme.TextColor;
+            DisabledTextColor = text.HasValue ? text.Value * 0.5f : Theme.DisabledTextColor;
+            HoverColor = own?.HoverColor ?? consumer?.HoverColor ?? theme.HoverColor ?? Theme.HoverColor;
+            BoxTexture = own?.BoxTexture ?? consumer?.BoxTexture ?? theme.BoxTexture;
+            BoxSource = own?.BoxSource ?? consumer?.BoxSource ?? theme.BoxSource;
+            BoxScale = own?.BoxScale ?? consumer?.BoxScale ?? theme.BoxScale;
+            Padding = own?.Padding ?? consumer?.Padding ?? theme.Padding;
+            TextShadow = own?.TextShadow ?? consumer?.TextShadow ?? theme.TextShadow ?? false;
+            ClickSound = own?.ClickSound ?? consumer?.ClickSound ?? theme.ClickSound;
+            HoverSound = own?.HoverSound ?? consumer?.HoverSound ?? theme.HoverSound;
         }
     }
 
@@ -143,6 +108,13 @@ namespace UIFramework.Rendering
         private static Dictionary<string, ThemeData>? themes;
         private static ResolvedTheme? resolved;
         private static string? warnedMissing;
+        private static string? textureRequester;
+
+        /// <summary>
+        /// Changes whenever what the theme resolves to may have changed (asset invalidated, another theme selected, text
+        /// scale or config changed). Menus and HUD widgets lay out again when it differs from the version of their last layout.
+        /// </summary>
+        internal static int Version { get; private set; }
 
         // ---------------------------------------------------------------------------------------------------------
         //  Active theme
@@ -162,8 +134,10 @@ namespace UIFramework.Rendering
         {
             themes = null;
             resolved = null;
+            textureRequester = null;
             TextureCache.Invalidate();
             warnedMissing = null;
+            Version++;
         }
 
         /// <summary>The parsed active theme, re-resolved when the configured name changes or the asset was invalidated.</summary>
@@ -174,7 +148,13 @@ namespace UIFramework.Rendering
                 string wanted = UIServices.Config.Theme ?? DefaultThemeName;
                 if (resolved == null || !string.Equals(resolved.Requested, wanted, StringComparison.OrdinalIgnoreCase))
                 {
+                    if (resolved != null)
+                    {
+                        Version++; // another theme was configured without an Invalidate (config reset)
+                    }
+
                     resolved = Resolve(wanted);
+                    textureRequester = null;
                 }
 
                 return resolved;
@@ -230,7 +210,16 @@ namespace UIFramework.Rendering
         }
 
         /// <summary>Load a texture asset by name through the shared <see cref="TextureCache"/>; null when the name is empty or the load fails.</summary>
-        private static Texture2D? LoadTexture(string? assetName) => TextureCache.Load(assetName, $"Theme '{ActiveName}'");
+        private static Texture2D? LoadTexture(string? assetName)
+        {
+            if (string.IsNullOrWhiteSpace(assetName))
+            {
+                return null;
+            }
+
+            // the log requester is built once per resolved theme, not on every read
+            return TextureCache.Load(assetName, textureRequester ??= $"Theme '{ActiveName}'");
+        }
 
         // ---------------------------------------------------------------------------------------------------------
         //  Colors

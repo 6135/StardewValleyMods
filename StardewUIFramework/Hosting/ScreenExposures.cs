@@ -14,6 +14,7 @@ namespace UIFramework.Hosting
     /// </summary>
     internal sealed class ScreenExposures
     {
+        
         private readonly Dictionary<string, Func<string>> strings = new();
         private readonly Dictionary<string, Func<double>> numbers = new();
         private readonly Dictionary<string, Func<bool>> bools = new();
@@ -153,6 +154,18 @@ namespace UIFramework.Hosting
             if (subscriptions.TryGetValue(eventName, out List<Subscription>? list))
             {
                 list.RemoveAll(s => s.Subscriber.ModId == subscriber.ModId && s.Handler == handler);
+            }
+        }
+
+        /// <summary>
+        /// Drop every subscription of <paramref name="subscriber"/>: its contributions and decorators are about to run
+        /// again (the menu opens or is rebuilt) and subscribe anew, or it no longer extends the menu.
+        /// </summary>
+        internal void RemoveSubscriptions(ConsumerContext subscriber)
+        {
+            foreach (List<Subscription> list in subscriptions.Values)
+            {
+                list.RemoveAll(s => s.Subscriber.ModId == subscriber.ModId);
             }
         }
     }

@@ -55,8 +55,6 @@ namespace UIFramework.Data.Loading
 
         internal IReadOnlyList<DataMessage> Items => items;
 
-        internal bool HasErrors => items.Any(m => m.Severity == DataSeverity.Error);
-
         internal int Count(DataSeverity severity) => items.Count(m => m.Severity == severity);
 
         /// <summary>Add a message; an identical one (a row template built again for another row) is only kept once.</summary>

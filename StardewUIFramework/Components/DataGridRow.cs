@@ -27,6 +27,18 @@ namespace UIFramework.Components
         /// <summary>Underlying row index shown, or -1 while the row is past the end.</summary>
         internal int Item { get; set; } = -1;
 
+        /// <summary>"Row n of count" (the display position after sorting / filtering) followed by the cells' text.</summary>
+        internal override string AccessibleDescription
+        {
+            get
+            {
+                string row = Accessibility.Text("row", "Row {{index}} of {{count}}")
+                    .Replace("{{index}}", (owner.DisplayPositionOf(Item) + 1).ToString())
+                    .Replace("{{count}}", owner.RowCount.ToString());
+                return Accessibility.Compose(row, Accessibility.TextOf(this));
+            }
+        }
+
         // cells fill their column slot exactly (their children align themselves inside)
         internal override UIAlign DefaultChildHorizontalAlign(UIElement child) => UIAlign.Stretch;
         internal override UIAlign DefaultChildVerticalAlign(UIElement child) => UIAlign.Stretch;

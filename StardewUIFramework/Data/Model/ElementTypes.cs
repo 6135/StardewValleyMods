@@ -78,6 +78,27 @@ namespace UIFramework.Data.Model
             [Outlet] = new[] { "Children", "Horizontal", "Spacing", "Alignment", "Wrap" }
         };
 
+        /// <summary>
+        /// The style fields each leaf type draws with. Every other type holds children, which inherit the whole style,
+        /// so any field can matter there; a leaf ignores the fields it does not list (<c>Padding</c> outside a Panel).
+        /// </summary>
+        private static readonly Dictionary<string, string[]> LeafStyle = new(StringComparer.OrdinalIgnoreCase)
+        {
+            [Spacer] = new[] { "TextColor" },
+            [Label] = new[] { "Font", "TextColor", "TextShadow" },
+            [Button] = new[] { "Font", "TextColor", "HoverColor", "TextShadow", "BoxTexture", "BoxSource", "BoxScale", "ClickSound", "HoverSound" },
+            [Image] = Array.Empty<string>(),
+            [ItemImage] = Array.Empty<string>(),
+            [Checkbox] = new[] { "Font", "TextColor", "HoverColor", "TextShadow", "ClickSound" },
+            [TextInput] = new[] { "Font", "TextColor", "TextShadow" },
+            [NumberInput] = new[] { "Font", "TextColor", "TextShadow" },
+            [Dropdown] = new[] { "Font", "TextColor", "HoverColor", "TextShadow", "ClickSound", "HoverSound" },
+            [Slider] = new[] { "HoverColor" }
+        };
+
+        /// <summary>True when an element of <paramref name="type"/> (or one of its children) can use style field <paramref name="field"/>.</summary>
+        internal static bool UsesStyle(string type, string field) => !LeafStyle.TryGetValue(type, out string[]? fields) || fields.Contains(field, StringComparer.OrdinalIgnoreCase);
+
         /// <summary>Every type name, in documentation order.</summary>
         internal static IReadOnlyCollection<string> All => Specific.Keys;
 
@@ -98,12 +119,6 @@ namespace UIFramework.Data.Model
 
         /// <summary>True for a custom tag: a dotted type name that stands for the composite of that name (v1.6).</summary>
         internal static bool IsCustomTag(string? type) => type != null && type.Trim().Contains('.') && Canonical(type) == null;
-
-        /// <summary>True for the collection elements whose children / row templates are built per row.</summary>
-        internal static bool IsCollection(string type) => type is Repeat or List or DataGrid;
-
-        /// <summary>True for inputs that hold a value (bound to state through Bind, default menu.&lt;Id&gt;).</summary>
-        internal static bool IsInput(string type) => type is Checkbox or TextInput or NumberInput or Dropdown or Slider;
 
         /// <summary>The keys an element's Out map accepts.</summary>
         internal static readonly string[] OutKeys =

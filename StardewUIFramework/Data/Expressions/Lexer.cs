@@ -73,9 +73,11 @@ namespace UIFramework.Data.Expressions
     /// reported through <see cref="Tokenize"/>'s <c>error</c>.
     /// </summary>
     /// <remarks>
-    /// Scope-qualifier brackets directly after a root identifier (<c>menu[owner/menu]</c>, <c>el[myId]</c>) whose
-    /// contents are only key characters (letters, digits, <c>_ - . / : @</c>) are lexed as one <see cref="TokenKind.RawKey"/>,
-    /// so owner ids with slashes need no quotes. Wrap the content in parentheses or quotes to force an expression.
+    /// Scope-qualifier brackets directly after a qualifier root (<see cref="QualifierRoots"/>: <c>menu[owner/menu]</c>,
+    /// <c>el[myId]</c>) whose contents are only key characters (letters, digits, <c>_ - . / : @</c>) are lexed as one
+    /// <see cref="TokenKind.RawKey"/>, so owner ids with slashes need no quotes. Wrap the content in parentheses or quotes
+    /// to force an expression. After any other identifier (locals such as <c>row[menu.col]</c>, <c>list[i]</c>) the
+    /// brackets always hold an expression.
     /// </remarks>
     internal static class Lexer
     {
@@ -238,11 +240,14 @@ namespace UIFramework.Data.Expressions
 
         private static bool IsKeyChar(char c) => c is '_' or '-' or '.' or '/' or ':' or '@' || char.IsLetterOrDigit(c);
 
-        /// <summary>True when the bracket just added follows an identifier that starts a path (not <c>.name[</c>).</summary>
+        /// <summary>The roots whose brackets take a raw key (the state scopes, <c>el</c>, <c>ctx</c> and <c>model</c>).</summary>
+        private static readonly HashSet<string> QualifierRoots = new(StringComparer.Ordinal) { "menu", "session", "player", "stat", "config", "el", "ctx", "model" };
+
+        /// <summary>True when the bracket just added follows a qualifier root that starts a path (not <c>.name[</c>).</summary>
         private static bool FollowsRootIdentifier(List<Token> tokens)
         {
             int bracket = tokens.Count - 1;
-            if (bracket < 1 || tokens[bracket - 1].Kind != TokenKind.Identifier)
+            if (bracket < 1 || tokens[bracket - 1].Kind != TokenKind.Identifier || !QualifierRoots.Contains(tokens[bracket - 1].Text ?? string.Empty))
             {
                 return false;
             }

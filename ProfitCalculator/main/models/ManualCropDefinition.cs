@@ -49,14 +49,5 @@ namespace ProfitCalculator.main.models
 
         /// <summary>Whether the crop is a paddy crop (grows faster near water).</summary>
         public bool IsPaddyCrop { get; set; }
-
-        /// <summary>Whether the crop is a raised (trellis) crop. Parsed but currently unused.</summary>
-        public bool IsRaisedCrop { get; set; }
-
-        /// <summary>Whether the crop is a bush crop. Parsed but currently unused.</summary>
-        public bool IsBushCrop { get; set; }
-
-        /// <summary>Whether the crop can become a giant crop. Parsed but currently unused.</summary>
-        public bool IsGiantCrop { get; set; }
     }
 }

@@ -1,6 +1,7 @@
 using ProfitCalculator.main.accessors;
 using ProfitCalculator.main.memory;
 using StardewModdingAPI;
+using StardewModdingAPI.Utilities;
 using StardewValley;
 using System;
 using System.Collections.Generic;
@@ -21,6 +22,7 @@ namespace ProfitCalculator.main.ui
     /// (<c>model.settings</c>), the produce types offered (<c>hook:produceOptions</c>) and the last calculation's rows
     /// (<c>hook:crops</c>), registers the <c>@Calculate</c> / <c>@Reset</c> / <c>@ValidateSettings</c> commands and the
     /// <c>@t</c> / <c>@money</c> / <c>@moneyDay</c> / <c>@percent</c> / <c>@format</c> functions, then imports the file.
+    /// The settings and the rows are kept per split-screen player; commands and reads run in the player's screen context.
     /// </summary>
     public sealed class ProfitCalculatorDataUI
     {
@@ -39,10 +41,15 @@ namespace ProfitCalculator.main.ui
         private readonly IStardewUIApi api;
         private readonly IModHelper helper;
         private readonly IMonitor monitor;
-        private readonly ProfitCalculatorSettings settings;
 
-        /// <summary> The last calculation's results, read by the results screens through <c>hook:crops</c>. </summary>
-        private readonly List<CropInfo> crops = new();
+        /// <summary> The values each player's main screen edits. </summary>
+        private readonly PerScreen<ProfitCalculatorSettings> settings = new(() => new ProfitCalculatorSettings());
+
+        /// <summary> Each player's last calculation results, read by the results screens through <c>hook:crops</c>. </summary>
+        private readonly PerScreen<List<CropInfo>> crops = new(() => new List<CropInfo>());
+
+        /// <summary> The current screen's settings. </summary>
+        public ProfitCalculatorSettings Settings => settings.Value;
 
         /// <summary> A produce type choice as data reads it (<c>row.Id</c>, <c>row.Label</c>). </summary>
         /// <param name="Id"> The produce type id. </param>
@@ -56,20 +63,18 @@ namespace ProfitCalculator.main.ui
         /// <param name="api"> The UI Framework API. </param>
         /// <param name="helper"> The mod helper (translations). </param>
         /// <param name="monitor"> The mod monitor. </param>
-        /// <param name="settings"> The values the main screen edits. </param>
-        public ProfitCalculatorDataUI(IStardewUIApi api, IModHelper helper, IMonitor monitor, ProfitCalculatorSettings settings)
+        public ProfitCalculatorDataUI(IStardewUIApi api, IModHelper helper, IMonitor monitor)
         {
             this.api = api;
             this.helper = helper;
             this.monitor = monitor;
-            this.settings = settings;
 
             RegisterFunctions();
-            api.ExposeModel("settings", settings);
+            api.ExposeModelSource("settings", () => settings.Value);
             api.ExposeRows("produceOptions", () => ProduceOptions().Select(option => (object)new ProduceOption(option.Id, option.Label)).ToArray());
-            api.ExposeRows("crops", () => crops.Cast<object>().ToArray());
+            api.ExposeRows("crops", () => crops.Value.Cast<object>().ToArray());
             api.RegisterCommand("Calculate", Calculate);
-            api.RegisterCommand("Reset", _ => settings.Reset());
+            api.RegisterCommand("Reset", _ => settings.Value.Reset());
             api.RegisterCommand("ValidateSettings", _ => ValidProduceType());
             ImportDefinitions();
         }
@@ -139,11 +144,13 @@ namespace ProfitCalculator.main.ui
                 monitor.Log("Calculator is null", LogLevel.Error);
                 return;
             }
+            // game data edited since the plants were built (Content Patcher, the mod API) applies from this calculation on
+            calculator.RebuildCropsIfDirty();
             ValidProduceType();
-            settings.ApplyTo(calculator);
+            settings.Value.ApplyTo(calculator);
             monitor.Log($"Doing Calculation: day {calculator.Day} {calculator.Season}, produce {calculator.ProduceType}, fertilizer {calculator.FertilizerQuality}, cross season {calculator.CrossSeason}, years {calculator.Years}, heavy tapper {calculator.HeavyTapper}, tree fertilizer {calculator.TreeFertilizer}, base stats {calculator.UseBaseStats}, farming level {calculator.FarmingLevel}, tiller {Game1.player.professions.Contains(Farmer.tiller)}, agriculturist {Game1.player.professions.Contains(Farmer.agriculturist)}", LogLevel.Debug);
-            crops.Clear();
-            crops.AddRange(calculator.RetrieveCropInfos());
+            crops.Value.Clear();
+            crops.Value.AddRange(calculator.RetrieveCropInfos());
 
             // Raw and the tree views sell the harvest as is and share the raw screen; the screens' OnOpen resets sort, selection and scroll
             string resultsId = IsSoldRaw(calculator.ProduceType) ? ResultsMenuId : MachineResultsMenuId;
@@ -166,9 +173,10 @@ namespace ProfitCalculator.main.ui
         /// <summary>Fall back to raw when the selected produce type is no longer offered (for example after loading another save).</summary>
         private void ValidProduceType()
         {
-            if (!ProduceOptions().Any(option => option.Id == settings.ProduceType))
+            ProfitCalculatorSettings current = settings.Value;
+            if (!ProduceOptions().Any(option => option.Id == current.ProduceType))
             {
-                settings.ProduceType = RawProduceType;
+                current.ProduceType = RawProduceType;
             }
         }
 

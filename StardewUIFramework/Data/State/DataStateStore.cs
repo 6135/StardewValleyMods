@@ -16,21 +16,23 @@ namespace UIFramework.Data.State
     /// keyed by <b>(screen, scope, container, name)</b>, never by the <see cref="UIMenu"/> object, so every split-screen
     /// player has its own values and state survives menu replacement and hot reload. <c>player.*</c> lives in the
     /// current player's <c>modData</c>, <c>stat.*</c> in their stats and <c>config.*</c> in the <see cref="ConfigStore"/>.
+    /// Value names are case-insensitive in every scope (<c>player.Gold</c> and <c>player.gold</c> are one value);
+    /// owner and menu keys are matched as written.
     /// <para>
     /// Defaults (menu <c>State</c>, input <c>Value</c>s) are registered once per build and only ever fill values that do
     /// not exist yet, lazily on the screen that reads them. Every write bumps the screen's epoch (the key of the
-    /// expression caches) and raises <see cref="Changed"/> (menu <c>Watch</c>es, the Content Patcher token).
+    /// expression caches) and raises <see cref="Changed"/> (menu <c>Watch</c>es).
     /// </para>
     /// </summary>
     internal sealed class DataStateStore
     {
         private readonly Func<string, ConsumerContext> contexts;
         private readonly Dictionary<CellKey, Cell> cells = new();
-        private readonly Dictionary<Signal, Cell> bySignal = new();
         private readonly Dictionary<DefaultKey, Func<DataValue>> defaults = new();
+        private readonly Dictionary<DefaultKey, string> modDataKeys = new();
+        private readonly HashSet<int> screensWithCells = new();
         private long[] epochs = new long[4];
         private long globalEpoch;
-        [ThreadStatic] private static int silentDepth;
 
         internal DataStateStore(Func<string, ConsumerContext> contexts, ConfigStore config)
         {
@@ -47,8 +49,26 @@ namespace UIFramework.Data.State
         /// <summary>Raised after a value changed through the store (or a C# write to one of its signals).</summary>
         internal event StateChangedHandler? Changed;
 
-        /// <summary>Incremented on every change on any screen (the Content Patcher token's <c>UpdateContext</c>).</summary>
-        internal long ChangeCount { get; private set; }
+        /// <summary>Whether an owner lets other owners' data write its <c>config.*</c> and <c>player.*</c> values (its <c>Owners</c> entry's <c>SharedState</c>).</summary>
+        internal Func<string, bool>? SharesState { get; set; }
+
+        /// <summary>
+        /// Whether data of <paramref name="writer"/> may write <paramref name="address"/>: another owner's persisted
+        /// values (<c>config.*</c>, <c>player.*</c>) only when that owner shares them. Null writers (C#, the console,
+        /// trigger actions without a UI) are not restricted.
+        /// </summary>
+        internal bool CanWrite(StateAddress address, string? writer, out string error)
+        {
+            error = string.Empty;
+            if (writer == null || address.Scope is not (StateScope.Config or StateScope.Player)
+                || string.Equals(address.Container, writer, StringComparison.OrdinalIgnoreCase) || SharesState?.Invoke(address.Container) == true)
+            {
+                return true;
+            }
+
+            error = $"'{writer}' may not write {address}: it belongs to '{address.Container}', whose Owners entry does not set \"SharedState\": \"true\".";
+            return false;
+        }
 
         /// <summary>The current screen (split-screen player index).</summary>
         internal static int Screen => Context.ScreenId;
@@ -100,9 +120,9 @@ namespace UIFramework.Data.State
                 case StateScope.Player:
                 {
                     isVolatile = true; // vanilla actions and other mods write modData without telling us
-                    if (Game1.player?.modData != null && Game1.player.modData.TryGetValue(ModDataKey(address), out string? text))
+                    if (Context.IsWorldReady && Game1.player.modData.TryGetValue(ModDataKey(address), out string? text))
                     {
-                        value = StateAddress.Infer(text);
+                        value = StateAddress.FromStoredText(text);
                         return true;
                     }
 
@@ -111,7 +131,7 @@ namespace UIFramework.Data.State
 
                 case StateScope.Stat:
                     isVolatile = true;
-                    if (Game1.player?.stats != null)
+                    if (Context.IsWorldReady)
                     {
                         value = DataValue.FromNumber(Game1.player.stats.Get(address.Name));
                         return true;
@@ -125,7 +145,7 @@ namespace UIFramework.Data.State
                     string? text = Config.Get(address.Container, address.Name);
                     if (text != null)
                     {
-                        value = StateAddress.Infer(text);
+                        value = StateAddress.FromStoredText(text);
                         return true;
                     }
 
@@ -152,7 +172,7 @@ namespace UIFramework.Data.State
                 }
 
                 case StateScope.Player:
-                    if (Game1.player?.modData == null)
+                    if (!Context.IsWorldReady)
                     {
                         error = "player.* values need a loaded save.";
                         return false;
@@ -170,7 +190,7 @@ namespace UIFramework.Data.State
                     break;
 
                 case StateScope.Stat:
-                    if (Game1.player?.stats == null)
+                    if (!Context.IsWorldReady)
                     {
                         error = "stat.* values need a loaded save.";
                         return false;
@@ -213,7 +233,6 @@ namespace UIFramework.Data.State
                     {
                         DataValue old = DataValue.FromReactive(cell.Signal.Current);
                         cells.Remove(key);
-                        bySignal.Remove(cell.Signal);
                         Notify(Screen, address, old, DataValue.Null);
                     }
 
@@ -235,20 +254,51 @@ namespace UIFramework.Data.State
         internal void ResetContainer(StateScope scope, string container)
         {
             int screen = Screen;
-            foreach ((CellKey key, Cell cell) in cells.Where(p => p.Key.Screen == screen && p.Key.Scope == scope && p.Key.Container == container).ToArray())
+            foreach (CellKey key in cells.Keys.Where(k => k.Screen == screen && k.Scope == scope && k.Container == container).ToArray())
             {
                 cells.Remove(key);
-                bySignal.Remove(cell.Signal);
             }
 
             BumpScreen(screen);
+        }
+
+        /// <summary>
+        /// Drop the menu and session values of split-screen players who left (call once per tick), so a player who
+        /// later joins on the same screen id starts empty.
+        /// </summary>
+        internal void RemoveDeadScreens()
+        {
+            List<int>? dead = null;
+            foreach (int screen in screensWithCells)
+            {
+                if (!Context.HasScreenId(screen))
+                {
+                    (dead ??= new List<int>()).Add(screen);
+                }
+            }
+
+            if (dead == null)
+            {
+                return;
+            }
+
+            foreach (int screen in dead)
+            {
+                foreach (CellKey key in cells.Keys.Where(k => k.Screen == screen).ToArray())
+                {
+                    cells.Remove(key);
+                }
+
+                screensWithCells.Remove(screen);
+                BumpScreen(screen);
+            }
         }
 
         /// <summary>Drop every menu and session value (return to title).</summary>
         internal void ClearSession()
         {
             cells.Clear();
-            bySignal.Clear();
+            screensWithCells.Clear();
             globalEpoch++;
         }
 
@@ -295,7 +345,7 @@ namespace UIFramework.Data.State
             var signal = new Signal(contexts(address.Owner), initial.ToReactive());
             var cell = new Cell(key.Screen, address, signal, initial);
             cells[key] = cell;
-            bySignal[signal] = cell;
+            screensWithCells.Add(key.Screen);
             signal.SubscribeInternal(() => OnSignalChanged(cell));
             return signal;
         }
@@ -313,7 +363,7 @@ namespace UIFramework.Data.State
             {
                 foreach ((string name, string value) in Config.All(owner))
                 {
-                    yield return (new StateAddress(StateScope.Config, owner, name), StateAddress.Infer(value));
+                    yield return (new StateAddress(StateScope.Config, owner, name), StateAddress.FromStoredText(value));
                 }
             }
         }
@@ -321,20 +371,6 @@ namespace UIFramework.Data.State
         // ---------------------------------------------------------------------------------------------------------
         //  Notification
         // ---------------------------------------------------------------------------------------------------------
-
-        /// <summary>Run <paramref name="action"/> without raising <see cref="Changed"/> (epochs are still bumped).</summary>
-        internal void Silently(Action action)
-        {
-            silentDepth++;
-            try
-            {
-                action();
-            }
-            finally
-            {
-                silentDepth--;
-            }
-        }
 
         private void OnSignalChanged(Cell cell)
         {
@@ -352,8 +388,7 @@ namespace UIFramework.Data.State
         private void Notify(int screen, StateAddress address, DataValue old, DataValue now)
         {
             BumpScreen(screen);
-            ChangeCount++;
-            if (silentDepth > 0 || Changed == null)
+            if (Changed == null)
             {
                 return;
             }
@@ -420,24 +455,66 @@ namespace UIFramework.Data.State
             }
         }
 
-        private static string ModDataKey(StateAddress address) => address.Container + "/" + address.Name;
+        /// <summary>The <c>modData</c> key of a <c>player.*</c> value (<c>owner/name</c>, the name lower-case), built once per value.</summary>
+        private string ModDataKey(StateAddress address)
+        {
+            var key = new DefaultKey(address);
+            if (!modDataKeys.TryGetValue(key, out string? text))
+            {
+                modDataKeys[key] = text = address.Container + "/" + address.Name.ToLowerInvariant();
+            }
+
+            return text;
+        }
 
         // ---------------------------------------------------------------------------------------------------------
         //  Keys
         // ---------------------------------------------------------------------------------------------------------
 
-        private readonly record struct CellKey(int Screen, StateScope Scope, string Container, string Name)
+        /// <summary>A cell's key: the name compares case-insensitively (no lower-cased copy per read).</summary>
+        private readonly struct CellKey : IEquatable<CellKey>
         {
-            internal CellKey(int screen, StateAddress address) : this(screen, address.Scope, address.Container, address.Name.ToLowerInvariant())
+            internal CellKey(int screen, StateAddress address)
             {
+                Screen = screen;
+                Scope = address.Scope;
+                Container = address.Container;
+                Name = address.Name;
             }
+
+            internal int Screen { get; }
+            internal StateScope Scope { get; }
+            internal string Container { get; }
+            internal string Name { get; }
+
+            public bool Equals(CellKey other) => Screen == other.Screen && Scope == other.Scope && string.Equals(Container, other.Container, StringComparison.Ordinal)
+                && string.Equals(Name, other.Name, StringComparison.OrdinalIgnoreCase);
+
+            public override bool Equals(object? obj) => obj is CellKey other && Equals(other);
+
+            public override int GetHashCode() => HashCode.Combine(Screen, Scope, StringComparer.Ordinal.GetHashCode(Container), StringComparer.OrdinalIgnoreCase.GetHashCode(Name));
         }
 
-        private readonly record struct DefaultKey(StateScope Scope, string Container, string Name)
+        /// <summary>A value's key on every screen: the name compares case-insensitively.</summary>
+        private readonly struct DefaultKey : IEquatable<DefaultKey>
         {
-            internal DefaultKey(StateAddress address) : this(address.Scope, address.Container, address.Name.ToLowerInvariant())
+            internal DefaultKey(StateAddress address)
             {
+                Scope = address.Scope;
+                Container = address.Container;
+                Name = address.Name;
             }
+
+            internal StateScope Scope { get; }
+            internal string Container { get; }
+            internal string Name { get; }
+
+            public bool Equals(DefaultKey other) => Scope == other.Scope && string.Equals(Container, other.Container, StringComparison.Ordinal)
+                && string.Equals(Name, other.Name, StringComparison.OrdinalIgnoreCase);
+
+            public override bool Equals(object? obj) => obj is DefaultKey other && Equals(other);
+
+            public override int GetHashCode() => HashCode.Combine(Scope, StringComparer.Ordinal.GetHashCode(Container), StringComparer.OrdinalIgnoreCase.GetHashCode(Name));
         }
 
         private sealed class Cell

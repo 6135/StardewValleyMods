@@ -86,6 +86,15 @@ namespace UIFramework.Core
             Captured?.HandleClickHeld(x, y);
         }
 
+        /// <summary>Forget the capture of <paramref name="element"/> without a release callback (it left the tree).</summary>
+        internal void DropCapture(UIElement element)
+        {
+            if (Captured == element)
+            {
+                Captured = null;
+            }
+        }
+
         internal void ClickReleased(int x, int y)
         {
             UIElement? captured = Captured;
@@ -162,7 +171,7 @@ namespace UIFramework.Core
             if (menu.OnScroll != null)
             {
                 Action<int> cb = menu.OnScroll;
-                menu.Consumer.Invoke(menu.Id, "OnScroll", () => cb(direction));
+                menu.Consumer.Invoke(menu.Id, menu.Id, "OnScroll", () => cb(direction));
                 return true;
             }
             return false;
@@ -196,7 +205,7 @@ namespace UIFramework.Core
             if (menu.OnKey != null)
             {
                 Func<IUIKeyEvent, bool> cb = menu.OnKey;
-                if (menu.Consumer.Invoke(menu.Id, "OnKey", () => cb(e), false))
+                if (menu.Consumer.Invoke(menu.Id, menu.Id, "OnKey", () => cb(e), false))
                 {
                     return true;
                 }

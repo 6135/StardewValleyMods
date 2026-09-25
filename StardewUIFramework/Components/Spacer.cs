@@ -11,10 +11,11 @@ namespace UIFramework.Components
     {
         private const int LineThickness = 4;
 
+        /// <summary>A size of 0 (or less) leaves that axis unset, so the spacer takes what its parent gives it (a stretched <see cref="Line"/>).</summary>
         internal Spacer(string id, int width, int height) : base(id)
         {
-            Width = width;
-            Height = height;
+            Width = width > 0 ? width : null;
+            Height = height > 0 ? height : null;
         }
 
         public bool Line { get; set; }

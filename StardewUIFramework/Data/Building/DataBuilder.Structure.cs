@@ -199,6 +199,30 @@ namespace UIFramework.Data.Building
             private SwitchPage? current;
             private bool reported;
 
+            /// <summary>The page whose Cases hold <paramref name="key"/>, else the default page (no Cases), else null (runs per tick: no LINQ).</summary>
+            private SwitchPage? Select(string key)
+            {
+                SwitchPage? fallback = null;
+                foreach (SwitchPage page in pages)
+                {
+                    if (page.Cases == null)
+                    {
+                        fallback ??= page;
+                        continue;
+                    }
+
+                    foreach (string c in page.Cases)
+                    {
+                        if (string.Equals(c, key, StringComparison.OrdinalIgnoreCase))
+                        {
+                            return page;
+                        }
+                    }
+                }
+
+                return fallback;
+            }
+
             internal SwitchRefresher(DataBuilder builder, BuildContext ctx, UIContainer stack, string expression, DataScope scope, List<SwitchPage> pages)
             {
                 this.builder = builder;
@@ -218,9 +242,7 @@ namespace UIFramework.Data.Building
                     UIServices.Log($"[{ctx.Runtime.Owner}] Switch '{stack.Id}': '{expression}': {error}", LogLevel.Warn);
                 }
 
-                string key = value.AsString();
-                SwitchPage? selected = pages.FirstOrDefault(p => p.Cases != null && p.Cases.Any(c => string.Equals(c, key, StringComparison.OrdinalIgnoreCase)))
-                    ?? pages.FirstOrDefault(p => p.Cases == null);
+                SwitchPage? selected = Select(value.AsString());
 
                 if (selected != current)
                 {
@@ -288,6 +310,12 @@ namespace UIFramework.Data.Building
                 if (address.Scope == StateScope.Stat)
                 {
                     ctx.Log.Warn(path.Field(canonical), "outputs cannot write stat.* values; it is ignored.");
+                    continue;
+                }
+
+                if (!store.CanWrite(address, scope.Owner, out string accessError))
+                {
+                    ctx.Log.Error(path.Field(canonical), accessError + " The output is ignored.");
                     continue;
                 }
 

@@ -42,7 +42,7 @@ namespace UIFramework.Data.Actions
         private static DataScope? ambient;
 
         /// <summary>The value resolver used for <c>When</c> and action interpolation (the expression resolver from v1.4).</summary>
-        internal static IValueResolver Resolver { get; set; } = LiteralValueResolver.Instance;
+        internal static ExpressionValueResolver Resolver => ExpressionValueResolver.Instance;
 
         /// <summary>The scope of the data action running on this thread, if any.</summary>
         internal static DataScope? Ambient => ambient;

@@ -71,19 +71,19 @@ namespace ProfitCalculator.main.memory
         }
 
         /// <summary>
-        /// Creates and registers a new instance of the specified type <typeparamref name="T"/> in the container.
+        /// Creates and registers a new instance of the specified type <typeparamref name="T"/> in the container, unless one
+        /// is already registered (then nothing is created).
         /// </summary>
         /// <typeparam name="T">The type of the instance to create and register.</typeparam>
         /// <param name="key">The unique key associated with the instance.</param>
         public void RegisterInstance<T>(string key) where T : new()
         {
             var typeKey = GetTypeKey<T>(key);
-            var instance = new T();
             lock (_lock)
             {
                 if (!_instances.ContainsKey(typeKey))
                 {
-                    _instances[typeKey] = instance;
+                    _instances[typeKey] = new T();
                 }
             }
         }

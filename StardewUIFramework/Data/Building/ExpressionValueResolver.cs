@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 using StardewModdingAPI;
 using UIFramework.Core;
 using UIFramework.Data.Expressions;
@@ -8,20 +10,25 @@ using UIFramework.Data.State;
 namespace UIFramework.Data.Building
 {
     /// <summary>
-    /// The v1.4 value resolver: <c>${expr}</c> is live, <c>$:{expr}</c> is evaluated once per open, <c>$${</c> is a
+    /// Turns the raw text of a data field into a <see cref="ValueSource{T}"/> (the one place values are interpreted),
+    /// and interpolates action strings right before they run: <c>${expr}</c> is live, <c>$:{expr}</c> is evaluated once per open, <c>$${</c> is a
     /// literal <c>${</c>. A field whose whole value is one <c>${...}</c> keeps the expression's type; bool and number
     /// fields also accept a bare expression (<c>"menu.count &gt; 3"</c>). Values that parse as a literal of the field's
     /// kind stay literals (no evaluation cost), constant expressions are folded at build time, and parse errors are
     /// reported at load with the value's path. Action strings are interpolated right before each runs.
     /// </summary>
-    internal sealed class ExpressionValueResolver : IValueResolver
+    internal sealed class ExpressionValueResolver
     {
         internal static readonly ExpressionValueResolver Instance = new();
+
+        /// <summary>The (owner, text) pairs whose interpolation failure was already logged: action strings can run every tick.</summary>
+        private readonly HashSet<(string Owner, string Raw)> reportedInterpolations = new();
 
         /// <summary>The functions data expressions can call (built-ins plus the game and UI functions).</summary>
         internal static FunctionRegistry Functions => FunctionRegistry.Default;
 
-        public ValueSource<T>? Resolve<T>(string raw, ValueKind<T> kind, DataPath path, DataMessageLog log)
+        /// <summary>The source for <paramref name="raw"/>, or null (with a message in <paramref name="log"/>) when it is not a valid <paramref name="kind"/>.</summary>
+        internal ValueSource<T>? Resolve<T>(string raw, ValueKind<T> kind, DataPath path, DataMessageLog log)
         {
             Template template;
             if (HasTemplate(raw) || raw.Contains("$${", StringComparison.Ordinal))
@@ -82,7 +89,8 @@ namespace UIFramework.Data.Building
             return new ExpressionSource<T>(template, kind, path.ToString());
         }
 
-        public string Interpolate(string raw, DataScope scope)
+        /// <summary>The text of an action entry as it should run now.</summary>
+        internal string Interpolate(string raw, DataScope scope)
         {
             if (!HasTemplate(raw))
             {
@@ -90,15 +98,16 @@ namespace UIFramework.Data.Building
             }
 
             ExpressionResult result = Template.Parse(raw).Evaluate(scope, Functions);
-            if (!result.Succeeded)
+            if (!result.Succeeded && reportedInterpolations.Add((scope.Owner, raw)))
             {
-                UIServices.Log($"[{scope.Owner}] {scope}: '{raw}': {result.Error}", LogLevel.Warn);
+                UIServices.Log($"[{scope.Owner}] {scope}: '{raw}': {result.Error} (logged once).", LogLevel.Warn);
             }
 
             return result.Value.AsString();
         }
 
-        public DataValue Evaluate(string raw, DataScope scope, out string? error)
+        /// <summary>Evaluate a bare expression or template now (<c>When</c>, <c>If</c>, <c>Switch</c>, <c>Validate</c>...); errors come back in <paramref name="error"/>.</summary>
+        internal DataValue Evaluate(string raw, DataScope scope, out string? error)
         {
             if (!HasTemplate(raw) && raw.Trim().ToLowerInvariant() is "yes" or "no")
             {
@@ -197,19 +206,20 @@ namespace UIFramework.Data.Building
     }
 
     /// <summary>
-    /// A live value: a template (or bare expression) evaluated in the scope it is read in, cached per screen and state
-    /// epoch (and per tick when it read something volatile). One-time <c>$:{...}</c> segments are frozen per open of
-    /// the scope's UI. A failing value keeps its last good value and is logged once.
+    /// A live value: a template (or bare expression) evaluated in the scope it is read in, cached per scope, screen and
+    /// state epoch (and per tick when it read something volatile). One-time <c>$:{...}</c> segments are frozen per open
+    /// of the scope's UI. A failing value keeps its last good value and is logged once. One source can be read in many
+    /// scopes (a grid column's <c>Text</c> in every row scope), so the cache, the one-time values and the last good
+    /// value are kept per scope.
     /// </summary>
     internal sealed class ExpressionSource<T> : ValueSource<T>
     {
         private readonly Template template;
         private readonly ValueKind<T> kind;
         private readonly string path;
-        private readonly EvaluationCache cache = new();
-        private Template? resolved;
-        private int resolvedGeneration = -1;
-        private T last = default!;
+        private readonly ScopeSlot first = new();
+        private DataScope? firstScope;
+        private ConditionalWeakTable<DataScope, ScopeSlot>? others;
         private bool reported;
 
         internal ExpressionSource(Template template, ValueKind<T> kind, string path)
@@ -223,44 +233,62 @@ namespace UIFramework.Data.Building
 
         internal override T Get(DataScope scope)
         {
+            ScopeSlot slot = SlotOf(scope);
             Template current = template;
             if (template.HasOneTime)
             {
                 int generation = scope.Runtime?.OpenGeneration ?? 0;
-                if (resolved == null || resolvedGeneration != generation)
+                if (slot.Resolved == null || slot.ResolvedGeneration != generation)
                 {
-                    resolved = template.ResolveOneTime(scope, out string? oneTimeError, ExpressionValueResolver.Functions);
-                    resolvedGeneration = generation;
-                    cache.Clear();
+                    slot.Resolved = template.ResolveOneTime(scope, out string? oneTimeError, ExpressionValueResolver.Functions);
+                    slot.ResolvedGeneration = generation;
+                    slot.Cache.Clear();
                     if (oneTimeError != null)
                     {
                         Report(scope, oneTimeError);
                     }
                 }
 
-                current = resolved;
+                current = slot.Resolved;
             }
 
             int screen = DataStateStore.Screen;
             long epoch = DataStateStore.Active?.Epoch(screen) ?? 0;
-            ExpressionResult result = current.Evaluate(scope, cache, screen, epoch, DataEnvironment.Tick, ExpressionValueResolver.Functions);
+            ExpressionResult result = current.Evaluate(scope, slot.Cache, screen, epoch, DataEnvironment.Tick, ExpressionValueResolver.Functions);
             if (!result.Succeeded)
             {
                 Report(scope, result.Error!);
                 if (result.Value.IsNull)
                 {
-                    return last;
+                    return slot.Last;
                 }
             }
 
             if (ExpressionValueResolver.TryConvert(result.Value, kind, out T value))
             {
-                last = value;
+                slot.Last = value;
                 return value;
             }
 
             Report(scope, $"'{result.Value.AsString()}' is not {kind.Description}");
-            return last;
+            return slot.Last;
+        }
+
+        /// <summary>The state of <paramref name="scope"/>: the first scope read (usually the only one) without a table lookup.</summary>
+        private ScopeSlot SlotOf(DataScope scope)
+        {
+            if (firstScope == null)
+            {
+                firstScope = scope;
+                return first;
+            }
+
+            if (ReferenceEquals(firstScope, scope))
+            {
+                return first;
+            }
+
+            return (others ??= new ConditionalWeakTable<DataScope, ScopeSlot>()).GetValue(scope, _ => new ScopeSlot());
         }
 
         private void Report(DataScope scope, string error)
@@ -272,6 +300,15 @@ namespace UIFramework.Data.Building
 
             reported = true;
             UIServices.Log($"[{scope.Owner}] {path}: {error} (logged once).", LogLevel.Warn);
+        }
+
+        /// <summary>What the source keeps for one scope.</summary>
+        private sealed class ScopeSlot
+        {
+            internal EvaluationCache Cache { get; } = new();
+            internal Template? Resolved { get; set; }
+            internal int ResolvedGeneration { get; set; } = -1;
+            internal T Last { get; set; } = default!;
         }
     }
 }

@@ -1,5 +1,9 @@
 {
   "Format": "2.0.0",
+  "ConfigSchema": {
+    // shows how the framework refuses to decorate a sealed element: logs an ERROR when the C# example's demo opens
+    "ShowSealedRefusal": { "AllowValues": "true, false", "Default": "false" }
+  },
   "Changes": [
     // named sprites: another pack can reskin the demo by editing only these entries
     {
@@ -29,9 +33,9 @@
         "{{ModId}}": {
           "TooltipDelayMs": 250,
           "Classes": {
-            "hint": { "TextColor": "#5B5B5B" },
-            "accent": { "TextColor": "#2060C0" },
-            "tab": { "Padding": 8 }
+            // no TextColor: a class color replaces the theme's text color, which would be unreadable in the dark themes
+            "hint": { "Font": "small" },
+            "accent": { "TextShadow": true }
           },
           "Hotkeys": {
             "hud": {
@@ -42,6 +46,16 @@
           // owner-wide templates (v1.7), usable in every UI of this pack: parameters with defaults, and Outlet placeholders
           // the instance's children choose with "Outlet" (children without one go into the unnamed default outlet)
           "Templates": {
+            // a tab button: "page" is the menu.tab value it shows (written once instead of three times per tab)
+            "tab": {
+              "Params": {
+                "page": { "Type": "string", "Required": true },
+                "label": { "Type": "string", "Required": true }
+              },
+              "Children": [
+                { "Id": "button", "Button": "${args.label}", "Enabled": "menu.tab != args.page", "OnClick": "6135.UIFramework_SetState menu.tab ${args.page}" }
+              ]
+            },
             "section": {
               "Params": {
                 "title": { "Type": "string", "Default": "{{i18n:crossmod.section.untitled}}" },
@@ -85,6 +99,8 @@
           "Hotkey": "F6",
           "Spacing": 12,
           "CancelButton": "close",
+          // the theme can change elsewhere (another menu, the framework's config): show the active one on every open
+          "OnOpen": "6135.UIFramework_SetState menu.theme ${ui.theme}",
 
           // menu.* state: defaults are only used for values that do not exist yet
           "State": {
@@ -103,15 +119,15 @@
           "Sources": {
             "crops": {
               "Rows": [
-                { "name": "{{i18n:crop.parsnip}}", "item": "(O)24", "seed": 20, "price": 35, "days": 4, "season": "spring" },
-                { "name": "{{i18n:crop.cauliflower}}", "item": "(O)190", "seed": 80, "price": 175, "days": 12, "season": "spring" },
-                { "name": "{{i18n:crop.potato}}", "item": "(O)192", "seed": 50, "price": 80, "days": 6, "season": "spring" },
-                { "name": "{{i18n:crop.melon}}", "item": "(O)254", "seed": 80, "price": 250, "days": 12, "season": "summer" },
-                { "name": "{{i18n:crop.blueberry}}", "item": "(O)258", "seed": 80, "price": 50, "days": 13, "season": "summer" },
-                { "name": "{{i18n:crop.hops}}", "item": "(O)304", "seed": 60, "price": 25, "days": 11, "season": "summer" },
-                { "name": "{{i18n:crop.pumpkin}}", "item": "(O)276", "seed": 100, "price": 320, "days": 13, "season": "fall" },
-                { "name": "{{i18n:crop.cranberries}}", "item": "(O)282", "seed": 240, "price": 75, "days": 7, "season": "fall" },
-                { "name": "{{i18n:crop.grape}}", "item": "(O)398", "seed": 60, "price": 80, "days": 10, "season": "fall" }
+                { "item": "(O)24", "seed": 20, "price": 35, "days": 4, "season": "spring" },
+                { "item": "(O)190", "seed": 80, "price": 175, "days": 12, "season": "spring" },
+                { "item": "(O)192", "seed": 50, "price": 80, "days": 6, "season": "spring" },
+                { "item": "(O)254", "seed": 80, "price": 250, "days": 12, "season": "summer" },
+                { "item": "(O)258", "seed": 80, "price": 50, "days": 13, "season": "summer" },
+                { "item": "(O)304", "seed": 60, "price": 25, "days": 11, "season": "summer" },
+                { "item": "(O)276", "seed": 100, "price": 320, "days": 13, "season": "fall" },
+                { "item": "(O)282", "seed": 240, "price": 75, "days": 7, "season": "fall" },
+                { "item": "(O)398", "seed": 60, "price": 80, "days": 10, "season": "fall" }
               ]
             },
             "seasons": {
@@ -123,7 +139,9 @@
             }
           },
           "Computed": {
-            "greeting": "'Hello, ' + (len(trim(menu.name)) > 0 ? menu.name : '?') + '!'"
+            "greeting": "replace(\"{{i18n:demo.greeting}}\", '{name}', len(trim(menu.name)) > 0 ? menu.name : '?')",
+            // the translated name of the selected season (menu.season holds the id)
+            "seasonName": "menu.season == 'summer' ? \"{{i18n:season.summer}}\" : menu.season == 'fall' ? \"{{i18n:season.fall}}\" : menu.season == 'winter' ? \"{{i18n:season.winter}}\" : \"{{i18n:season.spring}}\""
           },
           "Watch": {
             "menu.clicks": {
@@ -153,10 +171,10 @@
               // tabs that do not fit the width continue on the next line
               "Wrap": true,
               "Children": [
-                { "Id": "tab.form", "Button": "{{i18n:demo.tab.form}}", "Class": "tab", "Enabled": "menu.tab != 'form'", "OnClick": "6135.UIFramework_SetState menu.tab form" },
-                { "Id": "tab.buttons", "Button": "{{i18n:demo.tab.buttons}}", "Class": "tab", "Enabled": "menu.tab != 'buttons'", "OnClick": "6135.UIFramework_SetState menu.tab buttons" },
-                { "Id": "tab.media", "Button": "{{i18n:demo.tab.media}}", "Class": "tab", "Enabled": "menu.tab != 'media'", "OnClick": "6135.UIFramework_SetState menu.tab media" },
-                { "Id": "tab.collections", "Button": "{{i18n:demo.tab.collections}}", "Class": "tab", "Enabled": "menu.tab != 'collections'", "OnClick": "6135.UIFramework_SetState menu.tab collections" }
+                { "Id": "tab.form", "Type": "tab", "page": "form", "label": "{{i18n:demo.tab.form}}" },
+                { "Id": "tab.buttons", "Type": "tab", "page": "buttons", "label": "{{i18n:demo.tab.buttons}}" },
+                { "Id": "tab.media", "Type": "tab", "page": "media", "label": "{{i18n:demo.tab.media}}" },
+                { "Id": "tab.collections", "Type": "tab", "page": "collections", "label": "{{i18n:demo.tab.collections}}" }
               ]
             },
             {
@@ -183,7 +201,7 @@
                       "Value": "{{i18n:demo.name.default}}",
                       "Placeholder": "{{i18n:demo.name.placeholder}}",
                       "MaxLength": 24,
-                      "Validate": "contains(event.value, '#') ? '{{i18n:demo.name.invalid}}' : true",
+                      "Validate": "contains(event.value, '#') ? \"{{i18n:demo.name.invalid}}\" : true",
                       "OnInvalid": "6135.UIFramework_ShowToast ${quote(event.error)} 1500"
                     },
 
@@ -289,6 +307,9 @@
                             { "Type": "Line", "Text": "{{i18n:demo.wine.tooltip}}" }
                           ]
                         },
+                        // an item by id (drawn by the game) and a region of a game texture asset
+                        { "Id": "media.item", "Image": "item:(O)24" },
+                        { "Id": "media.asset", "Image": "asset:Maps/springobjects@0,16,16,16" },
                         { "Id": "media.caption", "Label": "{{i18n:demo.media}}", "Font": "small" }
                       ]
                     },
@@ -304,7 +325,7 @@
                           "Id": "theme",
                           "Type": "Dropdown",
                           "Bind": "menu.theme",
-                          "Choices": "default, dark, high-contrast, colorblind",
+                          "ChoicesSource": "themes",
                           "OnValueChanged": "6135.UIFramework_SetTheme ${event.value}"
                         },
                         { "Id": "theme.current", "Label": "{{i18n:demo.theme.current}}", "Class": "hint" }
@@ -368,7 +389,7 @@
                           "Spacing": 4,
                           "Children": [ { "Id": "wish", "Type": "ItemImage", "Item": "${row}", "Scale": 2 } ]
                         },
-                        { "Id": "wishes.reset", "Button": "{{i18n:demo.wishes.more}}", "OnClick": "6135.UIFramework_SetState menu.wishes [(O)24,(O)400,(O)254,(O)276,(O)398]" }
+                        { "Id": "wishes.more", "Button": "{{i18n:demo.wishes.more}}", "OnClick": "6135.UIFramework_SetState menu.wishes [(O)24,(O)400,(O)254,(O)276,(O)398]" }
                       ]
                     },
 
@@ -377,7 +398,7 @@
                     {
                       "Id": "crop.list",
                       "Type": "List",
-                      "Source": { "Name": "crops", "Sort": "row.name" },
+                      "Source": { "Name": "crops", "Sort": "itemName(row.item)" },
                       "As": "crop",
                       "RowHeight": 40,
                       "VisibleRows": 3,
@@ -392,7 +413,7 @@
                         "Alignment": "Center",
                         "Children": [
                           { "Id": "icon", "Type": "ItemImage", "Item": "${crop.item}", "Scale": 2 },
-                          { "Id": "name", "Label": "${crop.name}", "Width": 180 },
+                          { "Id": "name", "Label": "${itemName(crop.item)}", "Width": 180 },
                           { "Id": "price", "Label": "${money(crop.price)}", "Class": "hint" }
                         ]
                       }
@@ -427,13 +448,13 @@
                       "HorizontalAlign": "Stretch",
                       "Columns": [
                         { "Id": "icon", "Header": "", "Width": "56px", "Cell": { "Id": "img", "Type": "ItemImage", "Item": "${row.item}", "Scale": 2 } },
-                        { "Id": "name", "Header": "{{i18n:demo.grid.name}}", "Width": "*", "Sortable": true, "Resizable": true },
+                        { "Id": "name", "Header": "{{i18n:demo.grid.name}}", "Width": "*", "Text": "${itemName(row.item)}", "Sortable": true, "Resizable": true },
                         { "Id": "price", "Header": "{{i18n:demo.grid.price}}", "Width": "auto", "Text": "${money(row.price)}", "SortNumber": "row.price", "Sortable": true, "Align": "End" },
                         {
                           "Id": "perDay",
                           "Header": "{{i18n:demo.grid.perDay}}",
                           "Width": "auto",
-                          "Text": "${round((row.price - row.seed) / row.days, 1)}g",
+                          "Text": "${money(round((row.price - row.seed) / row.days, 1))}",
                           "SortNumber": "(row.price - row.seed) / row.days",
                           "Sortable": true,
                           "Align": "End",
@@ -452,7 +473,7 @@
                           { "Type": "Line", "Text": "{{i18n:demo.grid.tip.cheap}}", "Color": "red", "When": "row.price < row.seed * 2" }
                         ]
                       },
-                      "OnRowActivated": "6135.UIFramework_ShowToast ${quote(row.name + ': ' + money(row.price))} 1500"
+                      "OnRowActivated": "6135.UIFramework_ShowToast ${quote(itemName(row.item) + ': ' + money(row.price))} 1500"
                     },
                     { "Id": "grid.picked", "Label": "{{i18n:demo.grid.picked}}", "Class": "hint" }
                   ]
@@ -501,8 +522,8 @@
               "Fields": [
                 { "Id": "parsnipNote", "Bind": ".parsnipNote", "Kind": "Checkbox", "Label": "{{i18n:settings.note}}", "Section": "{{i18n:settings.section.parsnip}}", "Value": false, "Tooltip": "{{i18n:settings.note.tooltip}}" },
                 { "Id": "stars", "Bind": ".stars", "Kind": "Integer", "Label": "{{i18n:settings.stars}}", "Min": 1, "Max": 5, "Value": 3 },
-                { "Id": "nickname", "Bind": ".nickname", "Kind": "Text", "Label": "{{i18n:settings.nickname}}", "Section": "{{i18n:settings.section.more}}", "Value": "{{i18n:demo.name.default}}", "Validate": "len(trim(event.value)) > 0 ? true : '{{i18n:settings.nickname.required}}'" },
-                { "Id": "flavor", "Bind": ".flavor", "Kind": "Dropdown", "Label": "{{i18n:settings.flavor}}", "Choices": "Wine, Juice, Jelly, Pickles" }
+                { "Id": "nickname", "Bind": ".nickname", "Kind": "Text", "Label": "{{i18n:settings.nickname}}", "Section": "{{i18n:settings.section.more}}", "Value": "{{i18n:demo.name.default}}", "Validate": "len(trim(event.value)) > 0 ? true : \"{{i18n:settings.nickname.required}}\"" },
+                { "Id": "flavor", "Bind": ".flavor", "Kind": "Dropdown", "Label": "{{i18n:settings.flavor}}", "Choices": [ "{{i18n:settings.flavor.wine}}", "{{i18n:settings.flavor.juice}}", "{{i18n:settings.flavor.jelly}}", "{{i18n:settings.flavor.pickles}}" ] }
               ],
               "OnSaved": "6135.UIFramework_ShowToast \"{{i18n:settings.saved}}\" 1500"
             },
@@ -532,9 +553,10 @@
           "Spacing": 10,
           "CancelButton": "cm.close",
           "State": { "money": 250, "page": "PageA", "changes": 0 },
+          "Computed": { "pageName": "menu.page == 'PageB' ? \"{{i18n:crossmod.pageB.button}}\" : \"{{i18n:crossmod.pageA.button}}\"" },
 
           // ctx.money / ctx.page and _Invoke ctx.bonus for contributors (IUIScreenContext in C#)
-          "Expose": { "money": "menu.money", "page": "menu.page" },
+          "Expose": { "money": "menu.money", "page": "menu.pageName" },
           "Commands": {
             "bonus": [ "6135.UIFramework_AddState menu.money 100", "6135.UIFramework_ShowToast \"{{i18n:crossmod.bonus.done}}\" 1200" ]
           },
@@ -664,11 +686,11 @@
               "Texture": "Mods/6135.UIFramework/TextBoxSmall",
               "OnValueChanged": "6135.UIFramework_Publish changed"
             },
-            { "Id": "suffix", "Label": "g" },
+            { "Id": "suffix", "Label": "{{i18n:money.suffix}}" },
             { "Id": "after", "Outlet": "after", "Horizontal": true, "Spacing": 8 }
           ],
           // el[id].value / IUIComposite.GetNumber("value"), _Invoke #id.reset / IUIComposite.Invoke("reset")
-          "Expose": { "value": "args.value", "label": "args.label" },
+          "Expose": { "value": "args.value" },
           "Commands": { "reset": "6135.UIFramework_SetState args.value 0" },
           "Publish": [ "changed" ]
         },
@@ -793,8 +815,7 @@
     },
 
     // contributions to the UI Framework Example mod's C# demo menu (F9): a slot contribution using ctx.* and _Invoke ctx.log,
-    // an "ok" subscription (exactly one, however often the menu opens) and decorations; hiding its sealed theme row is
-    // refused with an error in the SMAPI log (on purpose)
+    // an "ok" subscription (exactly one, however often the menu opens) and decorations
     {
       "LogName": "UI Framework contributions to the C# demo",
       "Action": "EditData",
@@ -820,9 +841,22 @@
               "Target": "close",
               "Children": [ { "Id": "cp.crossmod", "Button": "{{i18n:contrib.open}}", "OnClick": "6135.UIFramework_OpenMenuAsChild {{ModId}}/crossmod" } ]
             },
-            { "Op": "Set", "Target": "about", "Fields": { "Tooltip": "{{i18n:contrib.about.tooltip}}" } },
-            { "Op": "Hide", "Target": "theme-row" }
+            { "Op": "Set", "Target": "about", "Fields": { "Tooltip": "{{i18n:contrib.about.tooltip}}" } }
           ]
+        }
+      }
+    },
+
+    // opt-in (config ShowSealedRefusal): hiding the C# demo's sealed theme row is refused, with an error in the SMAPI log
+    {
+      "LogName": "UI Framework sealed element refusal",
+      "Action": "EditData",
+      "Target": "Mods/6135.UIFramework/Contributions",
+      "When": { "HasMod |contains=6135.UIFrameworkExample": "true", "ShowSealedRefusal": "true" },
+      "Entries": {
+        "{{ModId}}/demo-sealed": {
+          "Target": "6135.UIFrameworkExample/demo",
+          "Decorate": [ { "Op": "Hide", "Target": "theme-row" } ]
         }
       }
     },
@@ -838,7 +872,8 @@
           "X": 16,
           "Y": 16,
           "Spacing": 4,
-          "ShowWhen": "game.worldReady",
+          // hidden until toggled (the demo's HUD button or Ctrl+H)
+          "Visible": false,
           // stays on top of open menus (like toasts), so the demo's Toggle HUD button shows its effect at once
           "ShowOverMenus": true,
           // another UI's state through the qualified form
@@ -859,7 +894,7 @@
       "Target": "Data/Objects",
       "TargetField": [ "24" ],
       "Entries": {
-        "Description": "{{i18n:parsnip.note |stars={{6135.UIFramework/State: {{ModId}}/config.stars}}}}"
+        "Description": "[LocalizedText Strings\\Objects:Parsnip_Description] {{i18n:parsnip.note |stars={{6135.UIFramework/State: {{ModId}}/config.stars}}}}"
       },
       "When": {
         "6135.UIFramework/State: {{ModId}}/config.parsnipNote": "true"

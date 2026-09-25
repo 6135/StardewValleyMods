@@ -74,7 +74,7 @@ namespace UIFramework.Data.Model
         [JsonProperty(ItemConverterType = typeof(ActionListConverter))]
         public Dictionary<string, List<ActionDefinition>>? Commands { get; set; }
 
-        /// <summary>The events the body raises with 6135.UIFramework_Publish (documentation and validation).</summary>
+        /// <summary>The events the body raises with 6135.UIFramework_Publish; when set, an instance's <c>On</c> names are checked against it.</summary>
         [JsonConverter(typeof(StringListConverter))]
         public List<string>? Publish { get; set; }
     }

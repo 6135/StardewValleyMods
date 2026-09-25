@@ -11,7 +11,7 @@ using UIFramework.Core;
 namespace UIFramework.Rendering
 {
     /// <summary>
-    /// Draws a <see cref="RichTooltip"/> next to the cursor: a vanilla 9-slice box (<c>Game1.menuTexture</c> 0,256,60,60)
+    /// Draws a <see cref="RichTooltip"/> next to the cursor: the theme's panel box (<see cref="DrawHelper.PanelBox"/>, so text colors match it)
     /// sized to its content, positioned and clamped like <c>IClickableMenu.drawHoverText</c>. Rows are laid out with
     /// <see cref="UIServices.Text"/> so sizing runs without the game; only <see cref="Draw"/> touches <see cref="Game1"/>.
     /// </summary>
@@ -62,7 +62,7 @@ namespace UIFramework.Rendering
             Point size = MeasureRows(rows);
             Point at = Place(menu.CursorX, menu.CursorY, size, vp);
             var box = new Rectangle(at.X, at.Y, size.X, size.Y);
-            DrawHelper.Box(b, Game1.menuTexture, Theme.PanelBoxSource, box, Color.White, 1f, shadow: true);
+            DrawHelper.PanelBox(b, box, Color.White);
 
             float y = box.Y + Padding;
             foreach (Row row in rows)
@@ -183,12 +183,39 @@ namespace UIFramework.Rendering
                 return null;
             }
 
-            RichLayout layout = RichText.Layout(RichText.Parse(markup), font, 1f, wrap);
+            RichLayout layout = LayoutOf(markup, font, wrap);
             return new Row(layout.Size.X, layout.Size.Y, (b, at, _) =>
             {
                 var rect = new Rectangle((int)at.X, (int)at.Y, (int)Math.Ceiling(layout.Size.X), (int)Math.Ceiling(layout.Size.Y));
                 RichText.Draw(b, layout, rect, color ?? Theme.TextColor, true, UIAlign.Start, null);
             });
+        }
+
+        /// <summary>Most text-row layouts kept; the cache is dropped when it grows past this (evaluated markup can change every frame).</summary>
+        private const int LayoutCacheLimit = 64;
+
+        /// <summary>
+        /// Text-row layouts by (markup, font, wrap) plus the inputs measuring depends on (theme font scale, pseudo-localization),
+        /// so a visible tooltip does not re-parse and re-wrap every frame.
+        /// </summary>
+        private static readonly Dictionary<(string Markup, UIFont Font, int Wrap, float FontScale, bool Pseudo), RichLayout> LayoutCache = new();
+
+        private static RichLayout LayoutOf(string markup, UIFont font, int wrap)
+        {
+            var key = (markup, font, wrap, Theme.FontScale, Pseudo.Enabled);
+            if (LayoutCache.TryGetValue(key, out RichLayout? cached))
+            {
+                return cached;
+            }
+
+            if (LayoutCache.Count >= LayoutCacheLimit)
+            {
+                LayoutCache.Clear();
+            }
+
+            RichLayout layout = RichText.Layout(RichText.Parse(markup), font, 1f, wrap);
+            LayoutCache[key] = layout;
+            return layout;
         }
 
         /// <summary>A block icon on its own row.</summary>

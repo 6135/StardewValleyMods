@@ -9,19 +9,19 @@ Provides the ability to select whether the user wants to buy seeds or fertilizer
 1. Install [SMAPI](https://smapi.io/).
 2. Install [UI Framework](https://github.com/6135/StardewValleyMods/tree/master/StardewUIFramework) (`6135.UIFramework`). Required: the calculator's menus are built with it.
 3. Install [Generic Config Menu](https://www.nexusmods.com/stardewvalley/mods/5098). Optional but recommended to allow for more customization of settings.
-3. Drop the contents of the provided folder into your `Stardew Valley/Mods` folder, or install from Nexus.
-4. Run the game using SMAPI.
-5. Press `F8` to open the calculator. This can be changed in the config file or in the Generic Config Menu.
+4. Drop the contents of the provided folder into your `Stardew Valley/Mods` folder, or install from Nexus.
+5. Run the game using SMAPI.
+6. Press `F8` to open the calculator. This can be changed in the config file or in the Generic Config Menu.
 
 ## Configuration
 
-The config file is located in `Stardew Valley/Mods/ProfitCalculator/config.json`. It allows you to change the keybind to open the calculator and the time for the tooltip to appear.
+The config file is located in `Stardew Valley/Mods/ProfitCalculator/config.json`. It allows you to change the keybind to open the calculator and the time for the tooltip to appear (in frames, 60 = 1 second).
 
 The look of the menus (theme, text scale, reduced motion) is configured in the UI Framework's own config / Generic Config Menu page and applies to every mod that uses it.
 
 ## Usage
 
-Press the hotkey to open the settings screen, adjust the day, season, fertilizer and money options and press `Calculate` (or `Enter`). The results screen lists every crop that can still be harvested with those settings, sorted by profit per day; click a column header to sort by it, and hover a row for the full breakdown (seed / fertilizer cost, growth and regrowth time, harvests, drop counts, quality chances and what the crop is sold as). `Escape` returns to the settings screen. The windows can be dragged, collapsed and resized; their position is remembered per save.
+Press the hotkey to open the settings screen, adjust the day, season, fertilizer and money options and press `Calculate` (or `Enter`). The results screen lists every crop that can still be harvested with those settings, sorted by profit per day; click a column header to sort by it, and hover a row for the full breakdown (seed / fertilizer cost, growth and regrowth time, harvests, drop counts, quality chances and what the crop is sold as). `Escape` returns to the settings screen. The windows can be dragged, collapsed and resized; their position is remembered per save. In split-screen, each player has their own settings and results.
 
 Crops, fruit trees, wild trees with tappers, the tea bush and bushes from the Custom Bush mod (optional) are all included. Trees pay off over years rather than one season, so they have their own entries in `Produce type` (see [Trees](#trees)).
 
@@ -66,11 +66,11 @@ The mod reads seed prices from shop stock. To override a price, add the unqualif
 }
 ```
 
-The file is loaded into the game asset `Mods/6135.ProfitCalculator/SeedPrices`, so a Content Patcher pack can add prices with `EditData` instead of editing the file.
+The file is loaded into the game asset `Mods/6135.ProfitCalculator/SeedPrices`, so a Content Patcher pack can add prices with `EditData` instead of editing the file. Edits made while a save is loaded apply right away.
 
 ## Manual Crops
 
-To add a crop the game data doesn't describe, add it to `assets/ManualCrops.json` (loaded into the asset `Mods/6135.ProfitCalculator/ManualCrops`, which Content Patcher packs can also edit). The key is the seed's item id, either bare (`"472"`) or qualified (`"(O)472"`). Manual entries take precedence over built-in data.
+To add a crop the game data doesn't describe, add it to `assets/ManualCrops.json` (loaded into the asset `Mods/6135.ProfitCalculator/ManualCrops`, which Content Patcher packs can also edit). The key is the seed's item id, either bare (`"472"`) or qualified (`"(O)472"`). Manual entries take precedence over built-in data. Edits made while a save is loaded (to this asset, or to `Data/Crops`, `Data/FruitTrees` and `Data/WildTrees`) apply from the next calculation.
 
 ```json
 {
@@ -84,14 +84,11 @@ To add a crop the game data doesn't describe, add it to `assets/ManualCrops.json
     "PurchasePrice": 20,                // seed price when > 0
     "MinimumHarvests": 1,
     "MaximumHarvests": 1,
-    "MaxHarvestsIncreasePerFarmingLevel": 0,
+    "MaxHarvestsIncreasePerFarmingLevel": 0, // extra items per farming level, added to the maximum
     "ExtraHarvestChance": 0.0,
     "HasQuality": true,                 // affected by quality
-    "AcceptsFertilizer": true,
-    "IsPaddyCrop": false,               // grows faster near water
-    "IsRaisedCrop": false,              // accepted but unused
-    "IsBushCrop": false,                // accepted but unused
-    "IsGiantCrop": false                // accepted but unused
+    "AcceptsFertilizer": true,          // when false, fertilizer is ignored (no speed, quality or cost)
+    "IsPaddyCrop": false                // grows faster near water
   }
 }
 ```
@@ -101,7 +98,7 @@ To add a crop the game data doesn't describe, add it to `assets/ManualCrops.json
 Other SMAPI mods can get `IProfitCalculatorApi` (see `apis/IProfitCalculatorApi.cs`) with `Helper.ModRegistry.GetApi<IProfitCalculatorApi>("6135.ProfitCalculator")`:
 
 - `AddCrop(seedItemId, harvestItemId, growthDays, regrowDays, seasons)` adds or replaces a crop;
-- `RemoveCrop(seedItemId)` removes a crop added through the API;
+- `RemoveCrop(seedItemId)` removes a crop added through the API (a built-in or asset crop it replaced comes back);
 - `SetSeedPrice(seedItemId, price)` overrides a seed price (a negative price clears it).
 
 For the full set of fields, edit the `ManualCrops` asset instead.

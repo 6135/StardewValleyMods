@@ -8,6 +8,6 @@
   "MinimumApiVersion": "4.0.0",
   "UpdateKeys": [],
   "Dependencies": [
-    { "UniqueID": "6135.UIFramework", "MinimumVersion": "1.7.0", "IsRequired": true }
+    { "UniqueID": "6135.UIFramework", "MinimumVersion": "1.8.0", "IsRequired": true }
   ]
 }

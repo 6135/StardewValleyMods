@@ -72,6 +72,12 @@ namespace UIFramework.Components
         /// <summary>Label-driven width of the open list, measured when it opens (see <see cref="NaturalListWidth"/>).</summary>
         private int openListWidth;
 
+        /// <summary>
+        /// The list was opened by a click: it takes focus while open (so the arrows move the highlight) and gives it back
+        /// when it closes, as a click-once control must (<see cref="FocusOnClick"/>).
+        /// </summary>
+        private bool openedByMouse;
+
         internal Dropdown(string id, Func<string[]>? choices, Func<string[]>? labels, Func<string>? getter, Action<string>? setter) : base(id)
         {
             choicesFunc = choices;
@@ -205,6 +211,33 @@ namespace UIFramework.Components
             }
         }
 
+        /// <summary>
+        /// While closed: re-read the choices when the delegate hands back a different array than the one shown, so a
+        /// changing choice list never shows a stale label or lets Up / Down commit a choice that is gone. The layout is
+        /// invalidated only when the choices or labels actually differ (the minimum width depends on them).
+        /// </summary>
+        private void SyncChoices()
+        {
+            if (IsOpen || choicesFunc == null)
+            {
+                return;
+            }
+
+            string[]? current = Raise("choices", choicesFunc, choices);
+            if (ReferenceEquals(current, choices))
+            {
+                return;
+            }
+
+            string[] oldChoices = choices;
+            string[] oldLabels = labels;
+            RefreshChoices();
+            if (!choices.AsSpan().SequenceEqual(oldChoices) || !labels.AsSpan().SequenceEqual(oldLabels))
+            {
+                InvalidateLayout();
+            }
+        }
+
         /// <summary>After the choices changed: keep the previously selected value if it still exists, else the first choice (or none).</summary>
         private int RestoreOwnIndex(string previous)
         {
@@ -281,7 +314,9 @@ namespace UIFramework.Components
         // ---------------------------------------------------------------------------------------------------------
 
         /// <summary>Open the list (no-op while detached, disabled, hidden, already open or without choices).</summary>
-        public void Open()
+        public void Open() => Open(byMouse: false);
+
+        private void Open(bool byMouse)
         {
             if (IsOpen || OwnerMenu == null || !Enabled || !Visible)
             {
@@ -299,6 +334,7 @@ namespace UIFramework.Components
             Focus();
             OwnerMenu.Overlay.OpenPopup(this);
             IsOpen = true;
+            openedByMouse = byMouse;
 
             int selected = SelectedIndex;
             highlightIndex = selected;
@@ -329,6 +365,14 @@ namespace UIFramework.Components
         {
             IsOpen = false;
             highlightIndex = -1;
+            if (openedByMouse)
+            {
+                openedByMouse = false;
+                if (IsFocused)
+                {
+                    OwnerMenu?.Focus.ClearFocus();
+                }
+            }
         }
 
         // ---------------------------------------------------------------------------------------------------------
@@ -357,7 +401,9 @@ namespace UIFramework.Components
         }
 
         /// <summary>Row height including the extra room scaled text needs.</summary>
-        private int RowHeight => DropdownRowHeight + Theme.ExtraTextHeight(Style.Font);
+        private int RowHeight => RowHeightFor(Style.Font);
+
+        private static int RowHeightFor(UIFont font) => DropdownRowHeight + Theme.ExtraTextHeight(font);
 
         /// <summary>Width of the text box part (the arrow button takes the rest).</summary>
         private int BoxWidth => Math.Max(0, Bounds.Width - ButtonWidth);
@@ -365,7 +411,7 @@ namespace UIFramework.Components
         /// <summary>
         /// Width the open list needs to show every label unshrunk (text + padding + the scroll indicator's strip when
         /// it overflows), capped at the text box width of a <see cref="DefaultWidth"/> dropdown so an unsqueezed dropdown
-        /// opens exactly as before. Measured once per <see cref="Open"/>, so a squeezed dropdown still opens a readable list.
+        /// opens exactly as before. Measured once per <see cref="Open()"/>, so a squeezed dropdown still opens a readable list.
         /// </summary>
         private int NaturalListWidth()
         {
@@ -385,24 +431,24 @@ namespace UIFramework.Components
         /// Absolute bounds of the open list: as wide as the text box, or wider when a squeezed box is narrower than the
         /// labels need (the popup is an overlay, so it can outgrow the control), clamped so it never leaves the screen.
         /// </summary>
-        private Rectangle ListBounds
+        private Rectangle ListBounds => ListBoundsFor(RowHeight);
+
+        private Rectangle ListBoundsFor(int rowHeight)
         {
-            get
-            {
-                Point viewport = UIServices.ViewportSize();
-                int rows = Math.Min(maxVisible, choices.Length);
-                int height = rows * RowHeight;
-                int width = Math.Min(Math.Max(BoxWidth, openListWidth), viewport.X);
-                int x = Math.Min(Bounds.X, viewport.X - width);
-                int y = Math.Min(Bounds.Y, viewport.Y - height);
-                return new Rectangle(Math.Max(0, x), Math.Max(0, y), width, height);
-            }
+            Point viewport = UIServices.ViewportSize();
+            int rows = Math.Min(maxVisible, choices.Length);
+            int height = rows * rowHeight;
+            int width = Math.Min(Math.Max(BoxWidth, openListWidth), viewport.X);
+            int x = Math.Min(Bounds.X, viewport.X - width);
+            int y = Math.Min(Bounds.Y, viewport.Y - height);
+            return new Rectangle(Math.Max(0, x), Math.Max(0, y), width, height);
         }
 
         protected internal override Rectangle PopupBounds => IsOpen ? ListBounds : Rectangle.Empty;
 
         protected override void DrawCore(SpriteBatch b)
         {
+            SyncChoices();
             ResolvedStyle style = Style;
             bool highlighted = Enabled && (IsHovered || IsFocused || IsOpen);
             Color tint = Theme.StateTint(Enabled, highlighted, style.HoverColor);
@@ -422,14 +468,14 @@ namespace UIFramework.Components
             }
 
             ResolvedStyle style = Style;
-            Rectangle list = ListBounds;
+            int rowHeight = RowHeightFor(style.Font);
+            Rectangle list = ListBoundsFor(rowHeight);
             DrawHelper.ThemedBox(b, Game1.mouseCursors, Theme.DropdownBoxSource, list, Color.White, SpriteScale);
 
             var interior = new Rectangle(list.X + HighlightInset, list.Y + HighlightInset, list.Width - (2 * HighlightInset), list.Height - (2 * HighlightInset));
             int start = ActivePosition;
             int end = Math.Min(choices.Length, start + maxVisible);
             int highlight = highlightIndex >= 0 ? highlightIndex : SelectedIndex;
-            int rowHeight = RowHeight;
             // rows give up the indicator's strip when the list overflows
             int reserved = HasOverflow ? IndicatorWidth + IndicatorGap : 0;
             for (int i = start; i < end; i++)
@@ -576,7 +622,7 @@ namespace UIFramework.Components
         {
             if (e.Target == this && e.Button == UIMouseButton.Left && Enabled)
             {
-                Open();
+                Open(byMouse: true);
                 base.HandleClick(e);
                 return true;
             }
@@ -604,9 +650,14 @@ namespace UIFramework.Components
 
         protected internal override bool HandleKey(UIKeyEvent e)
         {
-            bool handled = Enabled && choices.Length > 0 && HandleNavigationKey(e.Key);
-            base.HandleKey(e);
-            return handled || e.Handled;
+            // the consumer's OnKey first, as on every other component
+            if (base.HandleKey(e))
+            {
+                return true;
+            }
+
+            SyncChoices();
+            return Enabled && choices.Length > 0 && HandleNavigationKey(e.Key);
         }
 
         /// <summary>Up / Down move the selection (closed) or the highlight (open); Enter / Space commit the highlight while open.</summary>

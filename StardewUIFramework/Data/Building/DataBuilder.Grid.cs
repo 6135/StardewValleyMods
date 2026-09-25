@@ -77,7 +77,7 @@ namespace UIFramework.Data.Building
             ValueSource<bool>? predicate = a.Source(def.Filter, ValueParsers.Bool, path.Field("Filter"));
             if (predicate != null)
             {
-                filter = new GridFilter(predicate, rowScope, () => source?.Count ?? 0);
+                filter = new GridFilter(predicate, rowScope, () => source?.Count ?? 0, RowScope.ReadsOnlyRow(def.Filter, def.As));
                 grid.Filter = filter.Matches;
             }
 
@@ -189,21 +189,28 @@ namespace UIFramework.Data.Building
             private readonly ValueSource<bool> predicate;
             private readonly Func<int, DataScope> rowScope;
             private readonly Func<int> count;
+            private readonly bool readsOnlyRow;
             private bool[] last = Array.Empty<bool>();
             private long epoch = -1;
 
-            internal GridFilter(ValueSource<bool> predicate, Func<int, DataScope> rowScope, Func<int> count)
+            internal GridFilter(ValueSource<bool> predicate, Func<int, DataScope> rowScope, Func<int> count, bool readsOnlyRow)
             {
                 this.predicate = predicate;
                 this.rowScope = rowScope;
                 this.count = count;
+                this.readsOnlyRow = readsOnlyRow;
             }
 
             internal bool Matches(int index) => predicate.Get(rowScope(index));
 
-            /// <summary>Re-evaluate every row when the state moved; true when a result changed.</summary>
+            /// <summary>Re-evaluate every row when the state moved; true when a result changed. A filter that reads only the row changes only with the rows, which re-filter the grid anyway.</summary>
             internal bool Changed()
             {
+                if (readsOnlyRow)
+                {
+                    return false;
+                }
+
                 long now = DataStateStore.Active?.Epoch(DataStateStore.Screen) ?? 0;
                 if (now == epoch)
                 {

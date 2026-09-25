@@ -2,16 +2,13 @@ using ProfitCalculator.main.memory;
 using ProfitCalculator.apis;
 using ProfitCalculator.main;
 using ProfitCalculator.main.accessors;
-using ProfitCalculator.main.builders;
 using ProfitCalculator.main.models;
 using ProfitCalculator.main.ui;
 using StardewModdingAPI;
 using StardewModdingAPI.Events;
-using System;
 using System.Collections.Generic;
 using System.Linq;
 using UIFramework.Api;
-using CropData = ProfitCalculator.main.models.CropData;
 
 #nullable enable
 
@@ -22,7 +19,6 @@ namespace ProfitCalculator
     {
         private ModConfig? Config;
         private IStardewUIApi? uiApi;
-        private ProfitCalculatorSettings? settings;
         private ProfitCalculatorDataUI? dataUI;
         internal static readonly string UniqueID = "6135.ProfitCalculator";
         private const string UIFrameworkId = "6135.UIFramework";
@@ -50,6 +46,7 @@ namespace ProfitCalculator
             helper.Events.GameLoop.SaveLoaded += OnSaveGameLoaded;
             helper.Events.GameLoop.DayStarted += OnDayStartedResetCache;
             helper.Events.Content.AssetRequested += OnAssetRequested;
+            helper.Events.Content.AssetsInvalidated += OnAssetsInvalidated;
             helper.Events.Content.LocaleChanged += OnLocaleChanged;
         }
 
@@ -69,6 +66,31 @@ namespace ProfitCalculator
         {
             Container.Instance.GetInstance<ShopAccessor>(ModEntry.UniqueID)?.ForceRebuildCache();
             Container.Instance.GetInstance<MachineAccessor>(ModEntry.UniqueID)?.InvalidateCaches();
+            // the plants are shared by all split-screen players, so only the main screen (id 0) rebuilds them
+            if (Context.ScreenId == 0)
+            {
+                Container.Instance.GetInstance<Calculator>(ModEntry.UniqueID)?.RebuildCropsIfDirty();
+            }
+        }
+
+        /// <summary>Names of the assets the plant list is built from; an edit to one rebuilds the plants before the next calculation.</summary>
+        private static readonly string[] PlantAssets = { "Data/Crops", "Data/FruitTrees", "Data/WildTrees", ManualCropRegistry.ManualCropsAsset };
+
+        /// <summary>Keep the plants, shops and machines in step with game data edited mid-save (for example by Content Patcher).</summary>
+        private void OnAssetsInvalidated(object? sender, AssetsInvalidatedEventArgs e)
+        {
+            if (e.NamesWithoutLocale.Any(name => PlantAssets.Any(asset => name.IsEquivalentTo(asset))))
+            {
+                Container.Instance.GetInstance<Calculator>(UniqueID)?.MarkCropsDirty();
+            }
+            if (e.NamesWithoutLocale.Any(name => name.IsEquivalentTo("Data/Shops") || name.IsEquivalentTo(ManualCropRegistry.SeedPricesAsset)))
+            {
+                Container.Instance.GetInstance<ShopAccessor>(UniqueID)?.InvalidateCaches();
+            }
+            if (e.NamesWithoutLocale.Any(name => name.IsEquivalentTo("Data/Machines")))
+            {
+                Container.Instance.GetInstance<MachineAccessor>(UniqueID)?.InvalidateCaches();
+            }
         }
 
         /// <summary>Provide the manual crops and seed prices as game assets, so content packs can edit them.</summary>
@@ -103,7 +125,9 @@ namespace ProfitCalculator
             //register config menu if generic mod config menu is installed
             var configMenu = Container.Instance.GetInstance<IGenericModConfigMenuApi>(UniqueID);
             if (configMenu is null)
+            {
                 return;
+            }
             // register mod
             configMenu.Register(
                 mod: this.ModManifest,
@@ -122,7 +146,9 @@ namespace ProfitCalculator
                 setValue: value =>
                 {
                     if (this.Config != null)
+                    {
                         this.Config.HotKey = value;
+                    }
                 },
                 name: () => (this.Helper.Translation.Get("open") + " " + this.Helper.Translation.Get("app-name")).ToString(),
                 tooltip: () => this.Helper.Translation.Get("hot-key-tooltip")
@@ -136,7 +162,9 @@ namespace ProfitCalculator
                 setValue: value =>
                 {
                     if (this.Config != null)
+                    {
                         this.Config.ToolTipDelay = value;
+                    }
                 },
                 min: 0,
                 max: 1000
@@ -154,9 +182,8 @@ namespace ProfitCalculator
                 Monitor.Log($"UI Framework ({UIFrameworkId}) is not installed; the calculator cannot open its menus.", LogLevel.Error);
                 return;
             }
-            settings = new ProfitCalculatorSettings();
             // the screens are UI Framework data (assets/ui.json); ProfitCalculatorDataUI supplies what only C# computes
-            dataUI = new ProfitCalculatorDataUI(uiApi, Helper, Monitor, settings);
+            dataUI = new ProfitCalculatorDataUI(uiApi, Helper, Monitor);
             ApplyConfig();
         }
 
@@ -164,15 +191,19 @@ namespace ProfitCalculator
         private void ApplyConfig()
         {
             if (uiApi is null || dataUI is null)
+            {
                 return;
+            }
+
             dataUI.BindHotkey((Config?.HotKey ?? SButton.F8).ToString());
             // the legacy delay was counted in frames (60 per second); the framework takes milliseconds
             uiApi.SetTooltipDelay((Config?.ToolTipDelay ?? 30) * 1000 / 60);
         }
 
-        /// <summary>Re-translate the data screens (their text comes from the <c>@t</c> function).</summary>
+        /// <summary>Re-translate the data screens (their text comes from the <c>@t</c> function) and the produce type labels.</summary>
         private void OnLocaleChanged(object? sender, LocaleChangedEventArgs e)
         {
+            Container.Instance.GetInstance<MachineAccessor>(UniqueID)?.InvalidateCaches();
             dataUI?.RegisterFunctions();
         }
 
@@ -189,45 +220,21 @@ namespace ProfitCalculator
                 Container.Instance.RegisterInstance(CustomBushAPI, UniqueID);
             }
 
-            // take the day, season and money defaults from the save that was just loaded
-            settings?.Reset();
+            // take the day, season and money defaults from the save that was just loaded (this screen's settings only)
+            dataUI?.Settings.Reset();
 
+            // the plants are shared by all split-screen players: only the main screen (id 0) builds them, a joining screen keeps them
+            if (Context.ScreenId != 0)
+            {
+                return;
+            }
             var Calculator = Container.Instance.GetInstance<Calculator>(ModEntry.UniqueID);
             if (Calculator is null)
             {
                 Monitor.Log("Calculator is null", LogLevel.Error);
                 return;
             }
-            // start from scratch so crops from a previously loaded save (or edited assets) don't linger
-            Calculator.ClearCrops();
-            // the first builder to add an id wins, so manual / API crops override the built-in ones
-            List<IDataBuilder> builder = new()
-            {
-                new ManualCropBuilder(),
-                new CropBuilder(),
-                new FruitTreeBuilder(),
-                new BushBuilder(),
-                new WildTreeBuilder(),
-            };
-            if (CustomBushAPI != null)
-            {
-                builder.Add(new CustomBushBuilder());
-            }
-            //linq for each builder, call build crops and add to calculator
-            builder.ForEach(b =>
-            {
-                try
-                {
-                    b.BuildCrops().ToList().ForEach(c => Calculator.AddCrop(c.Key, c.Value));
-                }
-                catch (Exception e)
-                {
-                    Monitor.Log($"Error building crops with {b.GetType().Name}: {e.Message}", LogLevel.Error);
-                }
-            }
-            );
-            // the machine list depends on the crops that were just built
-            Container.Instance.GetInstance<MachineAccessor>(UniqueID)?.InvalidateCaches();
+            Calculator.RebuildCrops();
         }
     }
 }

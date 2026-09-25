@@ -109,7 +109,6 @@ namespace UIFramework.Data.Building
             switch (kind)
             {
                 case "checkbox":
-                case "bool":
                     (fieldKind, type, fallback) = (FormFieldKind.Bool, typeof(bool), DataValue.False);
                     break;
                 case "number":
@@ -228,14 +227,24 @@ namespace UIFramework.Data.Building
 
             public void Refresh(bool opening)
             {
-                DataValue[] now = Read();
-                if (!now.SequenceEqual(last) && !writing.Value)
+                // compare in place (runs every tick)
+                bool changed = false;
+                for (int i = 0; i < addresses.Count; i++)
+                {
+                    DataValue now = store.Read(addresses[i]);
+                    if (!now.Equals(last[i]))
+                    {
+                        last[i] = now;
+                        changed = true;
+                    }
+                }
+
+                if (changed && !writing.Value)
                 {
                     form.Refresh();
                 }
 
                 writing.Value = false;
-                last = now;
             }
 
             private DataValue[] Read() => addresses.Select(store.Read).ToArray();

@@ -1,0 +1,20 @@
+{
+  // demo menu (F9): read with Helper.Translation.Get from Func<string> getters, so a language change applies at once
+  "demo.title": "UI Framework demo",
+  "demo.ok": "OK ({{clicks}})",
+  "demo.about": "About...",
+  "demo.close": "Close",
+  "hud.open": "Open demo",
+
+  // about menu
+  "about.title": "About",
+  "about.text": "UI Framework example, API {{version}}.",
+  "about.back": "Back",
+
+  // item images menu (F7)
+  "items.title": "Item images (v1.2)",
+  "items.tint": "Tint: AddImage by id (left) vs AddItemImage (right)",
+  "items.overlay": "Overlays: 12 gold parsnips at scales 1-4 (F10 inspector shows the bounds)",
+  "items.options": "Options (scale 3)",
+  "items.dropdowns": "Dropdowns: scroll indicator when choices overflow"
+}

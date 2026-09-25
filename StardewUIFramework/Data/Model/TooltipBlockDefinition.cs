@@ -116,7 +116,7 @@ namespace UIFramework.Data.Model
 
                 default:
                     // a plain string: one line
-                    return new TooltipDefinition { Blocks = new List<TooltipBlockDefinition> { new() { Type = "Line", Text = token.ToString() } } };
+                    return new TooltipDefinition { Blocks = new List<TooltipBlockDefinition> { new() { Type = "Line", Text = JsonText.Of(token) } } };
             }
         }
 
