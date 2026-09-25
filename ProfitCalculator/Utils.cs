@@ -39,18 +39,18 @@ namespace ProfitCalculator
         /// Produce type id for selling the harvest as is. Any other produce type id is a machine's qualified id
         /// (for example <c>(BC)12</c>) or a chained aging id (for example <c>(BC)12&gt;(BC)163</c>), see <see cref="main.accessors.MachineAccessor"/>.
         /// </summary>
-        public const string RawProduceType = "Raw";
+        internal const string RawProduceType = "Raw";
 
         /// <summary>
         /// Produce type id listing only fruit trees, over <see cref="Calculator.Years"/> years. The fruit is sold raw.
         /// </summary>
-        public const string FruitTreesProduceType = "FruitTrees";
+        internal const string FruitTreesProduceType = "FruitTrees";
 
         /// <summary>
         /// Produce type id listing only wild trees with a tapper, over <see cref="Calculator.Years"/> years. The tapper
         /// products are sold raw.
         /// </summary>
-        public const string WildTreesProduceType = "WildTrees";
+        internal const string WildTreesProduceType = "WildTrees";
 
         /// <summary>
         /// Whether <paramref name="produceType"/> sells the harvest as is (no machine product): <see cref="RawProduceType"/>,

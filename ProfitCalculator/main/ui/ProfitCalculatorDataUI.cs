@@ -27,13 +27,13 @@ namespace ProfitCalculator.main.ui
     public sealed class ProfitCalculatorDataUI
     {
         /// <summary> Menu id of the main screen (an entry of <c>assets/ui.json</c>). </summary>
-        public const string MainMenuId = "main";
+        internal const string MainMenuId = "main";
 
         /// <summary> Menu id of the raw results screen. </summary>
-        public const string ResultsMenuId = "results";
+        internal const string ResultsMenuId = "results";
 
         /// <summary> Menu id of the machine-product results screen. </summary>
-        public const string MachineResultsMenuId = "results-machine";
+        internal const string MachineResultsMenuId = "results-machine";
 
         /// <summary> The definitions, relative to the mod folder. </summary>
         private const string DataFile = "assets/ui.json";

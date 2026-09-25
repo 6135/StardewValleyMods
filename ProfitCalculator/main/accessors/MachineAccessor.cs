@@ -68,7 +68,7 @@ namespace ProfitCalculator.main.accessors
     public class MachineAccessor
     {
         /// <summary> Separator between the two machine ids of a chained produce type id. </summary>
-        public const char ChainSeparator = '>';
+        internal const char ChainSeparator = '>';
 
         /// <summary> Days a cask takes to age an item to iridium quality at an aging multiplier of 1. </summary>
         private const double CaskDaysToIridium = 56;

@@ -144,8 +144,8 @@ namespace UIFramework.Components
                 // drawTinyDigits advances 5 * scale - 1 per digit; the last digit is 5 * scale wide
                 int digits = count.ToString(System.Globalization.CultureInfo.InvariantCulture).Length;
                 float width = ((digits - 1) * ((5f * OverlayScale) - 1f)) + (5f * OverlayScale);
-                float height = 7f * OverlayScale;
-                float starBottom = StarCenterY + (4f * OverlayScale);
+                const float height = 7f * OverlayScale;
+                const float starBottom = StarCenterY + (4f * OverlayScale);
                 Utility.drawTinyDigits(count, b, slot + new Vector2(MenuTileSize - width, starBottom - height), OverlayScale, Math.Min(1f, LayerDepth + 1E-06f), tint * alpha);
             }
         }

@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.Linq;
 using Newtonsoft.Json.Linq;
 using StardewModdingAPI;
 using StardewValley;
@@ -334,12 +335,7 @@ namespace UIFramework.Data.Building
                     return ItemRegistry.Create(text, allowNull: true);
                 }
 
-                foreach (Item item in Query(text, null, 1, out _))
-                {
-                    return item;
-                }
-
-                return ItemRegistry.Create(text, allowNull: true);
+                return Query(text, null, 1, out _).FirstOrDefault() ?? ItemRegistry.Create(text, allowNull: true);
             }
         }
 

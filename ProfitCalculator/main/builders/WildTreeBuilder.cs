@@ -21,7 +21,7 @@ namespace ProfitCalculator.main.builders
     public class WildTreeBuilder : IDataBuilder
     {
         /// <summary> Prefix of the keys of the built trees. </summary>
-        public const string KeyPrefix = "WildTree_";
+        internal const string KeyPrefix = "WildTree_";
 
         /// <inheritdoc/>
         public Dictionary<string, PlantData> BuildCrops()

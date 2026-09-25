@@ -299,7 +299,7 @@ namespace UIFramework.Data.Building
         }
 
         /// <summary>After a composite element was created: its children (C# composites: into the ContentTarget) and its <c>On</c> subscriptions.</summary>
-        private void FinishComposite(BuildContext ctx, Composite composite, ElementDefinition def, DataScope baseScope, DataScope elementScope, DataPath path)
+        private void FinishComposite(Composite composite, ElementDefinition def, DataScope baseScope, DataScope elementScope, DataPath path)
         {
             if (composite.ArgsBag.DataPayload is InstancePayload payload && !payload.Consumed)
             {

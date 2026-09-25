@@ -254,7 +254,7 @@ namespace UIFrameworkExample
         private void BuildDataGrid(IUIContainer parent)
         {
             string[] names = { "Parsnip", "Cauliflower", "Potato", "Kale", "Melon", "Blueberry", "Pumpkin", "Cranberries" };
-            int count = 40;
+            const int count = 40;
             IUIDataGrid grid = api.AddDataGrid(parent, "grid", 40, 5, () => count);
             grid.MarginTop = 8;
             grid.Selectable = true;

@@ -36,6 +36,7 @@ namespace UIFrameworkExample
 
         public void Update(Rectangle bounds, double elapsedMs)
         {
+            // a static frame: nothing to animate
         }
 
         /// <summary>Clicks on the frame itself (not on an embedded element) are not handled.</summary>

@@ -28,14 +28,14 @@ namespace UIFramework.Core
 
             if (kinds.Remove(kind, out SignalBinding? previous))
             {
-                previous.Dispose();
+                previous.Release();
             }
 
             kinds[kind] = binding;
             element.BindingOwner = this; // so detaching the element drops this table's bindings, whoever owns the menu
         }
 
-        /// <summary>Dispose every binding on <paramref name="element"/>.</summary>
+        /// <summary>Release every binding on <paramref name="element"/>.</summary>
         internal void Drop(UIElement element)
         {
             if (element.BindingOwner == this)
@@ -50,11 +50,11 @@ namespace UIFramework.Core
 
             foreach (SignalBinding binding in kinds.Values)
             {
-                binding.Dispose();
+                binding.Release();
             }
         }
 
-        /// <summary>Dispose the bindings of every element that belongs to <paramref name="menu"/>.</summary>
+        /// <summary>Release the bindings of every element that belongs to <paramref name="menu"/>.</summary>
         internal void DropMenu(UIMenu menu)
         {
             foreach (UIElement element in new List<UIElement>(table.Keys))
@@ -70,7 +70,7 @@ namespace UIFramework.Core
     /// <summary>A live link between a reactive value and an element; disposing restores the element.</summary>
     internal abstract class SignalBinding
     {
-        internal abstract void Dispose();
+        internal abstract void Release();
     }
 
     /// <summary>
@@ -114,7 +114,7 @@ namespace UIFramework.Core
             label.InvalidateLayout();
         }
 
-        internal override void Dispose()
+        internal override void Release()
         {
             source.UnsubscribeInternal(refresh);
             string frozen = cached;
@@ -136,7 +136,7 @@ namespace UIFramework.Core
             refresh();
         }
 
-        internal override void Dispose() => source.UnsubscribeInternal(refresh);
+        internal override void Release() => source.UnsubscribeInternal(refresh);
     }
 
     /// <summary>
@@ -163,6 +163,6 @@ namespace UIFramework.Core
             });
         }
 
-        internal override void Dispose() => rebind(originalGetter, originalSetter);
+        internal override void Release() => rebind(originalGetter, originalSetter);
     }
 }

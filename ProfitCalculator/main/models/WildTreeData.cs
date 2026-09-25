@@ -37,10 +37,10 @@ namespace ProfitCalculator.main.models
     public class WildTreeData : PlantData
     {
         /// <summary> Growth stage at which a wild tree is fully grown and can be tapped (<c>Tree.treeStage</c>). </summary>
-        public const int MatureStage = 5;
+        internal const int MatureStage = 5;
 
         /// <summary> Time multiplier of the heavy tapper (context tag <c>tapper_multiplier_2</c>, so 1 / 2). </summary>
-        public const float HeavyTapperTimeMultiplier = 0.5f;
+        internal const float HeavyTapperTimeMultiplier = 0.5f;
 
         /// <summary> Replacement token for the previous output in <c>TapItems</c> item ids. </summary>
         private const string PreviousOutputToken = "PREVIOUS_OUTPUT_ID";

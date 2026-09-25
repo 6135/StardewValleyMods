@@ -289,7 +289,7 @@ namespace UIFramework.Data.Loading
             {
                 if (def.ChoicesSource != null)
                 {
-                    CheckSource(def.ChoicesSource, owner, path.Field("ChoicesSource"), log);
+                    CheckSource(def.ChoicesSource, path.Field("ChoicesSource"), log);
                     CheckExpression(def.ChoiceValue, path.Field("ChoiceValue"), log);
                     CheckExpression(def.ChoiceLabel, path.Field("ChoiceLabel"), log);
                     if (def.Choices != null)
@@ -526,13 +526,13 @@ namespace UIFramework.Data.Loading
             {
                 if (source != null)
                 {
-                    CheckSource(source, owner, path.Field(name), log);
+                    CheckSource(source, path.Field(name), log);
                 }
             }
         }
 
         /// <summary>Check a row source (kind, members, expressions, state key, named entry).</summary>
-        private void CheckSource(SourceDefinition? source, string owner, DataPath path, DataMessageLog log)
+        private void CheckSource(SourceDefinition? source, DataPath path, DataMessageLog log)
         {
             if (source == null)
             {
@@ -626,7 +626,7 @@ namespace UIFramework.Data.Loading
             switch (type)
             {
                 case ElementTypes.List:
-                    CheckSource(def.Source, owner, path.Field("Source"), log);
+                    CheckSource(def.Source, path.Field("Source"), log);
                     if (def.Source == null)
                     {
                         log.Warn(path.Field("Source"), "a List needs a Source; it shows no rows.");
@@ -642,7 +642,7 @@ namespace UIFramework.Data.Loading
                     break;
 
                 case ElementTypes.DataGrid:
-                    CheckSource(def.Source, owner, path.Field("Source"), log);
+                    CheckSource(def.Source, path.Field("Source"), log);
                     if (def.Source == null)
                     {
                         log.Warn(path.Field("Source"), "a DataGrid needs a Source; it shows no rows.");
@@ -656,7 +656,7 @@ namespace UIFramework.Data.Loading
                     break;
 
                 case ElementTypes.Repeat:
-                    CheckSource(def.Repeat, owner, path.Field("Repeat"), log);
+                    CheckSource(def.Repeat, path.Field("Repeat"), log);
                     if (def.Children == null || def.Children.Count == 0)
                     {
                         log.Warn(path.Field("Children"), "a Repeat needs Children (the elements copied for each row).");

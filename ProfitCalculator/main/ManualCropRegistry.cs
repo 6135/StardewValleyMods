@@ -12,10 +12,10 @@ namespace ProfitCalculator.main
     public class ManualCropRegistry
     {
         /// <summary>Asset name of the manual crops data (<c>Dictionary&lt;string, ManualCropDefinition&gt;</c>, keyed by seed id).</summary>
-        public const string ManualCropsAsset = "Mods/6135.ProfitCalculator/ManualCrops";
+        internal const string ManualCropsAsset = "Mods/6135.ProfitCalculator/ManualCrops";
 
         /// <summary>Asset name of the seed price data (<c>Dictionary&lt;string, int&gt;</c>, keyed by seed id).</summary>
-        public const string SeedPricesAsset = "Mods/6135.ProfitCalculator/SeedPrices";
+        internal const string SeedPricesAsset = "Mods/6135.ProfitCalculator/SeedPrices";
 
         private readonly Dictionary<string, ManualCropDefinition> crops = new();
         private readonly Dictionary<string, int> seedPrices = new();

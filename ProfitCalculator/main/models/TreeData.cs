@@ -20,7 +20,7 @@ namespace ProfitCalculator.main.models
     public class TreeData : PlantData
     {
         /// <summary> Days a sapling needs to mature (<c>FruitTree.daysUntilMature</c> starts at 28), in any season. </summary>
-        public const int MaturityDays = 28;
+        internal const int MaturityDays = 28;
 
         /// <summary> Highest quality index (iridium) in <see cref="Calculator.PriceMultipliers"/>. </summary>
         private const int MaxQualityIndex = 3;

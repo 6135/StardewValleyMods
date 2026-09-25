@@ -13,10 +13,10 @@ namespace ProfitCalculator.main.models
     public static class PlantingCalendar
     {
         /// <summary> Days in a season. </summary>
-        public const int DaysPerSeason = 28;
+        internal const int DaysPerSeason = 28;
 
         /// <summary> Days in a year (4 seasons). </summary>
-        public const int DaysPerYear = DaysPerSeason * 4;
+        internal const int DaysPerYear = DaysPerSeason * 4;
 
         /// <summary>
         /// Day of the month (1 to 28) <paramref name="daysAfterPlanting"/> days after planting on <paramref name="plantingDay"/>.

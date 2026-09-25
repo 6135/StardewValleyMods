@@ -80,7 +80,8 @@ namespace UIFramework.Core
             {
                 if (property.Section != null)
                 {
-                    AddSection(id + ".section" + sections++, property.Section, ref row);
+                    AddSection(id + ".section" + sections, property.Section, ref row);
+                    sections++;
                 }
 
                 var field = new FormField(this, property, id);

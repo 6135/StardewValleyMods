@@ -405,7 +405,7 @@ namespace UIFramework.Data.Building
 
             if (def.Type == ElementTypes.Composite)
             {
-                FinishComposite(ctx, (Composite)internalElement, def, baseScope, scope, path);
+                FinishComposite((Composite)internalElement, def, baseScope, scope, path);
             }
             else if (def.Type == ElementTypes.Template)
             {
