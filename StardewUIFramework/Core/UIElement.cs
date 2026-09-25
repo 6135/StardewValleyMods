@@ -300,7 +300,6 @@ namespace UIFramework.Core
         public bool IsFocused => OwnerMenu?.Focus.Focused == this;
         public bool IsHovered => OwnerMenu?.Hovered == this;
 
-
         public void Focus()
         {
             if (Focusable && OwnerMenu != null)

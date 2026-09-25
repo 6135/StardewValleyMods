@@ -210,7 +210,7 @@ namespace UIFramework.Data.Building
         {
             key = Keys.None;
             string trimmed = text?.Trim() ?? string.Empty;
-            return trimmed.Length > 0 && !char.IsDigit(trimmed[0]) && Enum.TryParse(trimmed, ignoreCase: true, out key) && Enum.IsDefined(key) && key != Keys.None
+            return (trimmed.Length > 0 && !char.IsDigit(trimmed[0]) && Enum.TryParse(trimmed, ignoreCase: true, out key) && Enum.IsDefined(key) && key != Keys.None)
                 || (trimmed.Length == 1 && char.IsDigit(trimmed[0]) && Enum.TryParse("D" + trimmed, out key));
         }
 

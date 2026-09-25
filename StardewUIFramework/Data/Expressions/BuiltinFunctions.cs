@@ -195,7 +195,7 @@ namespace UIFramework.Data.Expressions
                     occurrences++;
                 }
 
-                context.CheckLength(text.Length + occurrences * (replacement.Length - search.Length));
+                context.CheckLength(text.Length + (occurrences * (replacement.Length - search.Length)));
             }
 
             return DataValue.FromString(text.Replace(search, replacement, StringComparison.Ordinal));
