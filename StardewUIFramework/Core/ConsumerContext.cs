@@ -18,7 +18,6 @@ namespace UIFramework.Core
 
         internal string ModId { get; }
 
-
         /// <summary>Tooltip delay override for this consumer (null = framework config).</summary>
         internal int? TooltipDelayMs { get; set; }
 

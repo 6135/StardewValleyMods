@@ -299,7 +299,6 @@ namespace UIFramework.Data.Model
         /// <summary>Image: an image reference (sprite:Owner/name, item:(O)24, asset:Path@x,y,w,h, or a texture asset name).</summary>
         public string? Sprite { get; set; }
 
-
         /// <summary>Image / ItemImage tint color.</summary>
         public string? Tint { get; set; }
 

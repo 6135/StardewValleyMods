@@ -180,7 +180,7 @@ namespace UIFramework.Data.Building
             UIContainer destination = op.Into != null
                 ? anchor as UIContainer ?? throw new InvalidOperationException($"'{anchor.Id}' is not a container.")
                 : anchor.ParentElement ?? throw new InvalidOperationException($"'{anchor.Id}' has no parent.");
-            if (anchor == target || target is UIContainer self && destination.IsSelfOrDescendantOf(self))
+            if (anchor == target || (target is UIContainer self && destination.IsSelfOrDescendantOf(self)))
             {
                 throw new InvalidOperationException($"'{target.Id}' cannot move into itself.");
             }
@@ -219,7 +219,6 @@ namespace UIFramework.Data.Building
                     element.ParentElement?.Remove(element);
                 }
             });
-
         }
 
         /// <summary>Set one member (possibly live); returns how to restore its previous value, or null when the element has no such member.</summary>

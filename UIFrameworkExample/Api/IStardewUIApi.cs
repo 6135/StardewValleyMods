@@ -1180,7 +1180,6 @@ namespace UIFramework.Api
         IUISignal DataState(string key);
 
         // END DATA members
-
     }
 
     // =================================================================================================================
@@ -1811,5 +1810,4 @@ namespace UIFramework.Api
     }
 
     // END DATA types
-
 }

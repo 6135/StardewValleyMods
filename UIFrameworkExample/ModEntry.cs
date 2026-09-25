@@ -210,7 +210,6 @@ namespace UIFrameworkExample
             api.AddButton(lines, "hud.open", () => "Open demo", _ => menu?.Open(false));
         }
 
-
         /// <summary>A "Theme" dropdown bound to the framework's theme list: switching it restyles every framework menu (and persists).</summary>
         private void BuildThemeRow(IStardewUIApi api, IUIContainer parent)
         {
@@ -313,16 +312,16 @@ namespace UIFrameworkExample
             item.MinWidth = 120;
 
             IUIDataGridColumn qty = grid.AddColumn("qty", () => "Qty", "110px");
-            qty.Text = row => ((row * 7) % 23 + 1).ToString();
-            qty.SortNumber = row => (row * 7) % 23 + 1;
+            qty.Text = row => (((row * 7) % 23) + 1).ToString();
+            qty.SortNumber = row => ((row * 7) % 23) + 1;
             qty.Align = UIAlign.End;
             qty.Sortable = true;
             qty.Resizable = true;
             qty.MinWidth = 60;
 
             IUIDataGridColumn price = grid.AddColumn("price", () => "Price", "140px");
-            price.Text = row => $"{(row * 37) % 500 + 25}g";
-            price.SortNumber = row => (row * 37) % 500 + 25;
+            price.Text = row => $"{((row * 37) % 500) + 25}g";
+            price.SortNumber = row => ((row * 37) % 500) + 25;
             price.Align = UIAlign.End;
             price.Sortable = true;
             price.CellTooltip = row => $"Row {row}: {names[row % names.Length]}";

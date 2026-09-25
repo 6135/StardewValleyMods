@@ -142,7 +142,7 @@ namespace UIFramework.Rendering
 
             float fullHeight = UIServices.Text.Measure(font, text, scale).Y;
             float fitScale = scale;
-            while (UIServices.Text.Measure(font, text, fitScale).X > rect.Width && fitScale > MinFitScale * scale + 0.001f)
+            while (UIServices.Text.Measure(font, text, fitScale).X > rect.Width && fitScale > (MinFitScale * scale) + 0.001f)
             {
                 fitScale = Math.Max(MinFitScale * scale, fitScale - (0.1f * scale));
             }

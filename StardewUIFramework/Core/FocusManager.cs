@@ -38,7 +38,6 @@ namespace UIFramework.Core
 
         internal UIElement? Focused { get; private set; }
 
-
         internal FocusManager(UIMenu menu)
         {
             this.menu = menu;
