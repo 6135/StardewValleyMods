@@ -5,7 +5,7 @@
   "Description": "Example content pack for UI Framework: menus, a HUD and a settings screen built entirely from Content Patcher data (no C#), plus a hybrid menu over the UI Framework Example mod's C# composites, command and draw hook, cross-mod templates, data composites and contributions (also to the example mod's C# menu) when it is installed.",
   "UniqueID": "6135.UIFrameworkExample.CP",
   "MinimumApiVersion": "4.0.0",
-  "UpdateKeys": [],
+  "UpdateKeys": [ "Nexus:52945" ],
   "Dependencies": [
     {
       "UniqueID": "6135.UIFramework",
