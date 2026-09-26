@@ -45,7 +45,13 @@ jobs:
           tag=$(jq -r .tag "$info")
           title=$(jq -r .title "$info")
           attestation=$(jq -r '.attestation // ""' "$info")
-          mapfile -t zips < <(jq -r '.mods[].zip | "release/" + .' "$info")
+          # gh expands asset paths as globs, so escape the glob characters in names like "[CP] Sweet Mines 1.0.0.zip"
+          b='\'
+          zips=()
+          while IFS= read -r zip; do
+            zip=${zip//"$b"/"$b$b"}; zip=${zip//"["/"$b["}; zip=${zip//"]"/"$b]"}; zip=${zip//"*"/"$b*"}; zip=${zip//"?"/"$b?"}
+            zips+=("release/$zip")
+          done < <(jq -r '.mods[].zip' "$info")
 
           prerelease=()
           if [[ "$(jq -r .prerelease "$info")" == "true" ]]; then prerelease=(--prerelease); fi
