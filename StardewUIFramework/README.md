@@ -28,7 +28,8 @@ items or screens of its own. If no installed mod requires it you can remove it.
 1. Install [SMAPI](https://smapi.io) 4.x (Stardew Valley 1.6 or later).
 2. Optionally install [Generic Mod Config Menu](https://www.nexusmods.com/stardewvalley/mods/5098) to edit the
    settings in-game.
-3. Unzip the mod into `Stardew Valley/Mods` so that `Mods/UIFramework/manifest.json` exists.
+3. Download UI Framework from [Nexus](https://www.nexusmods.com/stardewvalley/mods/52945) and unzip it into `Stardew Valley/Mods` so that
+   `Mods/UIFramework/manifest.json` exists.
 4. Run the game through SMAPI.
 
 ### Configuration

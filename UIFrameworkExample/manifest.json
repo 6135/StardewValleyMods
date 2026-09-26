@@ -6,7 +6,7 @@
   "UniqueID": "6135.UIFrameworkExample",
   "EntryDll": "UIFrameworkExample.dll",
   "MinimumApiVersion": "4.0.0",
-  "UpdateKeys": [],
+  "UpdateKeys": [ "Nexus:52945" ],
   "Dependencies": [
     { "UniqueID": "6135.UIFramework", "MinimumVersion": "1.8.0", "IsRequired": true }
   ]

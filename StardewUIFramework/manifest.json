@@ -12,5 +12,5 @@
     // optional: screen reader announcements (Integrations/ScreenReader)
     { "UniqueID": "shoaib.stardewaccess", "IsRequired": false }
   ],
-  "UpdateKeys": []
+  "UpdateKeys": [ "Nexus:52945" ]
 }
