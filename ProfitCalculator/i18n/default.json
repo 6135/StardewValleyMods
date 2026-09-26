@@ -1,5 +1,4 @@
 {
-  "not-implemented": "Not Implemented",
   "open": "Open",
   "app-name": "Profit Calculator",
   "hot-key-tooltip": "Hotkey to open the calculator",
@@ -15,7 +14,12 @@
   "max-money": "Max money",
   "base-stats": "Base stats",
   "cross-season": "Cross season",
+  "years": "Years",
+  "heavy-tapper": "Heavy tapper",
+  "tree-fertilizer": "Tree fertilizer",
   "crop": "Crop",
+  "product": "Product",
+  "made-from": "Made from",
   "no-results": "No crop can be planted with these settings.",
   "calculate": "Calculate",
   "reset": "Reset",
@@ -25,15 +29,13 @@
   "spring": "Spring",
   "summer": "Summer",
   "fall": "Fall",
-  "autumn": "Autumn",
   "winter": "Winter",
-  "spring-summer": "Spring/Summer",
-  "summer-fall": "Summer/Fall",
   "greenhouse": "Greenhouse",
   //produce types
   "raw": "Raw",
-  "keg": "Keg",
-  "cask": "Cask",
+  "fruit-trees": "Fruit trees",
+  "wild-trees": "Wild trees",
+  "produce-chain": "{{first}} + {{second}}",
   //fertilizer types
   "none": "None",
   "basic": "Basic",
@@ -49,7 +51,7 @@
   "total-p": "Total Profit",
   "total-p-day": "Profit/Day",
   "tooltip-delay": "ToolTip Delay",
-  "tooltip-delay-desc": "How long it takes for the profit tooltip to show up when hovering over each entry. Default is 30. Note this unit is not a time unit, but an arbitrary one where the greater the value the longer the wait.",
+  "tooltip-delay-desc": "How long it takes for the profit tooltip to show up when hovering over each entry, in frames (60 = 1 second). Default is 30.",
   "total-s-loss": "T. Seed loss",
   "total-s-loss-day": "SeedLoss/Day",
   "total-f-loss": "T. Fertilizer loss",
@@ -69,5 +71,9 @@
   "min-harvests": "Minimun # of Drops",
   "max-harvests": "Maximum # of Drop",
   "max-harvests-level": "Max # Drops/Level",
-  "extra-harvest-chance": "Extra chance"
+  "extra-harvest-chance": "Extra chance",
+  "inputs-per-product": "Inputs per product",
+  "processing-time": "Processing time",
+  "payback": "Pays back on day {{day}}",
+  "payback-never": "Never pays back"
 }

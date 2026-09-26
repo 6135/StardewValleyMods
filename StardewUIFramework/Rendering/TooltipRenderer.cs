@@ -11,7 +11,7 @@ using UIFramework.Core;
 namespace UIFramework.Rendering
 {
     /// <summary>
-    /// Draws a <see cref="RichTooltip"/> next to the cursor: a vanilla 9-slice box (<c>Game1.menuTexture</c> 0,256,60,60)
+    /// Draws a <see cref="RichTooltip"/> next to the cursor: the theme's panel box (<see cref="DrawHelper.PanelBox"/>, so text colors match it)
     /// sized to its content, positioned and clamped like <c>IClickableMenu.drawHoverText</c>. Rows are laid out with
     /// <see cref="UIServices.Text"/> so sizing runs without the game; only <see cref="Draw"/> touches <see cref="Game1"/>.
     /// </summary>
@@ -62,7 +62,7 @@ namespace UIFramework.Rendering
             Point size = MeasureRows(rows);
             Point at = Place(menu.CursorX, menu.CursorY, size, vp);
             var box = new Rectangle(at.X, at.Y, size.X, size.Y);
-            DrawHelper.Box(b, Game1.menuTexture, Theme.PanelBoxSource, box, Color.White, 1f, shadow: true);
+            DrawHelper.PanelBox(b, box, Color.White);
 
             float y = box.Y + Padding;
             foreach (Row row in rows)
@@ -122,6 +122,12 @@ namespace UIFramework.Rendering
             IReadOnlyList<TooltipBlock> blocks = tooltip.Blocks;
             for (int i = 0; i < blocks.Count; i++)
             {
+                // rows are built once per frame and both sized and drawn from this list, so a hidden block drops out of both
+                if (!IsShown(element, blocks[i], i))
+                {
+                    continue;
+                }
+
                 Row? row = BuildRow(element, blocks[i], i, wrap);
                 if (row != null)
                 {
@@ -136,10 +142,11 @@ namespace UIFramework.Rendering
         {
             return block.Kind switch
             {
-                TooltipBlockKind.Title => TextRow(Evaluate(element, block, "RichTooltip.Title#" + index), UIFont.Dialogue, null, wrap),
-                TooltipBlockKind.Line => TextRow(Evaluate(element, block, "RichTooltip.Line#" + index), UIFont.Small, block.Color, wrap),
+                TooltipBlockKind.Title => TextRow(Evaluate(element, block, "RichTooltip.Title#" + index), UIFont.Dialogue, ColorOf(element, block, index), wrap),
+                TooltipBlockKind.Line => TextRow(Evaluate(element, block, "RichTooltip.Line#" + index), UIFont.Small, ColorOf(element, block, index), wrap),
                 TooltipBlockKind.Icon => IconRow(block),
                 TooltipBlockKind.Item => ItemRow(block),
+                TooltipBlockKind.ItemInstance => ItemInstanceRow(element, block, index),
                 TooltipBlockKind.Divider => DividerRow(),
                 TooltipBlockKind.Money => MoneyRow(element, block, index),
                 _ => null
@@ -151,6 +158,23 @@ namespace UIFramework.Rendering
             return element.Consumer.Invoke(element.Id, eventName, block.Text, string.Empty) ?? string.Empty;
         }
 
+        /// <summary>The block's <see cref="TooltipBlock.When"/> condition (true when unset; a throwing condition hides the block).</summary>
+        private static bool IsShown(UIElement element, TooltipBlock block, int index)
+        {
+            return block.When == null || element.Consumer.Invoke(element.Id, "RichTooltip.When#" + index, block.When, false);
+        }
+
+        /// <summary>Text color: <see cref="TooltipBlock.ColorFunc"/> when set and non-null, else the static <see cref="TooltipBlock.Color"/>.</summary>
+        private static Color? ColorOf(UIElement element, TooltipBlock block, int index)
+        {
+            if (block.ColorFunc == null)
+            {
+                return block.Color;
+            }
+
+            return element.Consumer.Invoke(element.Id, "RichTooltip.Color#" + index, block.ColorFunc, null) ?? block.Color;
+        }
+
         /// <summary>A (rich, wrapped) text row; skipped when empty.</summary>
         private static Row? TextRow(string markup, UIFont font, Color? color, int wrap)
         {
@@ -159,12 +183,39 @@ namespace UIFramework.Rendering
                 return null;
             }
 
-            RichLayout layout = RichText.Layout(RichText.Parse(markup), font, 1f, wrap);
+            RichLayout layout = LayoutOf(markup, font, wrap);
             return new Row(layout.Size.X, layout.Size.Y, (b, at, _) =>
             {
                 var rect = new Rectangle((int)at.X, (int)at.Y, (int)Math.Ceiling(layout.Size.X), (int)Math.Ceiling(layout.Size.Y));
                 RichText.Draw(b, layout, rect, color ?? Theme.TextColor, true, UIAlign.Start, null);
             });
+        }
+
+        /// <summary>Most text-row layouts kept; the cache is dropped when it grows past this (evaluated markup can change every frame).</summary>
+        private const int LayoutCacheLimit = 64;
+
+        /// <summary>
+        /// Text-row layouts by (markup, font, wrap) plus the inputs measuring depends on (theme font scale, pseudo-localization),
+        /// so a visible tooltip does not re-parse and re-wrap every frame.
+        /// </summary>
+        private static readonly Dictionary<(string Markup, UIFont Font, int Wrap, float FontScale, bool Pseudo), RichLayout> LayoutCache = new();
+
+        private static RichLayout LayoutOf(string markup, UIFont font, int wrap)
+        {
+            var key = (markup, font, wrap, Theme.FontScale, Pseudo.Enabled);
+            if (LayoutCache.TryGetValue(key, out RichLayout? cached))
+            {
+                return cached;
+            }
+
+            if (LayoutCache.Count >= LayoutCacheLimit)
+            {
+                LayoutCache.Clear();
+            }
+
+            RichLayout layout = RichText.Layout(RichText.Parse(markup), font, 1f, wrap);
+            LayoutCache[key] = layout;
+            return layout;
         }
 
         /// <summary>A block icon on its own row.</summary>
@@ -193,6 +244,27 @@ namespace UIFramework.Rendering
             return new Row(icon + IconGap + nameSize.X, Math.Max(icon, nameSize.Y), (b, at, _) =>
             {
                 ItemSprite.Draw(b, data, new Rectangle((int)at.X, (int)at.Y, icon, icon), Color.White);
+                DrawHelper.Text(b, name, UIFont.Small, new Vector2(at.X + icon + IconGap, at.Y), Theme.TextColor, true, 1f);
+            });
+        }
+
+        /// <summary>An item instance (drawn with <c>drawInMenu</c>, so tints are kept) scaled to the line height, followed by its display name; skipped when the getter returns null.</summary>
+        private static Row? ItemInstanceRow(UIElement element, TooltipBlock block, int index)
+        {
+            Item? item = element.Consumer.Invoke<Item?>(element.Id, "RichTooltip.ItemInstance#" + index, block.ItemGetter, null);
+            if (item == null)
+            {
+                return null;
+            }
+
+            float lineHeight = UIServices.Text.LineHeight(UIFont.Small);
+            string name = Pseudo.Transform(item.DisplayName);
+            Vector2 nameSize = UIServices.Text.Measure(UIFont.Small, name, 1f);
+            int icon = (int)lineHeight;
+            return new Row(icon + IconGap + nameSize.X, Math.Max(icon, nameSize.Y), (b, at, _) =>
+            {
+                element.Consumer.Invoke(element.Id, "RichTooltip.ItemInstanceDraw#" + index,
+                    () => Components.ItemImage.DrawItem(b, item, at, icon, 1f, UIItemStack.Hide, Color.White, false));
                 DrawHelper.Text(b, name, UIFont.Small, new Vector2(at.X + icon + IconGap, at.Y), Theme.TextColor, true, 1f);
             });
         }

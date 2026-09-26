@@ -1,0 +1,158 @@
+{
+  /* demo menu */
+  // translator note: texts marked "in an expression" are inserted inside double quotes, so they must not contain "
+  "demo.title": "UI Framework Data Demo",
+  // in an expression; {name} is replaced by the name typed in the form
+  "demo.greeting": "Hello, {name}!",
+  "demo.intro": "This menu is [b]pure data[/b]: a Content Patcher pack, no C#. ${menu.greeting} [link=about]About this demo[/link]",
+  "demo.tab.form": "Form",
+  "demo.tab.buttons": "Buttons",
+  "demo.tab.media": "Media & theme",
+  "demo.tab.collections": "Collections",
+
+  "demo.name": "Name",
+  "demo.name.default": "Farmer",
+  "demo.name.placeholder": "Your name",
+  // in an expression
+  "demo.name.invalid": "Names cannot contain #",
+  "demo.day": "Day",
+  "demo.season": "Season",
+  "demo.volume": "Volume",
+  "demo.tips": "Show tips",
+  "demo.tips.tooltip": "A checkbox bound to menu.tips.",
+  "demo.summary": "${menu.name}, day ${menu.day} of ${menu.seasonName}, volume ${round(menu.volume)}%${menu.tips ? ' (tips on)' : ''}",
+
+  "demo.count": "Click me (${menu.clicks})",
+  "demo.count.tooltip": "Adds 1 to menu.clicks (6135.UIFramework_AddState). Right-click or Ctrl+R resets it.",
+  "demo.count.label": "Clicked ${menu.clicks} time${menu.clicks == 1 ? '' : 's'}; a toast appears every 10 clicks.",
+  "demo.clicks.milestone": "${menu.clicks} clicks!",
+  "demo.clicks.reset": "Click counter reset.",
+  "demo.toast": "Toast",
+  "demo.money": "Get 100g",
+  "demo.money.tooltip": "Runs the vanilla trigger action AddMoney 100.",
+  "demo.money.done": "+100g",
+  "demo.money.help": "This line exists only while the money button is hovered: its Out binding writes IsHovered into menu.hoverHelp, and this label has If: menu.hoverHelp.",
+
+  "demo.parsnip.title": "Parsnip",
+  "demo.parsnip.tooltip": "A sprite from the Sprites asset (sprite:...), with a rich tooltip.",
+  "demo.parsnip.clicks": "You clicked the counter ${menu.clicks} time${menu.clicks == 1 ? '' : 's'} (this line has a When).",
+  "demo.wine.tooltip": "An item query (FLAVORED_ITEM Wine (O)398): gold quality, stack of 3, tinted like the real wine.",
+  "demo.media": "Images come from sprite, item and asset references (sprite:, item:, asset:) and item queries.",
+  "demo.theme": "Theme",
+  "demo.theme.current": "Active: ${ui.theme}",
+
+  "demo.settings": "Settings",
+  "demo.hud": "Toggle HUD",
+  "demo.hud.tip": "Shows or hides the HUD widget in the top-left corner (it stays visible over menus).",
+  "demo.about": "About",
+  "demo.close": "Close",
+
+  /* collections tab */
+  "demo.seasons": "A nested Repeat: the inner repeat reads the outer row as 'season'.",
+  "demo.seasons.tooltip": "${itemName(crop)} (${season.name})",
+  "demo.wishes": "Wish list (a Repeat over menu.wishes):",
+  "demo.wishes.more": "Longer wish list",
+  "demo.list": "A List with a row template (sorted by name, click a row to select it):",
+  "demo.list.picked": "${menu.pickedCrop >= 0 ? 'Selected: entry ' + (menu.pickedCrop + 1) + ' of the crops source (source order, not the sorted order shown)' : 'Nothing selected'}",
+  "demo.grid.minPrice": "Minimum price",
+  "demo.grid.sortName": "Sort by name",
+  "demo.grid.clear": "Clear selection",
+  "demo.grid.name": "Crop",
+  "demo.grid.price": "Price",
+  "demo.grid.perDay": "Profit / day",
+  "demo.grid.perDay.tooltip": "(price - seed) / days = ${round((row.price - row.seed) / row.days, 2)}g",
+  "demo.grid.tip.grow": "Grows in ${row.days} days in ${row.season}. Seeds cost ${money(row.seed)}; it sells for",
+  "demo.grid.tip.profit": "Profit per harvest: ${money(row.price - row.seed)}",
+  "demo.grid.tip.cheap": "Sells for less than twice its seed price!",
+  "demo.grid.picked": "Selected source entries (Ctrl / Shift + click, numbered in source order from 0): ${len(menu.pickedRows) > 0 ? menu.pickedRows : 'none'}. Double-click a row for a toast.",
+
+  "season.spring": "Spring",
+  "season.summer": "Summer",
+  "season.fall": "Fall",
+  "season.winter": "Winter",
+  // season names are also used in an expression (the form summary)
+
+  /* settings menu (config.* values, read back by Content Patcher) */
+  "settings.title": "Demo settings",
+  "settings.intro": "A data Form over config.* state: saved for every save file, and read by this pack's Content Patcher patch through the 6135.UIFramework/State token (changes apply at the next day start, or after 'patch update'). Edits apply at once; Cancel restores the last Save and Undo / Redo walk the history.",
+  "settings.section.parsnip": "Parsnip",
+  "settings.section.more": "More",
+  "settings.note": "Parsnip note",
+  "settings.note.tooltip": "Adds a star rating to the parsnip's description.",
+  "settings.stars": "Stars",
+  "settings.nickname": "Nickname",
+  // in an expression
+  "settings.nickname.required": "The nickname cannot be empty.",
+  "settings.flavor": "Favorite product",
+  "settings.flavor.wine": "Wine",
+  "settings.flavor.juice": "Juice",
+  "settings.flavor.jelly": "Jelly",
+  "settings.flavor.pickles": "Pickles",
+  "settings.saved": "Settings saved.",
+  "settings.state": "${el[settingsForm].dirty ? 'Unsaved changes' : 'Everything is saved'}${el[settingsForm].canUndo ? ' (Undo available)' : ''}",
+  "settings.preview": "The parsnip's description will end with ${config.stars} star${config.stars == 1 ? '' : 's'}.",
+  "settings.done": "Done",
+
+  /* HUD */
+  "hud.clicks": "Demo clicks: ${num(menu.clicks)}",
+
+  /* Content Patcher patch driven by config.* */
+  // added after the game's own parsnip description
+  "parsnip.note": "Rated {{stars}} star(s) by the UI Framework demo.",
+
+  /* about menu (opened as a child) */
+  "about.title": "About",
+  "about.text": "Opened as a child menu by the [b]6135.UIFramework_OpenMenuAsChild[/b] trigger action. Edit this pack's content.json and run [color=#2060C0]patch reload[/color]: the open menu rebuilds in place and keeps its state.",
+  "about.ok": "OK",
+
+  /* hybrid menu (v1.6: needs the UI Framework Example mod) */
+  "demo.hybrid": "C# bridge...",
+  "hybrid.title": "C# bridge",
+  "hybrid.intro": "Everything below comes from the [b]UI Framework Example[/b] mod's C# code, used by name from this content pack: composites, a command, a draw hook and a model.",
+  "hybrid.gauge.tooltip": "A C# custom component (VolumeGauge) used as a custom tag; bound to menu.volume like the slider (${round(menu.volume)}%).",
+  "hybrid.reset": "Reset",
+  "hybrid.tips": "Show tips",
+  "hybrid.sounds": "Play sounds",
+  "hybrid.farm": "Farm name (C# model):",
+  "hybrid.farm.day": "day ${model[6135.UIFrameworkExample/settings].Day} of ${model[6135.UIFrameworkExample/settings].Season}",
+  "hybrid.greet": "Call C#",
+  "hybrid.greeting.none": "Click the button to run the C# command.",
+  "hybrid.form": "The same settings object as a Form (\"Model\"):",
+  "hybrid.close": "Close",
+
+  /* cross-mod menu (v1.7: templates, data composites, contributions) */
+  "demo.crossmod": "Cross-mod...",
+  "crossmod.title": "Cross-mod data",
+  "crossmod.intro": "Templates, [b]data composites[/b] and contributions, all from this content pack. The money field below is a composite defined in JSON; the UI Framework Example mod uses the same composite from C#.",
+  "crossmod.section.untitled": "Untitled section",
+  "crossmod.section.empty": "(nothing here yet)",
+  "crossmod.money.note": "This section uses the template's default title. The Reset button sits in its \"actions\" outlet and runs the composite's command (#cm.field.reset); the Max button sits in the composite's own \"after\" outlet.",
+  "crossmod.money.label": "Pocket money:",
+  "crossmod.reset": "Reset",
+  "crossmod.max": "Max",
+  "crossmod.stat.exposed": "Exposed value",
+  "crossmod.stat.changes": "\"changed\" events",
+  "crossmod.stat.default": "Default parameter",
+  "crossmod.pages.title": "Dynamic page",
+  // also used in an expression (the page name contributors see)
+  "crossmod.pageA.button": "Page A",
+  "crossmod.pageB.button": "Page B",
+  "crossmod.pageA": "Page A is a data composite picked by an expression (its Composite field is an expression: the pack id plus menu.page). Switch pages to swap it in place.",
+  "crossmod.pageB": "Page B is another composite. Its \"count\" argument is live: the money field changed ${args.count} time(s).",
+  "crossmod.slot.title": "Contributions",
+  "crossmod.publish": "Publish \"saved\"",
+  "crossmod.bonus.done": "+100 Pocket money from the menu's 'bonus' command (not real gold)",
+  "crossmod.close": "Close",
+  "money.label": "Money:",
+  "money.suffix": "g",
+
+  /* contributions */
+  "contrib.self.info": "Contributed: ${ctx.money}g on ${ctx.page}",
+  "contrib.self.bonus": "Bonus (ctx.bonus)",
+  "contrib.self.saved": "The contribution heard 'saved'.",
+  "contrib.log": "CP: log",
+  "contrib.info": "From the content pack: hello ${ctx.name}, volume ${round(ctx.volume)}%",
+  "contrib.ok": "The content pack heard 'ok' (once per click).",
+  "contrib.open": "Cross-mod (CP)...",
+  "contrib.about.tooltip": "Decorated by the content pack for ${ctx.name}."
+}

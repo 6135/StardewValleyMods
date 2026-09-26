@@ -11,10 +11,11 @@ namespace UIFramework.Components
     {
         private const int LineThickness = 4;
 
+        /// <summary>A size of 0 (or less) leaves that axis unset, so the spacer takes what its parent gives it (a stretched <see cref="Line"/>).</summary>
         internal Spacer(string id, int width, int height) : base(id)
         {
-            Width = width;
-            Height = height;
+            Width = width > 0 ? width : null;
+            Height = height > 0 ? height : null;
         }
 
         public bool Line { get; set; }
@@ -22,6 +23,9 @@ namespace UIFramework.Components
         protected override bool IsHitTestVisible => false;
 
         protected override Vector2 MeasureCore(Vector2 available) => new(0, Line ? LineThickness : 0);
+
+        // no content of its own: without a fixed width it takes whatever it is stretched to
+        protected override float MinWidthCore() => 0;
 
         protected override void DrawCore(SpriteBatch b)
         {

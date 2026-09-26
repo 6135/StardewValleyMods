@@ -9,7 +9,8 @@ namespace UIFramework.Components
     /// <summary>
     /// An extension slot (architecture.md §16.1): a stack whose children are one container per contributing mod,
     /// rebuilt by <see cref="Hosting.ExtensionRegistry"/> every time the owning menu opens. Layout hints
-    /// (<see cref="Stack.Horizontal"/>, <see cref="MaxHeight"/>) and the visibility predicate are the owner's;
+    /// (<see cref="Stack.Horizontal"/>, <see cref="Stack.Wrap"/>, <see cref="MaxHeight"/>) and the visibility predicate
+    /// are the owner's; each contribution's row copies Horizontal and Wrap when it is built;
     /// visibility itself is managed here: hidden while empty or while the predicate says so.
     /// </summary>
     internal sealed class Slot : Stack, IUISlot

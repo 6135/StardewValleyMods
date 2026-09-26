@@ -12,7 +12,8 @@ namespace UIFramework.Components
     /// Virtualized list (the <c>ProfitCalculatorResultsList</c> pattern): exactly <see cref="VisibleRows"/> row
     /// containers exist, each <see cref="RowHeight"/> tall and the full content width. Row <c>i</c> shows item
     /// <see cref="FirstVisibleIndex"/> + <c>i</c>; whenever that mapping changes the row is cleared and the consumer's
-    /// <c>buildRow(index, row)</c> fills it again. Rows are never rebuilt while the children are being updated or
+    /// <c>buildRow(index, row)</c> fills it again. Scrolling by less than a page rotates the row containers, so only
+    /// the rows that scrolled in are rebuilt. Rows are never rebuilt while the children are being updated or
     /// drawn. A vanilla scrollbar in row units sits on the right; the wheel and the arrows move one row.
     /// When <see cref="Selectable"/>, clicking anywhere in a row selects its item and raises <see cref="OnValueChanged"/>.
     /// </summary>
@@ -151,7 +152,7 @@ namespace UIFramework.Components
         {
             while (rows.Count < visibleRows)
             {
-                var row = new Panel($"{Id}.row{rows.Count}", drawBox: false, padding: 0);
+                var row = new Panel(NewRowId(), drawBox: false, padding: 0);
                 rows.Add(row);
                 rowItems.Add(-1);
                 Add(row);
@@ -163,6 +164,51 @@ namespace UIFramework.Components
                 rows.RemoveAt(last);
                 rowItems.RemoveAt(last);
                 Remove(row);
+            }
+        }
+
+        /// <summary>
+        /// Id of a new row container: <c>{list}.row{n}</c> with the lowest free n (scrolling rotates the rows, so the
+        /// last one is not always the highest number).
+        /// </summary>
+        private string NewRowId()
+        {
+            for (int n = 0; ; n++)
+            {
+                string id = $"{Id}.row{n}";
+                if (!rows.Exists(r => r.Id == id))
+                {
+                    return id;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Tree order follows the rows as shown (scrolling rotates the row containers without moving them among the
+        /// children), so Tab reaches row content top to bottom; any other child comes after.
+        /// </summary>
+        internal override IEnumerable<UIElement> SelfAndDescendants()
+        {
+            yield return this;
+            foreach (Panel row in rows)
+            {
+                foreach (UIElement e in row.SelfAndDescendants())
+                {
+                    yield return e;
+                }
+            }
+
+            foreach (UIElement child in Children)
+            {
+                if (child is Panel p && rows.Contains(p))
+                {
+                    continue;
+                }
+
+                foreach (UIElement e in child.SelfAndDescendants())
+                {
+                    yield return e;
+                }
             }
         }
 
@@ -221,6 +267,13 @@ namespace UIFramework.Components
 
             int delta = value - firstVisibleIndex;
             firstVisibleIndex = value;
+            // a short scroll keeps the rows still on screen: rotate the containers and rebuild only the rows that scrolled in
+            if (Math.Abs(delta) < rows.Count)
+            {
+                Rotate(rows, delta);
+                Rotate(rowItems, delta);
+            }
+
             for (int i = 0; i < rows.Count; i++)
             {
                 int item = firstVisibleIndex + i;
@@ -236,6 +289,23 @@ namespace UIFramework.Components
                 Raise("OnScroll", () => cb(delta));
             }
             return true;
+        }
+
+        /// <summary>Shift <paramref name="list"/> left by <paramref name="delta"/> places (right when negative), wrapping around.</summary>
+        internal static void Rotate<T>(List<T> list, int delta)
+        {
+            int n = list.Count;
+            int k = n == 0 ? 0 : ((delta % n) + n) % n;
+            if (k == 0)
+            {
+                return;
+            }
+
+            T[] copy = list.ToArray();
+            for (int i = 0; i < n; i++)
+            {
+                list[i] = copy[(i + k) % n];
+            }
         }
 
         /// <summary>Scroll so the thumb's center follows the cursor (thumb drag / track click).</summary>
@@ -296,6 +366,13 @@ namespace UIFramework.Components
             return new Vector2(width, visibleRows * EffectiveRowHeight);
         }
 
+        /// <summary>
+        /// The widest minimum among the rows that exist (the visible window: rows past the end are hidden and report
+        /// 0, items scrolled out have no row to ask) plus the always-reserved scrollbar column. Scrolling can bring in
+        /// a wider row, so the minimum follows what is on screen.
+        /// </summary>
+        protected override float MinWidthCore() => MaxChildMinWidth() + ScrollbarGadget.ReservedWidth;
+
         protected override void ArrangeCore()
         {
             Rectangle content = ContentRect;
@@ -344,7 +421,13 @@ namespace UIFramework.Components
                     }
                 }
             }
-            DrawChildren(b);
+            // rows have a fixed height and the list can be squeezed below their content: clip them to the row viewport
+            Rectangle content = ContentRect;
+            if (content.Width > 0 && content.Height > 0)
+            {
+                DrawHelper.WithScissor(b, content, () => DrawChildren(b));
+            }
+
             if (ScrollbarVisible)
             {
                 scrollbar.Draw(b);
@@ -362,7 +445,8 @@ namespace UIFramework.Components
                 return base.HandleClick(e);
             }
 
-            if (e.Target == this && ScrollbarVisible && HandleScrollbarClick(e.X, e.Y))
+            // arrows step one row, the thumb starts a drag, the track jumps
+            if (e.Target == this && ScrollbarVisible && scrollbar.Click(e.X, e.Y, ScrollWithSound, SetFirstVisibleFromY, ref dragging))
             {
                 return true;
             }
@@ -374,29 +458,6 @@ namespace UIFramework.Components
             }
 
             return base.HandleClick(e);
-        }
-
-        /// <summary>Arrows step one row, the thumb starts a drag, the track jumps. Returns false when no scrollbar part was hit.</summary>
-        private bool HandleScrollbarClick(int px, int py)
-        {
-            switch (scrollbar.HitTest(px, py))
-            {
-                case ScrollbarGadget.Part.UpArrow:
-                    ScrollWithSound(-1);
-                    return true;
-                case ScrollbarGadget.Part.DownArrow:
-                    ScrollWithSound(1);
-                    return true;
-                case ScrollbarGadget.Part.Thumb:
-                    dragging = true;
-                    return true;
-                case ScrollbarGadget.Part.Track:
-                    dragging = true;
-                    SetFirstVisibleFromY(py);
-                    return true;
-                default:
-                    return false;
-            }
         }
 
         /// <summary>Scroll by <paramref name="rows"/> rows, with the vanilla scroll sound when something moved.</summary>

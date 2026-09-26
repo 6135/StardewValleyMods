@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using Microsoft.Xna.Framework;
 using StardewModdingAPI;
 using UIFramework.Api;
 using UIFramework.Core;
@@ -10,12 +9,12 @@ namespace UIFramework.Components
 {
     /// <summary>
     /// An instance of a composite (architecture.md §16.1): the host container the definition's builder fills, laid
-    /// out as a column. The same object is the <see cref="IUICompositeHost"/> the builder sees (where it exposes
+    /// out as a column (a vertical <see cref="Stack"/> without spacing). The same object is the <see cref="IUICompositeHost"/> the builder sees (where it exposes
     /// values, commands and events) and the <see cref="IUIComposite"/> the user holds (where it reads them). The
     /// builder runs under the defining mod's guard, and the defining mod's API instance may add children here even
     /// though the menu belongs to another mod (see <see cref="ComponentOwner"/>).
     /// </summary>
-    internal sealed class Composite : UIContainer, IUIComposite, IUICompositeHost
+    internal sealed class Composite : Stack, IUIComposite, IUICompositeHost
     {
         private readonly CompositeRegistry registry;
         private readonly CompositeArgs args;
@@ -26,22 +25,31 @@ namespace UIFramework.Components
         private readonly Dictionary<string, List<Action>> subscribers = new(StringComparer.Ordinal);
         private ConsumerContext? owner;
 
-        internal Composite(string id, string compositeName, CompositeArgs args, CompositeRegistry registry) : base(id)
+        internal Composite(string id, string compositeName, CompositeArgs args, CompositeRegistry registry) : base(id, horizontal: false, spacing: 0)
         {
             CompositeName = compositeName;
             this.args = args;
             this.registry = registry;
         }
 
-        public string CompositeName { get; }
+        public string CompositeName { get; private set; }
 
         IUICompositeArgs IUIComposite.Args => args;
 
+        /// <summary>True when the current definition comes from the <c>Composites</c> data asset (v1.7).</summary>
+        internal bool IsDataComposite => registry.Get(CompositeName)?.IsData == true;
+
+        /// <summary>The argument bag (data instances carry their builder payload in it).</summary>
+        internal CompositeArgs ArgsBag => args;
+
+        /// <summary>
+        /// The refreshers of a data composite's body (v1.7): registered with the menu the instance lives in
+        /// (<see cref="UIMenu.ExtensionRefresh"/>) so its live values update in C# and data menus alike. Null for C# composites.
+        /// </summary>
+        internal Data.RefresherGroup? DataGroup { get; set; }
+
         /// <summary>The mod whose builder last filled this composite (null until built or when the definition vanished).</summary>
         internal override ConsumerContext? ComponentOwner => owner;
-
-        // a composite is layout-only like a stack: clicks on gaps fall through unless it has its own handlers
-        protected override bool IsHitTestVisible => HasPointerHandlers;
 
         // ---------------------------------------------------------------------------------------------------------
         //  Building
@@ -63,8 +71,89 @@ namespace UIFramework.Components
             owner.Invoke(Id, "Composite.Build", () => build(this, args));
         }
 
+        /// <summary>Instantiate another composite in place (a data element whose <c>Composite</c> name is an expression that changed).</summary>
+        internal void Retarget(string compositeName)
+        {
+            CompositeName = compositeName;
+            Rebuild();
+        }
+
+        /// <summary>A data composite's body refreshes with the menu it is attached to.</summary>
+        internal override void SetOwnerMenu(UIMenu? menu)
+        {
+            UIMenu? previous = OwnerMenu;
+            base.SetOwnerMenu(menu);
+            if (previous != null && previous != menu)
+            {
+                previous.ExtensionRefresh.Remove(this);
+            }
+
+            if (menu != null && DataGroup != null)
+            {
+                Data.RefresherGroup group = DataGroup;
+                menu.ExtensionRefresh[this] = group.Refresh;
+            }
+        }
+
+        /// <summary>
+        /// An exposed value for data (<c>el[id].&lt;key&gt;</c>): text values first (typed like state), then numbers,
+        /// then bools; the key is matched exactly, then case-insensitively. False when nothing is exposed under it.
+        /// </summary>
+        internal bool TryReadExposed(string key, out object? value)
+        {
+            value = null;
+            string? text = Match(values, key);
+            if (text != null)
+            {
+                value = GetValue(text);
+                return true;
+            }
+
+            string? number = Match(numbers, key);
+            if (number != null)
+            {
+                value = GetNumber(number);
+                return true;
+            }
+
+            string? flag = Match(bools, key);
+            if (flag != null)
+            {
+                value = GetBool(flag);
+                return true;
+            }
+
+            return false;
+        }
+
+        private static string? Match<T>(Dictionary<string, T> table, string key)
+        {
+            if (table.ContainsKey(key))
+            {
+                return key;
+            }
+
+            foreach (string candidate in table.Keys)
+            {
+                if (string.Equals(candidate, key, StringComparison.OrdinalIgnoreCase))
+                {
+                    return candidate;
+                }
+            }
+
+            return null;
+        }
+
         public void Rebuild()
         {
+            if (DataGroup != null)
+            {
+                // a data body registers its refreshers again when it rebuilds (a C# body has none)
+                DataGroup.Clear();
+                DataGroup = null;
+                OwnerMenu?.ExtensionRefresh.Remove(this);
+            }
+
             Clear();
             values.Clear();
             numbers.Clear();
@@ -158,44 +247,5 @@ namespace UIFramework.Components
 
         /// <summary>Exposed delegates belong to the defining mod, so its guard runs them (falling back to the menu's consumer).</summary>
         private ConsumerContext Guard => owner ?? Consumer;
-
-        // ---------------------------------------------------------------------------------------------------------
-        //  Layout (a column, no spacing)
-        // ---------------------------------------------------------------------------------------------------------
-
-        protected override Vector2 MeasureCore(Vector2 available)
-        {
-            float width = 0, height = 0;
-            foreach (UIElement child in Children)
-            {
-                if (!child.Visible)
-                {
-                    continue;
-                }
-
-                Vector2 size = child.Measure(available);
-                width = Math.Max(width, size.X);
-                height += size.Y;
-            }
-
-            return new Vector2(width, height);
-        }
-
-        protected override void ArrangeCore()
-        {
-            int cursor = Bounds.Y;
-            foreach (UIElement child in Children)
-            {
-                if (!child.Visible)
-                {
-                    child.Arrange(new Rectangle(Bounds.X, Bounds.Y, 0, 0));
-                    continue;
-                }
-
-                int extent = (int)Math.Ceiling(child.DesiredSize.Y);
-                child.Arrange(new Rectangle(Bounds.X, cursor, Bounds.Width, extent));
-                cursor += extent;
-            }
-        }
     }
 }

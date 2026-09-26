@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using StardewModdingAPI;
 using StardewModdingAPI.Events;
 using StardewModdingAPI.Utilities;
+using StardewValley;
 using UIFramework.Core;
 
 namespace UIFramework.Hosting
@@ -19,6 +20,9 @@ namespace UIFramework.Hosting
             internal Action OnPressed = () => { };
             internal ConsumerContext Consumer = ConsumerContext.None;
             internal string Id = string.Empty;
+
+            /// <summary>The menu a toggle binding opens and closes, as (owner mod id, menu id); null for plain hotkeys.</summary>
+            internal (string Owner, string Menu)? Toggles;
         }
 
         private readonly Dictionary<string, Binding> bindings = new();
@@ -26,11 +30,6 @@ namespace UIFramework.Hosting
         internal HotkeyService(IModEvents events)
         {
             events.Input.ButtonsChanged += OnButtonsChanged;
-        }
-
-        /// <summary>A service that is not wired to the game's input (headless tests).</summary>
-        internal HotkeyService()
-        {
         }
 
         /// <summary>Number of registered bindings (all consumers).</summary>
@@ -54,7 +53,28 @@ namespace UIFramework.Hosting
             return keys.IsBound;
         }
 
-        internal void Register(ConsumerContext consumer, string id, string keybindList, Action onPressed)
+        internal void Register(ConsumerContext consumer, string id, string keybindList, Action onPressed) => Register(consumer, id, keybindList, onPressed, null);
+
+        /// <summary>
+        /// Bind <paramref name="consumer"/>'s toggle hotkey for the menu <paramref name="menuId"/> of <paramref name="ownerModId"/>
+        /// (an empty list removes it). <paramref name="toggle"/> resolves the menu when the key is pressed; the binding is
+        /// dropped when that menu is destroyed or replaced (<see cref="ForgetMenu"/>).
+        /// </summary>
+        internal void RegisterToggle(ConsumerContext consumer, string ownerModId, string menuId, string keybindList, Action toggle)
+        {
+            string id = ToggleId(ownerModId, menuId);
+            if (string.IsNullOrWhiteSpace(keybindList))
+            {
+                Unregister(consumer, id);
+                return;
+            }
+
+            Register(consumer, id, keybindList, toggle, (ownerModId, menuId));
+        }
+
+        private static string ToggleId(string ownerModId, string menuId) => "__toggle:" + ownerModId + "/" + menuId;
+
+        private void Register(ConsumerContext consumer, string id, string keybindList, Action onPressed, (string Owner, string Menu)? toggles)
         {
             string key = consumer.ModId + "|" + id;
             if (!TryParse(keybindList, consumer, out KeybindList keys))
@@ -62,10 +82,22 @@ namespace UIFramework.Hosting
                 bindings.Remove(key);
                 return;
             }
-            bindings[key] = new Binding { Keys = keys, OnPressed = onPressed, Consumer = consumer, Id = id };
+            bindings[key] = new Binding { Keys = keys, OnPressed = onPressed, Consumer = consumer, Id = id, Toggles = toggles };
         }
 
         internal void Unregister(ConsumerContext consumer, string id) => bindings.Remove(consumer.ModId + "|" + id);
+
+        /// <summary>Drop every consumer's toggle binding of <paramref name="menu"/> (the menu was destroyed or replaced).</summary>
+        internal void ForgetMenu(UIMenu menu)
+        {
+            foreach ((string key, Binding binding) in new List<KeyValuePair<string, Binding>>(bindings))
+            {
+                if (binding.Toggles is { } target && target.Owner == menu.Consumer.ModId && target.Menu == menu.Id)
+                {
+                    bindings.Remove(key);
+                }
+            }
+        }
 
         internal void UnregisterAll(ConsumerContext consumer)
         {
@@ -81,7 +113,8 @@ namespace UIFramework.Hosting
 
         private void OnButtonsChanged(object? sender, ButtonsChangedEventArgs e)
         {
-            if (bindings.Count == 0)
+            // no hotkeys while the player types (chat, a vanilla text box or a framework text input)
+            if (bindings.Count == 0 || Game1.keyboardDispatcher?.Subscriber != null)
             {
                 return;
             }

@@ -14,7 +14,8 @@ namespace UIFramework.Core
         /// <summary>Context used for elements that are not (yet) attached to a menu.</summary>
         internal static readonly ConsumerContext None = new("(none)");
 
-        private readonly HashSet<string> muted = new();
+        /// <summary>Callbacks that threw, by (menu id, element id, event); the menu id is empty when the caller did not give one.</summary>
+        private readonly HashSet<(string Menu, string Element, string Event)> muted = new();
 
         internal string ModId { get; }
 
@@ -34,25 +35,21 @@ namespace UIFramework.Core
 
         internal int EffectiveTooltipDelay => TooltipDelayMs ?? UIServices.Config.TooltipDelayMs;
 
-        /// <summary>Run a consumer callback. Exceptions are logged once per (element, event) and the callback is then muted.</summary>
-        internal void Invoke(string elementId, string eventName, Action? action)
+        /// <summary>Run a consumer callback outside any menu (or whose caller does not know the menu); see <see cref="Invoke(string, string, string, Action)"/>.</summary>
+        internal void Invoke(string elementId, string eventName, Action? action) => Invoke(string.Empty, elementId, eventName, action);
+
+        /// <summary>
+        /// Run a consumer callback of an element of menu <paramref name="menuId"/>. Exceptions are logged once per
+        /// (menu, element, event) and the callback is then muted.
+        /// </summary>
+        internal void Invoke(string menuId, string elementId, string eventName, Action? action)
         {
-            if (action == null)
+            if (action == null || IsMuted(menuId, elementId, eventName))
             {
                 return;
             }
 
-            string key = elementId + "|" + eventName;
-            if (muted.Contains(key))
-            {
-                return;
-            }
-
-            if (UIServices.Config.LogCallbacks)
-            {
-                UIServices.Log($"[{ModId}] {eventName} on '{elementId}'");
-            }
-
+            LogCall(elementId, eventName);
             long started = PerfCounters.StartCallback();
             try
             {
@@ -60,7 +57,7 @@ namespace UIFramework.Core
             }
             catch (Exception ex)
             {
-                Mute(key, elementId, eventName, ex);
+                Mute(menuId, elementId, eventName, ex);
             }
             finally
             {
@@ -68,16 +65,64 @@ namespace UIFramework.Core
             }
         }
 
-        /// <summary>Run a consumer callback that returns a value; <paramref name="fallback"/> is returned if it faults or is muted.</summary>
-        internal T Invoke<T>(string elementId, string eventName, Func<T>? func, T fallback)
+        /// <summary>
+        /// <see cref="Invoke(string, string, string, Action)"/> for a callback that needs arguments: pass them in
+        /// <paramref name="state"/> and use a static lambda, so the call allocates no closure (per-frame paths).
+        /// </summary>
+        internal void InvokeWith<TState>(string menuId, string elementId, string eventName, Action<TState> action, TState state)
         {
-            if (func == null)
+            if (IsMuted(menuId, elementId, eventName))
+            {
+                return;
+            }
+
+            LogCall(elementId, eventName);
+            long started = PerfCounters.StartCallback();
+            try
+            {
+                action(state);
+            }
+            catch (Exception ex)
+            {
+                Mute(menuId, elementId, eventName, ex);
+            }
+            finally
+            {
+                PerfCounters.EndCallback(started);
+            }
+        }
+
+        /// <summary><see cref="InvokeWith{TState}"/> for a callback that returns a value; <paramref name="fallback"/> is returned if it faults or is muted.</summary>
+        internal TResult InvokeWith<TState, TResult>(string menuId, string elementId, string eventName, Func<TState, TResult> func, TState state, TResult fallback)
+        {
+            if (IsMuted(menuId, elementId, eventName))
             {
                 return fallback;
             }
 
-            string key = elementId + "|" + eventName;
-            if (muted.Contains(key))
+            long started = PerfCounters.StartCallback();
+            try
+            {
+                return func(state);
+            }
+            catch (Exception ex)
+            {
+                Mute(menuId, elementId, eventName, ex);
+                return fallback;
+            }
+            finally
+            {
+                PerfCounters.EndCallback(started);
+            }
+        }
+
+        /// <summary>Run a consumer callback that returns a value, outside any menu; see <see cref="Invoke{T}(string, string, string, Func{T}, T)"/>.</summary>
+        internal T Invoke<T>(string elementId, string eventName, Func<T>? func, T fallback) => Invoke(string.Empty, elementId, eventName, func, fallback);
+
+        /// <summary>Run a consumer callback that returns a value; <paramref name="fallback"/> is returned if it faults or is muted.</summary>
+        internal T Invoke<T>(string menuId, string elementId, string eventName, Func<T>? func, T fallback)
+        {
+            if (func == null || IsMuted(menuId, elementId, eventName))
             {
                 return fallback;
             }
@@ -89,7 +134,7 @@ namespace UIFramework.Core
             }
             catch (Exception ex)
             {
-                Mute(key, elementId, eventName, ex);
+                Mute(menuId, elementId, eventName, ex);
                 return fallback;
             }
             finally
@@ -98,13 +143,25 @@ namespace UIFramework.Core
             }
         }
 
-        private void Mute(string key, string elementId, string eventName, Exception ex)
+        private bool IsMuted(string menuId, string elementId, string eventName) => muted.Count > 0 && muted.Contains((menuId, elementId, eventName));
+
+        /// <summary><see cref="ModConfig.LogCallbacks"/>: log an event callback (value getters, which run every frame, are not logged).</summary>
+        private void LogCall(string elementId, string eventName)
         {
-            muted.Add(key);
-            UIServices.Log($"[{ModId}] callback '{eventName}' on element '{elementId}' threw an exception and has been muted:\n{ex}", LogLevel.Error);
+            if (UIServices.Config.LogCallbacks)
+            {
+                UIServices.Log($"[{ModId}] {eventName} on '{elementId}'");
+            }
         }
 
-        /// <summary>Forget muted callbacks (e.g. when the consumer rebuilds a menu).</summary>
-        internal void ResetMutes() => muted.Clear();
+        private void Mute(string menuId, string elementId, string eventName, Exception ex)
+        {
+            muted.Add((menuId, elementId, eventName));
+            string where = menuId.Length == 0 ? string.Empty : $" of menu '{menuId}'";
+            UIServices.Log($"[{ModId}] callback '{eventName}' on element '{elementId}'{where} threw an exception and has been muted:\n{ex}", LogLevel.Error);
+        }
+
+        /// <summary>Forget the muted callbacks of menu <paramref name="menuId"/> and those muted without a menu (the consumer rebuilt the menu).</summary>
+        internal void ResetMutes(string menuId) => muted.RemoveWhere(k => k.Menu.Length == 0 || k.Menu == menuId);
     }
 }

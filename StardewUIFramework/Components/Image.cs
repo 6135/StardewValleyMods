@@ -80,6 +80,9 @@ namespace UIFramework.Components
             return new Vector2(size.X * scale, size.Y * scale);
         }
 
+        // drawn at its natural scale unless an explicit size (already handled by the caller) stretches it
+        protected override float MinWidthCore() => SourceSize.X * scale;
+
         protected override void DrawCore(SpriteBatch b)
         {
             if (texture == null || Bounds.Width <= 0 || Bounds.Height <= 0)

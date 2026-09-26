@@ -27,7 +27,7 @@ namespace UIFramework.Components
             get
             {
                 string? tooltip = Tooltip == null ? null : Raise("Tooltip", Tooltip, string.Empty);
-                return Accessibility.Compose("Custom", tooltip ?? Id);
+                return Accessibility.Compose(Accessibility.Text("custom", "Custom"), tooltip ?? Id);
             }
         }
 
@@ -35,6 +35,8 @@ namespace UIFramework.Components
         protected override bool DrawsInOverlay => bridge.WantsOverlay;
 
         protected override Vector2 MeasureCore(Vector2 available) => bridge.Measure(available);
+
+        protected override float MinWidthCore() => bridge.MinimumWidth;
 
         protected override void DrawCore(SpriteBatch b) => bridge.Draw(b, Bounds);
 

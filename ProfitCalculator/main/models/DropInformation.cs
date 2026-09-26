@@ -1,4 +1,5 @@
 ﻿using StardewValley;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using static ProfitCalculator.Utils;
@@ -63,22 +64,38 @@ namespace ProfitCalculator.main.models
             /// Calculates the price of the item based on the season.
             /// </summary>
             /// <param name="season">The current season.</param>
-            /// <param name="tiller">Whether to apply the Tiller profession bonus.</param>
+            /// <param name="tiller">Whether to apply the sale profession bonuses (Tiller, Artisan) through <see cref="Utils.ApplySaleBonuses"/>, which skips them when base stats are used.</param>
             /// <returns>The price of the item.</returns>
             public int Price(UtilsSeason season, bool tiller)
             {
                 // If the drop has a season and it does not match (outside the greenhouse), return 0.
-                if (Season is not null && season != UtilsSeason.Greenhouse && Season != Utils.SeasonFromUtilsSeason(season))
+                if (!IsInSeason(season))
                 {
                     return 0;
                 }
                 // Use the base price from the item data; sellToStorePrice() would already include the current player's profession bonuses.
                 int price = Item is SObject obj ? obj.Price : Item.sellToStorePrice();
-                if (tiller && IsAffectedByTiller(Item))
-                {
-                    price = (int)(price * 1.1f);
-                }
-                return price;
+                return tiller ? ApplySaleBonuses(Item, price) : price;
+            }
+
+            /// <summary>
+            /// Whether the drop can happen in <paramref name="season"/>: drops without a season always can, and the greenhouse accepts any season.
+            /// </summary>
+            /// <param name="season">The current season.</param>
+            /// <returns>Whether the drop happens in that season.</returns>
+            public bool IsInSeason(UtilsSeason season)
+            {
+                return Season is null || season == UtilsSeason.Greenhouse || Season == Utils.SeasonFromUtilsSeason(season);
+            }
+
+            /// <summary>
+            /// Whether the drop counts towards a harvest in <paramref name="season"/>: it is in season and has a positive chance and quantity.
+            /// </summary>
+            /// <param name="season">The current season.</param>
+            /// <returns>Whether the drop counts.</returns>
+            public bool CountsIn(UtilsSeason season)
+            {
+                return IsInSeason(season) && Chance > 0 && Quantity > 0;
             }
         }
 
@@ -209,11 +226,23 @@ namespace ProfitCalculator.main.models
         /// Calculates the average price of the drops based on the season.
         /// </summary>
         /// <param name="season">The current season.</param>
-        /// <param name="tiller">Whether to apply the Tiller profession bonus.</param>
+        /// <param name="tiller">Whether to apply the sale profession bonuses (Tiller, Artisan).</param>
         /// <returns>The average price of the drops.</returns>
         public double AveragePrice(UtilsSeason season, bool tiller)
         {
-            return Drops.Sum(drop => drop.Price(season, tiller) * drop.Chance * drop.Quantity);
+            return AverageValue(season, drop => drop.Price(season, tiller));
+        }
+
+        /// <summary>
+        /// Calculates the average value of the drops, weighted by each drop's chance and quantity. Drops out of
+        /// <paramref name="season"/>, and drops for which <paramref name="value"/> returns null, count as 0.
+        /// </summary>
+        /// <param name="season">The current season.</param>
+        /// <param name="value">The value of one dropped item, or null when it has none (for example a machine rejects it).</param>
+        /// <returns>The average value of the drops.</returns>
+        public double AverageValue(UtilsSeason season, Func<Drop, double?> value)
+        {
+            return Drops.Where(drop => drop.IsInSeason(season)).Sum(drop => (value(drop) ?? 0) * drop.Chance * drop.Quantity);
         }
 
         /// <summary>

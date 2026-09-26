@@ -25,7 +25,7 @@ Progress against §13. Update this table when a phase or item changes; §13 stay
 | 4 — Overlay, dropdown, tooltips | Done | `UIFramework` | `OverlayLayer`, Dropdown (click‑outside close + swallow, one open at a time), tooltip delay + `drawHoverText`, `OnDrawOverlay`. |
 | 5 — Grid, ScrollView, List | Done | `UIFramework` | Grid `auto/px/*` + spans, ScrollView (scissor, arrows, thumb drag, wheel), virtualized ListView with selection. |
 | 6 — Custom components + polish | Done | `UIFramework` | `IUICustomComponent` + `CustomElementAdapter` (`AddCustom`), `OnDrawExtra`, styles/theme, debug overlay (`ui_debug`), `PerScreen` open‑menu list, close‑all on title/save load. Example mod has a custom gauge. |
-| 7 — Port Profit Calculator | Built, awaiting in‑game parity check | `UIFramework` (merged from `UIFramework-ProfitCalculator`) | `ProfitCalculator/main/ui/framework/` (`FrameworkMainMenu`, `FrameworkResultsMenu`, `ProfitCalculatorSettings`) behind `ModConfig.UseUIFramework` (default on, optional manifest dependency, GMCM toggle); legacy screens remain the fallback and `main/ui/**` is kept until parity is confirmed. Results are a sortable `IUIDataGrid` (sprite + name, profit, profit/day, seed / fertilizer loss, harvests, duration) with a rich tooltip per row (`RowTooltip`), built from `CropInfo` only — nothing from the legacy `main/ui` classes is used by the port any more. |
+| 7 — Port Profit Calculator | Done | `develop` | Profit Calculator 2.1.0 builds both screens from data (`ProfitCalculator/assets/ui.json`, imported by `ProfitCalculatorDataUI`); the legacy `IClickableMenu` screens and the C# framework port were removed. Results are a sortable `DataGrid` with a shared row tooltip (`Owners` > `Tooltips.crop`). Checked in game 2026-09-24. |
 | 8 — Docs and release | Done (Nexus upload pending) | `UIFramework` | `StardewUIFramework/README.md` (player + modder guide, full API reference), `NEXUS.md` page text, `Doxyfile` (`cd StardewUIFramework && doxygen Doxyfile` → `docs/api`, git‑ignored), root README rows + build note. ModBuildConfig already zips each mod on build. |
 | v1.1 — Rich tooltips, rich text, pseudo‑loc (§9, §16.2) | Done | `v2-integration` | `CreateTooltip()` builder (`IUITooltip`: title, lines, icon, item, money, divider) on `IUIElement.RichTooltip`, drawn by `Rendering/TooltipRenderer`; `[b]`/`[color]`/`[icon]`/`[link]` markup (`Rendering/RichText`) on labels/buttons (`RichText`, `OnLink`); `ModConfig.PseudoLocalize` + `ui_pseudoloc` (`Rendering/PseudoLocalizer`). |
 | v1.1 — Extension slots + screen context (§16.1) | Done | `v2-integration` | `AddSlot`, `ContributeTo` (priority, `MaxContributions`, vetoes), `ListSlots`, `Expose*`/`ExposeCommand`/`Publish` → `IUIScreenContext`, `OnScreenBuilt`, `IUIElement.Sealed` (`Hosting/ExtensionRegistry`, `Core/Sealing`); contributions rebuilt on every open; `ui_slots`. |
@@ -34,13 +34,19 @@ Progress against §13. Update this table when a phase or item changes; §13 stay
 | v1.1 — Data grid (§16.2) | Done | `v2-integration` | `AddDataGrid` / `IUIDataGrid` / `IUIDataGridColumn` (`Components/DataGrid*`): auto/px/star columns, sort, filter, resize, single/multi selection, `IUIRowEvent`, keyboard navigation, virtualized rows. |
 | v1.1 — Signals + auto‑forms (§16.2) | Done | `v2-integration` | `Signal*`/`Computed*` with dependency tracking, `BindText`/`BindVisible`/`BindEnabled`/`BindValue`/`Unbind` (`Core/Signals`, `Core/SignalBindings`); `AddForm(parent, id, model)` → `IUIForm` from POCO attributes (`Range`, `Choices`, `Section`, `Tooltip`, `DisplayName`, `ReadOnly` by name), validators, undo/redo, Save/Cancel (`Core/AutoForm*`). |
 | v1.1 — HUD widgets, toasts, player‑owned layout (§16.2) | Done | `v2-integration` | `IUIHud` (`CreateHud`/`GetHud`/`DestroyHud`; `Hosting/HudService` from `Display.RenderedHud`), toasts (`ShowToast*`, `Hosting/ToastLayer`), `PlayerLayout` (drag/collapse/resize; `Hosting/PlayerLayoutController`, `Hosting/WindowLayoutStore` in save data), `ResetPlayerLayout`, `ui_toast`/`ui_layout_reset`. |
-| v1.1 — Inspector, debug console, test harness (§16.2, §14) | Done | `v2-integration` | `Hosting/Inspector` + `Rendering/InspectorRenderer` (`ModConfig.InspectorHotkey`, nudge/resize/toggle, `Core/TreeExporter` → C# builder code via `ui_export`), `Hosting/DebugConsole` (`ui_list`, `ui_dump`, `ui_find`, `ui_perf`, `ui_inspect`), `Core/PerfCounters`; `StardewUIFramework.Tests` (xUnit) with the `Testing/` harness (`TestHost`, `InputDriver`, `TreeSnapshot`, `FakeTextMeasurer`), 35 tests. |
+| v1.1 — Inspector, debug console (§16.2) | Done | `v2-integration` | `Hosting/Inspector` + `Rendering/InspectorRenderer` (`ModConfig.InspectorHotkey`, nudge/resize/toggle, `Core/TreeExporter` → C# builder code via `ui_export`), `Hosting/DebugConsole` (`ui_list`, `ui_dump`, `ui_find`, `ui_perf`, `ui_inspect`), `Core/PerfCounters`. |
+| v1.3 — Static data menus, open/close, hot reload (§17.1, §17.2, §17.7) | Done | `develop` | `Data/**`: `Menus` / `Sprites` assets (Exclusive, CP `EditData`), `DataAssetReader` → `DataValidator` (path‑qualified messages, "did you mean") → `DataBuilder` through the owner's `StardewUIApi` facade (`Core/ConsumerContexts` shares one context per mod id with `GetApi`); shorthands, `From` files, `ui_schema`; `_OpenMenu` / `_CloseMenu` / `_ToggleMenu` / `_OpenMenuAsChild`, `_MENU_OPEN`, tile / touch action; content‑hash diff + `UIMenu.RebuildInPlace` (`Core/MenuViewState`); `ui_data` / `ui_validate` / `ui_reload` / `ui_open` / `ui_close`; `[CP] UI Framework Example`. |
+| v1.4 — Expressions, state, events, HUDs, owners (§17.3–§17.5) | Done | `develop` | `Data/Expressions` (Pratt parser, cached AST, sandboxed evaluator, built‑ins, per‑epoch/tick cache), `Data/State` (`DataStateStore` per screen: `menu session player stat config`, `ScopeRoots`), `Computed` / `Watch` / `Out` / `If` / `Switch` / `With`, `Keys` / `Validate` / `OnUpdate`, state actions, `_STATE` queries, `[6135.UIFramework_State]` token and the CP token; `Huds` (`HudBuilder`) and `Owners` (tooltip delay, default style, classes, hotkeys); `ui_state`. |
+| v1.5 — Collections, rich tooltips, forms (§17.6) | Done | `develop` | Sources (inline, range, item query, state, expression, themes, asset, named, C#), `Repeat` / `List` / `DataGrid` with `RowScope`, conditional tooltip blocks (`TooltipBlock.When` / `ColorFunc`), data forms on the accessor‑based `AutoForm`; `_Sort` / `_ClearSelection` / `_Form*` / `_Rebuild`. |
+| v1.6 — C# bridge (§17.8) | Done | `develop` | `Hosting/HookRegistry` + `Data/Bridge/**`; the `// BEGIN DATA` API region (`RegisterCommand`, `RegisterFunction`, `DefineDataSource`, `ExposeModel` / `ExposeRows` / `ExposeSignal` / `ExposeComputed`, `RegisterDrawHook`, `ImportData` / `ImportDataFile(watch)`, `RunAction`, `DataState`), custom tags, `CompositeArgs` conversion; Profit Calculator keeps its main menu in `assets/ui.json`. |
+| v1.7 — Cross‑mod data (§17.8) | Done | `develop` | `Composites` / `Contributions` assets (`DataComposites`, `DataBuilder.Composite`, `ContributionBuilder`, `DecorationApplier`), templates with typed `Params` and named outlets, dynamic includes, menu `Expose` / `Commands`, `_Invoke` / `_Publish`. |
+| v1.7 — Data tooling and docs (§17.9) | Done | `develop` | `Core/Export/**` (`TreeModel`, `TreeModelReader`, `CSharpEmitter` with unchanged output, `JsonEmitter`), inspector **J** and `ui_export … json`; README "Data‑driven UIs" reference, NEXUS page, manifest description, this §17. |
+| v1.8 — Structural fixes from in-game testing | Done (checked in game 2026-09-24) | `develop` | Trigger actions return a null error on success (the game treats any error as a failure); click-once controls (`UIElement.FocusOnClick` false: Button, Checkbox, Dropdown, Slider) no longer keep focus after a mouse click; tooltips inherit from the nearest ancestor (`UIMenu.TooltipOwner`) and the delay only restarts when the tooltip changes; named tooltips (`Owners[id].Tooltips`, `{ "From": name }`); an `Image` `Sprite` is a live value (reference text, `Texture2D` or `(Texture2D, Rectangle)`), and live values of the target type pass through as is; imports build their menus before returning; `ImportDataFile` takes full paths (no reflection into SMAPI internals); `IUIHud.ShowOverMenus`; `Resizable` (menu option / data field, default false) gives content-sized windows the player resize grip (`UIMenu.IsResizable`), used by the pack's demo menu; the minimum-width pass (§5, `UIElement.MeasureMinWidth`, `IUICustomComponent.MinimumWidth`) bounds the resize grip by what the content really needs; controls shrink with fitted text, `Stack.Wrap`, the two-pass grid measure and zero-width star fallback, data-grid and list clipping, and the fitted title banner (§5). |
 
 Known gaps / follow‑ups:
 
 - Window chrome (fixed): `Game1.drawDialogueBox` draws its frame 64 px below the `y` it is given, so `UIMenu.DrawChrome` offsets the call and the top inset is 56 px like the sides; tall windows reserve the title banner and scroll their content: `UIMenu.Viewport` is a fit‑content `ScrollView` that hosts `Root` (a real tree element — inspector, dumps, hit‑testing — but not the root's API `Parent`), invisible while the content fits.
-- `StardewUIFramework.Tests` (§14, xUnit, `v2/tools`) covers layout, routing, inputs and the tools headlessly through the `Testing/` harness (`TestHost`, `InputDriver`, `TreeSnapshot`); it is listed in `Stardew Mods.sln`. Menus are never opened as `IClickableMenu`s in tests (`Game1.activeClickableMenu`'s setter needs `Game1.player`).
-- In‑game acceptance (§14: UI scales 75/100/150 %, resize, gamepad reach) still to be run for the Profit Calculator port, and none of the v1.1 features has been exercised in game yet (built and unit‑tested headlessly only).
+- In‑game: Profit Calculator and both example mods were checked in game on 2026-09-24 (focus, Escape, HUD over menus, tooltips, actions, state, cross‑mod, game-window resize). The §14 checks at UI scales 75/100/150 % and gamepad reach are still to be run.
 - `TextInput` has no caret movement (Left/Right fall through to focus traversal; the caret is always at the end).
 - Gamepad support relies on vanilla snapping (`populateClickableComponentList` with `SNAP_AUTOMATIC`); `receiveGamePadButton` adds nothing of its own.
 - `HotkeyService` listens to `Input.ButtonsChanged` + `KeybindList.JustPressed()` rather than `Input.ButtonPressed` (§6.3); equivalent for consumers.
@@ -61,8 +67,12 @@ Known gaps / follow‑ups:
 
 ### Non‑goals (v1)
 
-- Declarative UI from JSON/StarML (that is StardewUI's niche). v1 is code‑first through the API.
-- Data binding framework. Values are read/written through getter/setter delegates, like Profit Calculator does today.
+- ~~Declarative UI from JSON. v1 is code‑first through the API.~~ **Reversed in
+  v1.3:** screens can be JSON data assets edited by Content Patcher (§17). The C# API stays first class; there is
+  still no markup language.
+- ~~Data binding framework. Values are read/written through getter/setter delegates, like Profit Calculator does
+  today.~~ **Reversed in v1.1 / v1.4:** signals and bindings (§16.2) for C#, named state with two‑way `Bind` and
+  expressions for data (§17.4). Getter/setter delegates still work.
 - Replacing vanilla menus (inventory, shops). Only new screens.
 - Draggable/resizable windows (nice‑to‑have, later).
 
@@ -87,7 +97,7 @@ Rules that follow from that mechanism:
 Consumers declare the dependency in `manifest.json`:
 
 ```json
-"Dependencies": [ { "UniqueID": "6135.UIFramework", "MinimumVersion": "1.0.0", "IsRequired": true } ]
+"Dependencies": [ { "UniqueID": "6135.UIFramework", "MinimumVersion": "1.8.0", "IsRequired": true } ]
 ```
 
 The framework ships a ready‑to‑copy `IStardewUIApi.cs` (plus the small set of interfaces/enums it references) in an `Api/Public/` folder, and an **example mod** that consumes it.
@@ -198,6 +208,10 @@ Two‑phase, WPF‑style but minimal:
 
 1. **Measure**: each element returns its desired size given an available size. Leaves measure their content (text via `SpriteFont.MeasureString`, textures via source rect × scale). Containers measure children.
 2. **Arrange**: parent assigns each child a final `Rectangle` (relative to the parent), applying `Margin`, `HorizontalAlign`/`VerticalAlign` and `Anchor`.
+3. **Minimum width** (v1.8, a pure query outside the two phases): `UIElement.MeasureMinWidth()` returns the narrowest width an element can be arranged at without overflowing, whatever width it has now. Leaves report their intrinsic size (wrapping text: its longest word; fill elements: 0); containers combine their children's minimums (a column: the widest; a row: the sum plus spacing; grids and data grids: pixel tracks at their size, auto and star tracks at their content's minimum). Custom components report `IUICustomComponent.MinimumWidth`. `UIMenu.MinimumSize` uses it to bound the player's resize grip (never above the size the drag started at, so the grip itself never enlarges a window). It cannot be derived from Measure, because stretched and star-sized content reports the width it is given. By default nothing loses text: buttons, checkboxes, single-line labels and dropdowns (every choice whole) report their full text as their minimum; with `Shrink` they report `DrawHelper.FitTextMinWidth` (the text at 70 %, or its first character plus "...") instead. Data-grid headers always use the fitted minimum (the column's own `MinWidth` protects them). Sliders measure `min(available, default)`; text inputs need room for about three characters. `MinWidth` / `MaxWidth` on any element clamp its offered, desired, minimum and arranged widths (`UIElement.ClampWidth`: cap at `MaxWidth`, then raise to `MinWidth`; a fixed `Width` wins over both). FitText's shrink-then-"..." remains the fallback when a window is physically narrower than its content.
+4. **Wrapping rows** (v1.8): a horizontal `Stack` with `Wrap` breaks onto a new line when the next child would not fit, with `Spacing` between children and between lines; each line is as tall as its tallest child and lines start at the stack's left edge. Its minimum width is its widest child.
+5. **Sharing too little width** (v1.8): one rule, `LayoutEngine.DistributeWidth`, used by rows (a horizontal `Stack` without `Wrap`), grid auto columns and data-grid auto columns: every item gets its minimum first, then the rest is shared by how much each wants beyond its minimum. With enough room everyone gets their natural width, so nothing changes; items given less than their natural width are re-measured at their share (wrapping text wraps).
+6. **Grid measure** (v1.8): pass 1 measures pixel-column children at their pixel width and the others to find each column's natural width; auto columns then share the room left after pixel columns, spacing and the star columns' minimums (rule 5); pass 2 re-measures star and spanning children at their resolved cell width before the rows are sized. When pixel and auto tracks already fill the width, star tracks get 0 (`LayoutEngine.ResolveTracks`), never their content width. A spanning child's excess goes to the weighted star tracks in its span when it has any.
 
 Absolute screen `Bounds` are derived (parent absolute origin + local rect) and cached; a `LayoutDirty` flag bubbles up when any property affecting size changes, when the tree changes, or when the window resizes.
 
@@ -269,6 +283,7 @@ Three tiers so most consumers never subclass anything:
    public interface IUICustomComponent
    {
        Vector2 Measure(Vector2 available);            // desired size
+       float MinimumWidth { get; }                     // narrowest width without overflowing (v1.8)
        void Draw(SpriteBatch b, Rectangle bounds);     // absolute bounds already resolved
        void Update(Rectangle bounds, double elapsedMs);
        bool OnClick(int x, int y, bool rightButton);   // true = handled
@@ -349,7 +364,7 @@ Versioning: `ApiVersion` returns a semver string; additive changes bump minor; a
 
 ## 9. Rendering details
 
-- **Boxes**: `IClickableMenu.drawTextureBox` with `Game1.menuTexture (0,256,60,60)` for panels, `Game1.mouseCursors (432,439,9,9)` for buttons (hover tint `Color.Wheat`), text box texture `LooseSprites\textBox` (and a bundled small variant, as Profit Calculator ships `assets/text_box_small.png`).
+- **Boxes**: `IClickableMenu.drawTextureBox` with `Game1.menuTexture (0,256,60,60)` for panels, `Game1.mouseCursors (432,439,9,9)` for buttons (hover tint `Color.Wheat`), text box texture `LooseSprites\textBox`.
 - **Text**: `Game1.smallFont` default, `Game1.dialogueFont` for titles; `Game1.textColor`. Label wrapping via `Game1.parseText`. Optional shadow via `Utility.drawTextWithShadow`.
 - **Checkbox**: `OptionsCheckbox.sourceRectChecked/Unchecked` at scale 4.
 - **Dropdown**: `OptionsDropDown.dropDownBGSource` / `dropDownButtonSource`; open list drawn in overlay pass, clamped to `Game1.uiViewport.Height`, scrollable when choices exceed `MaxVisible`.
@@ -376,10 +391,10 @@ Versioning: `ApiVersion` returns a semver string; additive changes bump minor; a
 ## 11. Configuration and integrations
 
 - **ModConfig** (framework's own `config.json`): `TooltipDelayMs` (default 400), `DebugOverlay` (draw element bounds/ids), `LogCallbacks`.
-- **Generic Mod Config Menu**: register the framework's own settings; consumers keep using GMCM for *their* options (hotkey etc.) and feed values into the framework (`BindToggleHotkey(menu, config.HotKey)`).
+- **Generic Mod Config Menu**: register the framework's own settings (`Integrations/ConfigMenu.cs`); consumers keep using GMCM for *their* options (hotkey etc.) and feed values into the framework (`BindToggleHotkey(menu, config.HotKey)`).
 - **i18n**: the framework only has a handful of strings (close, scroll hints); consumers pass `Func<string>` so their `helper.Translation.Get` is evaluated lazily.
 - **Texture overrides**: box/button textures are loaded through `helper.GameContent` so Content Patcher packs can retexture them.
-- **Themes / accessibility** (v1.1, §16.2): `Rendering/ThemeData.cs` is one entry of the `Mods/6135.UIFramework/Themes` data asset (default content `assets/themes.json`, loaded in `AssetRequested`, cache dropped on `AssetsInvalidated` / `AssetReady`). `Rendering/Theme.cs` resolves the entry named by `ModConfig.Theme` and is the bottom style layer under `UIStyle` / `ResolvedStyle`; `DrawHelper.ThemedBox` / `StyledBox` draw boxes the theme's way (tinted texture or solid fill + border), `Theme.Space` scales spacing / padding, `Theme.FontScale` (theme × `ModConfig.TextScale`) is applied inside `GameTextMeasurer` and `DrawHelper.Text` so layout and drawing agree. `Core/Accessibility.cs` routes announcements to Stardew Access (`Integrations/IStardewAccessApi.cs`, `UIServices.Announcer`): menu title on open, focus changes (`FocusManager`), value changes (each value component), resting hover (`UIMenu.Tick`); `UIElement.AccessibleDescription` builds "<type>: <text>" and `IUIElement.AccessibleName` overrides it. `ModConfig.ReducedMotion` keeps the caret solid (the only animation the framework has).
+- **Themes / accessibility** (v1.1, §16.2): `Rendering/ThemeData.cs` is one entry of the `Mods/6135.UIFramework/Themes` data asset (default content `assets/themes.json`, provided by `Rendering/ThemeSwitcher` in `AssetRequested`, cache dropped on `AssetsInvalidated`). `Rendering/Theme.cs` resolves the entry named by `ModConfig.Theme` and is the bottom style layer under `UIStyle` / `ResolvedStyle`; `DrawHelper.ThemedBox` / `StyledBox` draw boxes the theme's way (tinted texture or solid fill + border), `Theme.Space` scales spacing / padding, `Theme.FontScale` (theme × `ModConfig.TextScale`) is applied inside `GameTextMeasurer` and `DrawHelper.Text` so layout and drawing agree. `Core/Accessibility.cs` routes announcements to Stardew Access (`UIServices.Announcer`): menu title on open, focus changes (`FocusManager`), value changes (each value component), resting hover (`UIMenu.Tick`); `UIElement.AccessibleDescription` builds "<type>: <text>" and `IUIElement.AccessibleName` overrides it. `ModConfig.ReducedMotion` keeps the caret solid (the only animation the framework has).
 
 ---
 
@@ -387,35 +402,55 @@ Versioning: `ApiVersion` returns a semver string; additive changes bump minor; a
 
 ```
 StardewUIFramework/                 (folder name; the project/assembly is still UIFramework)
-  UIFramework.csproj              net6.0, Pathoschild.Stardew.ModBuildConfig 4.3.2, GenerateDocumentationFile
+  UIFramework.csproj              net6.0, Pathoschild.Stardew.ModBuildConfig 4.4.0, GenerateDocumentationFile
   manifest.json                   UniqueID 6135.UIFramework, MinimumApiVersion 4.0.0 (SDV 1.6)
   ModEntry.cs                     GetApi(IModInfo) → new StardewUIApi(modInfo, services)
   ModConfig.cs
   Api/
     StardewUIApi.cs               facade; validates args, namespaces ids, wraps callbacks
+    UIMenuOptions.cs
     Public/IStardewUIApi.cs       ← the single file consumers copy (interfaces + enums)
   Core/
-    UIElement.cs  UIContainer.cs  UIMenu.cs  LayoutEngine.cs  FocusManager.cs  OverlayLayer.cs  EventRouter.cs
+    UIElement.cs  UIContainer.cs  UIMenu.cs  UIHud.cs  LayoutEngine.cs  FocusManager.cs  OverlayLayer.cs  EventRouter.cs
+    ConsumerContext(s).cs  UIServices.cs  Sealing.cs  Signals.cs  SignalBindings.cs  AutoForm*.cs  RichTooltip.cs
+    Accessibility.cs  MenuViewState.cs  TreeDump.cs  TreeExporter.cs  PerfCounters.cs  Export/ (TreeModel, emitters)
   Components/
-    Label.cs Image.cs Button.cs Checkbox.cs TextInput.cs NumberInput.cs Dropdown.cs Slider.cs Spacer.cs
-    Stack.cs Grid.cs Panel.cs Canvas.cs ScrollView.cs ListView.cs CustomElementAdapter.cs
+    Label.cs Image.cs ItemImage.cs Button.cs Checkbox.cs TextInput.cs NumberInput.cs Dropdown.cs Slider.cs Spacer.cs
+    Stack.cs Grid.cs Panel.cs Canvas.cs ScrollView.cs ListView.cs Slot.cs Composite.cs DataGrid*.cs
+    CustomElementAdapter.cs CustomHostAdapter.cs CustomComponentBridge.cs ScrollbarGadget.cs
   Hosting/
-    MenuHost.cs  HotkeyService.cs  MenuRegistry.cs
+    MenuHost.cs  HotkeyService.cs  MenuRegistry.cs  HudService.cs  ToastLayer.cs  ExtensionRegistry.cs
+    CompositeRegistry.cs  HookRegistry.cs  PlayerLayoutController.cs  WindowLayoutStore.cs  Inspector.cs
+    DebugConsole.cs               the ui_* console commands
+  Integrations/
+    ConfigMenu.cs                 the framework's Generic Mod Config Menu page
+    ScreenReader.cs               connects Core/Accessibility to Stardew Access when it is installed
+    IGenericModConfigMenuApi.cs  IContentPatcherApi.cs  IStardewAccessApi.cs
   Rendering/
-    Draw.cs (9-slice, text, scissor helpers)  Theme.cs  DefaultTheme.cs
+    Draw.cs (9-slice, text, scissor helpers)  TextBoxDrawing.cs  Theme.cs  ThemeData.cs  RichText.cs
+    ThemeSwitcher.cs              provides the Themes asset, switches the theme at runtime
+    TooltipRenderer.cs  PseudoLocalizer.cs  InspectorRenderer.cs  TextureCache.cs
+  Data/
+    DataService.cs  DataEnvironment.cs  DataMenuRuntime.cs  DataScope.cs  DataComposites.cs
+    RefresherGroup.cs  IDataRefresher.cs  GameFunctions.cs
+    Model/  Loading/  Expressions/  State/  Actions/
+    Building/                     DataBuilder.cs + partials DataBuilder.<Part>.cs (Structure, Events, Form, Grid, List,
+                                  Repeat, Tooltip, Composite, Bridge), TemplateArgs.cs, HudBuilder.cs, ContributionBuilder.cs ...
+    Bridge/                       DataImport, DataCall, ModelAccessor, BindTarget.cs, DataStateSignal.cs ...
   assets/
     text_box_small.png
+    themes.json
   i18n/default.json
 UIFrameworkExample/
   UIFrameworkExample.csproj, manifest.json (depends on 6135.UIFramework)
   Api/IStardewUIApi.cs            verbatim copy
-  ModEntry.cs                     builds a form + a scrollable list; F9 toggles it
-UIFramework.Tests/  (optional)    xUnit; layout engine + event routing are pure C# and testable without the game
+  ModEntry.cs                     console commands, hotkeys (F9, F7) and the C# hooks data uses
+  DemoMenu.cs  ItemImageDemo.cs  DemoSettings.cs  FrameBox.cs  VolumeGauge.cs  i18n/
 ```
 
 Repository tasks:
 
-- Update `Stardew Mods.sln`: replace the two stale project entries with the new projects (and the test project if added). — done for the two projects.
+- Update `Stardew Mods.sln`: replace the two stale project entries with the new projects. — done.
 - Root `README.md`: add the framework to the mod list; link `architecture.md` and the API file.
 - CI (CodeFactor is already wired): ensure the new projects build with `STARDEW_GAME_DIR` documented in the README.
 
@@ -473,10 +508,9 @@ Each phase ends in a buildable, demoable state.
 
 ---
 
-## 14. Testing strategy
+## 14. Verification
 
-- **Unit (no game)**: layout engine (measure/arrange for Stack/Grid/ScrollView), event routing (hit‑test, bubble, capture, overlay‑first), focus traversal order, number clamping/validation, `KeybindList` parsing. Abstract font measurement behind `ITextMeasurer` so tests don't need `SpriteFont`.
-- **In‑game smoke (example mod)**: a "kitchen sink" screen exercising every component; console command `ui_demo` opens it; `ui_debug` toggles the bounds overlay.
+- **In‑game smoke (example mod)**: a "kitchen sink" screen exercising every component; console command `uiex_demo` opens it; `ui_debug` toggles the bounds overlay.
 - **Acceptance**: Profit Calculator port matches current behavior (Phase 7) at UI scales 75 % / 100 % / 150 % and after window resize; gamepad navigation reaches every control.
 - **Proxy compatibility**: the example mod must compile against *only* the copied `IStardewUIApi.cs` (no project reference to UIFramework) — enforce by keeping it a separate project without a `ProjectReference`.
 
@@ -491,11 +525,12 @@ Each phase ends in a buildable, demoable state.
 | `Game1.keyboardDispatcher.Subscriber` fought over by multiple mods. | Only `FocusManager` sets it, only while a framework menu is active, and it restores the previous subscriber on close. |
 | SpriteBatch state corruption when nesting `End/Begin` for scissor clipping. | Single helper `Draw.WithScissor(b, rect, action)` that restores exactly the outer parameters; no raw `b.End()` elsewhere (enforced in code review). |
 | SDV 1.6 changed `IClickableMenu` signatures and UI viewport handling. | Target `MinimumApiVersion 4.0.0`, use `Game1.uiViewport` everywhere, and reuse the Profit Calculator position formula which already works on 1.6. |
-| Naming collision with the existing StardewUI framework (focustense). | Keep the mod name **UI Framework** / id `6135.UIFramework`; call out the difference (code‑first builder API vs StarML markup) in the README. |
 
 Decisions taken in this document:
 
-- Code‑first, builder API returning typed interface handles (not string‑id everything, not JSON).
+- Code‑first, builder API returning typed interface handles (not string‑id everything, not JSON). *Revised in v1.3:*
+  the builder API is still the foundation, and JSON data is now a second front end built on top of it through the
+  same per‑owner facade (§17), so the two paths cannot diverge.
 - Layout owned by containers with a measure/arrange pass (not absolute positions with ratio rescaling).
 - Overlay pass + centralized focus manager instead of per‑component global state.
 - Per‑consumer API instances so ids, hotkeys and styles are namespaced and cleaned up per mod.
@@ -548,17 +583,131 @@ Each item stands alone; none is required by another unless noted.
 
 | Feature | What it is | Builds on | Value |
 |---|---|---|---|
-| **In‑game inspector and editor** | Devtools‑style overlay: hover any element to see id, bounds, margins, grid tracks; drag to nudge, edit properties live; **export the resulting C# builder code** to the clipboard/log. | Tree + debug overlay (§11), layout engine | Cuts the compile‑launch‑look loop to seconds; no other Stardew UI framework has it. |
+| **In‑game inspector and editor** | Devtools‑style overlay: hover any element to see id, bounds, margins, grid tracks; drag to nudge, edit properties live; **export the resulting C# builder code** to the clipboard/log. | Tree + debug overlay (§11), layout engine | Cuts the compile‑launch‑look loop to seconds; no other Stardew Valley UI framework has it. |
 | **Player‑owned layout** | Every framework window is movable/resizable/collapsible by the player; positions and sizes persist per save via `helper.Data`. Zero consumer code. | `MenuHost`, `MenuRegistry` | Consistent player experience across all consumer mods. |
 | **Theme assets** | Theme = Content Patcher‑patchable asset (fonts, colors, box sprites, spacing scale) with dark, high‑contrast and colorblind variants. One theme applies to every consumer. | `Theme`/`DefaultTheme` (§9) | Players restyle all mod UIs at once; modders get it free. |
 | **Data grid** | Virtualized table with sortable/filterable columns, column resize, cell renderers, row selection and multi‑select events. | `ListView`, `ScrollView`, `Grid` | Replaces the Profit Calculator results list; nothing comparable exists. |
-| **Signals** | `api.Signal(get)`, `api.Computed(() => …)` with automatic dependency tracking; bound labels/inputs re‑render only when inputs change. | Value binding (§6.2) | Reactive UI without StarML or view models. |
+| **Signals** | `api.Signal(get)`, `api.Computed(() => …)` with automatic dependency tracking; bound labels/inputs re‑render only when inputs change. | Value binding (§6.2) | Reactive UI without view models. |
 | **Auto‑forms from POCOs** | Generate a complete form from an object using attributes (`[Range]`, `[Choices]`, `[Section]`, `[Tooltip]`), with validation, dirty tracking, undo/redo, Save/Cancel. | Grid, inputs, validators | GMCM‑style forms for any object on any screen. |
 | **HUD widgets and toasts** | Non‑modal overlays drawn during gameplay (counters, timers, notifications) using the same components, drawn from `Display.RenderedHud`. | Components, player‑owned layout | Extends the framework beyond menus. |
 | **Accessibility** | Focused‑element announcements via the Stardew Access API, text scaling, reduced motion, high‑contrast theme. | FocusManager, themes | First accessible UI framework for SDV. |
 | **Rich inline text** | Markup in labels/tooltips: colored spans, item icons, links, bold. | Label, tooltip builder | Better tooltips and result rows. |
-| **Headless test harness** | Public `UIFramework.Testing` package: fake `ITextMeasurer`, scripted input driver, tree snapshot assertions; consumers test screens in CI without the game. | Tests (§14) | Unique developer‑experience win. |
 | **Pseudo‑localization mode** | Config flag that stretches and accents all strings to catch overflow before translation. | Label | Cheap, useful. |
-| **Debug console** | `ui_list`, `ui_dump <menu>`, `ui_perf`, `ui_slots` console commands. | Registry, inspector | Support and diagnostics. |
+| **Debug console** | `ui_list`, `ui_dump <menu>`, `ui_perf`, `ui_slots` console commands (`Hosting/DebugConsole`). | Registry, inspector | Support and diagnostics. |
 
-Suggested order if all are pursued: inspector → theme assets → data grid → player‑owned layout → signals → auto‑forms → HUD widgets → accessibility → rich text → test harness → pseudo‑localization → debug console.
+Suggested order if all are pursued: inspector → theme assets → data grid → player‑owned layout → signals → auto‑forms → HUD widgets → accessibility → rich text → pseudo‑localization → debug console.
+
+---
+
+## 17. Data‑driven UIs (v1.3–v1.7)
+
+> **Status:** implemented in v1.3–v1.7 (see the §0 scorecard). This section describes the design as built. It reverses the v1 non‑goal in §1 and the "not JSON" decision in §15. The user‑facing reference is the README's "Data‑driven UIs" section.
+
+Goal: a content pack defines complete, interactive screens **without C#** and loses no feature of the C# API. Every public API member is either plain data (layout, style, sizes, sounds, options) or a delegate, and each delegate belongs to one of four families that has a data form:
+
+| Delegate family | Data form |
+|---|---|
+| Text, number and bool getters (`Func<string>` …) | A literal, a Content Patcher token (patch time) or a live `${expression}` |
+| Get/set pairs, signals, computeds | `"Bind": "<scope>.<name>"` into a named state store backed by signals; `Computed`; `Out` |
+| Event handlers (`Action<…>`) | Action lists of **trigger action** strings, with game state query `Condition`s and expression `When`s |
+| Genuine code (custom drawing, components, C#‑computed data) | A **named hook** registered once by a C# mod and referenced by name from any pack |
+
+### 17.1 Assets, owners and contexts
+
+- Six data assets under `Mods/6135.UIFramework/` (`Data/Loading/DataAssets`): `Menus` and `Huds` (`<owner>/<id>`), `Owners` (`<mod id>`), `Sprites` (`<owner>/<name>`), `Composites` (global `<ModId>.<Name>`) and `Contributions` (`<contributor>/<name>`), plus the `TextBoxSmall` texture. Each is loaded `Exclusive` with the entries C# mods imported (`Data/Bridge/DataImport`) as its base layer, so Content Patcher `EditData` patches both packs' and C# mods' entries, field by field (`TargetField` reaches nested elements by `Id`).
+- **One owner = one mod id.** The key prefix must be a loaded mod or content pack (`ModRegistry.IsLoaded`); otherwise only that entry is rejected. `Core/ConsumerContexts` caches one `ConsumerContext` per id and is used both by `ModEntry.GetApi` and by the data layer, so the C# and data halves of a hybrid mod share tooltip delay, default style, signal bindings and muted callbacks.
+- **Parity by construction.** `DataBuilder` builds every entry through the owner's own `StardewUIApi` facade (constructed exactly as `GetApi` constructs it), so data gets the same id, sealing and registry checks as C#. Internal downcasts are used only where the public API cannot express something (conditional tooltip blocks, accessor‑based forms, `UIContainer.Insert` for decorations).
+- **Collision rule.** A C# menu, HUD or composite with the same key wins and the data entry is skipped with a warning. A data menu that C# destroys (`DestroyMenu`) is built again on the next reload unless a C# menu took its key.
+- **Owner settings** (`Owners`) apply only the fields an entry sets. The C# values (`SetTooltipDelay` / `SetDefaultStyle`) are captured before data first overrides them and restored when the entry stops setting them or is removed. A data menu's `Hotkey` only unbinds a toggle hotkey data itself bound, so a C# `BindToggleHotkey` on the same menu survives rebuilds.
+
+### 17.2 Loading, validation and building
+
+- `DataAssetReader` reads the assets through the content pipeline and returns private deep copies; entries with `From` are merged over the standalone file they name (the entry's members win).
+- `DataValidator` normalizes and checks each entry: shorthands (`{ "Label": "Hi" }`, `"Margin": "8,4"`, `"Cell": "r,c"`, string sources) expand, type names canonicalize, missing ids become `<parent>.<index>`, and every problem is a path‑qualified message (`Menus["Owner/demo"].Children[2](#form).Width: …`) with "did you mean" hints for unknown members (`[JsonExtensionData] Unknown`). Only a bad key or an unloaded owner rejects an entry; anything else skips the offending value or element.
+- The model is one flat `ElementDefinition` (a `Type` discriminator; every value member is a `string?`, so literals and expressions share a field) plus `ElementTypes`, the table of which members each type reads (shared by the validator, the builder and `SchemaWriter`).
+- `PropertyApplier` is the single path every value takes: the resolver returns a `ValueSource<T>`; static values are applied once, dynamic ones register with the current refresh group (the menu's, or an `If` / `Switch` page's) and are re‑applied from `UIMenu.DataRefresh` at the top of `Tick`. Making any property dynamic needs no builder change.
+
+### 17.3 Values and expressions
+
+- `ExpressionValueResolver`: `${expr}` is live, `$:{expr}` is evaluated once per open, `$${` is a literal. A field whose whole value is one `${…}` keeps its type; bool and number fields also take a bare expression. Values that parse as a literal stay literals, constant expressions are folded at build time, and parse errors are reported at load with the value's path.
+- `Data/Expressions`: lexer, Pratt parser (never throws; positioned errors), immutable AST, evaluator with a step budget and capped depth and sizes; no loops, assignment or reflection. Built‑ins (`BuiltinFunctions`) are pure; the game and UI functions (`gsq token loc isOpen focused hovered bounds itemName`, `Data/GameFunctions`) are registered by the data layer into `FunctionRegistry.Default`; `@owner/name(…)` calls a C# function through the scope.
+- Results are cached per (scope, screen epoch) and, when volatile (`gsq`, `hovered`, C# functions, plain models), per tick. The epoch moves with every state change on that screen and with global bumps (reloads, config, C# function / source / exposure registrations, model notifications), so a (re)registered function never serves a stale value.
+- Content Patcher tokens resolve at patch time. Vanilla tokenizable strings are explicit (`token()`, `loc()`) because `[…]` collides with rich text markup.
+
+### 17.4 State
+
+- `Data/State/DataStateStore` holds signal cells keyed by (screen, scope, owner, name), never by the `UIMenu` object: menu models (tree, options, callbacks) are shared across split‑screen players, while the host and the view state (focus, hover, overlay, mouse capture, collapsed state) are per screen (`UIMenu`'s `PerScreen<ScreenView>`), and state survives menu replacement and hot reload. Defaults (`State`) are only used for keys that do not exist yet.
+- Writable scopes: `menu.*` (per menu; `StateLifetime: Open` resets it on each real open, not on `_Refresh` or a hot reload), `session.*` (per owner, until the title screen), `player.*` (`modData["<owner>/x"]`, saved and synced, readable by vanilla `PLAYER_MOD_DATA`), `stat.*` (player stats) and `config.*` (`ConfigStore`: per owner, global across saves, `helper.Data` JSON, debounced writes). Qualified forms (`menu[owner/menu].x`, `session[owner].x`, …) work from outside a UI.
+- Read‑only roots (`ScopeRoots`): `event.*`, `self.*` / `el[id].*`, `row.*` / `index` / the `As` name, `args.*`, `game.*`, `ui.*`, `ctx.*`, `model.*` and `@owner/name`.
+- `Computed`, `Watch` (actions with `event.old` / `event.new`), two‑way `Bind` (inputs use getter/setter closures that resolve the current screen's cell, not the facade's single‑signal `Bind*`) and output‑only `Out` bindings (hover, focus, scroll, selection, value and bounds written into state).
+- Structure: `If` builds a subtree only while true, `Switch` / `Case` builds pages lazily on first show, `With` narrows the scope.
+
+### 17.5 Events, actions, queries, tokens and tile actions
+
+- Every event is an action list (`ActionListConverter`: a string, an array, or `{Action, Condition, When, Actions, Else}`). `DataActionRunner` interpolates each entry right before it runs and executes it with `TriggerActionManager.TryRunAction`. The UI scope travels in `TriggerActionContext.CustomFields["6135.UIFramework/Scope"]` and as a thread‑static ambient scope, so it also reaches actions nested in vanilla `If`. A failing entry is logged once against the owner and mutes that element's event, like a faulting C# callback.
+- Handlers that return something: `Keys` (handled when an entry matches), `Validate` (an expression; `false` or a message rejects, `OnInvalid` runs), `OnUpdate` with `UpdateIntervalMs`.
+- Framework trigger actions (`6135.UIFramework_*`): menus (`OpenMenu [force]` waits until the player is free, `OpenMenuAsChild`, `CloseMenu`, `ToggleMenu`), HUDs, state (`SetState`, `AddState`, `ToggleState`, `ResetState`), feedback (`ShowToast`, `Announce`, `SetTheme`), navigation (`Focus`, `ScrollTo`, `Refresh`, `SetPosition`, `ResetLayout`), collections and forms (`Sort`, `ClearSelection`, `Rebuild`, `FormSave`, `FormCancel`, `Undo`, `Redo`) and the bridge (`Invoke`, `Publish`). They work anywhere the game runs trigger actions.
+- Game state queries `_MENU_OPEN`, `_HUD_VISIBLE`, `_STATE`, `_STATE_NUMBER`; the token `[6135.UIFramework_State <key>]`; the optional Content Patcher token `{{6135.UIFramework/State: <owner>/<key>}}` (registered on `GameLaunched`; `UpdateContext` reports state changes); `6135.UIFramework_OpenMenu` as a tile `Action` / `TouchAction`; menu `Hotkey`s and owner `Hotkeys`.
+
+### 17.6 Collections, tooltips and forms
+
+- `DataSources` resolves a source (inline rows, ranges, item queries, state arrays, expressions, themes, string‑dictionary assets, named `Sources`, C# hooks) per screen, only on open, `_Refresh` / `_Rebuild` and when what it reads changes; `Filter` / `Sort` / `Limit` re‑run only when the state epoch moves. `RowScope` turns JSON rows, item rows and C# rows into expression values and caches created items.
+- `Repeat` (non‑virtualized, ids `<repeat>.<n>.<child>`), `List` and `DataGrid` (every `IUIDataGrid` member; column values are expressions compiled once). Row element ids derive from the row container, never the item index.
+- Rich tooltips compile once and are instantiated per scope (per row for grids); `TooltipBlock.When` / `ColorFunc` were added to the core tooltip model for this.
+- `Form` is an auto‑form over state through the accessor‑based `FormProperty` refactor of `AutoForm` (Cancel snapshot, undo / redo, dirty tracking, validation), or over a C# model (`"Model"`).
+
+### 17.7 Hot reload
+
+- Asset invalidation (`AssetsInvalidated` / `AssetReady`), watched `ImportDataFile` saves and a data menu destroyed from C# only set a dirty flag; the assets are re‑read once on the next `UpdateTicked` (shared by split‑screen players). Each entry's hash (`DefinitionHash`: canonical JSON plus the sprite, owner and C# hook structure versions) is compared with the last build, so Content Patcher's day‑start invalidations rebuild nothing that did not change.
+- `UIMenu.RebuildInPlace(build)` keeps the same `UIMenu` and `MenuHost` (the menu stays open; child menus and C# references survive): capture view state by element id (`Core/MenuViewState`: focus, scroll offsets, list and grid position, sort, selection, column widths), close the overlay and clear focus, clear the root (bindings drop through `OnElementDetached`), re‑apply the options and build, re‑run slots and decorators when open, then restore the view state and reset mutes. HUDs rebuild on their inner menu and keep the player's layout; data composites rebuild every live instance.
+- C# code should never cache element handles from data menus. It attaches through hooks, slots and `OnScreenBuilt`, which run again after every rebuild.
+
+### 17.8 C# bridge, templates, composites and contributions
+
+- **Hooks** (`Hosting/HookRegistry`, v1.6): commands, functions, row sources (`DefineDataSource`, `ExposeRows`), draw hooks and exposed signals / computeds / models, keyed `owner/name` and run under the owner's guard; any pack uses `ModId/name`, the owner's own data the short name. Models are duck‑typed (`ModelAccessor`); `INotifyPropertyChanged` / `INotifyCollectionChanged` bump the epoch, other reads are volatile. `DataArgument` lets `CompositeArgs.Get<T>` convert a data literal, reference or action list into whatever a C# composite asks for; a dotted `Type` is a custom tag for a composite. There is no `RegisterComponent`: custom components reach data as C# composites, which avoids proxying consumer‑implemented interfaces returned from delegates.
+- **Templates** (menu `Templates`, owner `Templates`) are expanded at build time, with typed `Params` (defaults, `Required`), `args.*` and named `Outlet`s. **Data composites** (`Composites`) have the same body plus `Expose` / `Commands` / `Publish` and are registered in `CompositeRegistry` next to the C# ones (`DataComposites`), so C# `AddComposite` uses them too. A composite name may be an expression (dynamic include).
+- **Contributions** (`ContributionBuilder`, `DecorationApplier`): `Slot` + `Children` become one `ContributeTo` per contributor and slot; `Decorate` and `On` become one `OnScreenBuilt` per contributor and menu that first undoes its previous edits, so nothing piles up on C# menus whose tree survives between opens. Sealed subtrees refuse edits; subscriptions are one per (contributor, menu, event). Menus share values and commands with contributors through `Expose` / `Commands` (`ctx.*`, `_Invoke ctx.<cmd>`).
+
+### 17.9 Tooling
+
+- Console: `ui_data`, `ui_validate`, `ui_reload`, `ui_schema` (JSON Schemas generated from the models with XML‑doc descriptions, for editor autocomplete on `From` files), `ui_state`, `ui_open` / `ui_close`.
+- Exporter split (`Core/Export`: `TreeModel`, `TreeModelReader`, `CSharpEmitter`, `JsonEmitter`): `TreeExporter.Export` keeps exactly the same C# output; `ExportJson` (inspector **J**, `ui_export … json`) turns any open menu, C# or data, into a `Menus` entry, with `TODO` notes where a C# delegate's current value was exported.
+- `[CP] UI Framework Example` exercises most features. Profit Calculator keeps its main menu in `assets/ui.json` (`ImportDataFile`, watched in DEBUG builds).
+
+### 17.10 Known limitations
+
+- Genuine code (custom drawing, components, C#‑computed data) still needs a C# mod to register it; data only references it.
+- Menu and element `Condition`s are checked on open and `_Refresh`, not live. `gsq()` in live expressions is cached per tick, so `RANDOM` flickers.
+- Content Patcher tokens do not apply inside `From` files or imported JSON (use `loc()` or a registered function).
+- `config.*` is global across saves; the Content Patcher token only updates at Content Patcher's update points.
+- Auto‑generated ids cannot be targeted reliably by patches, decorations or `el[id]`.
+- A contributor's data contributions and its own C# `ContributeTo` / `OnScreenBuilt` for the same slot or menu must not overlap.
+- The optional extras of the plan (interaction state layers, transitions, visual transforms, new components such as tabs and expanders, floating attachments, confirmations, percentage sizes) are not implemented; `MinWidth` / `MaxWidth` arrived in v1.8.
+
+## 18. To do
+
+### 18.1 Differentiation
+
+Direction: the framework for content-pack authors, players and cross-mod UI, rather than competing on C# markup.
+Already in place: `ui_schema` (JSON Schemas, v1.3), shorthands (v1.3), inspector **J** / `ui_export … json` (v1.7).
+
+- [ ] **Publish the JSON Schemas.** Host the `ui_schema` output at a stable URL in the repository so a pack can set
+  `"$schema"` without running the command first; put it at the top of the Content Pack Guide.
+- [ ] **Starter templates and a quick-start page.** Copy-ready packs (settings page, shop, quest board, HUD counter)
+  and a "first menu in 10 minutes" wiki page.
+- [ ] **Less verbose JSON.** More shorthand forms and defaults, with templates as the main way to build screens.
+- [ ] **Inspector edits go back to the pack.** Today JSON export goes to `Mods/UIFramework/export`, the log and the
+  clipboard; let the inspector write the nudged values into the pack's own file (or a `From` file) so no copy-paste
+  is needed.
+- [ ] **Pitch player features.** Lead the Nexus page and wiki with remembered window positions, shared themes and
+  screen reader support.
+- [ ] **Close the polish gap.** Tabs, expanders, a confirmation dialog and simple transitions (see §17.10).
+- [ ] **Rename the display name.** Pick a distinct mod name; keep the `6135.UIFramework` id.
+
+### 18.2 Open items
+
+- [ ] §14 checks in game: UI scales 75/100/150 %, gamepad reach.
+- [ ] Player resize: check the corner grip in game on the pack's demo menu (`"Resizable": true`, content-sized): drag,
+  minimum size, content scrolls once smaller, saved per save, `ui_layout_reset` makes it fit its content again.
+- [ ] Nexus upload of 1.8 (and Profit Calculator 2.1.0).
+- [ ] Wiki source links point at `master`; the data-driven UI code is only on `develop` until it is merged.

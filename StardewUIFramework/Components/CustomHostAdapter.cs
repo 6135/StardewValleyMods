@@ -40,6 +40,16 @@ namespace UIFramework.Components
 
         internal override bool Focusable => bridge.WantsFocus;
 
+        /// <summary>Like <see cref="CustomElementAdapter"/>: the consumer's <c>AccessibleName</c> or the tooltip describes it.</summary>
+        internal override string AccessibleDescription
+        {
+            get
+            {
+                string? tooltip = Tooltip == null ? null : Raise("Tooltip", Tooltip, string.Empty);
+                return Accessibility.Compose(Accessibility.Text("custom", "Custom"), tooltip ?? Id);
+            }
+        }
+
         /// <summary>Overlay components draw (chrome, children, <c>OnDrawExtra</c>) and are hit-tested above the tree.</summary>
         protected override bool DrawsInOverlay => bridge.WantsOverlay;
 
@@ -54,6 +64,9 @@ namespace UIFramework.Components
             }
             return size;
         }
+
+        /// <summary>Like the measure: the larger of the implementation's reported minimum and the host's.</summary>
+        protected override float MinWidthCore() => Math.Max(bridge.MinimumWidth, MaxChildMinWidth());
 
         protected override void ArrangeCore()
         {

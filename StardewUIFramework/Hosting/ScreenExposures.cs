@@ -155,5 +155,17 @@ namespace UIFramework.Hosting
                 list.RemoveAll(s => s.Subscriber.ModId == subscriber.ModId && s.Handler == handler);
             }
         }
+
+        /// <summary>
+        /// Drop every subscription of <paramref name="subscriber"/>: its contributions and decorators are about to run
+        /// again (the menu opens or is rebuilt) and subscribe anew, or it no longer extends the menu.
+        /// </summary>
+        internal void RemoveSubscriptions(ConsumerContext subscriber)
+        {
+            foreach (List<Subscription> list in subscriptions.Values)
+            {
+                list.RemoveAll(s => s.Subscriber.ModId == subscriber.ModId);
+            }
+        }
     }
 }

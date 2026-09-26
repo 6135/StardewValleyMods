@@ -133,7 +133,8 @@ namespace UIFramework.Core
         protected Reactive(ConsumerContext consumer, string kind)
         {
             Consumer = consumer;
-            Id = kind + "#" + (++nextId).ToString(CultureInfo.InvariantCulture);
+            nextId++;
+            Id = kind + "#" + nextId.ToString(CultureInfo.InvariantCulture);
         }
 
         /// <summary>The consumer that created the value (its callback guard wraps every handler).</summary>

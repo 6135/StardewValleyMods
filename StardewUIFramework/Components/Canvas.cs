@@ -29,6 +29,20 @@ namespace UIFramework.Components
             return new Vector2(w, h);
         }
 
+        /// <summary>The farthest right edge any visible child needs: its offset plus its own minimum.</summary>
+        protected override float MinWidthCore()
+        {
+            float w = 0;
+            foreach (UIElement child in Children)
+            {
+                if (child.Visible)
+                {
+                    w = Math.Max(w, child.X + child.MeasureMinWidth());
+                }
+            }
+            return w;
+        }
+
         protected override void ArrangeCore()
         {
             foreach (UIElement child in Children)

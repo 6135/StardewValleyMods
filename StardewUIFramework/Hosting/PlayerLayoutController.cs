@@ -10,7 +10,7 @@ namespace UIFramework.Hosting
 {
     /// <summary>
     /// The player-owned layout of one hosted window: dragging by the title strip, the collapse button next to the
-    /// close button and the resize grip in the bottom-right corner (fixed-size menus only). Changes are recorded in
+    /// close button and the resize grip in the bottom-right corner (fixed-size or <see cref="UIMenu.Resizable"/> menus). Changes are recorded in
     /// <see cref="UIServices.Layouts"/> when the mouse is released, and the stored layout is applied on construction.
     /// </summary>
     internal sealed class PlayerLayoutController
@@ -19,6 +19,11 @@ namespace UIFramework.Hosting
         private const int ButtonWidth = 44;
         private const int ButtonHeight = 48;
         private const int ButtonGap = 8;
+
+        // where IClickableMenu.initializeUpperRightCloseButton puts the close button: its left edge 36 px left of the
+        // window's right edge, its top 8 px above the window's top edge
+        private const int CloseButtonInsetRight = 36;
+        private const int CloseButtonRaise = 8;
 
         private enum Mode
         {
@@ -33,6 +38,7 @@ namespace UIFramework.Hosting
         private Point start;
         private Point origin;
         private Point originSize;
+        private Point minimumSize;
 
         internal PlayerLayoutController(UIMenu menu)
         {
@@ -53,6 +59,12 @@ namespace UIFramework.Hosting
 
         private bool CanResize => Enabled && menu.IsResizable && !menu.Collapsed;
 
+        /// <summary>
+        /// Width the window's own controls need: from the collapse button's left edge (the close button sits right of
+        /// it) to the window's right edge, plus the grip, so neither the buttons nor the grip hang over the left border.
+        /// </summary>
+        private int ChromeWidth => (collapseButton != null ? menu.Bounds.Right - collapseButton.bounds.X : 0) + GripSize;
+
         /// <summary>Place the collapse button left of the close button (or in its place when there is none).</summary>
         internal void SyncButtons(ClickableComponent? closeButton)
         {
@@ -62,8 +74,8 @@ namespace UIFramework.Hosting
                 return;
             }
 
-            int right = closeButton != null ? closeButton.bounds.X - ButtonGap : menu.Bounds.Right - 36 + ButtonWidth;
-            var bounds = new Rectangle(right - ButtonWidth, menu.Bounds.Y - 8, ButtonWidth, ButtonHeight);
+            int right = closeButton != null ? closeButton.bounds.X - ButtonGap : menu.Bounds.Right - CloseButtonInsetRight + ButtonWidth;
+            var bounds = new Rectangle(right - ButtonWidth, menu.Bounds.Y - CloseButtonRaise, ButtonWidth, ButtonHeight);
             Rectangle source = menu.Collapsed ? Theme.ScrollDownArrow : Theme.ScrollUpArrow;
             if (collapseButton == null)
             {
@@ -143,7 +155,7 @@ namespace UIFramework.Hosting
         {
             menu.Collapsed = !menu.Collapsed;
             UIServices.PlaySound(Theme.DropdownCloseSound);
-            UIServices.Layouts?.Remember(menu);
+            UIServices.Layouts?.Remember(menu, moved: false);
         }
 
         private void Begin(Mode newMode, int x, int y)
@@ -152,6 +164,15 @@ namespace UIFramework.Hosting
             start = new Point(x, y);
             origin = new Point(menu.Bounds.X, menu.Bounds.Y);
             originSize = new Point(menu.Bounds.Width, menu.Bounds.Height);
+            if (newMode == Mode.Resize)
+            {
+                // the content does not change during a drag, so its minimum is measured once; a window that is already
+                // smaller than that (the owner's fixed size, or a small screen) keeps its size as the bound, so the grip
+                // only ever changes the size by the player's own movement and never enlarges the window on its own
+                Point min = menu.MinimumSize(ChromeWidth);
+                minimumSize = new Point(Math.Min(min.X, originSize.X), Math.Min(min.Y, originSize.Y));
+            }
+
             // pin the top-left corner so anchored menus do not jump while dragging / resizing
             menu.SetPosition(origin.X, origin.Y);
         }
@@ -166,9 +187,8 @@ namespace UIFramework.Hosting
             }
             else if (mode == Mode.Resize)
             {
-                Point min = menu.MinimumSize;
-                menu.Width = Math.Max(min.X, originSize.X + dx);
-                menu.Height = Math.Max(min.Y, originSize.Y + dy);
+                menu.Width = Math.Max(minimumSize.X, originSize.X + dx);
+                menu.Height = Math.Max(minimumSize.Y, originSize.Y + dy);
             }
             else
             {
@@ -184,7 +204,7 @@ namespace UIFramework.Hosting
             }
 
             mode = Mode.None;
-            UIServices.Layouts?.Remember(menu);
+            UIServices.Layouts?.Remember(menu, moved: true);
         }
     }
 }

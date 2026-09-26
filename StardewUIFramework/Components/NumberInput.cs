@@ -13,8 +13,10 @@ namespace UIFramework.Components
     /// Numeric entry with the vanilla text box look (Profit Calculator's <c>UIntOption</c> generalized to doubles).
     /// While focused the user edits a text buffer (digits, a leading '-' when <see cref="Min"/> is negative and one
     /// '.' when <see cref="Decimals"/> &gt; 0); every keystroke parses the buffer, clamps / rounds it and commits the
-    /// number through <see cref="ValidateFunc"/>, the bound setter and <see cref="OnValueChanged"/>. Up / Down and the
-    /// wheel step by <see cref="Step"/>; losing focus re-clamps; Enter raises <see cref="OnSubmit"/>.
+    /// number through <see cref="ValidateFunc"/>, the bound setter and <see cref="OnValueChanged"/>. With
+    /// <see cref="Clamp"/> on, a number still short of the range (typing "1" on the way to "12" with a minimum of 5) is
+    /// kept in the buffer uncommitted; losing focus and Enter commit the buffer fully clamped. Up / Down and the
+    /// wheel step by <see cref="Step"/>; Enter raises <see cref="OnSubmit"/>.
     /// </summary>
     internal sealed class NumberInput : UIElement, IUINumberInput
     {
@@ -164,6 +166,17 @@ namespace UIFramework.Components
         /// <summary>Display text when not editing: fixed <see cref="Decimals"/> places.</summary>
         private string Format(double value) => value.ToString("F" + decimals, Culture);
 
+        /// <summary>
+        /// Whether a typed number lies between zero and the range (below a positive minimum, above a negative maximum):
+        /// more digits can still bring it inside, so clamping it now would rewrite what the user is typing.
+        /// </summary>
+        private bool ShortOfRange(double value)
+        {
+            double lo = Math.Min(Min, Max);
+            double hi = Math.Max(Min, Max);
+            return value >= 0 ? value < lo : value > hi;
+        }
+
         /// <summary>The value a cleared box falls back to: 0, or the nearest bound when 0 is out of range.</summary>
         private double EmptyValue => Math.Clamp(0, Math.Min(Min, Max), Math.Max(Min, Max));
 
@@ -228,7 +241,7 @@ namespace UIFramework.Components
         /// </summary>
         private void ApplyBuffer(string previous)
         {
-            if (buffer == null || !TryParse(buffer, out double parsed))
+            if (buffer == null || !TryParse(buffer, out double parsed) || (Clamp && ShortOfRange(parsed)))
             {
                 return;
             }
@@ -252,6 +265,18 @@ namespace UIFramework.Components
             {
                 SetBuffer(Trim(normalized));
             }
+        }
+
+        /// <summary>End of an edit (focus loss, Enter): commit the buffer's number rounded and clamped, then show the result.</summary>
+        private void CommitBuffer()
+        {
+            if (buffer == null || !TryParse(buffer, out double parsed))
+            {
+                return;
+            }
+
+            TryCommit(Normalize(parsed));
+            SetBuffer(Trim(Value));
         }
 
         /// <summary>Move the value by <paramref name="direction"/> steps (clamped to the range) and commit it.</summary>
@@ -365,6 +390,9 @@ namespace UIFramework.Components
 
         protected override Vector2 MeasureCore(Vector2 available) => TextBoxDrawing.Measure(texture, Style.Font);
 
+        // the box is 3-slice and the text clips from the left, so it narrows to the caps plus a few characters
+        protected override float MinWidthCore() => TextBoxDrawing.MinWidth(Style.Font);
+
         protected override void DrawCore(SpriteBatch b)
         {
             ResolvedStyle style = Style;
@@ -395,6 +423,7 @@ namespace UIFramework.Components
         /// <summary>Leaving the box re-clamps the value (like <c>UIntOption.BeforeReceiveLeftClick</c>) and drops the buffer.</summary>
         protected internal override void HandleFocusLost()
         {
+            CommitBuffer();
             buffer = null;
             bufferIsPlaceholder = false;
             double current = Value;
@@ -516,6 +545,8 @@ namespace UIFramework.Components
 
             if (e.Key == Keys.Enter)
             {
+                CommitBuffer();
+
                 // with no OnSubmit, Enter falls through to the menu's DefaultButton
                 if (OnSubmit == null)
                 {

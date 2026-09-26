@@ -24,8 +24,6 @@ namespace UIFramework.Core
 
         internal bool HasPopups => popups.Count > 0;
 
-        internal IReadOnlyList<UIElement> Popups => popups;
-
         /// <summary>Open <paramref name="element"/>'s popup, closing any other.</summary>
         internal void OpenPopup(UIElement element)
         {

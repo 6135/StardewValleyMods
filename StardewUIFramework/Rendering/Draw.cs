@@ -142,7 +142,7 @@ namespace UIFramework.Rendering
 
             float fullHeight = UIServices.Text.Measure(font, text, scale).Y;
             float fitScale = scale;
-            while (UIServices.Text.Measure(font, text, fitScale).X > rect.Width && fitScale > MinFitScale * scale + 0.001f)
+            while (UIServices.Text.Measure(font, text, fitScale).X > rect.Width && fitScale > (MinFitScale * scale) + 0.001f)
             {
                 fitScale = Math.Max(MinFitScale * scale, fitScale - (0.1f * scale));
             }
@@ -162,8 +162,56 @@ namespace UIFramework.Rendering
             return shownSize.X;
         }
 
-        /// <summary>The longest prefix of <paramref name="text"/> + "..." that fits in <paramref name="width"/> (may be just "...").</summary>
+        /// <summary>
+        /// The narrowest width <see cref="FitText(SpriteBatch, string, UIFont, Rectangle, Color, bool, float, UIAlign)"/> can
+        /// draw <paramref name="text"/> in and still show something readable: the whole text at the smallest fit scale when
+        /// it is that short, otherwise its first character plus "..." at that scale. Pure; the minimum width of the
+        /// controls that draw a single fitted line when they opt into <c>Shrink</c> (button, checkbox, dropdown,
+        /// single-line label), and always of a data grid header.
+        /// </summary>
+        internal static float FitTextMinWidth(string? text, UIFont font, float scale)
+        {
+            if (string.IsNullOrEmpty(text))
+            {
+                return 0;
+            }
+
+            float smallest = MinFitScale * scale;
+            float whole = UIServices.Text.Measure(font, text, smallest).X;
+            float truncated = UIServices.Text.Measure(font, text.Substring(0, 1) + "...", smallest).X;
+            // rounded up: layout hands out whole pixels, and a fraction short would truncate one step further
+            return (float)Math.Ceiling(Math.Min(whole, truncated));
+        }
+
+        /// <summary>Most truncations kept; the cache is dropped when it grows past this (live text can change every frame).</summary>
+        private const int TruncateCacheLimit = 256;
+
+        /// <summary>
+        /// Truncated lines by (text, font, scale, width) plus the theme font scale measuring depends on, so a squeezed
+        /// label does not rebuild its substrings every frame.
+        /// </summary>
+        private static readonly Dictionary<(string Text, UIFont Font, float Scale, int Width, float FontScale), string> TruncateCache = new();
+
+        /// <summary>The longest prefix of <paramref name="text"/> + "..." that fits in <paramref name="width"/> (may be just "..."); cached.</summary>
         private static string Truncate(string text, UIFont font, float scale, int width)
+        {
+            var key = (text, font, scale, width, Theme.FontScale);
+            if (TruncateCache.TryGetValue(key, out string? cached))
+            {
+                return cached;
+            }
+
+            if (TruncateCache.Count >= TruncateCacheLimit)
+            {
+                TruncateCache.Clear();
+            }
+
+            string shown = TruncateUncached(text, font, scale, width);
+            TruncateCache[key] = shown;
+            return shown;
+        }
+
+        private static string TruncateUncached(string text, UIFont font, float scale, int width)
         {
             const string Ellipsis = "...";
             int lo = 0, hi = text.Length;
@@ -205,7 +253,7 @@ namespace UIFramework.Rendering
         /// <summary>
         /// Run <paramref name="draw"/> with the scissor rectangle set to <paramref name="clip"/> (intersected with any
         /// outer clip). Ends the current batch and restarts it with the parameters the game uses for menus
-        /// (Deferred / AlphaBlend / PointClamp), then restores them. The only place the framework calls End/Begin.
+        /// (Deferred / AlphaBlend / PointClamp), then restores them. With <see cref="WithTransform"/>, the only places the framework calls End/Begin.
         /// </summary>
         internal static void WithScissor(SpriteBatch b, Rectangle clip, Action draw)
         {
@@ -242,6 +290,28 @@ namespace UIFramework.Rendering
                 {
                     b.Begin(SpriteSortMode.Deferred, BlendState.AlphaBlend, SamplerState.PointClamp);
                 }
+            }
+        }
+
+        /// <summary>
+        /// Run <paramref name="draw"/> with <paramref name="transform"/> applied to everything it draws (for code that
+        /// only lays out correctly at one size, like the game's <c>drawInMenu</c> at scale 1). Restarts the batch with
+        /// the same parameters as <see cref="WithScissor"/>, keeping an active clip (the scissor rectangle stays in screen
+        /// space), then restores it.
+        /// </summary>
+        internal static void WithTransform(SpriteBatch b, Matrix transform, Action draw)
+        {
+            RasterizerState? rasterizer = clipStack.Count > 0 ? ScissorState : null;
+            b.End();
+            b.Begin(SpriteSortMode.Deferred, BlendState.AlphaBlend, SamplerState.PointClamp, null, rasterizer, null, transform);
+            try
+            {
+                draw();
+            }
+            finally
+            {
+                b.End();
+                b.Begin(SpriteSortMode.Deferred, BlendState.AlphaBlend, SamplerState.PointClamp, null, rasterizer);
             }
         }
 

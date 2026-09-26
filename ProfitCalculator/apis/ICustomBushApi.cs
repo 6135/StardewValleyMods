@@ -1,40 +1,15 @@
-﻿namespace ProfitCalculator.apis;
+namespace ProfitCalculator.apis;
 
-using StardewValley.TerrainFeatures;
 using System.Collections.Generic;
 
 #nullable enable
 
-/// <summary>Mod API for custom bushes.</summary>
+/// <summary>Mod API for custom bushes (furyx639.CustomBush). Only the members used by this mod are declared.</summary>
 public interface ICustomBushApi
 {
     /// <summary>Retrieves the data model for all Custom Bush.</summary>
-    /// <returns>An enumerable of objects implementing the ICustomBush interface. Each object represents a custom bush.</returns>
-    public IEnumerable<(string Id, ICustomBush Data)> GetData();
-
-    /// <summary>Determines if the given Bush instance is a custom bush.</summary>
-    /// <param name="bush">The bush instance to check.</param>
-    /// <returns><c>true</c> if the bush is a custom bush, otherwise false.</returns>
-    public bool IsCustomBush(Bush bush);
-
-    /// <summary>Tries to get the custom bush model associated with the given bush.</summary>
-    /// <param name="bush">The bush.</param>
-    /// <param name="customBush">
-    /// When this method returns, contains the custom bush associated with the given bush, if found;
-    /// otherwise, it contains null.
-    /// </param>
-    /// <returns><c>true</c> if the custom bush associated with the given bush is found; otherwise, <c>false</c>.</returns>
-    public bool TryGetCustomBush(Bush bush, out ICustomBush? customBush);
-
-    /// <summary>Tries to get the custom bush model associated with the given bush.</summary>
-    /// <param name="bush">The bush.</param>
-    /// <param name="customBush">
-    /// When this method returns, contains the custom bush associated with the given bush, if found;
-    /// otherwise, it contains null.
-    /// </param>
-    /// <param name="id">When this method returns, contains the id of the custom bush, if found; otherwise, it contains null.</param>
-    /// <returns><c>true</c> if the custom bush associated with the given bush is found; otherwise, <c>false</c>.</returns>
-    public bool TryGetCustomBush(Bush bush, out ICustomBush? customBush, out string? id);
+    /// <returns>An enumerable of objects implementing the <see cref="ICustomBushData"/> interface. Each object represents a custom bush.</returns>
+    public IEnumerable<ICustomBushData> GetAllBushes();
 
     /// <summary>Tries to get the custom bush drop associated with the given bush id.</summary>
     /// <param name="id">The id of the bush.</param>

@@ -8,13 +8,19 @@ using UIFramework.Rendering;
 
 namespace UIFramework.Core
 {
-    /// <summary>Measures text without exposing <see cref="SpriteFont"/> so layout can run without the game (tests).</summary>
+    /// <summary>Measures text without exposing <see cref="SpriteFont"/>.</summary>
     internal interface ITextMeasurer
     {
         Vector2 Measure(UIFont font, string text, float scale);
 
         /// <summary>Wrap <paramref name="text"/> so no line exceeds <paramref name="width"/> pixels.</summary>
         string Wrap(UIFont font, string text, int width);
+
+        /// <summary>
+        /// Width of the widest piece <see cref="Wrap"/> never breaks (a word, or a single character in languages
+        /// wrapped per character) at <paramref name="scale"/>: the narrowest width wrapped text fits in.
+        /// </summary>
+        float LongestWord(UIFont font, string text, float scale);
 
         float LineHeight(UIFont font);
     }
@@ -38,6 +44,38 @@ namespace UIFramework.Core
             return Game1.parseText(text ?? string.Empty, GetFont(font), Math.Max(1, (int)(width / Theme.FontScale)));
         }
 
+        // Game1.parseText breaks Japanese / Chinese / Thai between any two characters, other languages on spaces and line breaks
+        public float LongestWord(UIFont font, string text, float scale)
+        {
+            if (string.IsNullOrEmpty(text))
+            {
+                return 0;
+            }
+
+            LocalizedContentManager.LanguageCode language = LocalizedContentManager.CurrentLanguageCode;
+            bool perCharacter = language is LocalizedContentManager.LanguageCode.ja or LocalizedContentManager.LanguageCode.zh or LocalizedContentManager.LanguageCode.th;
+            float widest = 0;
+            int start = 0;
+            for (int i = 0; i <= text.Length; i++)
+            {
+                bool breakHere = i == text.Length || text[i] == ' ' || text[i] == '\n' || text[i] == '\r';
+                if (!breakHere && !perCharacter)
+                {
+                    continue;
+                }
+
+                int end = breakHere ? i : i + 1;
+                if (end > start)
+                {
+                    widest = Math.Max(widest, Measure(font, text.Substring(start, end - start), scale).X);
+                }
+
+                start = end + (breakHere ? 1 : 0);
+            }
+
+            return widest;
+        }
+
         public float LineHeight(UIFont font) => GetFont(font).LineSpacing * Theme.FontScale;
 
         internal static SpriteFont GetFont(UIFont font) => font switch
@@ -49,8 +87,8 @@ namespace UIFramework.Core
     }
 
     /// <summary>
-    /// Process-wide services used by the element tree. Set once by <see cref="ModEntry"/>; tests replace the
-    /// members with fakes so the layout / routing code never touches <see cref="Game1"/>.
+    /// Process-wide services used by the element tree. Set once by <see cref="ModEntry"/> so the layout /
+    /// routing code never touches <see cref="Game1"/> directly.
     /// </summary>
     internal static class UIServices
     {
@@ -76,9 +114,6 @@ namespace UIFramework.Core
         /// <summary>Framework configuration.</summary>
         internal static ModConfig Config { get; set; } = new();
 
-        /// <summary>Mod content helper, used to load bundled assets through the content pipeline (so Content Patcher can retexture them).</summary>
-        internal static IModContentHelper? ModContent { get; set; }
-
         /// <summary>Game content helper.</summary>
         internal static IGameContentHelper? GameContent { get; set; }
 
@@ -89,23 +124,26 @@ namespace UIFramework.Core
         /// <summary>HUD widgets and toasts (null until <see cref="ModEntry"/> wired it).</summary>
         internal static Hosting.HudService? Hud { get; set; }
 
+        // DATA
+        /// <summary>Data-driven menus (null until <see cref="ModEntry"/> wired it).</summary>
+        internal static global::UIFramework.Data.DataService? Data { get; set; }
+
+        /// <summary>The C# bridge of data UIs: commands, functions, sources, draw hooks and exposed values (null until <see cref="ModEntry"/> wired it).</summary>
+        internal static Hosting.HookRegistry? Hooks { get; set; }
+
         /// <summary>Player-owned window layouts for the current save (null until <see cref="ModEntry"/> wired it).</summary>
         internal static Hosting.WindowLayoutStore? Layouts { get; set; }
 
-        /// <summary>Persists <see cref="Config"/> (set by <see cref="ModEntry"/>; null in tests).</summary>
+        /// <summary>Persists <see cref="Config"/> (set by <see cref="ModEntry"/>).</summary>
         internal static Action? SaveConfig { get; set; }
 
         /// <summary>Screen reader output (Stardew Access when installed); null when no screen reader mod is present.</summary>
         internal static Action<string>? Announcer { get; set; }
 
         private static Texture2D? textBoxTexture;
-        private static Texture2D? smallTextBoxTexture;
 
         /// <summary>The vanilla text box texture (<c>LooseSprites\textBox</c>).</summary>
         internal static Texture2D TextBoxTexture => textBoxTexture ??= GameContent?.Load<Texture2D>("LooseSprites\\textBox") ?? Game1.content.Load<Texture2D>("LooseSprites\\textBox");
-
-        /// <summary>The bundled small text box texture (<c>assets/text_box_small.png</c>).</summary>
-        internal static Texture2D SmallTextBoxTexture => smallTextBoxTexture ??= ModContent?.Load<Texture2D>("assets/text_box_small.png") ?? TextBoxTexture;
 
         internal static void Log(string message, LogLevel level = LogLevel.Trace) => Monitor?.Log(message, level);
     }

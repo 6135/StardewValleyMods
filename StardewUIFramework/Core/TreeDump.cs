@@ -3,7 +3,7 @@ using System.Text;
 
 namespace UIFramework.Core
 {
-    /// <summary>Renders a menu tree as indented text (one element per line) for the debug console and test snapshots.</summary>
+    /// <summary>Renders a menu tree as indented text (one element per line) for the debug console.</summary>
     internal static class TreeDump
     {
         /// <summary>

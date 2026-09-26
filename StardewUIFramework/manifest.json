@@ -2,9 +2,15 @@
   "Name": "UI Framework",
   "Author": "6135",
   "Version": "%ProjectVersion%",
-  "Description": "A code-first UI framework other mods use to build in-game menus out of reusable components.",
+  "Description": "A UI framework other mods and content packs use to build in-game menus out of reusable components, written as JSON data or C#.",
   "UniqueID": "6135.UIFramework",
   "EntryDll": "UIFramework.dll",
   "MinimumApiVersion": "4.0.0",
+  "Dependencies": [
+    // optional: the 6135.UIFramework/State token (Content Patcher only accepts tokens from mods that list it)
+    { "UniqueID": "Pathoschild.ContentPatcher", "IsRequired": false },
+    // optional: screen reader announcements (Integrations/ScreenReader)
+    { "UniqueID": "shoaib.stardewaccess", "IsRequired": false }
+  ],
   "UpdateKeys": []
 }

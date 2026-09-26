@@ -30,7 +30,12 @@ namespace UIFramework.Core
         private readonly Button redoButton;
         private bool refreshing;
 
-        internal AutoForm(string id, object model, ConsumerContext owner) : base(id)
+        internal AutoForm(string id, object model, ConsumerContext owner) : this(id, model, FormReflection.Describe(model), owner)
+        {
+        }
+
+        /// <summary>A form over an explicit field list (accessor-backed fields, e.g. from a data definition) instead of the model's reflected properties.</summary>
+        internal AutoForm(string id, object model, IReadOnlyList<FormProperty> properties, ConsumerContext owner) : base(id)
         {
             Model = model;
             this.owner = owner;
@@ -41,7 +46,7 @@ namespace UIFramework.Core
                 RowSpacing = Spacing,
                 HorizontalAlign = UIAlign.Stretch
             };
-            BuildRows(id);
+            BuildRows(id, properties);
             Add(grid);
 
             buttons = new Stack(id + ".buttons", horizontal: true, spacing: 16)
@@ -67,15 +72,16 @@ namespace UIFramework.Core
         //  Build
         // ---------------------------------------------------------------------------------------------------------
 
-        private void BuildRows(string id)
+        private void BuildRows(string id, IReadOnlyList<FormProperty> properties)
         {
             int row = 0;
             int sections = 0;
-            foreach (FormProperty property in FormReflection.Describe(Model))
+            foreach (FormProperty property in properties)
             {
                 if (property.Section != null)
                 {
-                    AddSection(id + ".section" + sections++, property.Section, ref row);
+                    AddSection(id + ".section" + sections, property.Section, ref row);
+                    sections++;
                 }
 
                 var field = new FormField(this, property, id);
@@ -89,7 +95,7 @@ namespace UIFramework.Core
             }
         }
 
-        /// <summary>A gap (except before the first row) and a dialogue-font title spanning both columns.</summary>
+        /// <summary>A gap (except before the first row) and a dialogue-font title spanning both columns (wrapping, so a long title never sets the form's minimum width).</summary>
         private void AddSection(string id, string title, ref int row)
         {
             if (row > 0)
@@ -105,6 +111,7 @@ namespace UIFramework.Core
             var header = new Label(id, () => title)
             {
                 Font = UIFont.Dialogue,
+                Wrap = true,
                 Row = row++,
                 ColumnSpan = 2
             };
@@ -274,7 +281,8 @@ namespace UIFramework.Core
         private bool ValidateValue(FormField field, object value)
         {
             string generic = Text("form.invalid", "Invalid value");
-            string? message = owner.Invoke(field.Control.Id, "Validate", () => FormReflection.Validate(Model, field.Property, value, generic), null);
+            // a faulting validator rejects the value (the generic message) instead of letting it through
+            string? message = owner.Invoke(field.Control.Id, "Validate", () => FormReflection.Validate(Model, field.Property, value, generic), generic);
             field.ShowError(message);
             return message == null;
         }
@@ -283,6 +291,9 @@ namespace UIFramework.Core
         internal T Guard<T>(string elementId, string eventName, Func<T> func, T fallback) => owner.Invoke(elementId, eventName, func, fallback);
 
         internal void Guard(string elementId, string eventName, Action action) => owner.Invoke(elementId, eventName, action);
+
+        /// <summary>Read a field through <paramref name="getter"/> under the guard without allocating (runs every frame).</summary>
+        internal object? ReadModel(string elementId, Func<object, object?> getter) => owner.InvokeWith(string.Empty, elementId, "get", static s => s.getter(s.model), (getter, model: Model), (object?)null);
 
         private void AfterChange()
         {
@@ -401,6 +412,9 @@ namespace UIFramework.Core
 
             return new Vector2(width, height + (Spacing * Math.Max(0, visible - 1)));
         }
+
+        /// <summary>A column: as narrow as its widest child (the field grid or the button row).</summary>
+        protected override float MinWidthCore() => MaxChildMinWidth();
 
         protected override void ArrangeCore()
         {

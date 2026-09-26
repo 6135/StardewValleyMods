@@ -3,6 +3,7 @@ using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using StardewValley;
+using StardewValley.Menus;
 using UIFramework.Api;
 using UIFramework.Core;
 using UIFramework.Rendering;
@@ -19,18 +20,42 @@ namespace UIFramework.Components
     /// the selection while closed and move the highlight while open, Enter / Space open or commit, Escape closes
     /// (handled by the router).
     /// </para>
+    /// <para>
+    /// When there are more choices than <see cref="MaxVisible"/>, the open list shows a compact scroll indicator on its
+    /// right edge (the vanilla scrollbar sprites at half size): up / down arrows, dimmed at either end, and a thumb sized
+    /// to the visible share of the list. Clicking an arrow scrolls one row, clicking the track jumps there.
+    /// </para>
     /// </summary>
     internal sealed class Dropdown : UIElement, IUIDropdown
     {
         /// <summary>Height of the closed box and of every row in the open list at text scale 1.</summary>
         internal const int DropdownRowHeight = 44;
 
+        /// <summary>Preferred (natural) width; the dropdown narrows below it when its slot is smaller, down to <see cref="MinWidthCore"/>.</summary>
         private const int DefaultWidth = 300;
+
+        /// <summary>
+        /// Smallest text box width (inside the padding) the minimum width allows: room for the box's 3-slice corners and
+        /// a couple of characters plus "..." at the smallest fit scale, whatever the options are.
+        /// </summary>
+        private const int MinTextWidth = 40;
+
         private const int ButtonWidth = 48;
         private const int TextPadX = 4;
         private const int TextPadY = 8;
         private const int HighlightInset = 4;
         private const float SpriteScale = 4f;
+
+        // compact scroll indicator: the vanilla scrollbar sprites (arrows 11x12, track / thumb 6 wide) at half size
+        private const float IndicatorScale = 2f;
+        private const int IndicatorWidth = 22;
+        private const int IndicatorArrowHeight = 24;
+        private const int IndicatorTrackWidth = 12;
+        private const int IndicatorGap = 2;
+        private const int IndicatorMinThumb = 12;
+
+        /// <summary>Opacity of an end arrow when the list cannot scroll further that way.</summary>
+        private const float DisabledArrowAlpha = 0.35f;
 
         private readonly Func<string[]>? choicesFunc;
         private readonly Func<string[]>? labelsFunc;
@@ -42,6 +67,16 @@ namespace UIFramework.Components
         private int maxVisible = 5;
         private int highlightIndex = -1;
         private int activePosition;
+        private bool shrink;
+
+        /// <summary>Label-driven width of the open list, measured when it opens (see <see cref="NaturalListWidth"/>).</summary>
+        private int openListWidth;
+
+        /// <summary>
+        /// The list was opened by a click: it takes focus while open (so the arrows move the highlight) and gives it back
+        /// when it closes, as a click-once control must (<see cref="FocusOnClick"/>).
+        /// </summary>
+        private bool openedByMouse;
 
         internal Dropdown(string id, Func<string[]>? choices, Func<string[]>? labels, Func<string>? getter, Action<string>? setter) : base(id)
         {
@@ -109,6 +144,22 @@ namespace UIFramework.Components
             set => SelectedIndex = Array.IndexOf(choices, value);
         }
 
+        /// <summary>Let the minimum width drop to the fitted form of the widest option (<see cref="DrawHelper.FitTextMinWidth"/>).</summary>
+        public bool Shrink
+        {
+            get => shrink;
+            set
+            {
+                if (shrink == value)
+                {
+                    return;
+                }
+
+                shrink = value;
+                InvalidateLayout();
+            }
+        }
+
         public int MaxVisible
         {
             get => maxVisible;
@@ -160,6 +211,33 @@ namespace UIFramework.Components
             }
         }
 
+        /// <summary>
+        /// While closed: re-read the choices when the delegate hands back a different array than the one shown, so a
+        /// changing choice list never shows a stale label or lets Up / Down commit a choice that is gone. The layout is
+        /// invalidated only when the choices or labels actually differ (the minimum width depends on them).
+        /// </summary>
+        private void SyncChoices()
+        {
+            if (IsOpen || choicesFunc == null)
+            {
+                return;
+            }
+
+            string[]? current = Raise("choices", choicesFunc, choices);
+            if (ReferenceEquals(current, choices))
+            {
+                return;
+            }
+
+            string[] oldChoices = choices;
+            string[] oldLabels = labels;
+            RefreshChoices();
+            if (!choices.AsSpan().SequenceEqual(oldChoices) || !labels.AsSpan().SequenceEqual(oldLabels))
+            {
+                InvalidateLayout();
+            }
+        }
+
         /// <summary>After the choices changed: keep the previously selected value if it still exists, else the first choice (or none).</summary>
         private int RestoreOwnIndex(string previous)
         {
@@ -183,6 +261,9 @@ namespace UIFramework.Components
         Action<int> IUIDropdown.OnScroll { get => OnScroll!; set => OnScroll = value; }
 
         internal override bool Focusable => true;
+
+        // done with the mouse (pick / drag): a click does not leave it holding focus (Tab / arrows / gamepad still reach it)
+        internal override bool FocusOnClick => false;
         internal override bool ActivateOnEnter => true;
 
         internal override string AccessibleDescription => Accessibility.Compose(
@@ -233,7 +314,9 @@ namespace UIFramework.Components
         // ---------------------------------------------------------------------------------------------------------
 
         /// <summary>Open the list (no-op while detached, disabled, hidden, already open or without choices).</summary>
-        public void Open()
+        public void Open() => Open(byMouse: false);
+
+        private void Open(bool byMouse)
         {
             if (IsOpen || OwnerMenu == null || !Enabled || !Visible)
             {
@@ -246,10 +329,12 @@ namespace UIFramework.Components
                 return;
             }
 
+            openListWidth = NaturalListWidth();
             UIServices.PlaySound(OpenSoundCue);
             Focus();
             OwnerMenu.Overlay.OpenPopup(this);
             IsOpen = true;
+            openedByMouse = byMouse;
 
             int selected = SelectedIndex;
             highlightIndex = selected;
@@ -280,36 +365,90 @@ namespace UIFramework.Components
         {
             IsOpen = false;
             highlightIndex = -1;
+            if (openedByMouse)
+            {
+                openedByMouse = false;
+                if (IsFocused)
+                {
+                    OwnerMenu?.Focus.ClearFocus();
+                }
+            }
         }
 
         // ---------------------------------------------------------------------------------------------------------
         //  Layout / draw
         // ---------------------------------------------------------------------------------------------------------
 
-        protected override Vector2 MeasureCore(Vector2 available) => new(DefaultWidth, RowHeight);
+        // DefaultWidth is a preference: a narrower slot gets a narrower dropdown, and Stretch (handled by Arrange) fills it
+        protected override Vector2 MeasureCore(Vector2 available) => new(Math.Max(0, Math.Min(available.X, DefaultWidth)), RowHeight);
+
+        // the arrow button plus a text box wide enough for every option whole, capped at DefaultWidth (the natural width
+        // MeasureCore reports when there is room, so the minimum never exceeds it: options too long for that are fitted
+        // even then). With Shrink, the text box only needs the narrowest fitted form (FitText) of the widest-reaching
+        // option. Either way never below MinTextWidth, so the 3-slice box keeps its corners and some room for "..."
+        protected override float MinWidthCore()
+        {
+            UIFont font = Style.Font;
+            float text = MinTextWidth;
+            for (int i = 0; i < choices.Length; i++)
+            {
+                string label = Pseudo.Transform(GetLabel(i));
+                text = Math.Max(text, shrink ? DrawHelper.FitTextMinWidth(label, font, 1f) : (float)Math.Ceiling(UIServices.Text.Measure(font, label, 1f).X));
+            }
+
+            float width = ButtonWidth + (2 * TextPadX) + text;
+            return shrink ? width : Math.Min(width, DefaultWidth);
+        }
 
         /// <summary>Row height including the extra room scaled text needs.</summary>
-        private int RowHeight => DropdownRowHeight + Theme.ExtraTextHeight(Style.Font);
+        private int RowHeight => RowHeightFor(Style.Font);
+
+        private static int RowHeightFor(UIFont font) => DropdownRowHeight + Theme.ExtraTextHeight(font);
 
         /// <summary>Width of the text box part (the arrow button takes the rest).</summary>
         private int BoxWidth => Math.Max(0, Bounds.Width - ButtonWidth);
 
-        /// <summary>Absolute bounds of the open list, clamped so it never leaves the screen.</summary>
-        private Rectangle ListBounds
+        /// <summary>
+        /// Width the open list needs to show every label unshrunk (text + padding + the scroll indicator's strip when
+        /// it overflows), capped at the text box width of a <see cref="DefaultWidth"/> dropdown so an unsqueezed dropdown
+        /// opens exactly as before. Measured once per <see cref="Open()"/>, so a squeezed dropdown still opens a readable list.
+        /// </summary>
+        private int NaturalListWidth()
         {
-            get
+            UIFont font = Style.Font;
+            float widest = 0;
+            for (int i = 0; i < choices.Length; i++)
             {
-                int rows = Math.Min(maxVisible, choices.Length);
-                int height = rows * RowHeight;
-                int y = Math.Min(Bounds.Y, UIServices.ViewportSize().Y - height);
-                return new Rectangle(Bounds.X, Math.Max(0, y), BoxWidth, height);
+                widest = Math.Max(widest, UIServices.Text.Measure(font, Pseudo.Transform(GetLabel(i)), 1f).X);
             }
+
+            int reserved = HasOverflow ? IndicatorWidth + IndicatorGap : 0;
+            int natural = (int)Math.Ceiling(widest) + (2 * TextPadX) + reserved;
+            return Math.Min(natural, DefaultWidth - ButtonWidth);
+        }
+
+        /// <summary>
+        /// Absolute bounds of the open list: as wide as the text box, or wider when a squeezed box is narrower than the
+        /// labels need (the popup is an overlay, so it can outgrow the control), clamped so it never leaves the screen.
+        /// </summary>
+        private Rectangle ListBounds => ListBoundsFor(RowHeight);
+
+        private Rectangle ListBoundsFor(int rowHeight)
+        {
+            Point viewport = UIServices.ViewportSize();
+            int rows = Math.Min(maxVisible, choices.Length);
+            int height = rows * rowHeight;
+            int width = Math.Min(Math.Max(BoxWidth, openListWidth), viewport.X);
+            int x = Math.Min(Bounds.X, viewport.X - width);
+            int y = Math.Min(Bounds.Y, viewport.Y - height);
+            return new Rectangle(Math.Max(0, x), Math.Max(0, y), width, height);
         }
 
         protected internal override Rectangle PopupBounds => IsOpen ? ListBounds : Rectangle.Empty;
 
         protected override void DrawCore(SpriteBatch b)
         {
+            SyncChoices();
             ResolvedStyle style = Style;
             bool highlighted = Enabled && (IsHovered || IsFocused || IsOpen);
             Color tint = Theme.StateTint(Enabled, highlighted, style.HoverColor);
@@ -329,25 +468,150 @@ namespace UIFramework.Components
             }
 
             ResolvedStyle style = Style;
-            Rectangle list = ListBounds;
+            int rowHeight = RowHeightFor(style.Font);
+            Rectangle list = ListBoundsFor(rowHeight);
             DrawHelper.ThemedBox(b, Game1.mouseCursors, Theme.DropdownBoxSource, list, Color.White, SpriteScale);
 
             var interior = new Rectangle(list.X + HighlightInset, list.Y + HighlightInset, list.Width - (2 * HighlightInset), list.Height - (2 * HighlightInset));
             int start = ActivePosition;
             int end = Math.Min(choices.Length, start + maxVisible);
             int highlight = highlightIndex >= 0 ? highlightIndex : SelectedIndex;
-            int rowHeight = RowHeight;
+            // rows give up the indicator's strip when the list overflows
+            int reserved = HasOverflow ? IndicatorWidth + IndicatorGap : 0;
             for (int i = start; i < end; i++)
             {
                 int rowY = list.Y + ((i - start) * rowHeight);
                 if (i == highlight)
                 {
-                    var row = new Rectangle(list.X + HighlightInset, rowY, list.Width - (2 * HighlightInset), rowHeight);
+                    var row = new Rectangle(list.X + HighlightInset, rowY, list.Width - (2 * HighlightInset) - reserved, rowHeight);
                     DrawHelper.Fill(b, Rectangle.Intersect(row, interior), style.HoverColor);
                 }
-                var rowText = new Rectangle(list.X + TextPadX, rowY + TextPadY, Math.Max(0, list.Width - (2 * TextPadX)), rowHeight);
+                var rowText = new Rectangle(list.X + TextPadX, rowY + TextPadY, Math.Max(0, list.Width - (2 * TextPadX) - reserved), rowHeight);
                 DrawHelper.FitText(b, Pseudo.Transform(GetLabel(i)), style.Font, rowText, style.TextColor, style.TextShadow, 1f, UIAlign.Start);
             }
+
+            if (HasOverflow)
+            {
+                DrawIndicator(b, list);
+            }
+        }
+
+        // ---------------------------------------------------------------------------------------------------------
+        //  Scroll indicator
+        // ---------------------------------------------------------------------------------------------------------
+
+        /// <summary>Whether some choices do not fit in the open list (the scroll indicator is shown).</summary>
+        private bool HasOverflow => choices.Length > maxVisible;
+
+        /// <summary>The indicator's strip along the right edge of <paramref name="list"/>, or empty when nothing overflows.</summary>
+        private Rectangle IndicatorBounds(Rectangle list)
+        {
+            if (!HasOverflow)
+            {
+                return Rectangle.Empty;
+            }
+
+            return new Rectangle(list.Right - HighlightInset - IndicatorWidth, list.Y + HighlightInset, IndicatorWidth, Math.Max(0, list.Height - (2 * HighlightInset)));
+        }
+
+        /// <summary>Whether the strip is tall enough for both arrows plus some track; otherwise only the track is drawn.</summary>
+        private static bool HasArrows(Rectangle strip) => strip.Height >= (2 * IndicatorArrowHeight) + IndicatorMinThumb;
+
+        private static Rectangle UpArrowBounds(Rectangle strip) => new(strip.X, strip.Y, IndicatorWidth, IndicatorArrowHeight);
+
+        private static Rectangle DownArrowBounds(Rectangle strip) => new(strip.X, strip.Bottom - IndicatorArrowHeight, IndicatorWidth, IndicatorArrowHeight);
+
+        /// <summary>The track between the arrows (the whole strip when there is no room for them).</summary>
+        private static Rectangle TrackBounds(Rectangle strip)
+        {
+            int x = strip.X + ((IndicatorWidth - IndicatorTrackWidth) / 2);
+            if (!HasArrows(strip))
+            {
+                return new Rectangle(x, strip.Y, IndicatorTrackWidth, strip.Height);
+            }
+
+            int top = strip.Y + IndicatorArrowHeight + IndicatorGap;
+            int bottom = strip.Bottom - IndicatorArrowHeight - IndicatorGap;
+            return new Rectangle(x, top, IndicatorTrackWidth, Math.Max(0, bottom - top));
+        }
+
+        /// <summary>The thumb: as tall as the visible share of the list, placed by the scroll position.</summary>
+        private Rectangle ThumbBounds(Rectangle track)
+        {
+            int height = Math.Clamp((int)Math.Round(track.Height * (maxVisible / (float)choices.Length)), Math.Min(IndicatorMinThumb, track.Height), track.Height);
+            int range = track.Height - height;
+            int max = MaxPosition;
+            int y = track.Y + (max > 0 ? (int)Math.Round(range * (ActivePosition / (float)max)) : 0);
+            return new Rectangle(track.X, y, track.Width, height);
+        }
+
+        private void DrawIndicator(SpriteBatch b, Rectangle list)
+        {
+            Rectangle strip = IndicatorBounds(list);
+            Texture2D texture = Game1.mouseCursors;
+            Color tint = Theme.ScrollbarTint;
+            Rectangle track = TrackBounds(strip);
+
+            if (HasArrows(strip))
+            {
+                Rectangle up = UpArrowBounds(strip);
+                Rectangle down = DownArrowBounds(strip);
+                Color upTint = ActivePosition > 0 ? tint : tint * DisabledArrowAlpha;
+                Color downTint = ActivePosition < MaxPosition ? tint : tint * DisabledArrowAlpha;
+                b.Draw(texture, new Vector2(up.X, up.Y), Theme.ScrollUpArrow, upTint, 0f, Vector2.Zero, IndicatorScale, SpriteEffects.None, 0f);
+                b.Draw(texture, new Vector2(down.X, down.Y), Theme.ScrollDownArrow, downTint, 0f, Vector2.Zero, IndicatorScale, SpriteEffects.None, 0f);
+            }
+
+            if (track.Height <= 0)
+            {
+                return;
+            }
+
+            IClickableMenu.drawTextureBox(b, texture, Theme.ScrollTrack, track.X, track.Y, track.Width, track.Height, tint, IndicatorScale, false);
+            Rectangle thumb = ThumbBounds(track);
+            IClickableMenu.drawTextureBox(b, texture, Theme.ScrollThumb, thumb.X, thumb.Y, thumb.Width, thumb.Height, tint, IndicatorScale, false);
+        }
+
+        /// <summary>
+        /// Clicks on the indicator: an arrow scrolls one row, the track moves the thumb's center to the click. Returns
+        /// false when the point is not on the indicator.
+        /// </summary>
+        private bool HandleIndicatorClick(int px, int py)
+        {
+            Rectangle strip = IndicatorBounds(ListBounds);
+            if (!strip.Contains(px, py))
+            {
+                return false;
+            }
+
+            int before = ActivePosition;
+            Rectangle track = TrackBounds(strip);
+            if (HasArrows(strip) && UpArrowBounds(strip).Contains(px, py))
+            {
+                ActivePosition--;
+            }
+            else if (HasArrows(strip) && DownArrowBounds(strip).Contains(px, py))
+            {
+                ActivePosition++;
+            }
+            else if (track.Height > 0)
+            {
+                Rectangle thumb = ThumbBounds(track);
+                int range = track.Height - thumb.Height;
+                float fraction = range > 0 ? Math.Clamp((py - track.Y - (thumb.Height / 2f)) / range, 0f, 1f) : 0f;
+                ActivePosition = (int)Math.Round(fraction * MaxPosition);
+            }
+            else
+            {
+                // degenerate strip without a track: nothing to scroll
+            }
+
+            if (ActivePosition != before)
+            {
+                UIServices.PlaySound(Theme.ScrollSound);
+            }
+
+            return true;
         }
 
         // ---------------------------------------------------------------------------------------------------------
@@ -358,7 +622,7 @@ namespace UIFramework.Components
         {
             if (e.Target == this && e.Button == UIMouseButton.Left && Enabled)
             {
-                Open();
+                Open(byMouse: true);
                 base.HandleClick(e);
                 return true;
             }
@@ -386,9 +650,14 @@ namespace UIFramework.Components
 
         protected internal override bool HandleKey(UIKeyEvent e)
         {
-            bool handled = Enabled && choices.Length > 0 && HandleNavigationKey(e.Key);
-            base.HandleKey(e);
-            return handled || e.Handled;
+            // the consumer's OnKey first, as on every other component
+            if (base.HandleKey(e))
+            {
+                return true;
+            }
+
+            SyncChoices();
+            return Enabled && choices.Length > 0 && HandleNavigationKey(e.Key);
         }
 
         /// <summary>Up / Down move the selection (closed) or the highlight (open); Enter / Space commit the highlight while open.</summary>
@@ -448,7 +717,7 @@ namespace UIFramework.Components
         private int RowAt(int px, int py)
         {
             Rectangle list = ListBounds;
-            if (!list.Contains(px, py))
+            if (!list.Contains(px, py) || IndicatorBounds(list).Contains(px, py))
             {
                 return -1;
             }
@@ -459,6 +728,12 @@ namespace UIFramework.Components
 
         protected internal override void HandlePopupClick(UIClickEvent e)
         {
+            if (e.Button == UIMouseButton.Left && HandleIndicatorClick(e.X, e.Y))
+            {
+                // scrolling through the indicator keeps the list open
+                return;
+            }
+
             if (e.Button == UIMouseButton.Left)
             {
                 Commit(RowAt(e.X, e.Y));

@@ -99,8 +99,13 @@ namespace UIFramework.Core
         /// <summary>
         /// Resolve track sizes. <paramref name="autoSizes"/> holds the largest desired size of the content in each track
         /// (already computed by the caller for auto and star tracks); <paramref name="available"/> is the total space
-        /// (excluding spacing). Star tracks share what is left after auto and pixel tracks; if there is no remaining
-        /// space star tracks fall back to their content size.
+        /// (excluding spacing). Star tracks share what is left after auto and pixel tracks, by weight. When pixel and
+        /// auto tracks already use all of <paramref name="available"/>, star tracks get 0, continuing the shrinking share
+        /// they get as the remaining space runs out: a star track never makes the total exceed a finite
+        /// <paramref name="available"/>. Keeping star columns at their content minimum is the container's
+        /// <c>MinWidthCore</c> concern, which keeps the offered width from dropping that low. Star tracks fall back to
+        /// their content size only when there is nothing to share by: an unbounded <paramref name="available"/> or no
+        /// positive weight.
         /// </summary>
         internal static float[] ResolveTracks(IReadOnlyList<GridTrack> tracks, float[] autoSizes, float available)
         {
@@ -134,9 +139,13 @@ namespace UIFramework.Core
                     continue;
                 }
 
-                if (infinite || remaining <= 0 || starTotal <= 0)
+                if (infinite || starTotal <= 0)
                 {
                     sizes[i] = autoSizes[i];
+                }
+                else if (remaining <= 0)
+                {
+                    sizes[i] = 0;
                 }
                 else
                 {
@@ -144,6 +153,40 @@ namespace UIFramework.Core
                 }
             }
             return sizes;
+        }
+
+        /// <summary>
+        /// The one rule for sharing too little width between items that sit side by side: minimums first, then the rest
+        /// shared by how much each wants beyond its minimum. Every item gets <paramref name="min"/>[i] (a natural width
+        /// below it counts as the minimum); when <paramref name="available"/> holds every natural width (or is
+        /// unbounded) each item gets <paramref name="natural"/>[i]; otherwise what <paramref name="available"/> has
+        /// beyond the minimums is split in proportion to each item's slack (natural minus minimum). When
+        /// <paramref name="available"/> does not even hold the minimums, every item stays at its minimum (the total then
+        /// exceeds it). Writes <paramref name="result"/>[i] for every index of <paramref name="min"/>; it may be the same
+        /// buffer as <paramref name="natural"/>. No allocations.
+        /// </summary>
+        internal static void DistributeWidth(ReadOnlySpan<float> min, ReadOnlySpan<float> natural, float available, Span<float> result)
+        {
+            float minTotal = 0, naturalTotal = 0;
+            for (int i = 0; i < min.Length; i++)
+            {
+                float low = Math.Max(0, min[i]);
+                minTotal += low;
+                naturalTotal += Math.Max(low, natural[i]);
+            }
+
+            bool unbounded = float.IsInfinity(available) || float.IsNaN(available);
+            float extra = available - minTotal;
+            float slackTotal = naturalTotal - minTotal;
+            float share = unbounded || available >= naturalTotal ? 1
+                : extra <= 0 || slackTotal <= 0 ? 0
+                : extra / slackTotal;
+            for (int i = 0; i < min.Length; i++)
+            {
+                float low = Math.Max(0, min[i]);
+                float high = Math.Max(low, natural[i]);
+                result[i] = share >= 1 ? high : low + ((high - low) * share);
+            }
         }
 
         /// <summary>Sum of the tracks in [start, start + span) plus the spacing between them.</summary>

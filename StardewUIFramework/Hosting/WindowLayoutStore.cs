@@ -56,15 +56,15 @@ namespace UIFramework.Hosting
         //  Persistence
         // ---------------------------------------------------------------------------------------------------------
 
-        /// <summary>Replace the in-memory layouts with the ones stored in the loaded save (empty for farmhands).</summary>
+        /// <summary>Replace the in-memory layouts with the ones stored in the loaded save (main player only: a local farmhand joining must not wipe the host's layouts).</summary>
         internal void Load()
         {
-            entries = new Dictionary<string, WindowLayout>();
             if (!Context.IsMainPlayer)
             {
                 return;
             }
 
+            entries = new Dictionary<string, WindowLayout>();
             try
             {
                 entries = data.ReadSaveData<Dictionary<string, WindowLayout>>(SaveKey) ?? new Dictionary<string, WindowLayout>();
@@ -138,8 +138,12 @@ namespace UIFramework.Hosting
             menu.Collapsed = layout.Collapsed;
         }
 
-        /// <summary>Record the menu's current placement as the player's choice.</summary>
-        internal void Remember(UIMenu menu)
+        /// <summary>
+        /// Record the menu's current layout as the player's choice. The position is stored only when the player
+        /// <paramref name="moved"/> the window (a drag or resize pins it); a collapse alone keeps the stored position, or
+        /// none, so a centered window stays centered.
+        /// </summary>
+        internal void Remember(UIMenu menu, bool moved)
         {
             if (!menu.PlayerLayout)
             {
@@ -147,14 +151,15 @@ namespace UIFramework.Hosting
             }
 
             menu.ConsumerLayout ??= Capture(menu);
+            WindowLayout? previous = Get(MenuKey(menu));
             WindowLayout layout = new()
             {
-                X = menu.Bounds.X,
-                Y = menu.Bounds.Y,
+                X = moved ? menu.Bounds.X : previous?.X,
+                Y = moved ? menu.Bounds.Y : previous?.Y,
                 Width = menu.IsResizable ? menu.Width : null,
                 Height = menu.IsResizable ? menu.Height : null,
                 Collapsed = menu.Collapsed,
-                Anchor = UIAnchor.Explicit
+                Anchor = moved ? UIAnchor.Explicit : previous?.Anchor ?? menu.Anchor
             };
             Set(MenuKey(menu), layout);
         }

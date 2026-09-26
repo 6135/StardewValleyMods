@@ -3,6 +3,7 @@ using ProfitCalculator.main.models;
 using StardewModdingAPI;
 using StardewValley;
 using StardewValley.GameData.FruitTrees;
+using System;
 using System.Collections.Generic;
 using SObject = StardewValley.Object;
 
@@ -22,7 +23,14 @@ namespace ProfitCalculator.main.builders
             Monitor?.Log($"Trees loaded: {loadedTrees.Count}", LogLevel.Debug);
             foreach (var tree in loadedTrees)
             {
-                trees.Add(tree.Key, BuildCrop(tree.Value, tree.Key));
+                try
+                {
+                    trees.Add(tree.Key, BuildCrop(tree.Value, tree.Key));
+                }
+                catch (Exception e)
+                {
+                    Monitor?.Log($"Skipping fruit tree '{tree.Key}': it could not be built.\n{e}", LogLevel.Warn);
+                }
             }
             return trees;
         }

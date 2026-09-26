@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.Linq.Expressions;
 using System.Reflection;
 using System.Text;
 
@@ -23,20 +24,62 @@ namespace UIFramework.Core
         Enum
     }
 
-    /// <summary>Everything <see cref="AutoForm"/> needs to know about one model property, read once through reflection.</summary>
+    /// <summary>
+    /// Everything <see cref="AutoForm"/> needs to know about one model field: either a real property read once through
+    /// reflection, or a descriptor-built field with its own getter / setter (no <see cref="Property"/>).
+    /// </summary>
     internal sealed class FormProperty
     {
         internal FormProperty(PropertyInfo property, FormFieldKind kind)
         {
             Property = property;
             Kind = kind;
+            Name = property.Name;
+            Type = property.PropertyType;
+            Getter = CompileGetter(property);
+            Setter = property.SetValue;
             Label = FormReflection.SplitCamelCase(property.Name);
         }
 
-        internal PropertyInfo Property { get; }
+        /// <summary>A compiled getter for an instance property (read every frame; no reflection or boxing of the call), else <see cref="PropertyInfo.GetValue(object)"/>.</summary>
+        private static Func<object, object?> CompileGetter(PropertyInfo property)
+        {
+            MethodInfo? get = property.GetMethod;
+            if (get == null || get.IsStatic || property.DeclaringType == null || property.GetIndexParameters().Length > 0)
+            {
+                return property.GetValue;
+            }
+
+            ParameterExpression target = Expression.Parameter(typeof(object), "model");
+            Expression read = Expression.Property(Expression.Convert(target, property.DeclaringType), property);
+            return Expression.Lambda<Func<object, object?>>(Expression.Convert(read, typeof(object)), target).Compile();
+        }
+
+        /// <summary>A field backed by accessors instead of a <see cref="PropertyInfo"/> (e.g. a data-defined form).</summary>
+        internal FormProperty(string name, Type type, FormFieldKind kind, Func<object, object?> getter, Action<object, object?> setter)
+        {
+            Kind = kind;
+            Name = name;
+            Type = type;
+            Getter = getter;
+            Setter = setter;
+            Label = FormReflection.SplitCamelCase(name);
+        }
+
+        /// <summary>The reflected property, or null for an accessor-backed field.</summary>
+        internal PropertyInfo? Property { get; }
         internal FormFieldKind Kind { get; }
-        internal string Name => Property.Name;
-        internal Type Type => Property.PropertyType;
+        internal string Name { get; }
+        internal Type Type { get; }
+
+        /// <summary>Reads the field's value from the model.</summary>
+        internal Func<object, object?> Getter { get; }
+
+        /// <summary>Writes the field's value into the model.</summary>
+        internal Action<object, object?> Setter { get; }
+
+        /// <summary>Validator taking (model, value) and returning an error message or null; checked before <see cref="Validator"/>.</summary>
+        internal Func<object, object?, string?>? CustomValidator { get; set; }
 
         internal string Label { get; set; }
         internal string? Tooltip { get; set; }
@@ -369,6 +412,12 @@ namespace UIFramework.Core
         /// </summary>
         internal static string? Validate(object model, FormProperty property, object? value, string genericMessage)
         {
+            if (property.CustomValidator != null)
+            {
+                string? custom = property.CustomValidator(model, value);
+                return string.IsNullOrEmpty(custom) ? null : custom;
+            }
+
             MethodInfo? validator = property.Validator;
             if (validator == null)
             {
@@ -382,15 +431,15 @@ namespace UIFramework.Core
             }
             else
             {
-                object? previous = property.Property.GetValue(model);
-                property.Property.SetValue(model, value);
+                object? previous = property.Getter(model);
+                property.Setter(model, value);
                 try
                 {
                     result = validator.Invoke(model, null);
                 }
                 finally
                 {
-                    property.Property.SetValue(model, previous);
+                    property.Setter(model, previous);
                 }
             }
 

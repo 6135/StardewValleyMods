@@ -24,6 +24,7 @@ namespace UIFramework.Core
         private bool enabled = true;
         private int marginLeft, marginTop, marginRight, marginBottom;
         private int? width, height;
+        private int? minWidth, maxWidth;
         private UIAlign horizontalAlign = UIAlign.Start;
         private UIAlign verticalAlign = UIAlign.Start;
         private int x, y, row, column, rowSpan = 1, columnSpan = 1;
@@ -50,6 +51,12 @@ namespace UIFramework.Core
         /// the slot contributor when the element sits under a contributor container, otherwise the menu's owner.
         /// </summary>
         internal ConsumerContext Consumer => Sealing.ContributorOf(this) ?? OwnerMenu?.Consumer ?? ConsumerContext.None;
+
+        /// <summary>
+        /// The binding table of the consumer that last bound this element (a slot contributor or composite may bind
+        /// elements in another mod's menu); dropped with the menu owner's bindings when the element is detached.
+        /// </summary>
+        internal SignalBindings? BindingOwner { get; set; }
 
         /// <summary>Set on the container a slot contribution builds into: everything below it is attributed to that mod (v2 slots).</summary>
         internal ConsumerContext? Contributor { get; set; }
@@ -203,6 +210,48 @@ namespace UIFramework.Core
             }
         }
 
+        /// <summary>Lower bound of the content width (null = none; negative values count as 0). A fixed <see cref="Width"/> ignores it.</summary>
+        public int? MinWidth
+        {
+            get => minWidth;
+            set
+            {
+                minWidth = value.HasValue ? Math.Max(0, value.Value) : null;
+                InvalidateLayout();
+            }
+        }
+
+        /// <summary>Upper bound of the content width (null = none; negative values count as 0). A fixed <see cref="Width"/> ignores it.</summary>
+        public int? MaxWidth
+        {
+            get => maxWidth;
+            set
+            {
+                maxWidth = value.HasValue ? Math.Max(0, value.Value) : null;
+                InvalidateLayout();
+            }
+        }
+
+        /// <summary>
+        /// Clamp a content width (without margins) into [<see cref="MinWidth"/>, <see cref="MaxWidth"/>]: capped at the
+        /// maximum first, then raised to the minimum, so the minimum wins when it exceeds the maximum. Callers apply it
+        /// only when no fixed <see cref="Width"/> is set.
+        /// </summary>
+        private float ClampWidth(float value)
+        {
+            if (maxWidth.HasValue)
+            {
+                value = Math.Min(value, maxWidth.Value);
+            }
+
+            if (minWidth.HasValue)
+            {
+                value = Math.Max(value, minWidth.Value);
+            }
+
+            return value;
+        }
+
         /// <summary>True once the consumer explicitly set <see cref="HorizontalAlign"/>.</summary>
         internal bool HorizontalAlignSet { get; private set; }
 
@@ -289,11 +338,14 @@ namespace UIFramework.Core
         Action<SpriteBatch, Rectangle> IUIElement.OnDrawExtra { get => OnDrawExtra!; set => OnDrawExtra = value; }
         Action<SpriteBatch, Rectangle> IUIElement.OnDrawOverlay { get => OnDrawOverlay!; set => OnDrawOverlay = value; }
 
+        /// <summary>Id of the menu this element is in, for the callback guard's mute keys (empty while detached).</summary>
+        private string GuardMenuId => OwnerMenu?.Id ?? string.Empty;
+
         /// <summary>Invoke a consumer callback through the guard.</summary>
-        protected void Raise(string eventName, Action? action) => Consumer.Invoke(Id, eventName, action);
+        protected void Raise(string eventName, Action? action) => Consumer.Invoke(GuardMenuId, Id, eventName, action);
 
         /// <summary>Invoke a consumer callback that returns a value through the guard.</summary>
-        protected T Raise<T>(string eventName, Func<T>? func, T fallback) => Consumer.Invoke(Id, eventName, func, fallback);
+        protected T Raise<T>(string eventName, Func<T>? func, T fallback) => Consumer.Invoke(GuardMenuId, Id, eventName, func, fallback);
 
         // ---------------------------------------------------------------------------------------------------------
         //  Accessibility
@@ -314,7 +366,7 @@ namespace UIFramework.Core
             {
                 string? title = TooltipTitle == null ? null : Raise("TooltipTitle", TooltipTitle, string.Empty);
                 string? tooltip = Tooltip == null ? null : Raise("Tooltip", Tooltip, string.Empty);
-                return Accessibility.Compose(GetType().Name, title, tooltip);
+                return Accessibility.Compose(Accessibility.Text("element", "Element"), title, tooltip);
             }
         }
 
@@ -327,8 +379,7 @@ namespace UIFramework.Core
         {
             get
             {
-                UIStyle merged = Theme.Default.Merge(Consumer.DefaultStyle).Merge(StyleObject);
-                return new ResolvedStyle(merged);
+                return new ResolvedStyle(Theme.Default, Consumer.DefaultStyle, StyleObject);
             }
         }
 
@@ -352,7 +403,11 @@ namespace UIFramework.Core
             }
         }
 
-        /// <summary>Measure pass: returns the desired size (including margins) for <paramref name="available"/> (including margins).</summary>
+        /// <summary>
+        /// Measure pass: returns the desired size (including margins) for <paramref name="available"/> (including margins).
+        /// A fixed <see cref="Width"/> is offered and reported as is; otherwise the content is offered the available
+        /// width clamped into [<see cref="MinWidth"/>, <see cref="MaxWidth"/>] and its desired width is clamped the same way.
+        /// </summary>
         internal Vector2 Measure(Vector2 available)
         {
             if (!Visible)
@@ -364,21 +419,14 @@ namespace UIFramework.Core
             var inner = new Vector2(
                 Math.Max(0, available.X - marginLeft - marginRight),
                 Math.Max(0, available.Y - marginTop - marginBottom));
-            if (width.HasValue)
-            {
-                inner.X = width.Value;
-            }
-
+            inner.X = width ?? ClampWidth(inner.X);
             if (height.HasValue)
             {
                 inner.Y = height.Value;
             }
 
             Vector2 core = MeasureCore(inner);
-            if (width.HasValue)
-            {
-                core.X = width.Value;
-            }
+            core.X = width ?? ClampWidth(core.X);
 
             if (height.HasValue)
             {
@@ -394,7 +442,39 @@ namespace UIFramework.Core
         /// <summary>Report the content size (without margins) for the given content-available size.</summary>
         protected abstract Vector2 MeasureCore(Vector2 available);
 
-        /// <summary>Arrange pass: <paramref name="slot"/> is the absolute rectangle allotted by the parent (including margins).</summary>
+        /// <summary>
+        /// Minimum-width pass: the narrowest width (including margins) this element can be arranged at without its
+        /// content overflowing, whatever width it is currently given. Unlike <see cref="Measure"/> this is a pure query:
+        /// it reads the tree and changes nothing, so it can run at any time (the player resize grip asks it once per drag).
+        /// A fixed <see cref="Width"/> is the minimum; otherwise <see cref="MinWidthCore"/> raised to <see cref="MinWidth"/>
+        /// and capped at <see cref="MaxWidth"/> (the minimum wins when it exceeds the maximum). A cap below the content's
+        /// own minimum is honoured: the content then overflows or falls back to shrinking / truncating its text.
+        /// </summary>
+        internal float MeasureMinWidth()
+        {
+            if (!Visible)
+            {
+                return 0;
+            }
+
+            float core = width ?? ClampWidth(MinWidthCore());
+            return Math.Max(0, core) + marginLeft + marginRight;
+        }
+
+        /// <summary>
+        /// The narrowest content width (without margins) the element can take: fixed parts at their size, text at its
+        /// longest unbreakable word when it wraps (its full line when it does not, or its fitted "..." form for a text
+        /// control with <c>Shrink</c> on), and stretched / star-sized parts at
+        /// the minimum of what they contain. Must not change any state.
+        /// </summary>
+        protected abstract float MinWidthCore();
+
+        /// <summary>
+        /// Arrange pass: <paramref name="slot"/> is the absolute rectangle allotted by the parent (including margins).
+        /// The width is the fixed <see cref="Width"/> when set; otherwise the slot's (Stretch) or the desired width within
+        /// the slot, clamped into [<see cref="MinWidth"/>, <see cref="MaxWidth"/>] and aligned inside the slot by
+        /// <see cref="HorizontalAlign"/> (a stretched element capped at its maximum is placed at the start).
+        /// </summary>
         internal void Arrange(Rectangle slot)
         {
             if (!Visible)
@@ -412,7 +492,7 @@ namespace UIFramework.Core
             UIAlign ha = ResolvedHorizontalAlign;
             UIAlign va = ResolvedVerticalAlign;
 
-            int w = width ?? (ha == UIAlign.Stretch ? availW : Math.Min(desiredW, availW));
+            int w = width ?? (int)ClampWidth(ha == UIAlign.Stretch ? availW : Math.Min(desiredW, availW));
             int h = height ?? (va == UIAlign.Stretch ? availH : Math.Min(desiredH, availH));
 
             int px = slot.X + marginLeft + LayoutEngine.AlignOffset(ha, availW, w);
@@ -442,7 +522,7 @@ namespace UIFramework.Core
             if (DrawsInOverlay && OwnerMenu != null)
             {
                 // the whole self-draw (content, then OnDrawExtra) moves to the overlay pass so their order is kept
-                OwnerMenu.Overlay.RegisterElement(this, DrawSelf);
+                OwnerMenu.Overlay.RegisterElement(this, drawSelf ??= DrawSelf);
             }
             else
             {
@@ -451,9 +531,20 @@ namespace UIFramework.Core
 
             if (OnDrawOverlay != null && OwnerMenu != null)
             {
-                Action<SpriteBatch, Rectangle> cb = OnDrawOverlay;
-                Rectangle bounds = Bounds;
-                OwnerMenu.Overlay.RegisterDraw(sb => Raise("OnDrawOverlay", () => cb(sb, bounds)));
+                OwnerMenu.Overlay.RegisterDraw(drawOverlay ??= DrawOverlayCallback);
+            }
+        }
+
+        // the draw delegates handed to the overlay pass, created once
+        private Action<SpriteBatch>? drawSelf;
+        private Action<SpriteBatch>? drawOverlay;
+
+        /// <summary><see cref="OnDrawOverlay"/> in the overlay pass (same frame, so <see cref="Bounds"/> is unchanged).</summary>
+        private void DrawOverlayCallback(SpriteBatch b)
+        {
+            if (OnDrawOverlay is { } cb)
+            {
+                Consumer.InvokeWith(GuardMenuId, Id, "OnDrawOverlay", static s => s.cb(s.b, s.bounds), (cb, b, bounds: Bounds));
             }
         }
 
@@ -461,11 +552,9 @@ namespace UIFramework.Core
         private void DrawSelf(SpriteBatch b)
         {
             DrawCore(b);
-            if (OnDrawExtra != null)
+            if (OnDrawExtra is { } cb)
             {
-                Action<SpriteBatch, Rectangle> cb = OnDrawExtra;
-                Rectangle bounds = Bounds;
-                Raise("OnDrawExtra", () => cb(b, bounds));
+                Consumer.InvokeWith(GuardMenuId, Id, "OnDrawExtra", static s => s.cb(s.b, s.bounds), (cb, b, bounds: Bounds));
             }
             if (UIServices.Config.DebugOverlay)
             {
@@ -518,6 +607,12 @@ namespace UIFramework.Core
 
         /// <summary>Whether clicking gives keyboard focus.</summary>
         internal virtual bool Focusable => false;
+
+        /// <summary>
+        /// Whether a mouse click leaves this (focusable) element focused. Click-once controls (buttons, checkboxes, dropdowns, sliders)
+        /// return false: they stay reachable by Tab / arrows / gamepad, but a click does not hold focus after it fired.
+        /// </summary>
+        internal virtual bool FocusOnClick => true;
 
         /// <summary>Whether the element wants <see cref="StardewValley.IKeyboardSubscriber"/> text input while focused.</summary>
         internal virtual bool WantsTextInput => false;

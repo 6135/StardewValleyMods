@@ -1,13 +1,16 @@
 ---
 # Codacy configuration.
 #
-# ProfitCalculator/apis/ holds verbatim copies of API contracts owned by other
-# projects (Generic Mod Config Menu, and StardewUIFramework/Api/Public/IStardewUIApi.cs).
-# They are duplicated on purpose so each mod compiles standalone, must not be
-# edited here, and are already analysed at their source, so analysing the copies
-# only reports the same findings twice and inflates the duplication metric.
+# ProfitCalculator/apis/ and UIFrameworkExample/Api/ hold verbatim copies of API
+# contracts owned by other projects (Generic Mod Config Menu, and
+# StardewUIFramework/Api/Public/IStardewUIApi.cs). They are duplicated on purpose so
+# each mod compiles standalone, must not be edited here, and are already analysed at
+# their source, so analysing the copies only reports the same findings twice and
+# inflates the duplication metric. Old code review notes are not shipped and are
+# superseded by the current review.
 exclude_paths:
   - 'ProfitCalculator/apis/**'
-  - 'StardewUIFramework/docs/**'
+  - 'UIFrameworkExample/Api/**'
+  - '**/code-review*.md'
   - '**/bin/**'
   - '**/obj/**'

@@ -5,7 +5,7 @@
   "config.debug-overlay": "Debug overlay",
   "config.debug-overlay.desc": "Draw the bounds and ids of every element in framework menus.",
   "config.log-callbacks": "Log callbacks",
-  "config.log-callbacks.desc": "Write a trace log line every time a consumer callback is invoked.",
+  "config.log-callbacks.desc": "Write a log line every time a consumer event callback runs (clicks, opening, updates and so on). Value getters such as label text, which run every frame, are not logged.",
   "config.pseudo-localize": "Pseudo-localization",
   "config.pseudo-localize.desc": "Accent and pad every string drawn by framework menus (e.g. [Çálçúláté~~~]) to catch layout overflow before translating.",
   "form.save": "Save",
@@ -34,6 +34,13 @@
   "a11y.empty": "empty",
   "a11y.disabled": "disabled",
   "a11y.menu": "Menu",
+  "a11y.element": "Element",
+  "a11y.image": "Image",
+  "a11y.item": "Item",
+  "a11y.group": "Group",
+  "a11y.table": "Table",
+  "a11y.custom": "Custom",
   "config.inspector-hotkey": "Inspector hotkey",
-  "config.inspector-hotkey.desc": "Toggles the in-game inspector while a framework menu is open: hover elements to see their bounds, margins and properties, nudge them with the keyboard, and press E to export the menu as C# code."
+  "config.inspector-hotkey.desc": "Toggles the in-game inspector while a framework menu is open: hover elements to see their bounds, margins and properties, nudge them with the keyboard, and press E to export the menu as C# code.",
+  "data.invalid-value": "Invalid value."
 }

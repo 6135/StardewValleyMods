@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Globalization;
 using System.Text;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
@@ -310,47 +309,16 @@ namespace UIFramework.Rendering
             }
         }
 
-        /// <summary><c>#RRGGBB</c>, <c>#RRGGBBAA</c> or a named color.</summary>
+        /// <summary>
+        /// A markup color: anything <see cref="ThemeData.ParseColor"/> reads (<c>#RRGGBB</c>, <c>#RRGGBBAA</c>,
+        /// <c>R,G,B[,A]</c> or an XNA color name), so <c>[color=yellow]</c> and a data <c>"Color": "yellow"</c> are the
+        /// same color, plus the documented alias <c>grey</c>.
+        /// </summary>
         internal static bool TryParseColor(string value, out Color color)
         {
-            color = Color.White;
-            if (value.Length > 0 && value[0] == '#')
-            {
-                return TryParseHex(value.Substring(1), out color);
-            }
-
-            Color? named = value.ToLowerInvariant() switch
-            {
-                "red" => Color.Red,
-                "green" => Color.Green,
-                "blue" => Color.Blue,
-                "gray" or "grey" => Color.Gray,
-                "white" => Color.White,
-                "black" => Color.Black,
-                "yellow" => Color.Goldenrod,
-                "orange" => Color.DarkOrange,
-                "purple" => Color.Purple,
-                _ => null
-            };
-            color = named ?? color;
-            return named.HasValue;
-        }
-
-        private static bool TryParseHex(string hex, out Color color)
-        {
-            color = Color.White;
-            if ((hex.Length != 6 && hex.Length != 8) || !uint.TryParse(hex, NumberStyles.HexNumber, CultureInfo.InvariantCulture, out uint value))
-            {
-                return false;
-            }
-
-            if (hex.Length == 6)
-            {
-                value = (value << 8) | 0xFF;
-            }
-
-            color = new Color((int)(value >> 24) & 0xFF, (int)(value >> 16) & 0xFF, (int)(value >> 8) & 0xFF, (int)value & 0xFF);
-            return true;
+            Color? parsed = string.Equals(value.Trim(), "grey", StringComparison.OrdinalIgnoreCase) ? Color.Gray : ThemeData.ParseColor(value);
+            color = parsed ?? Color.White;
+            return parsed.HasValue;
         }
 
         /// <summary>Accent every text run and bracket / pad the whole document (tags, ids and link names are untouched).</summary>
@@ -389,6 +357,16 @@ namespace UIFramework.Rendering
         internal static Vector2 Measure(string? markup, UIFont font, float scale, int maxWidth)
         {
             return Layout(Parse(markup), font, scale, maxWidth).Size;
+        }
+
+        /// <summary>
+        /// The narrowest width <paramref name="markup"/> can wrap to: its widest unbreakable piece (a word, an icon, or
+        /// the part of a word in one style). Laying out at 1 px puts every piece on its own line, so the break rules stay
+        /// those of <see cref="Layout"/>.
+        /// </summary>
+        internal static float MinWidth(string? markup, UIFont font, float scale)
+        {
+            return Measure(markup, font, scale, 1).X;
         }
 
         /// <summary>Break the document into lines: wraps on spaces, a span may continue across lines, icons are line-height squares.</summary>

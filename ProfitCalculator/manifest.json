@@ -5,9 +5,10 @@
   "Description": "Adds a Profit Calculator to your game!",
   "UniqueID": "6135.ProfitCalculator",
   "EntryDll": "ProfitCalculator.dll",
-  "MinimumApiVersion": "3.0.0",
+  "MinimumApiVersion": "4.0.0",
   "UpdateKeys": [ "Nexus:19931" ],
   "Dependencies": [
-    { "UniqueID": "6135.UIFramework", "MinimumVersion": "1.1.0", "IsRequired": true }
+    { "UniqueID": "6135.UIFramework", "MinimumVersion": "1.8.0", "IsRequired": true },
+    { "UniqueID": "furyx639.CustomBush", "IsRequired": false }
   ]
 }

@@ -14,8 +14,8 @@ namespace UIFramework.Hosting
     /// owner's menu. Rebuilds every slot and runs the decorators each time a menu opens, after the owner's tree
     /// exists and before layout (<see cref="MenuRegistry.MenuOpening"/>).
     /// <para>
-    /// Everything here is process-wide on purpose: menu models are shared across split-screen players (only the
-    /// list of open menus is per screen, in <see cref="MenuRegistry"/>), and the registrations are mod-level.
+    /// Everything here is process-wide on purpose: menu models are shared across split-screen players (only their
+    /// host and view state are per screen, in <see cref="UIMenu"/>), and the registrations are mod-level.
     /// Per-player values stay in the owners' delegates, which are read live.
     /// </para>
     /// </summary>
@@ -63,6 +63,8 @@ namespace UIFramework.Hosting
             {
                 list.RemoveAll(c => c.Contributor.ModId == contributor.ModId);
             }
+
+            DropSubscriptionsIfGone(contributor, ownerModId, menuId);
         }
 
         /// <summary>Register (or replace; null removes) <paramref name="mod"/>'s decorator for a menu.</summary>
@@ -78,6 +80,27 @@ namespace UIFramework.Hosting
             if (decorate != null)
             {
                 list.Add(new Decorator(mod, decorate));
+            }
+            else
+            {
+                DropSubscriptionsIfGone(mod, ownerModId, menuId);
+            }
+        }
+
+        /// <summary>Drop <paramref name="mod"/>'s event subscriptions on a menu once it has neither a contribution nor a decorator there.</summary>
+        private void DropSubscriptionsIfGone(ConsumerContext mod, string ownerModId, string menuId)
+        {
+            string menuKey = MenuKey(ownerModId, menuId);
+            if (!exposures.TryGetValue(menuKey, out ScreenExposures? table))
+            {
+                return;
+            }
+
+            bool decorates = decorators.TryGetValue(menuKey, out List<Decorator>? decorating) && decorating.Any(d => d.Mod.ModId == mod.ModId);
+            bool contributes = contributions.Any(p => p.Key.StartsWith(menuKey + "|", StringComparison.Ordinal) && p.Value.Any(c => c.Contributor.ModId == mod.ModId));
+            if (!decorates && !contributes)
+            {
+                table.RemoveSubscriptions(mod);
             }
         }
 
@@ -135,6 +158,11 @@ namespace UIFramework.Hosting
         private string Describe(UIMenu menu, Slot slot)
         {
             var hints = new List<string> { slot.Horizontal ? "row" : "column" };
+            if (slot.Horizontal && slot.Wrap)
+            {
+                hints.Add("wrap");
+            }
+
             if (slot.MaxHeight.HasValue)
             {
                 hints.Add("maxHeight=" + slot.MaxHeight.Value);
@@ -161,16 +189,50 @@ namespace UIFramework.Hosting
 
         private void Rebuild(UIMenu menu)
         {
-            foreach (Slot slot in SlotsOf(menu).ToArray())
+            Slot[] slots = SlotsOf(menu).ToArray();
+            decorators.TryGetValue(MenuKey(menu.Consumer.ModId, menu.Id), out List<Decorator>? list);
+            ForgetSubscriptions(menu, slots, list);
+            foreach (Slot slot in slots)
             {
                 RebuildSlot(menu, slot);
             }
 
-            if (decorators.TryGetValue(MenuKey(menu.Consumer.ModId, menu.Id), out List<Decorator>? list))
+            if (list != null)
             {
                 foreach (Decorator d in list.ToArray())
                 {
                     RunExternal(menu, d.Mod, menu.Consumer.ModId + "." + menu.Id, "OnScreenBuilt", () => d.Decorate(menu));
+                }
+            }
+        }
+
+        /// <summary>
+        /// Before the contributions and decorators of <paramref name="menu"/> run again, drop the event subscriptions
+        /// they made last time (they subscribe anew), so a handler never runs once per past open.
+        /// </summary>
+        private void ForgetSubscriptions(UIMenu menu, Slot[] slots, List<Decorator>? decorating)
+        {
+            if (!exposures.TryGetValue(MenuKey(menu.Consumer.ModId, menu.Id), out ScreenExposures? table))
+            {
+                return;
+            }
+
+            foreach (Slot slot in slots)
+            {
+                if (contributions.TryGetValue(SlotKey(menu.Consumer.ModId, menu.Id, slot.Id), out List<Contribution>? contributing))
+                {
+                    foreach (Contribution c in contributing)
+                    {
+                        table.RemoveSubscriptions(c.Contributor);
+                    }
+                }
+            }
+
+            if (decorating != null)
+            {
+                foreach (Decorator d in decorating)
+                {
+                    table.RemoveSubscriptions(d.Mod);
                 }
             }
         }
@@ -205,7 +267,7 @@ namespace UIFramework.Hosting
 
         private void BuildContribution(UIMenu menu, Slot slot, Contribution c, string slotKey)
         {
-            var host = new Stack(slot.Id + "." + c.Contributor.ModId, slot.Horizontal, spacing: 8) { Contributor = c.Contributor };
+            var host = new Stack(slot.Id + "." + c.Contributor.ModId, slot.Horizontal, spacing: 8) { Contributor = c.Contributor, Wrap = slot.Wrap };
             slot.Add(host);
             var context = new ScreenContext(ExposuresOf(menu), c.Contributor);
             RunExternal(menu, c.Contributor, slotKey.Replace('|', '.'), "Contribute", () => c.Build(host, context));

@@ -36,10 +36,6 @@ namespace UIFramework.Core
         private IKeyboardSubscriber? previousSubscriber;
         private bool subscribed;
 
-        /// <summary>Hook for tests: replaces the <see cref="Game1.keyboardDispatcher"/> access.</summary>
-        internal static Func<IKeyboardSubscriber?>? GetSubscriber { get; set; }
-        internal static Action<IKeyboardSubscriber?>? SetSubscriber { get; set; }
-
         internal UIElement? Focused { get; private set; }
 
         internal FocusManager(UIMenu menu)
@@ -197,7 +193,7 @@ namespace UIFramework.Core
             return atEnd ? 0 : index + 1;
         }
 
-        /// <summary>Arrow keys / d-pad: nearest focusable element in the given direction (dx, dy ∈ {-1,0,1}).</summary>
+        /// <summary>Arrow keys / d-pad: nearest focusable element in the given direction (dx, dy âˆˆ {-1,0,1}).</summary>
         internal bool MoveDirection(int dx, int dy)
         {
             List<UIElement> all = FocusableElements();
@@ -249,21 +245,11 @@ namespace UIFramework.Core
 
         private static IKeyboardSubscriber? ReadSubscriber()
         {
-            if (GetSubscriber != null)
-            {
-                return GetSubscriber();
-            }
-
             return Game1.keyboardDispatcher?.Subscriber;
         }
 
         private static void WriteSubscriber(IKeyboardSubscriber? subscriber)
         {
-            if (SetSubscriber != null)
-            {
-                SetSubscriber(subscriber);
-                return;
-            }
             if (Game1.keyboardDispatcher != null)
             {
                 Game1.keyboardDispatcher.Subscriber = subscriber;

@@ -8,9 +8,10 @@ using UIFramework.Rendering;
 namespace UIFramework.Components
 {
     /// <summary>
-    /// The vanilla vertical scrollbar used by <see cref="ScrollView"/> and <see cref="ListView"/>: an up arrow, a
-    /// down arrow, a 9-slice track between them and a thumb whose position is a fraction in [0, 1]. Pure geometry,
-    /// drawing and hit-testing; the owner maps the fraction to pixels / rows and owns the drag state.
+    /// The vanilla vertical scrollbar used by <see cref="ScrollView"/>, <see cref="ListView"/> and <see cref="DataGrid"/>:
+    /// an up arrow, a down arrow, a 9-slice track between them and a thumb whose position is a fraction in [0, 1].
+    /// Too short for both arrows (under twice their height), it drops them and the whole column is track. Geometry,
+    /// drawing, hit-testing and click routing (<see cref="Click"/>); the owner maps the fraction to pixels / rows and owns the drag state.
     /// Matches the look of the Profit Calculator results list (arrows 44x48, track 24 wide, thumb 24x40, all at 4x).
     /// </summary>
     internal sealed class ScrollbarGadget
@@ -49,6 +50,9 @@ namespace UIFramework.Components
         internal Rectangle Track { get; private set; }
         internal Rectangle Thumb { get; private set; }
 
+        /// <summary>Whether the column is tall enough for both arrows (otherwise they are neither drawn nor hit).</summary>
+        internal bool HasArrows { get; private set; }
+
         /// <summary>Thumb position in [0, 1] (0 = top).</summary>
         internal float Fraction { get; private set; }
 
@@ -57,11 +61,23 @@ namespace UIFramework.Components
         {
             height = Math.Max(0, height);
             Bounds = new Rectangle(x, y, Width, height);
-            UpArrow = new Rectangle(x, y, Width, ArrowHeight);
-            DownArrow = new Rectangle(x, y + height - ArrowHeight, Width, ArrowHeight);
-            int trackY = UpArrow.Bottom + TrackGap;
-            int trackHeight = Math.Max(0, DownArrow.Y - TrackGap - trackY);
-            Track = new Rectangle(x + TrackInset, trackY, TrackWidth, trackHeight);
+            HasArrows = height >= 2 * ArrowHeight;
+            if (HasArrows)
+            {
+                UpArrow = new Rectangle(x, y, Width, ArrowHeight);
+                DownArrow = new Rectangle(x, y + height - ArrowHeight, Width, ArrowHeight);
+                int trackY = UpArrow.Bottom + TrackGap;
+                int trackHeight = Math.Max(0, DownArrow.Y - TrackGap - trackY);
+                Track = new Rectangle(x + TrackInset, trackY, TrackWidth, trackHeight);
+            }
+            else
+            {
+                // overlapping arrows would always hit the up arrow: the whole column is track instead
+                UpArrow = Rectangle.Empty;
+                DownArrow = Rectangle.Empty;
+                Track = new Rectangle(x + TrackInset, y, TrackWidth, height);
+            }
+
             SetFraction(fraction);
         }
 
@@ -96,12 +112,12 @@ namespace UIFramework.Components
                 return Part.None;
             }
 
-            if (UpArrow.Contains(px, py))
+            if (HasArrows && UpArrow.Contains(px, py))
             {
                 return Part.UpArrow;
             }
 
-            if (DownArrow.Contains(px, py))
+            if (HasArrows && DownArrow.Contains(px, py))
             {
                 return Part.DownArrow;
             }
@@ -119,13 +135,44 @@ namespace UIFramework.Components
             return py >= Track.Y && py < Track.Bottom ? Part.Track : Part.None;
         }
 
+        /// <summary>
+        /// Route a left click on the scrollbar: an arrow calls <paramref name="step"/> with -1 / +1, the thumb starts a
+        /// drag, the track starts a drag and calls <paramref name="jumpTo"/> with the click's y. Returns false when no
+        /// part was hit.
+        /// </summary>
+        internal bool Click(int px, int py, Action<int> step, Action<int> jumpTo, ref bool dragging)
+        {
+            switch (HitTest(px, py))
+            {
+                case Part.UpArrow:
+                    step(-1);
+                    return true;
+                case Part.DownArrow:
+                    step(1);
+                    return true;
+                case Part.Thumb:
+                    dragging = true;
+                    return true;
+                case Part.Track:
+                    dragging = true;
+                    jumpTo(py);
+                    return true;
+                default:
+                    return false;
+            }
+        }
+
         /// <summary>Draw arrows, track and thumb with the vanilla sprites.</summary>
         internal void Draw(SpriteBatch b)
         {
             Texture2D texture = Game1.mouseCursors;
             Color tint = Theme.ScrollbarTint;
-            b.Draw(texture, new Vector2(UpArrow.X, UpArrow.Y), Theme.ScrollUpArrow, tint, 0f, Vector2.Zero, Scale, SpriteEffects.None, 0f);
-            b.Draw(texture, new Vector2(DownArrow.X, DownArrow.Y), Theme.ScrollDownArrow, tint, 0f, Vector2.Zero, Scale, SpriteEffects.None, 0f);
+            if (HasArrows)
+            {
+                b.Draw(texture, new Vector2(UpArrow.X, UpArrow.Y), Theme.ScrollUpArrow, tint, 0f, Vector2.Zero, Scale, SpriteEffects.None, 0f);
+                b.Draw(texture, new Vector2(DownArrow.X, DownArrow.Y), Theme.ScrollDownArrow, tint, 0f, Vector2.Zero, Scale, SpriteEffects.None, 0f);
+            }
+
             if (Track.Height > 0)
             {
                 IClickableMenu.drawTextureBox(b, texture, Theme.ScrollTrack, Track.X, Track.Y, Track.Width, Track.Height, tint, Scale, false);

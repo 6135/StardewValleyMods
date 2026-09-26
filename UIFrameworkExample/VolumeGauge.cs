@@ -33,7 +33,13 @@ namespace UIFrameworkExample
 
         public bool WantsOverlay => false;
 
+        /// <summary>The narrowest bar that still draws: the two 12 px corners of the 9-slice frame (3 source pixels at 4x).</summary>
+        private const int MinWidth = 24;
+
         public Vector2 Measure(Vector2 available) => new(Math.Min(Width, available.X), Height);
+
+        /// <summary>The bar shrinks with the space it gets (see <see cref="Measure"/>), down to its frame's corners.</summary>
+        public float MinimumWidth => MinWidth;
 
         public void Draw(SpriteBatch b, Rectangle bounds)
         {

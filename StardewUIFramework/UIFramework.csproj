@@ -3,7 +3,7 @@
   <PropertyGroup>
     <AssemblyName>UIFramework</AssemblyName>
     <RootNamespace>UIFramework</RootNamespace>
-    <Version>1.1.0</Version>
+    <Version>1.8.0</Version>
     <TargetFramework>net6.0</TargetFramework>
     <Nullable>enable</Nullable>
     <LangVersion>latest</LangVersion>
@@ -17,7 +17,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <None Include="i18n\default.json" />
     <None Include="assets\**" CopyToOutputDirectory="PreserveNewest" />
     <None Include="Api\Public\IStardewUIApi.cs" />
   </ItemGroup>
@@ -27,7 +26,11 @@
   </ItemGroup>
 
   <ItemGroup>
-    <InternalsVisibleTo Include="StardewUIFramework.Tests" />
+    <!-- data-driven UIs (v1.3): the JSON models use SMAPI's own Newtonsoft.Json (not bundled with the mod) -->
+    <Reference Include="Newtonsoft.Json">
+      <HintPath>$(GamePath)\smapi-internal\Newtonsoft.Json.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
   </ItemGroup>
 
 </Project>

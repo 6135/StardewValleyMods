@@ -2,8 +2,9 @@
 //  UI Framework (6135.UIFramework) - public API.
 //
 //  Copy this file into your mod (you may change the namespace), request the API from SMAPI's mod registry with
-//  GetApi<IStardewUIApi>("6135.UIFramework") once the game has launched, and list 6135.UIFramework
-//  (MinimumVersion 1.0.0, IsRequired true) under Dependencies in your manifest.json.
+//  GetApi<IStardewUIApi>("6135.UIFramework") once the game has launched, and list 6135.UIFramework under
+//  Dependencies in your manifest.json with IsRequired true and MinimumVersion set to the framework version you build
+//  against (the version this copy of the file came with).
 //
 //  Everything in this file is proxy-safe (SMAPI/Pintail): interfaces, enums, delegates, primitives and XNA / game types.
 //  Members are only ever added, never renamed or removed; a breaking change would ship as IStardewUIApi2.
@@ -15,6 +16,7 @@ using System;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
+using StardewValley;
 
 namespace UIFramework.Api
 {
@@ -235,6 +237,21 @@ namespace UIFramework.Api
         /// <summary>Explicit height in UI pixels, or null for "size to content".</summary>
         int? Height { get; set; }
 
+        /// <summary>
+        /// Smallest width in UI pixels (margins excluded), or null for none. The element is measured, arranged and
+        /// reported to its parent (as its minimum width) at least this wide, even when that overflows a narrower slot.
+        /// Wins over <see cref="MaxWidth"/> when larger; ignored while <see cref="Width"/> is set.
+        /// </summary>
+        int? MinWidth { get; set; }
+
+        /// <summary>
+        /// Largest width in UI pixels (margins excluded), or null for none. The content is measured with at most this
+        /// width and never arranged wider (a stretched element stops growing here and sits at the start of its slot);
+        /// its minimum width is capped at it too, so content that cannot fit shrinks, truncates or overflows as it would
+        /// when squeezed. Ignored while <see cref="Width"/> is set; <see cref="MinWidth"/> wins when larger.
+        /// </summary>
+        int? MaxWidth { get; set; }
+
         /// <summary>Horizontal alignment inside the slot given by the parent.</summary>
         UIAlign HorizontalAlign { get; set; }
 
@@ -345,6 +362,13 @@ namespace UIFramework.Api
 
         /// <summary>Default cross-axis alignment for children that did not set their own.</summary>
         UIAlign Alignment { get; set; }
+
+        /// <summary>
+        /// Row only (a column ignores it): break onto further lines instead of overflowing when the children do not fit
+        /// the width. Spacing separates lines too, each line is as tall as its tallest child and starts at the left edge;
+        /// the row's minimum width becomes its widest child's. Default false.
+        /// </summary>
+        bool Wrap { get; set; }
     }
 
     /// <summary>
@@ -432,6 +456,13 @@ namespace UIFramework.Api
         /// <summary>Wrap to the available width (or to <see cref="IUIElement.Width"/>).</summary>
         bool Wrap { get; set; }
 
+        /// <summary>
+        /// A single-line label may shorten its text with "..." to fit a narrow space: its minimum width becomes the
+        /// shortest fitted form of the text instead of the whole line, so a squeezed row can take width from it. Default
+        /// false (the whole line is kept). No effect on wrapping or rich-text labels.
+        /// </summary>
+        bool Shrink { get; set; }
+
         /// <summary>Horizontal text alignment inside the label's bounds.</summary>
         UIAlign TextAlign { get; set; }
 
@@ -478,6 +509,13 @@ namespace UIFramework.Api
         // RICHTEXT
         /// <summary>Parse markup in <see cref="Text"/> (same syntax as <see cref="IUILabel.RichText"/>; links are not clickable on buttons). Default false.</summary>
         bool RichText { get; set; }
+
+        /// <summary>
+        /// The button may shorten its text with "..." to fit a narrow space: its minimum width becomes the shortest
+        /// fitted form of the text instead of the whole text. Default false (the whole text is kept). No effect with
+        /// <see cref="RichText"/>.
+        /// </summary>
+        bool Shrink { get; set; }
     }
 
     /// <summary>A boolean toggle.</summary>
@@ -490,6 +528,12 @@ namespace UIFramework.Api
 
         string ClickSound { get; set; }
         Action<IUIValueEvent> OnValueChanged { get; set; }
+
+        /// <summary>
+        /// The checkbox may shorten its label with "..." to fit a narrow space: its minimum width becomes the box plus
+        /// the shortest fitted form of the label instead of the whole label. Default false (the whole label is kept).
+        /// </summary>
+        bool Shrink { get; set; }
     }
 
     /// <summary>Single-line text entry.</summary>
@@ -557,6 +601,13 @@ namespace UIFramework.Api
 
         Action<IUIValueEvent> OnValueChanged { get; set; }
         Action<int> OnScroll { get; set; }
+
+        /// <summary>
+        /// The dropdown may shorten its option labels with "..." to fit a narrow space: its minimum width becomes the
+        /// arrow plus the shortest fitted form of its widest option. Default false: it keeps the width that shows every
+        /// option whole (never more than its default width of 300, which it takes when there is room).
+        /// </summary>
+        bool Shrink { get; set; }
     }
 
     /// <summary>A horizontal slider over a numeric range.</summary>
@@ -591,6 +642,13 @@ namespace UIFramework.Api
         /// <summary>Return the desired size given the available size.</summary>
         Vector2 Measure(Vector2 available);
 
+        /// <summary>
+        /// The narrowest width the component can be drawn at without its content overflowing (used, for example, to
+        /// stop the player resizing a window smaller than its content). Return the desired width if it cannot shrink.
+        /// Must not change any state.
+        /// </summary>
+        float MinimumWidth { get; }
+
         /// <summary>Draw with the absolute bounds already resolved. Called in the overlay pass instead when <see cref="WantsOverlay"/> is true.</summary>
         void Draw(SpriteBatch b, Rectangle bounds);
 
@@ -600,7 +658,10 @@ namespace UIFramework.Api
         /// <summary>Return true if the click was handled (stops bubbling).</summary>
         bool OnClick(int x, int y, bool rightButton);
 
-        /// <summary>Cursor entered (<paramref name="entered"/> = true), moved inside (true), or left (false).</summary>
+        /// <summary>
+        /// The cursor is over the element (<paramref name="entered"/> = true, raised when it enters and on every move
+        /// inside, so it does not tell the two apart) or left it (false). The parameter reads as "inside".
+        /// </summary>
         void OnHover(int x, int y, bool entered);
 
         /// <summary>Key pressed while focused. Return true if handled.</summary>
@@ -650,8 +711,14 @@ namespace UIFramework.Api
         bool CloseOnEscape { get; set; }
 
         // HUD
-        /// <summary>Let the player move, resize and collapse the window; the result persists per save (default true).</summary>
+        /// <summary>Let the player move, resize and collapse the window; the result is stored in the save by the main player (farmhands keep it for the session) (default true).</summary>
         bool PlayerLayout { get; set; }
+
+        /// <summary>
+        /// Let the player resize the window even when it sizes to its content (no fixed <see cref="Width"/> and
+        /// <see cref="Height"/>). Fixed-size windows are always resizable. Default false; needs <see cref="PlayerLayout"/>.
+        /// </summary>
+        bool Resizable { get; set; }
     }
 
     /// <summary>A screen. Build its tree under <see cref="Root"/>, then <see cref="Open"/>.</summary>
@@ -717,10 +784,18 @@ namespace UIFramework.Api
         // HUD
         /// <summary>
         /// Let the player drag the window by its title strip, collapse it with the button next to the close button and
-        /// (when <see cref="Width"/> and <see cref="Height"/> are fixed) resize it from the bottom-right corner. The
-        /// result is saved per save file and re-applied whenever the menu opens (default true; needs <see cref="DrawBox"/>).
+        /// (when <see cref="Width"/> and <see cref="Height"/> are fixed, or <see cref="Resizable"/> is on) resize it from the
+        /// bottom-right corner. The result is re-applied whenever the menu opens; the main player's layouts are stored in the
+        /// save, a farmhand's last for the session (default true; needs <see cref="DrawBox"/>).
         /// </summary>
         bool PlayerLayout { get; set; }
+
+        /// <summary>
+        /// Let the player resize the window even when it sizes to its content. Once resized, the window keeps the
+        /// player's size; <see cref="IStardewUIApi.ResetPlayerLayout"/> (or <c>ui_layout_reset</c>) returns it to
+        /// sizing to its content. Fixed-size windows are always resizable. Default false; needs <see cref="PlayerLayout"/>.
+        /// </summary>
+        bool Resizable { get; set; }
     }
 
     // =================================================================================================================
@@ -774,11 +849,19 @@ namespace UIFramework.Api
 
         // ---- Input ----
 
-        /// <summary>Run <paramref name="onPressed"/> when the keybind list (e.g. <c>"F8"</c>, <c>"LeftControl + F8, LeftShift + F9"</c>) is pressed.</summary>
+        /// <summary>
+        /// Run <paramref name="onPressed"/> when the keybind list (e.g. <c>"F8"</c>, <c>"LeftControl + F8, LeftShift + F9"</c>)
+        /// is pressed; not while the player types in a text field or the chat. An empty or invalid list removes the
+        /// hotkey registered under <paramref name="id"/> (an invalid one is also logged).
+        /// </summary>
         void RegisterHotkey(string id, string keybindList, Action onPressed);
         void UnregisterHotkey(string id);
 
-        /// <summary>Toggle the menu open/closed when the keybind list is pressed (pass an empty string to unbind).</summary>
+        /// <summary>
+        /// Toggle the menu open/closed on the current split-screen player's screen when the keybind list is pressed
+        /// (an empty or invalid list unbinds). The menu is looked up by its owner and id when the key is pressed, and
+        /// the binding is removed when the menu is destroyed or replaced (bind the new menu again).
+        /// </summary>
         void BindToggleHotkey(IUIMenu menu, string keybindList);
 
         // ---- Style / config ----
@@ -1016,6 +1099,114 @@ namespace UIFramework.Api
 
         // END HUD members
 
+        // BEGIN ITEMIMAGE members (v1.2)
+
+        /// <summary>
+        /// Add an element that draws an item instance with the game's own <c>drawInMenu</c>, so flavored goods (wine,
+        /// jelly, pickles...) keep their color tint. <paramref name="item"/> is read every frame; null draws nothing.
+        /// Measures 16 x 16 UI pixels at <paramref name="scale"/> 1 (4 = a vanilla 64 px slot).
+        /// </summary>
+        IUIItemImage AddItemImage(IUIContainer parent, string id, Func<Item> item, float scale);
+
+        // END ITEMIMAGE members
+
+        // BEGIN DATA members (v1.6)
+
+        /// <summary>
+        /// Run one trigger action on behalf of your mod: a vanilla action, a <c>6135.UIFramework_*</c> action, another
+        /// mod's action, or <c>"@owner/command args"</c> for a registered command. <c>${...}</c> is evaluated in your
+        /// mod's scope first. Returns false (and logs why) when it failed.
+        /// </summary>
+        bool RunAction(string action);
+
+        /// <summary>
+        /// Import data UIs from JSON: <c>{ "Menus": { "main": {...} }, "Huds": {...}, "Sprites": {...}, "Owner": {...} }</c>
+        /// (keys without an owner are prefixed with your mod id). The entries become the base layer of the framework's
+        /// data assets, so Content Patcher packs can still patch them. Calling it again adds / replaces entries. The menus
+        /// are built before it returns, so <see cref="GetMenu"/> and <see cref="BindToggleHotkey"/> work on the next line;
+        /// later reloads rebuild them in place (the same menu objects).
+        /// </summary>
+        void ImportData(string json);
+
+        /// <summary>
+        /// Register a command data can run: <c>"OnClick": "@YourModId/name arg1 arg2"</c> (your own data may write
+        /// <c>@name</c>) or <c>6135.UIFramework_Invoke YourModId/name</c>. Replaces an earlier command with the same name.
+        /// Commands are public: any content pack, mail or trigger action can run them with any arguments, so validate
+        /// <see cref="IUIDataCall.Args"/> and never trust them. Data UIs are shared by the split-screen players; act on
+        /// the current player's state (e.g. a <c>PerScreen&lt;T&gt;.Value</c>), since a command runs on the screen that raised it.
+        /// </summary>
+        void RegisterCommand(string name, Action<IUIDataCall> run);
+
+        /// <summary>Remove a command registered with <see cref="RegisterCommand"/>.</summary>
+        void UnregisterCommand(string name);
+
+        /// <summary>
+        /// Register a function data expressions can call: <c>${@YourModId/name(1, 'a')}</c> (your own data may write
+        /// <c>@name(...)</c>). Arguments arrive as text; a numeric / <c>true</c> / <c>false</c> result keeps its type.
+        /// Calls are cached until data state changes; registering (or registering again, e.g. after a language change)
+        /// invalidates every cached data value, so all data UIs re-read their values on the next tick.
+        /// </summary>
+        void RegisterFunction(string name, Func<string[], string> function);
+
+        /// <summary>
+        /// Define (or get) a row source computed by C#: data reads it with <c>"Source": "hook:YourModId/name"</c> and
+        /// <c>row.&lt;field&gt;</c>. Set its delegates, and call <see cref="IUIDataSource.Refresh"/> when the rows change.
+        /// </summary>
+        IUIDataSource DefineDataSource(string name);
+
+        /// <summary>Expose a signal to data as <c>@YourModId/name</c> (read-only there; data refreshes when it changes).</summary>
+        void ExposeSignal(string name, IUISignal signal);
+
+        /// <summary>Expose a computed value to data as <c>@YourModId/name</c> (data refreshes when it is invalidated).</summary>
+        void ExposeComputed(string name, IUIComputed computed);
+
+        /// <summary>
+        /// Expose a plain C# object to data: <c>model.name.Property.Sub</c> (your own data) or
+        /// <c>model[YourModId/name].Property</c>, read by reflection (public properties and fields, case-insensitive).
+        /// Inputs can bind to it (<c>"Bind": "model.name.Day"</c>) and a <c>Form</c> can edit it (<c>"Model": "name"</c>).
+        /// Objects implementing <c>INotifyPropertyChanged</c> / <c>INotifyCollectionChanged</c> refresh data when they
+        /// change; other reads are re-evaluated once per tick. Null removes it. One object serves every split-screen
+        /// player; for a per-player model use <see cref="ExposeModelSource"/>.
+        /// </summary>
+        void ExposeModel(string name, object model);
+
+        /// <summary>
+        /// Like <see cref="ExposeModel"/>, but the object is resolved through <paramref name="model"/> at every read, so
+        /// each split-screen player can see their own: <c>ExposeModelSource("settings", () =&gt; settings.Value)</c> over
+        /// a <c>PerScreen&lt;T&gt;</c>. Change notifications work per returned object. A <c>Form</c> built over it edits
+        /// the object returned when the form was built. Null removes it.
+        /// </summary>
+        void ExposeModelSource(string name, Func<object> model);
+
+        /// <summary>
+        /// Expose a list of plain C# objects as a row source: <c>"Source": "hook:YourModId/name"</c>, cells read
+        /// <c>row.Property</c>. <paramref name="rows"/> is read again when the UI opens and whenever data state changes
+        /// (a command ran, a signal changed...). It is read on the screen that shows the rows, so return the current
+        /// split-screen player's rows (e.g. from a <c>PerScreen&lt;T&gt;</c>). Null removes it.
+        /// </summary>
+        void ExposeRows(string name, Func<object[]> rows);
+
+        /// <summary>
+        /// Import a JSON file like <see cref="ImportData"/> (a full path: <c>Path.Combine(helper.DirectoryPath, "assets/ui.json")</c>). With
+        /// <paramref name="watch"/> (meant for development) the file is watched and re-imported when saved, and open
+        /// menus rebuild in place: point it at your project's source file to edit UIs without rebuilding the mod.
+        /// </summary>
+        void ImportDataFile(string path, bool watch);
+
+        /// <summary>
+        /// Register custom drawing data elements can use: <c>"DrawExtra": "YourModId/name"</c> (drawn after the element's
+        /// content) or <c>"DrawOverlay": "YourModId/name"</c> (drawn above the whole menu).
+        /// </summary>
+        void RegisterDrawHook(string name, Action<SpriteBatch, Rectangle, IUIDataCall> draw);
+
+        /// <summary>
+        /// A live view of a data state value on the current screen: <c>session.x</c> / <c>config.x</c> /
+        /// <c>player.x</c> (your mod's), or qualified <c>menu[owner/menu].x</c>, <c>session[owner].x</c>, <c>stat.x</c>...
+        /// Writes go through the state store (watches and bindings react).
+        /// </summary>
+        IUISignal DataState(string key);
+
+        // END DATA members
     }
 
     // =================================================================================================================
@@ -1037,6 +1228,13 @@ namespace UIFramework.Api
 
         /// <summary>Layout hint: cap the slot's measured height in UI pixels (null = unlimited).</summary>
         int? MaxHeight { get; set; }
+
+        /// <summary>
+        /// Layout hint, row only (<see cref="Horizontal"/>): break onto further lines instead of overflowing, both the
+        /// contributions and the items inside each one (same rules as <see cref="IUIStack.Wrap"/>). Each contribution's
+        /// own row picks it up when it is built (whenever the menu opens). Default false.
+        /// </summary>
+        bool Wrap { get; set; }
 
         /// <summary>Evaluated every tick; false hides the slot (null = always visible).</summary>
         Func<bool> VisiblePredicate { get; set; }
@@ -1219,6 +1417,12 @@ namespace UIFramework.Api
 
         /// <summary>A vanilla item's sprite and display name on one row (qualified id, e.g. <c>(O)24</c>).</summary>
         IUITooltip Item(string qualifiedItemId);
+
+        /// <summary>
+        /// (v1.2) An item instance's sprite, drawn with <c>drawInMenu</c> so tints are kept, and its display name on one
+        /// row (e.g. "Starfruit Wine"). <paramref name="item"/> is read each frame; null skips the row.
+        /// </summary>
+        IUITooltip ItemInstance(Func<Item> item);
 
         /// <summary>A horizontal rule.</summary>
         IUITooltip Divider();
@@ -1498,12 +1702,20 @@ namespace UIFramework.Api
 
         /// <summary>
         /// When true the widget receives hover and clicks while no menu is open (the game only loses the click when an
-        /// element handled it) and the player can drag it to a new position, which persists per save.
+        /// element handled it) and the player can drag it to a new position, which the main player's save keeps (a
+        /// farmhand's lasts for the session).
         /// </summary>
         bool Interactive { get; set; }
 
-        /// <summary>Evaluated every frame; return false to hide the widget (null = always shown).</summary>
+        /// <summary>Evaluated every update tick (on each split-screen player's screen); return false to hide the widget (null = always shown).</summary>
         Func<bool> ShowWhen { get; set; }
+
+        // HUDOVERMENUS (v1.8)
+        /// <summary>
+        /// Keep the widget drawn on top of an open menu (like toasts) instead of hiding it while any menu is open
+        /// (default false). Over a menu it takes no input: hover, clicks and dragging stay world-only.
+        /// </summary>
+        bool ShowOverMenus { get; set; }
 
         /// <summary>Every tick while shown, with elapsed milliseconds.</summary>
         Action<IUIHud, double> OnUpdate { get; set; }
@@ -1520,4 +1732,110 @@ namespace UIFramework.Api
 
     // END HUD types
 
+    // BEGIN ITEMIMAGE types (v1.2)
+
+    /// <summary>What an <see cref="IUIItemImage"/> draws on top of the item sprite.</summary>
+    public enum UIItemStack
+    {
+        /// <summary>Only the sprite.</summary>
+        Hide,
+        /// <summary>The quality star, but no stack number.</summary>
+        Quality,
+        /// <summary>The stack number (when above 1) and the quality star, like an inventory slot.</summary>
+        NumberAndQuality
+    }
+
+    /// <summary>An item instance drawn with the game's <c>drawInMenu</c>. Created by <see cref="IStardewUIApi.AddItemImage"/>.</summary>
+    public interface IUIItemImage : IUIElement
+    {
+        /// <summary>The item to draw, read every frame; null draws nothing.</summary>
+        Func<Item> Item { get; set; }
+
+        /// <summary>Size multiplier: 1 = 16 UI pixels, 4 = a vanilla 64 px slot. Ignored when an explicit width / height is set (the item then fits the bounds).</summary>
+        float Scale { get; set; }
+
+        /// <summary>Stack number / quality star overlay. Default <see cref="UIItemStack.Hide"/>. Overlays are hidden while the item is drawn smaller than 32 UI pixels (scale 2).</summary>
+        UIItemStack Stack { get; set; }
+
+        /// <summary>Draw the vanilla drop shadow under the item. Default false.</summary>
+        bool DrawShadow { get; set; }
+
+        /// <summary>Opacity from 0 to 1 (default 1); halved while the element is disabled.</summary>
+        float Alpha { get; set; }
+
+        /// <summary>Color multiplied into the sprite (default white).</summary>
+        Color Tint { get; set; }
+    }
+
+    // END ITEMIMAGE types
+
+    // BEGIN DATA types (v1.6)
+
+    /// <summary>
+    /// A call from data into a C# hook (a command, a draw hook): where it came from and access to the caller's data
+    /// scope. Valid only during the call (a draw hook gets the same instance every frame).
+    /// </summary>
+    public interface IUIDataCall
+    {
+        /// <summary>The hook's name (without the owner).</summary>
+        string Name { get; }
+
+        /// <summary>The arguments after the command name (already interpolated), or empty.</summary>
+        string[] Args { get; }
+
+        /// <summary>The owner of the UI the call came from (a content pack's or your own mod id).</summary>
+        string OwnerModId { get; }
+
+        /// <summary>The menu the call came from, or null (actions run outside a UI).</summary>
+        IUIMenu Menu { get; }
+
+        /// <summary>The element the call came from, or null.</summary>
+        IUIElement Element { get; }
+
+        /// <summary>
+        /// The collection row the call ran in, or null: your object for <c>ExposeRows</c> rows, the item for item rows,
+        /// the row index for <c>DefineDataSource</c> rows, a string-keyed dictionary for JSON rows, the value otherwise.
+        /// </summary>
+        object Row { get; }
+
+        /// <summary>The position of <see cref="Row"/> in its collection, or -1.</summary>
+        int RowIndex { get; }
+
+        /// <summary>Evaluate a data expression in the caller's scope (<c>"menu.count + 1"</c> or text with <c>${...}</c>).</summary>
+        string Evaluate(string expression);
+
+        /// <summary>Read a state value (<c>menu.x</c>, <c>session.x</c>, <c>config.x</c>, <c>model.name.Path</c>...) in the caller's scope.</summary>
+        string GetState(string key);
+
+        /// <summary>Write a state value in the caller's scope (text is typed: numbers and true / false keep their type); false when it could not be written.</summary>
+        bool SetState(string key, string value);
+    }
+
+    /// <summary>
+    /// A row source computed by C# (see <see cref="IStardewUIApi.DefineDataSource"/>). Data reads
+    /// <c>row.&lt;field&gt;</c> through <see cref="Text"/> (numeric text becomes a number), falling back to
+    /// <see cref="Number"/> when Text is unset or returns null; <c>row.item</c> reads <see cref="Item"/>.
+    /// </summary>
+    public interface IUIDataSource
+    {
+        /// <summary>The source's name (without the owner).</summary>
+        string Name { get; }
+
+        /// <summary>Number of rows.</summary>
+        Func<int> Count { get; set; }
+
+        /// <summary>A field of a row as text: (row index, field name) → text, or null for "no such field".</summary>
+        Func<int, string, string> Text { get; set; }
+
+        /// <summary>A field of a row as a number: (row index, field name) → number.</summary>
+        Func<int, string, double> Number { get; set; }
+
+        /// <summary>The item of a row (<c>row.item</c>), or null.</summary>
+        Func<int, Item> Item { get; set; }
+
+        /// <summary>Tell data the rows changed: collections re-read them on the next tick.</summary>
+        void Refresh();
+    }
+
+    // END DATA types
 }

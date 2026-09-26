@@ -1,21 +1,22 @@
 {
-  "215": {
-    "Name": "Tea Leaves", // Name
-    "HarvestID": 815, // Harvest ID (Id of item that drops)
-    "GrowthTime": 20, //growth time
-    "RegrowthTime": 1, //regrowth time
-    "Seasons": "spring summer fall", //seasons
-    "SalePrice": 50, //sale price
-    "PurchasePrice": 1500, //purchase price
-    "MinimumHarvests": 1, //min harvest
-    "MaximumHarvests": 1, //max harvest
-    "MaxHarvestsIncreasePerFarmingLevel": 0, //max harvest increase per farming level
-    "ExtraHarvestChance": 0.0, //chance for extra harvest
-    "HasQuality": false, //affected by quality
-    "AcceptsFertilizer": false, //affected by fertilizer
-    "IsRaisedCrop": false, //raised crop
-    "IsBushCrop": true, //bush crop
-    "IsPaddyCrop": false, //paddy crop
-    "IsGiantCrop": false //giant crop
-  }
+  // Manual crops, keyed by seed item id ("472" or "(O)472").
+  // This file is loaded as the asset "Mods/6135.ProfitCalculator/ManualCrops", so Content Patcher packs can EditData it too.
+  // Entries here replace built-in crops with the same seed id. Example (remove the comment markers to use it):
+  //
+  // "472": {
+  //   "Name": "Parsnip",                       // display name (optional, defaults to the harvest item's name)
+  //   "HarvestID": 24,                         // id of the harvested item (number or string, "(O)24" works too)
+  //   "GrowthTime": 4,                         // days until the first harvest
+  //   "RegrowthTime": -1,                      // days to regrow after harvest, 0 or -1 if it doesn't regrow
+  //   "Seasons": "spring",                     // space-separated seasons
+  //   "SalePrice": 35,                         // sale price of the harvest, 0 keeps the item's price
+  //   "PurchasePrice": 20,                     // seed price, 0 uses the shop / SeedPrices price
+  //   "MinimumHarvests": 1,                    // min items per harvest
+  //   "MaximumHarvests": 1,                    // max items per harvest
+  //   "MaxHarvestsIncreasePerFarmingLevel": 0, // max harvest increase per farming level
+  //   "ExtraHarvestChance": 0.0,               // chance for an extra item
+  //   "HasQuality": true,                      // affected by quality
+  //   "AcceptsFertilizer": true,               // affected by fertilizer
+  //   "IsPaddyCrop": false                     // paddy crop
+  // }
 }

@@ -20,7 +20,11 @@ namespace UIFramework.Components
         private Action<bool>? setter;
         private bool ownValue;
         private Func<string>? label;
+        private bool shrink;
         private string measuredLabel = string.Empty;
+
+        /// <summary>Size of <see cref="measuredLabel"/> as last measured, reused by the draw.</summary>
+        private Vector2 measuredLabelSize;
 
         internal Checkbox(string id, Func<bool>? getter, Action<bool>? setter) : base(id)
         {
@@ -65,6 +69,22 @@ namespace UIFramework.Components
 
         Func<string> IUICheckbox.Label { get => label!; set => LabelFunc = value; }
 
+        /// <summary>Let the minimum width drop to the fitted label (<see cref="DrawHelper.FitTextMinWidth"/>) instead of the whole label.</summary>
+        public bool Shrink
+        {
+            get => shrink;
+            set
+            {
+                if (shrink == value)
+                {
+                    return;
+                }
+
+                shrink = value;
+                InvalidateLayout();
+            }
+        }
+
         /// <summary>null = theme default, empty = silent.</summary>
         internal string? ClickSound { get; set; }
 
@@ -75,6 +95,9 @@ namespace UIFramework.Components
         Action<IUIValueEvent> IUICheckbox.OnValueChanged { get => OnValueChanged!; set => OnValueChanged = value; }
 
         internal override bool Focusable => true;
+
+        // click-once: a mouse click fires it and does not leave it holding focus (Tab / arrows / gamepad still reach it)
+        internal override bool FocusOnClick => false;
         internal override bool ActivateOnEnter => true;
 
         internal string CurrentLabel => Pseudo.Transform(Raise("Label", label, string.Empty) ?? string.Empty);
@@ -122,16 +145,40 @@ namespace UIFramework.Components
 
         protected override Vector2 MeasureCore(Vector2 available)
         {
-            measuredLabel = CurrentLabel;
             int box = BoxSize;
+            Vector2 textSize = MeasureLabel(CurrentLabel, Style.Font);
             if (measuredLabel.Length == 0)
             {
                 return new Vector2(box, box);
             }
 
-            Vector2 textSize = UIServices.Text.Measure(Style.Font, measuredLabel, 1f);
-            return new Vector2(box + Theme.Space(LabelGap) + textSize.X, Math.Max(box, textSize.Y));
+            return new Vector2(WidthFor(textSize.X), Math.Max(box, textSize.Y));
         }
+
+        /// <summary>Measure <paramref name="current"/> and remember it as <see cref="measuredLabel"/> / <see cref="measuredLabelSize"/>.</summary>
+        private Vector2 MeasureLabel(string current, UIFont font)
+        {
+            measuredLabel = current;
+            measuredLabelSize = current.Length == 0 ? Vector2.Zero : UIServices.Text.Measure(font, current, 1f);
+            return measuredLabelSize;
+        }
+
+        // the label never wraps: the minimum keeps it whole (the natural width MeasureCore reports); with Shrink it may go
+        // down to its fitted minimum, and a narrower checkbox shrinks / truncates it when drawn (FitText)
+        protected override float MinWidthCore()
+        {
+            string current = CurrentLabel;
+            if (current.Length == 0)
+            {
+                return BoxSize;
+            }
+
+            UIFont font = Style.Font;
+            return WidthFor(shrink ? DrawHelper.FitTextMinWidth(current, font, 1f) : (float)Math.Ceiling(UIServices.Text.Measure(font, current, 1f).X));
+        }
+
+        /// <summary>Box + gap + a label <paramref name="labelWidth"/> wide.</summary>
+        private static float WidthFor(float labelWidth) => BoxSize + Theme.Space(LabelGap) + labelWidth;
 
         protected override void DrawCore(SpriteBatch b)
         {
@@ -146,15 +193,19 @@ namespace UIFramework.Components
             string current = CurrentLabel;
             if (current != measuredLabel)
             {
-                measuredLabel = current;
-                InvalidateLayout();
+                // bound label changed since layout: re-flow the menu only when its size changed
+                Vector2 before = measuredLabelSize;
+                if (MeasureLabel(current, style.Font) != before)
+                {
+                    InvalidateLayout();
+                }
             }
             if (current.Length == 0)
             {
                 return;
             }
 
-            Vector2 textSize = UIServices.Text.Measure(style.Font, current, 1f);
+            Vector2 textSize = measuredLabelSize;
             Color textColor = Enabled ? style.TextColor : style.DisabledTextColor;
             int textX = Bounds.X + box + Theme.Space(LabelGap);
             var textRect = new Rectangle(textX, (int)(Bounds.Y + ((Bounds.Height - textSize.Y) / 2f)), Math.Max(0, Bounds.Right - textX), (int)textSize.Y);

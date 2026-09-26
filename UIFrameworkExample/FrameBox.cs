@@ -23,6 +23,12 @@ namespace UIFrameworkExample
         /// <summary>Zero: the framework then sizes the element to its embedded content.</summary>
         public Vector2 Measure(Vector2 available) => Vector2.Zero;
 
+        /// <summary>
+        /// Zero: the frame is drawn over the host's bounds and the embedded content is arranged into those same bounds,
+        /// so the frame adds no width of its own; the host's minimum is then the minimum of the embedded content.
+        /// </summary>
+        public float MinimumWidth => 0;
+
         public void Draw(SpriteBatch b, Rectangle bounds)
         {
             IClickableMenu.drawTextureBox(b, Game1.menuTexture, new Rectangle(0, 256, 60, 60), bounds.X, bounds.Y, bounds.Width, bounds.Height, hovered ? Color.Wheat : Color.White, 1f, false);
@@ -30,6 +36,7 @@ namespace UIFrameworkExample
 
         public void Update(Rectangle bounds, double elapsedMs)
         {
+            // a static frame: nothing to animate
         }
 
         /// <summary>Clicks on the frame itself (not on an embedded element) are not handled.</summary>
