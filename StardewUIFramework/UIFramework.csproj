@@ -10,6 +10,8 @@
     <EnableHarmony>false</EnableHarmony>
     <GamePath>$(STARDEW_GAME_DIR)</GamePath>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <!-- the XML docs are for the source (Doxygen, IDE); keep them out of the players' mod zip -->
+    <IgnoreModFilePatterns>\.xml$</IgnoreModFilePatterns>
     <!-- CS1591: missing XML docs on internal-facing members is acceptable. -->
     <NoWarn>$(NoWarn);CS1591</NoWarn>
     <!-- keep generated files out of the compile globs even when obj/bin are redirected (parallel builds) -->
