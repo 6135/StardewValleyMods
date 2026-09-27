@@ -450,6 +450,8 @@ With a gamepad, framework menus work like vanilla menus (the game's snappy menus
 - The cursor snaps to the first control when a menu opens, and the d-pad / left stick move it to the nearest control
   in that direction; a scroll view scrolls to follow it. **A** clicks the control under the cursor, the right stick
   scrolls.
+- In a data grid the cursor moves row by row (showing each row's tooltip), and the grid scrolls when it passes the
+  first or last visible row.
 - Left / right step a slider or number input under the cursor.
 - **A** on a text or number input opens the game's on-screen keyboard (the Steam keyboard on a Steam Deck), which types
   into the input; closing it ends the edit.

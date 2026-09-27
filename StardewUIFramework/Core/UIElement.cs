@@ -719,6 +719,22 @@ namespace UIFramework.Core
             return false;
         }
 
+        /// <summary>
+        /// The gamepad snap targets that stand in for this focusable element (the visible rows of a list, like the slots of a
+        /// vanilla inventory), or null to snap to the element itself.
+        /// </summary>
+        internal virtual IEnumerable<UIElement>? GamepadTargets => null;
+
+        /// <summary>
+        /// A gamepad direction from one of this element's <see cref="GamepadTargets"/> that the target itself declined, before
+        /// the cursor moves on: return true to consume it (a list scrolls by one row at its first / last visible row, and the
+        /// cursor stays over the row that scrolled in).
+        /// </summary>
+        protected internal virtual bool HandleGamepadTargetDirection(UIElement target, int dx, int dy)
+        {
+            return false;
+        }
+
         // keyboard subscriber forwarding (only while focused and WantsTextInput)
         protected internal virtual void HandleTextInput(char c)
         {

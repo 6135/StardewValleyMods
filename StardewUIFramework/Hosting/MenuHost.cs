@@ -30,8 +30,23 @@ namespace UIFramework.Hosting
         private readonly PlayerLayoutController layout; // HUD: player-owned layout
         private bool closed;
 
+        /// <summary>Snap target id of the collapse button (element targets are numbered from 0).</summary>
+        private const int CollapseButtonId = 10000;
+
+        /// <summary>Snap target id of the close button.</summary>
+        private const int CloseButtonId = 10001;
+
+        /// <summary>No neighbour in that direction (the game then keeps the cursor where it is).</summary>
+        private const int NoNeighbor = -1;
+
         /// <summary>The element behind each snap target of <see cref="IClickableMenu.allClickableComponents"/>.</summary>
         private readonly Dictionary<ClickableComponent, UIElement> snapTargets = new();
+
+        /// <summary>The focusable element that supplied each snap target through <see cref="UIElement.GamepadTargets"/> (a list for its rows).</summary>
+        private readonly Dictionary<UIElement, UIElement> targetOwners = new();
+
+        /// <summary>Snap the gamepad cursor on the next update, once the menu's first tick built its content (data rows).</summary>
+        private bool snapPending;
 
         internal UIMenu Menu { get; }
 
@@ -75,6 +90,15 @@ namespace UIFramework.Hosting
         {
             base.update(time);
             Menu.Tick(time.ElapsedGameTime.TotalMilliseconds);
+            if (snapPending)
+            {
+                snapPending = false;
+                if (Game1.options.SnappyMenus)
+                {
+                    populateClickableComponentList();
+                    snapToDefaultClickableComponent();
+                }
+            }
         }
 
         public override void draw(SpriteBatch b)
@@ -263,12 +287,36 @@ namespace UIFramework.Hosting
             }
 
             UIElement? snapped = SnappedElement();
-            if (snapped == null || !snapped.HandleGamepadDirection(dx, dy))
+            if (snapped != null && snapped.HandleGamepadDirection(dx, dy))
             {
-                applyMovementKey(key);
+                return true;
             }
 
+            if (snapped != null && targetOwners.TryGetValue(snapped, out UIElement? owner) && owner.HandleGamepadTargetDirection(snapped, dx, dy))
+            {
+                ResnapAtCursor(); // a list scrolled: snap to the row now under the cursor
+                return true;
+            }
+
+            applyMovementKey(key);
             return true;
+        }
+
+        /// <summary>After the content under the cursor changed (a list scrolled), snap to the target now at the cursor.</summary>
+        private void ResnapAtCursor()
+        {
+            if (Menu.LayoutDirty)
+            {
+                Menu.Relayout();
+            }
+
+            Point cursor = new(Game1.getMouseX(), Game1.getMouseY());
+            populateClickableComponentList();
+            ClickableComponent? atCursor = allClickableComponents.Find(c => c.containsPoint(cursor.X, cursor.Y));
+            if (atCursor != null)
+            {
+                currentlySnappedComponent = atCursor;
+            }
         }
 
         /// <summary>Whether a gamepad button the game maps to the menu button (B, Y, Start) is held.</summary>
@@ -332,45 +380,51 @@ namespace UIFramework.Hosting
         }
 
         /// <summary>
-        /// Build the snap targets from the focusable elements (none while collapsed) plus the window buttons; the game snaps
-        /// between them geometrically. Layout changes drop the list (<see cref="SyncBounds"/>) and the game rebuilds it on the
-        /// next move; the snapped element stays snapped across rebuilds.
+        /// Build the snap targets from the focusable elements (a list supplies its rows, see <see cref="UIElement.GamepadTargets"/>;
+        /// none while collapsed) plus the window buttons, and wire their neighbours like a vanilla menu does. Layout changes
+        /// drop the list (<see cref="SyncBounds"/>) and the game rebuilds it on the next move; the snapped element stays
+        /// snapped across rebuilds.
         /// </summary>
         public override void populateClickableComponentList()
         {
             UIElement? snappedElement = SnappedElement();
-            int snappedId = currentlySnappedComponent?.myID ?? -1;
+            int snappedId = currentlySnappedComponent?.myID ?? NoNeighbor;
             snapTargets.Clear();
+            targetOwners.Clear();
 
             var list = new List<ClickableComponent>();
-            int id = 0;
             if (!Menu.Collapsed)
             {
                 foreach (UIElement element in Menu.Focus.FocusableElements())
                 {
-                    var component = new ClickableComponent(element.Bounds, element.Id)
+                    if (element.GamepadTargets is { } targets)
                     {
-                        myID = id++,
-                        upNeighborID = ClickableComponent.SNAP_AUTOMATIC,
-                        downNeighborID = ClickableComponent.SNAP_AUTOMATIC,
-                        leftNeighborID = ClickableComponent.SNAP_AUTOMATIC,
-                        rightNeighborID = ClickableComponent.SNAP_AUTOMATIC
-                    };
-                    list.Add(component);
-                    snapTargets[component] = element;
+                        foreach (UIElement target in targets)
+                        {
+                            AddTarget(list, target);
+                            targetOwners[target] = element;
+                        }
+                    }
+                    else
+                    {
+                        AddTarget(list, element);
+                    }
                 }
             }
 
             if (layout.CollapseButton != null)
             {
+                layout.CollapseButton.myID = CollapseButtonId;
                 list.Add(layout.CollapseButton);
             }
 
             if (upperRightCloseButton != null)
             {
+                upperRightCloseButton.myID = CloseButtonId;
                 list.Add(upperRightCloseButton);
             }
 
+            AssignNeighbors(list);
             allClickableComponents = list;
             if (currentlySnappedComponent != null)
             {
@@ -378,6 +432,75 @@ namespace UIFramework.Hosting
                     ? list.Find(c => snapTargets.TryGetValue(c, out UIElement? e) && e == snappedElement)
                     : list.Find(c => !snapTargets.ContainsKey(c) && c.myID == snappedId);
             }
+        }
+
+        private void AddTarget(List<ClickableComponent> list, UIElement element)
+        {
+            var component = new ClickableComponent(element.Bounds, element.Id) { myID = snapTargets.Count };
+            list.Add(component);
+            snapTargets[component] = element;
+        }
+
+        /// <summary>
+        /// Set each target's up / down / left / right neighbour, as vanilla menus do by hand. The neighbour is the nearest
+        /// target ahead that overlaps it across the direction of travel (the next row of a form column, whatever the width
+        /// of its controls); up / down fall back to the nearest target ahead when nothing overlaps (a button row off to one
+        /// side), left / right do not.
+        /// </summary>
+        private static void AssignNeighbors(List<ClickableComponent> list)
+        {
+            foreach (ClickableComponent from in list)
+            {
+                from.upNeighborID = FindNeighbor(list, from, 0, -1);
+                from.downNeighborID = FindNeighbor(list, from, 0, 1);
+                from.leftNeighborID = FindNeighbor(list, from, -1, 0);
+                from.rightNeighborID = FindNeighbor(list, from, 1, 0);
+            }
+        }
+
+        private static int FindNeighbor(List<ClickableComponent> list, ClickableComponent from, int dx, int dy)
+        {
+            Rectangle a = from.bounds;
+            bool vertical = dy != 0;
+            ClickableComponent? best = null;
+            float bestScore = float.MaxValue;
+            bool bestOverlaps = false;
+            foreach (ClickableComponent c in list)
+            {
+                if (c == from)
+                {
+                    continue;
+                }
+
+                Rectangle b = c.bounds;
+                float along = vertical ? (b.Center.Y - a.Center.Y) * dy : (b.Center.X - a.Center.X) * dx;
+                if (along <= 0)
+                {
+                    continue;
+                }
+
+                float across = Math.Abs(vertical ? b.Center.X - a.Center.X : b.Center.Y - a.Center.Y);
+                int overlap = vertical
+                    ? Math.Min(a.Right, b.Right) - Math.Max(a.Left, b.Left)
+                    : Math.Min(a.Bottom, b.Bottom) - Math.Max(a.Top, b.Top);
+                bool overlaps = overlap > 0;
+                if (!overlaps && (!vertical || bestOverlaps))
+                {
+                    continue;
+                }
+
+                // overlapping: the smallest gap between the edges (ties: the most aligned); otherwise the closest by centers
+                float gap = vertical ? (dy > 0 ? b.Top - a.Bottom : a.Top - b.Bottom) : (dx > 0 ? b.Left - a.Right : a.Left - b.Right);
+                float score = overlaps ? (Math.Max(0, gap) * 1000) + across : along + (2 * across);
+                if ((overlaps && !bestOverlaps) || score < bestScore)
+                {
+                    best = c;
+                    bestScore = score;
+                    bestOverlaps = overlaps;
+                }
+            }
+
+            return best?.myID ?? NoNeighbor;
         }
 
         public override void snapToDefaultClickableComponent()
@@ -414,15 +537,11 @@ namespace UIFramework.Hosting
         /// <summary>The vanilla menu close sound (<see cref="IClickableMenu.closeSound"/>).</summary>
         internal void PlayCloseSound() => Game1.playSound(closeSound);
 
-        /// <summary>When the menu opens with a gamepad, snap the cursor to the first element (vanilla menus do it in their constructor).</summary>
-        internal void SnapForGamepad()
-        {
-            if (Game1.options.SnappyMenus)
-            {
-                populateClickableComponentList();
-                snapToDefaultClickableComponent();
-            }
-        }
+        /// <summary>
+        /// When the menu opens with a gamepad, snap the cursor to the first element (vanilla menus do it in their constructor).
+        /// It happens on the first update, after the menu's first tick filled data-driven content such as a grid's rows.
+        /// </summary>
+        internal void SnapForGamepad() => snapPending = true;
 
         // ---------------------------------------------------------------------------------------------------------
         //  Lifecycle
