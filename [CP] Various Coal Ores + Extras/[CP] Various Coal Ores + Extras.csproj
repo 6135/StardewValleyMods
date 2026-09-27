@@ -3,7 +3,7 @@
   <PropertyGroup>
     <AssemblyName>_CP__Various_Coal_Ores___Extras</AssemblyName>
     <RootNamespace>_CP__Various_Coal_Ores___Extras</RootNamespace>
-    <Version>1.2.5</Version>
+    <Version>1.3.0</Version>
     <TargetFramework>net6.0</TargetFramework>
     <EnableHarmony>true</EnableHarmony>
     <IgnoreModFilePatterns>\.dll$, \.pdb$</IgnoreModFilePatterns>

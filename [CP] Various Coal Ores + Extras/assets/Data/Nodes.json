@@ -42,7 +42,7 @@
           "Tool": "Pickaxe",
           "SayWrongTool": null,
           "MinToolLevel": 0,
-          "Exp": 8,
+          "Exp": "{{ExpCoal}}",
           "Skill": "mining",
           "ContextTags": [],
           "CustomFields": {},
@@ -104,7 +104,7 @@
           "Tool": "Pickaxe",
           "SayWrongTool": null,
           "MinToolLevel": 0,
-          "Exp": 8,
+          "Exp": "{{ExpIceCoal}}",
           "Skill": "mining",
           "ContextTags": [],
           "CustomFields": {},
@@ -166,7 +166,7 @@
           "Tool": "Pickaxe",
           "SayWrongTool": null,
           "MinToolLevel": 0,
-          "Exp": 8,
+          "Exp": "{{ExpLavaCoal}}",
           "Skill": "mining",
           "ContextTags": [],
           "CustomFields": {},
@@ -174,12 +174,12 @@
           "OnDestroy": null,
           "MineSpawns": [
             {
-              "Floors": "80/100",
+              "Floors": "80/99",
               "SpawnFrequency": "{{SpawnFreqLavaCoal80to100}}",
               "Type": "All"
             },
             {
-              "Floors": "100/120",
+              "Floors": "101/120",
               "SpawnFrequency": "{{SpawnFreqLavaCoal100to120}}",
               "Type": "All"
             }
@@ -223,7 +223,7 @@
           "Tool": "Pickaxe",
           "SayWrongTool": null,
           "MinToolLevel": 0,
-          "Exp": 12,
+          "Exp": "{{ExpPureCoal}}",
           "Skill": "mining",
           "ContextTags": [],
           "CustomFields": {},
@@ -247,7 +247,7 @@
             },
             {
               "Floors": "121/-999",
-              "SpawnFrequency": "{{SpawnFreqPrisStone121To999}}",
+              "SpawnFrequency": "{{SpawnFreqPureCoal120to999}}",
               "Type": "All"
             }
           ]
@@ -290,7 +290,7 @@
           "Tool": "Pickaxe",
           "SayWrongTool": null,
           "MinToolLevel": 0,
-          "Exp": 48,
+          "Exp": "{{ExpPrismaticStone}}",
           "Skill": "mining",
           "ContextTags": [],
           "CustomFields": {},
@@ -361,7 +361,7 @@
           "Tool": "Pickaxe",
           "SayWrongTool": null,
           "MinToolLevel": 0,
-          "Exp": 22,
+          "Exp": "{{ExpObsidian}}",
           "Skill": "mining",
           "ContextTags": [],
           "CustomFields": {},
@@ -374,7 +374,7 @@
               "SpawnFrequency": "{{SpawnFreqObsidian81To119}}"
             },
             {
-              "Floors": "120/-999",
+              "Floors": "121/-999",
               "Type": "All",
               "SpawnFrequency": "{{SpawnFreqObsidian120To999}}"
             }
@@ -427,7 +427,7 @@
           "Tool": "Pickaxe",
           "SayWrongTool": null,
           "MinToolLevel": 0,
-          "Exp": 8,
+          "Exp": "{{ExpMudstone}}",
           "Skill": "mining",
           "ContextTags": [],
           "CustomFields": {},
@@ -435,9 +435,9 @@
           "OnDestroy": null,
           "MineSpawns": [
             {
-              "Floors": "1/39", // from 1 to last mine level
-              "SpawnFrequency": "{{SpawnFreqMudStone1To39}}", //10% to spawn
-              "Type": "All" //on any difficulty
+              "Floors": "1/39",
+              "SpawnFrequency": "{{SpawnFreqMudStone1To39}}",
+              "Type": "All"
             }
           ]
         }
