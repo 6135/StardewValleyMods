@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
@@ -13,7 +14,13 @@ namespace UIFramework.Hosting
     /// The only game-facing class: an <see cref="IClickableMenu"/> that forwards every game callback into a
     /// <see cref="UIMenu"/>. One instance per open menu.
     /// </summary>
-    internal sealed class MenuHost : IClickableMenu
+    /// <remarks>
+    /// The host is closed only when the game closes it: <c>exitThisMenu</c> / <c>cleanupBeforeExit</c>, an emergency
+    /// shutdown, or <see cref="Dispose"/>, which the <c>Game1.activeClickableMenu</c> setter calls on the menu it replaces.
+    /// A host that is merely not the active menu (another mod showed its own menu on top by setting the game's field
+    /// directly, like Lookup Anything's search) stays open and resumes when that mod puts it back.
+    /// </remarks>
+    internal sealed class MenuHost : IClickableMenu, IDisposable
     {
         private readonly PlayerLayoutController layout; // HUD: player-owned layout
         private bool closed;
@@ -113,7 +120,7 @@ namespace UIFramework.Hosting
                     Game1.playSound(closeSound);
                 }
 
-                Menu.Close();
+                RequestClose();
                 return;
             }
 
@@ -125,7 +132,7 @@ namespace UIFramework.Hosting
 
             if (!handled && !Menu.Modal && !Menu.Bounds.Contains(x, y) && !Menu.Overlay.HasPopups)
             {
-                Menu.Close();
+                RequestClose();
             }
         }
 
@@ -227,7 +234,23 @@ namespace UIFramework.Hosting
         {
             if (Menu.CloseOnEscape)
             {
+                RequestClose();
+            }
+        }
+
+        /// <summary>
+        /// Close this host: through its menu when it is the menu's current host, otherwise (the menu was closed or reopened
+        /// elsewhere while this host was hidden) just take this host off the screen.
+        /// </summary>
+        private void RequestClose()
+        {
+            if (Menu.Host == this)
+            {
                 Menu.Close();
+            }
+            else
+            {
+                exitThisMenu(playSound: false);
             }
         }
 
@@ -302,6 +325,9 @@ namespace UIFramework.Hosting
             HandleClosed();
         }
 
+        /// <summary>Called by the <c>Game1.activeClickableMenu</c> setter when another menu replaces this one.</summary>
+        public void Dispose() => HandleClosed();
+
         private void HandleClosed()
         {
             if (closed)
@@ -321,20 +347,5 @@ namespace UIFramework.Hosting
         /// <summary>Whether this host is the game's active menu (as opposed to a child menu).</summary>
         internal bool IsActiveMenu => Game1.activeClickableMenu == this;
 
-        /// <summary>Whether this host is still reachable from the game's active menu chain.</summary>
-        internal bool IsStillActive()
-        {
-            for (IClickableMenu? m = Game1.activeClickableMenu; m != null; m = m.GetChildMenu())
-            {
-                if (m == this)
-                {
-                    return true;
-                }
-            }
-            return false;
-        }
-
-        /// <summary>Mark closed without going through the game (the game already dropped this host).</summary>
-        internal void NotifyDropped() => HandleClosed();
     }
 }

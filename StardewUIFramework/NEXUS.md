@@ -53,6 +53,34 @@ settings pages, HUD widgets, additions to other mods' menus) without writing any
   - Adaptive layout: `Resizable`, `Wrap`, `MinWidth` / `MaxWidth` and `Shrink`.
   - An in-game inspector that exports any menu, C# or data, as C# code or JSON.
 
+## UI Framework and StardewUI
+
+UI Framework is not trying to compete with [StardewUI](https://focustense.github.io/StardewUI/) by focustense.
+StardewUI is the established UI framework for Stardew Valley mods. **If you are a C# mod author choosing a UI
+library, use StardewUI.** UI Framework was built for my own mods (starting with Profit Calculator) and grew from there.
+
+Why StardewUI is the better default:
+
+- **Mature.** It has thorough documentation: guides, a full set of examples and reference docs.
+- **Fast.** It renders in retained mode, so it only updates what changed. UI Framework re-reads many values every
+  frame, which is fine for ordinary menus but costs more in large ones.
+- **Clean design.** Views are StarML markup bound to your C# data model, with hot reload. You can also include its
+  Core library directly in your mod.
+
+What UI Framework does differently:
+
+- **Menus without C#.** A Content Patcher pack can build complete menus, HUD widgets and settings screens as data,
+  with expressions, named state and trigger actions. StardewUI views are also game assets, but a C# mod provides their
+  data and opens them.
+- **Mods can add to each other's menus** through extension slots, contributions and decorations.
+- **The same player features in every menu:** themes, text scaling, windows that can be dragged, collapsed and resized
+  (remembered per save), toast notifications and Stardew Access announcements.
+- **A delegate-based C# API** (getters, setters and callbacks) instead of data binding, and an in-game inspector that
+  exports any menu as C# or JSON.
+
+Use UI Framework if you want to build a menu from a Content Patcher pack without writing C#, or if you want to extend
+a mod that already uses it. Otherwise, StardewUI is the safer choice.
+
 ## For content pack authors
 
 Add `6135.UIFramework` as a dependency of your Content Patcher pack and edit `Mods/6135.UIFramework/Menus` (or `Huds`,
