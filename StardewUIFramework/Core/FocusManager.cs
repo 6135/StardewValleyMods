@@ -1,47 +1,67 @@
 using System;
 using System.Collections.Generic;
 using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using StardewValley;
+using StardewValley.Menus;
 
 namespace UIFramework.Core
 {
     /// <summary>
     /// Single owner of keyboard focus for one menu. Installs exactly one <see cref="IKeyboardSubscriber"/> on
     /// <see cref="Game1.keyboardDispatcher"/> (only while the focused element wants text input) and restores the
-    /// previous subscriber when focus is released.
+    /// previous subscriber when focus is released. A gamepad player gets the game's on-screen keyboard for it, as with
+    /// vanilla text boxes.
     /// </summary>
     internal sealed class FocusManager
     {
-        /// <summary>Forwards the game's text input to the focused element.</summary>
-        private sealed class KeyboardAdapter : IKeyboardSubscriber
+        /// <summary>
+        /// The keyboard subscriber: a vanilla <see cref="TextBox"/> that forwards what it receives to the focused element.
+        /// Being the game's own class, it is what the game's on-screen keyboard (<see cref="TextEntryMenu"/>) types into and
+        /// draws, and selecting / deselecting it opens and closes the Steam keyboard like any vanilla text box.
+        /// </summary>
+        private sealed class SubscriberTextBox : TextBox, IKeyboardSubscriber
         {
             private readonly FocusManager owner;
 
-            internal KeyboardAdapter(FocusManager owner)
+            internal SubscriberTextBox(FocusManager owner)
+                : base(Game1.content.Load<Texture2D>("LooseSprites\\textBox"), null, Game1.smallFont, Game1.textColor)
             {
                 this.owner = owner;
+                limitWidth = false; // the element enforces its own limits
             }
 
-            bool IKeyboardSubscriber.Selected { get; set; }
+            public override void RecieveTextInput(char inputChar) => owner.Focused?.HandleTextInput(inputChar);
 
-            void IKeyboardSubscriber.RecieveTextInput(char inputChar) => owner.Focused?.HandleTextInput(inputChar);
-            void IKeyboardSubscriber.RecieveTextInput(string text) => owner.Focused?.HandleTextInput(text);
-            void IKeyboardSubscriber.RecieveCommandInput(char command) => owner.Focused?.HandleCommandInput(command);
+            public override void RecieveTextInput(string text) => owner.Focused?.HandleTextInput(text);
+
+            public override void RecieveCommandInput(char command) => owner.Focused?.HandleCommandInput(command);
+
+            // RecieveSpecialInput is not virtual in TextBox: re-implement the interface member instead
             void IKeyboardSubscriber.RecieveSpecialInput(Keys key) => owner.Focused?.HandleSpecialInput(key);
+
+            /// <summary>Drawn by the on-screen keyboard: show the focused element's current text.</summary>
+            public override void Draw(SpriteBatch spriteBatch, bool drawShadow = true)
+            {
+                Text = owner.Focused?.TextEntryText ?? string.Empty;
+                base.Draw(spriteBatch, drawShadow);
+            }
         }
 
         private readonly UIMenu menu;
-        private readonly KeyboardAdapter adapter;
+        private SubscriberTextBox? textBox;
         private IKeyboardSubscriber? previousSubscriber;
         private bool subscribed;
+
+        /// <summary>Whether the on-screen keyboard was opened for the current subscription.</summary>
+        private bool onScreenKeyboardShown;
 
         internal UIElement? Focused { get; private set; }
 
         internal FocusManager(UIMenu menu)
         {
             this.menu = menu;
-            adapter = new KeyboardAdapter(this);
         }
 
         internal void SetFocus(UIElement? element)
@@ -68,7 +88,7 @@ namespace UIFramework.Core
         internal void ClearFocus() => SetFocus(null);
 
         /// <summary>Ask every enclosing scroll view (innermost first) to bring the element into view.</summary>
-        private static void ScrollIntoView(UIElement? element)
+        internal static void ScrollIntoView(UIElement? element)
         {
             for (UIElement? cur = element?.ParentElement; cur != null; cur = cur.ParentElement)
             {
@@ -85,14 +105,16 @@ namespace UIFramework.Core
             bool wants = Focused != null && Focused.WantsTextInput && menu.IsOpen;
             if (wants && !subscribed)
             {
+                textBox ??= new SubscriberTextBox(this);
                 previousSubscriber = ReadSubscriber();
-                if (previousSubscriber == adapter)
+                if (previousSubscriber == textBox)
                 {
                     previousSubscriber = null;
                 }
 
-                WriteSubscriber(adapter);
+                textBox.SelectMe(); // becomes the game's keyboard subscriber
                 subscribed = true;
+                ShowOnScreenKeyboard();
             }
             else if (!wants && subscribed)
             {
@@ -104,7 +126,36 @@ namespace UIFramework.Core
             }
         }
 
-        /// <summary>Give the keyboard back (menu closing).</summary>
+        /// <summary>
+        /// Open the game's on-screen keyboard for the subscription when the player uses a gamepad, with the same condition as
+        /// a vanilla <see cref="TextBox"/> (<c>TextBox.Update</c>).
+        /// </summary>
+        private void ShowOnScreenKeyboard()
+        {
+            if (textBox != null && Game1.options.gamepadControls && !Game1.lastCursorMotionWasMouse)
+            {
+                Game1.showTextEntry(textBox);
+                onScreenKeyboardShown = true;
+            }
+        }
+
+        /// <summary>
+        /// Once per tick: when the on-screen keyboard was closed (OK or B), end the edit by dropping focus, so the gamepad
+        /// moves between elements again.
+        /// </summary>
+        internal void Tick()
+        {
+            if (onScreenKeyboardShown && Game1.textEntry == null)
+            {
+                onScreenKeyboardShown = false;
+                if (Focused?.WantsTextInput == true)
+                {
+                    ClearFocus();
+                }
+            }
+        }
+
+        /// <summary>Give the keyboard back (menu closing). Deselecting the text box also closes the on-screen keyboard.</summary>
         internal void Release()
         {
             if (!subscribed)
@@ -112,13 +163,16 @@ namespace UIFramework.Core
                 return;
             }
 
-            if (ReadSubscriber() == adapter)
+            bool ours = ReadSubscriber() == textBox;
+            textBox!.Selected = false; // clears the game's subscriber when it is ours
+            if (ours)
             {
                 WriteSubscriber(previousSubscriber);
             }
 
             previousSubscriber = null;
             subscribed = false;
+            onScreenKeyboardShown = false;
         }
 
         /// <summary>Drop focus if the focused element left the tree or became unusable.</summary>

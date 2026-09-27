@@ -120,6 +120,7 @@ namespace UIFramework.Components
 
         internal override bool Focusable => true;
         internal override bool WantsTextInput => true;
+        internal override string TextEntryText => buffer ?? Trim(Value);
 
         internal override string AccessibleDescription => Accessibility.Compose(
             Accessibility.Text("number-input", "Number input"),
@@ -522,6 +523,18 @@ namespace UIFramework.Components
             {
                 // other special keys (arrows, Home/End) are handled by the router / ignored
             }
+        }
+
+        /// <summary>Gamepad left / right while the cursor is on the box step the value (A opens the on-screen keyboard).</summary>
+        protected internal override bool HandleGamepadDirection(int dx, int dy)
+        {
+            if (!Enabled || dx == 0)
+            {
+                return false;
+            }
+
+            StepBy(dx);
+            return true;
         }
 
         /// <summary>Wheel over the box (while focused or hovered) steps the value.</summary>

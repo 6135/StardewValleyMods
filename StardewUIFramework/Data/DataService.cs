@@ -854,7 +854,7 @@ namespace UIFramework.Data
             if (menu != null && menu.IsOpen)
             {
                 error = string.Empty;
-                menu.Close();
+                menu.CloseByPlayer();
                 return true;
             }
 

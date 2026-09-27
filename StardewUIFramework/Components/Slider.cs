@@ -216,6 +216,18 @@ namespace UIFramework.Components
             }
         }
 
+        /// <summary>Gamepad left / right while the cursor is on the slider move it by one step, like the vanilla <c>OptionsSlider</c>.</summary>
+        protected internal override bool HandleGamepadDirection(int dx, int dy)
+        {
+            if (!Enabled || dx == 0)
+            {
+                return false;
+            }
+
+            TryCommit(Value + (dx * KeyStep));
+            return true;
+        }
+
         protected internal override bool HandleKey(UIKeyEvent e)
         {
             if (base.HandleKey(e))

@@ -623,6 +623,7 @@ namespace UIFramework.Core
             }
 
             Focus.Validate();
+            Focus.Tick();
             Root.Update(elapsedMs);
             AnnounceRestingHover();
             if (OnUpdate != null)
@@ -882,6 +883,20 @@ namespace UIFramework.Core
             }
 
             Focus.UpdateSubscription(); // an input focused before the menu opened takes the keyboard now
+            Host?.SnapForGamepad();
+        }
+
+        /// <summary>Close the menu because the player asked to (a hotkey, Escape, gamepad B...): with the vanilla close sound.</summary>
+        internal void CloseByPlayer()
+        {
+            MenuHost? host = Host;
+            if (host == null)
+            {
+                return;
+            }
+
+            host.PlayCloseSound();
+            Close();
         }
 
         public void Close()

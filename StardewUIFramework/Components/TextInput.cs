@@ -84,6 +84,7 @@ namespace UIFramework.Components
 
         internal override bool Focusable => true;
         internal override bool WantsTextInput => true;
+        internal override string TextEntryText => Value;
 
         internal override string AccessibleDescription
         {

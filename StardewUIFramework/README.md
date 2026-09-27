@@ -395,7 +395,8 @@ Routing of a click:
    viewport). A target you keep typing into or navigating (text and number inputs, data grids, custom components
    with `WantsFocus`) takes keyboard focus; clicking anything else clears focus. Click-once controls (buttons,
    checkboxes, dropdowns, sliders) do their job on the click and do not keep focus, so they are not left
-   highlighted and one Escape still closes the menu. Tab, arrows and the gamepad still move focus onto them.
+   highlighted and one Escape still closes the menu. Tab and arrows still move focus onto them, and the gamepad
+   cursor snaps to them.
 3. The event is delivered to the target, then bubbles to each ancestor until someone sets `IUIEvent.Handled = true`
    (buttons, checkboxes, dropdowns and custom components that return `true` from `OnClick` mark their own clicks
    handled). This lets a list row react to clicks on any of its children.
@@ -439,13 +440,21 @@ Built-in keys (after element and menu `OnKey` handlers declined them):
   it clicks `IUIMenu.DefaultButton`. **Space** activates buttons, checkboxes and dropdowns. A custom component sees
   Enter in its `OnKey` first.
 - **Escape** closes an open popup, else clears focus, else clicks `IUIMenu.CancelButton`, else closes the menu when
-  `CloseOnEscape` is set. The game's menu key (`E` by default) also closes the menu unless a text field is taking
-  input.
+  `CloseOnEscape` is set, with the vanilla close sound. The game's menu key (`E` by default, gamepad **B**) does the
+  same, except that a text field taking input keeps `E` as a letter.
 - **Mouse wheel** scrolls the hovered scroll view, list, open dropdown or number input, then falls through to the
   menu's `OnScroll` (positive = up).
 
-With gamepad controls and snappy menus enabled, every focusable element becomes a snap target with automatic
-neighbours, so the d-pad / left stick move between controls and `A` activates them.
+With a gamepad, framework menus work like vanilla menus (the game's snappy menus, on by default for controllers):
+
+- The cursor snaps to the first control when a menu opens, and the d-pad / left stick move it to the nearest control
+  in that direction; a scroll view scrolls to follow it. **A** clicks the control under the cursor, the right stick
+  scrolls.
+- Left / right step a slider or number input under the cursor.
+- **A** on a text or number input opens the game's on-screen keyboard (the Steam keyboard on a Steam Deck), which types
+  into the input; closing it ends the edit.
+- While a dropdown list is open, the d-pad moves through its choices and **A** picks the one under the cursor.
+- **B** backs out like Escape: it closes an open list, then leaves a focused field, then closes the menu.
 
 #### Tooltips
 

@@ -2,46 +2,65 @@
 
 ## 2.1.0
 
-- The calculator's screens (settings, results and machine results) are now UI Framework data in `assets/ui.json`
-  instead of C# code. The C# side only supplies what it computes: the settings model, the produce types, the result
-  rows, the Calculate / Reset commands and the translation and number formatting functions.
-- The results show each crop's own sprite, and hovering any part of a row (including the sprite) shows the row's
-  details. Both results screens share one tooltip definition.
-- Requires UI Framework 1.8.0 or later.
-- Split-screen: each player has their own settings and results; one player's Calculate no longer replaces the other's
-  results. The plant list is built once, by the main screen.
-- One broken (usually modded) plant no longer stops the calculation or its whole builder: it is skipped and logged once
-  with the full error.
-- Content Patcher edits to `Data/Crops`, `Data/FruitTrees`, `Data/WildTrees` or the `ManualCrops` asset made while a save
-  is loaded now apply from the next calculation (or the next day); edits to `Data/Shops`, `SeedPrices` and
-  `Data/Machines` apply right away.
-- Fixed the farming-level bonus to the maximum harvest (`HarvestMaxIncreasePerFarmingLevel`): it is now multiplied by the
-  farming level instead of dividing it, and also applies to crops whose base stack is 1. Vanilla crops are unaffected.
-- The default Max money is now the player's own wallet when the farm uses separate wallets.
-- A manual crop with `"AcceptsFertilizer": false` now ignores fertilizer entirely: no quality boost and no fertilizer
-  cost, not just no speed boost.
-- API: `SetSeedPrice(id, -1)` now restores the shop price (or the manual crop's `PurchasePrice`) for the loaded save too;
-  `AddCrop` / `RemoveCrop` during play update the machine list right away, and a crop that `RemoveCrop` removed brings
-  back the built-in one it replaced before the next calculation.
-- The produce type dropdown follows a language change right away.
-- The raw results screen draws the harvest item like the machine screen does.
-- Wild trees are simulated once per calculation instead of five times, and their tooltip values no longer depend on the
-  order they are read in.
+Everything since 1.3.2.
+
+**Requirements:** SMAPI 4.0 or later (was 3.0) and [UI Framework](https://www.nexusmods.com/stardewvalley/mods/52945)
+1.8.0 or later, a new required mod that draws the calculator's menus.
+
+### New
+
+- **New menus.** The settings and results screens are rebuilt with UI Framework:
+  - themes, text scaling, and keyboard and gamepad navigation;
+  - windows you can drag, collapse and resize, with the position remembered per save;
+  - `Enter` calculates and `Escape` goes back.
+- **Results table.** The results are a table sorted by profit per day; click a column header to sort by it.
+  - Each row shows the crop's sprite.
+  - Hovering any part of a row shows the full breakdown: seed and fertilizer cost, growth and regrowth time, harvests,
+    drop counts, quality chances, what the crop is sold as, and the day it pays back its seed.
+- **Machines.** The produce type lists every machine that accepts a crop, read from the game's machine data: Keg,
+  Preserves Jar, Dehydrator, Mill, Oil Maker, Seed Maker and modded machines.
+  - "Machine + Cask" options cover keg goods aged to iridium quality.
+  - Recipes that need several items (5 fruit for the Dehydrator) count that.
+  - The Artisan profession applies.
+  - The machine results show the product, the inputs per product and the processing time.
+- **Fruit trees** (their own produce type): 28 days to mature, then one fruit a day in season (every day in the
+  greenhouse). Fruit quality rises with the tree's age.
+- **Wild trees with a tapper** (their own produce type): oak, maple, pine, mystic, mushroom and more.
+  - Growth time is averaged from the tree's growth chance.
+  - New `Heavy tapper` and `Tree fertilizer` options.
+  - The Tapper profession applies, and winter stumps produce nothing.
+- **Years** (1 to 10): how long trees and machine chains are counted. The tooltip shows the payback day, or that the
+  plant never pays back within that time.
+- **More plants:** the tea bush, crops that drop several different items, and the current Custom Bush API (optional).
+- **Cross season:** a crop that also grows in the following seasons keeps producing into them (off by default).
+- **Harvest size:** farming-level buffs and the extra-harvest chance are counted.
+- **Content Patcher support.** `ManualCrops` and `SeedPrices` are game assets
+  (`Mods/6135.ProfitCalculator/ManualCrops` and `.../SeedPrices`), so Content Patcher packs can edit them.
+  - Manual crop keys can be bare or qualified item ids.
+  - Edits made while a save is loaded, to these assets or to the game's crop, tree, shop and machine data, apply
+    without reloading the save.
+- **Mod API:** other mods can add or remove crops and override seed prices (`IProfitCalculatorApi`: `AddCrop`,
+  `RemoveCrop`, `SetSeedPrice`).
+- **Split-screen:** each player has their own settings and results.
+- **French:** translations for all the new features.
+
+### Changed
+
 - The tooltip delay option now says its unit: frames (60 = 1 second).
-- French: added the 12 missing translations of the tree and machine features.
-- The settings screen refreshes only when a setting changes (`ProfitCalculatorSettings` raises `PropertyChanged`).
+- The default Max money is the player's own wallet when the farm uses separate wallets.
+- A manual crop with `"AcceptsFertilizer": false` ignores fertilizer entirely: no speed boost, no quality boost and no
+  fertilizer cost.
+
+### Fixed
+
+- The farming-level bonus to the maximum harvest (`MaxHarvestsIncreasePerFarmingLevel`) is multiplied by the farming
+  level instead of divided by it, and it also applies to crops whose base stack is 1. Vanilla crops are unaffected.
+- One broken plant (usually from another mod) no longer stops the whole calculation. It is skipped and logged.
+- Long crop names no longer shrink to unreadable text.
+- The settings menu no longer has to be reopened after the game window or UI scale changes.
 
 ### Removed
 
-- The C# menu builders `ProfitCalculatorMainMenu` and `ProfitCalculatorResultsMenu`, replaced by the data screens.
-- The `UseDataUI` config option (and its Generic Mod Config Menu entry and translations) that switched between the two.
-- `Utils.IsTreeProduceType`, only used by the removed results screen.
-- The unused manual crop fields `IsRaisedCrop`, `IsBushCrop` and `IsGiantCrop` (they are ignored if still present).
-- `Utils.GetTranslatedSeason`, `GetTranslatedFertilizerQuality`, `GetAllTranslatedSeasons`,
-  `GetAllTranslatedFertilizerQualities`, `GetSeasonDays` and `PriceFromObjectID`, unused since the port.
-- `PlantData.Sprite`, `CropInfo.ProductCount`, `CropInfo.ChanceOfExtraProduct`, `Calculator.MinDay` / `MaxDay`,
-  `Calculator.ClearCrops` and `Calculator.AddCrop` (replaced by `RebuildCrops`, `SetCrop` and `RemoveCrop`).
-- The translation keys `autumn`, `spring-summer` and `summer-fall`.
-- Leftover files: the "Profit Calculator Vintage" manifest, `README.txt`, `assets/readme.md` and
-  `assets/text_box_small.png`; the old screenshots moved to `Page Files/ProfitCalculator/`.
-- The XML documentation file is no longer shipped in the mod folder, and Harmony is no longer enabled.
+- The placeholder `Keg` and `Cask` produce types ("Not implemented"), replaced by the real machine list.
+- The manual crop fields `IsRaisedCrop`, `IsBushCrop` and `IsGiantCrop`, which did nothing. Files that still have them
+  load fine.

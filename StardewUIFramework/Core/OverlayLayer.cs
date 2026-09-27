@@ -24,6 +24,9 @@ namespace UIFramework.Core
 
         internal bool HasPopups => popups.Count > 0;
 
+        /// <summary>The open popup that gets input first (the most recently opened), or null.</summary>
+        internal UIElement? TopPopup => popups.Count > 0 ? popups[^1] : null;
+
         /// <summary>Open <paramref name="element"/>'s popup, closing any other.</summary>
         internal void OpenPopup(UIElement element)
         {
