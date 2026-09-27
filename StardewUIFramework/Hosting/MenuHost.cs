@@ -346,6 +346,5 @@ namespace UIFramework.Hosting
 
         /// <summary>Whether this host is the game's active menu (as opposed to a child menu).</summary>
         internal bool IsActiveMenu => Game1.activeClickableMenu == this;
-
     }
 }
