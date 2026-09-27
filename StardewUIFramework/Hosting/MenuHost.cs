@@ -90,13 +90,16 @@ namespace UIFramework.Hosting
         {
             base.update(time);
             Menu.Tick(time.ElapsedGameTime.TotalMilliseconds);
-            if (snapPending)
+            // a menu opened by the A button (a click) opens while A is still held, and the game's SnappyMenus is false
+            // while a click is held: wait for the release; mouse players never snap
+            if (snapPending && (Game1.options.SnappyMenus || !Game1.options.gamepadControls))
             {
                 snapPending = false;
                 if (Game1.options.SnappyMenus)
                 {
                     populateClickableComponentList();
                     snapToDefaultClickableComponent();
+                    TraceGamepad($"opened with {allClickableComponents.Count} targets; snapped to {Describe(currentlySnappedComponent)}");
                 }
             }
         }
@@ -283,23 +286,43 @@ namespace UIFramework.Hosting
             if (popup != null)
             {
                 popup.HandleGamepadDirection(dx, dy); // the popup keeps the d-pad while it is open
+                TraceGamepad($"direction ({dx},{dy}) handled by popup {popup}");
                 return true;
             }
 
             UIElement? snapped = SnappedElement();
             if (snapped != null && snapped.HandleGamepadDirection(dx, dy))
             {
+                TraceGamepad($"direction ({dx},{dy}) handled by {snapped}");
                 return true;
             }
 
             if (snapped != null && targetOwners.TryGetValue(snapped, out UIElement? owner) && owner.HandleGamepadTargetDirection(snapped, dx, dy))
             {
                 ResnapAtCursor(); // a list scrolled: snap to the row now under the cursor
+                TraceGamepad($"direction ({dx},{dy}) scrolled {owner}; snapped to {Describe(currentlySnappedComponent)}");
                 return true;
             }
 
+            string from = Describe(currentlySnappedComponent);
             applyMovementKey(key);
+            TraceGamepad($"direction ({dx},{dy}) moved {from} -> {Describe(currentlySnappedComponent)} ({allClickableComponents?.Count ?? 0} targets)");
             return true;
+        }
+
+        /// <summary>Trace-log gamepad navigation (shows in the SMAPI log file, for diagnosing controller reports).</summary>
+        private void TraceGamepad(string message) => UIServices.Log($"[gamepad] {Menu}: {message}", StardewModdingAPI.LogLevel.Trace);
+
+        private string Describe(ClickableComponent? component)
+        {
+            if (component == null)
+            {
+                return "nothing";
+            }
+
+            return snapTargets.TryGetValue(component, out UIElement? element)
+                ? $"{element} #{component.myID} at {component.bounds}"
+                : $"button '{component.name}' #{component.myID} at {component.bounds}";
         }
 
         /// <summary>After the content under the cursor changed (a list scrolled), snap to the target now at the cursor.</summary>
@@ -442,19 +465,30 @@ namespace UIFramework.Hosting
         }
 
         /// <summary>
-        /// Set each target's up / down / left / right neighbour, as vanilla menus do by hand. The neighbour is the nearest
-        /// target ahead that overlaps it across the direction of travel (the next row of a form column, whatever the width
-        /// of its controls); up / down fall back to the nearest target ahead when nothing overlaps (a button row off to one
-        /// side), left / right do not.
+        /// Set each target's neighbours, as vanilla menus do by hand (the vanilla options page steps through its options in
+        /// order): down / up are the next / previous element in layout order, so every control is reached one after the other
+        /// whatever its size; up from the first element reaches the window buttons. Left / right go to the nearest target
+        /// beside it (controls on the same row).
         /// </summary>
-        private static void AssignNeighbors(List<ClickableComponent> list)
+        private void AssignNeighbors(List<ClickableComponent> list)
         {
-            foreach (ClickableComponent from in list)
+            List<ClickableComponent> elements = list.FindAll(c => snapTargets.ContainsKey(c));
+            List<ClickableComponent> buttons = list.FindAll(c => !snapTargets.ContainsKey(c));
+            for (int i = 0; i < elements.Count; i++)
             {
-                from.upNeighborID = FindNeighbor(list, from, 0, -1);
-                from.downNeighborID = FindNeighbor(list, from, 0, 1);
-                from.leftNeighborID = FindNeighbor(list, from, -1, 0);
-                from.rightNeighborID = FindNeighbor(list, from, 1, 0);
+                ClickableComponent c = elements[i];
+                c.upNeighborID = i > 0 ? elements[i - 1].myID : (buttons.Count > 0 ? buttons[0].myID : NoNeighbor);
+                c.downNeighborID = i < elements.Count - 1 ? elements[i + 1].myID : NoNeighbor;
+                c.leftNeighborID = FindNeighbor(list, c, -1, 0);
+                c.rightNeighborID = FindNeighbor(list, c, 1, 0);
+            }
+
+            foreach (ClickableComponent b in buttons)
+            {
+                b.upNeighborID = NoNeighbor;
+                b.downNeighborID = elements.Count > 0 ? elements[0].myID : NoNeighbor;
+                b.leftNeighborID = FindNeighbor(list, b, -1, 0);
+                b.rightNeighborID = FindNeighbor(list, b, 1, 0);
             }
         }
 
