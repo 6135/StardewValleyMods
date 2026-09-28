@@ -68,6 +68,38 @@ namespace UIFramework.Hosting
             SyncCloseButton();
             layout.SyncButtons(upperRightCloseButton);
             allClickableComponents = null; // rebuilt lazily for gamepad snapping
+            KeepCursorOnSnapped();
+        }
+
+        /// <summary>
+        /// After a relayout moved things (a line shown on hover, a scrollbar appearing), move the gamepad cursor back onto
+        /// the snapped element. Otherwise the cursor stays where the element was, the hover (and the A click) lands on
+        /// whatever is there now, and hover-dependent content flips the layout back and forth.
+        /// </summary>
+        private void KeepCursorOnSnapped()
+        {
+            if (!Game1.options.SnappyMenus || Game1.lastCursorMotionWasMouse || SnappedElement() == null || !IsDeepestMenu())
+            {
+                return;
+            }
+
+            populateClickableComponentList(); // re-reads the bounds; drops the snap when the element is gone
+            if (currentlySnappedComponent != null)
+            {
+                base.snapCursorToCurrentSnappedComponent();
+            }
+        }
+
+        /// <summary>Whether this host is the menu receiving input (not covered by a child menu, and on screen).</summary>
+        private bool IsDeepestMenu()
+        {
+            IClickableMenu? menu = Game1.activeClickableMenu;
+            while (menu?.GetChildMenu() != null)
+            {
+                menu = menu.GetChildMenu();
+            }
+
+            return menu == this;
         }
 
         internal void SyncCloseButton()
@@ -113,6 +145,7 @@ namespace UIFramework.Hosting
             }
 
             layout.Draw(b);
+            Menu.DrawTop(b); // popups and tooltips cover the window buttons
             drawMouse(b);
         }
 
