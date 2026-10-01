@@ -1,40 +1,36 @@
 import { compressToEncodedURIComponent, decompressFromEncodedURIComponent } from 'lz-string';
-import type { DesignerDocument } from '../model/document';
-import { buildMenuObject, printJson } from './export';
-import { DesignerMember, importText } from './import';
+import type { Workspace } from '../model/workspace';
+import { parseWorkspace, serializeWorkspace } from './workspace';
 
-// Share links (architecture.md §11): the From-file JSON of the document plus a "$designer" member (owner, menu id,
-// preview state) that the framework ignores, compressed with lz-string for the URL hash. Decoding is a plain import,
-// so a share link and a saved file are the same format.
+// Share links (architecture.md §11): the whole workspace file (serializeWorkspace, unindented) compressed with lz-string
+// in the URL hash (`#w=…`), so it is never sent to the server. Decoding is a plain workspace parse, so a share link and
+// a saved `.uifw.json` file are the same format.
 
-/** The document as a URL-safe string for the location hash (without the leading '#'). */
-export function encodeShare(doc: DesignerDocument): string {
-  return compressToEncodedURIComponent(shareJson(doc));
+/** Links longer than this are offered as a download instead (some chat apps and browsers cut longer URLs). */
+export const ShareLimit = 8 * 1024;
+
+const HashPrefix = '#w=';
+
+/** The page URL with the workspace in its hash. */
+export function shareLink(ws: Workspace): string {
+  const { origin, pathname, search } = window.location;
+  return `${origin}${pathname}${search}${HashPrefix}${compressToEncodedURIComponent(serializeWorkspace(ws, 0))}`;
 }
 
-/** The document a share hash holds, or null when it is not one. Accepts the hash with or without its leading '#'. */
-export function decodeShare(hash: string): DesignerDocument | null {
-  const text = hash.startsWith('#') ? hash.slice(1) : hash;
-  if (text.length === 0) {
+/** The workspace a `#w=` hash holds, clearing the hash; null when the hash is not a share link or holds none. */
+export function takeSharedWorkspace(): Workspace | null {
+  const hash = window.location.hash;
+  if (!hash.startsWith(HashPrefix)) {
     return null;
   }
 
-  let json: string | null;
+  window.history.replaceState(null, '', `${window.location.pathname}${window.location.search}`);
+  let text: string | null;
   try {
-    json = decompressFromEncodedURIComponent(text);
+    text = decompressFromEncodedURIComponent(hash.slice(HashPrefix.length));
   } catch {
     return null;
   }
 
-  if (!json) {
-    return null;
-  }
-
-  return importText(json).candidates[0]?.document ?? null;
-}
-
-/** The JSON a share link (or a saved designer file) holds: the From-file shape with a "$designer" member first. */
-export function shareJson(doc: DesignerDocument, indent = 0): string {
-  const { value } = buildMenuObject(doc, { collapseShorthands: false, omitDefaults: false });
-  return printJson({ [DesignerMember]: { owner: doc.owner, menuId: doc.menuId, previewState: doc.previewState }, ...value }, indent);
+  return text ? parseWorkspace(text).workspace : null;
 }

@@ -3,7 +3,7 @@ import { activeTree, activeUi, useDesigner } from '../model/store';
 import { focusRow } from './Tree';
 
 // Global shortcuts (architecture.md §6.3): undo / redo, duplicate, delete. Ignored while typing in a text control,
-// which keeps its own undo.
+// which keeps its own undo, and while the app is read-only (phone width).
 
 function isTyping(target: EventTarget | null): boolean {
   return target instanceof HTMLElement
@@ -11,8 +11,12 @@ function isTyping(target: EventTarget | null): boolean {
       || (target.tagName === 'INPUT' && !['checkbox', 'radio', 'button', 'color'].includes((target as HTMLInputElement).type)));
 }
 
-export function useGlobalShortcuts(): void {
+export function useGlobalShortcuts(enabled: boolean): void {
   useEffect(() => {
+    if (!enabled) {
+      return undefined;
+    }
+
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.defaultPrevented || isTyping(e.target)) {
         return;
@@ -47,5 +51,5 @@ export function useGlobalShortcuts(): void {
 
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, []);
+  }, [enabled]);
 }

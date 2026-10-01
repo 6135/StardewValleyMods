@@ -1,6 +1,6 @@
 import type { JsonExportOptions, Problem } from '../model/document';
 import {
-  sameName, tabName, tabOwner, type OwnerTab, type PatchMembers, type TemplateTab, type TooltipTab, type Workspace, type WorkspaceTab
+  sameName, tabKindLabels, tabName, tabOwner, type OwnerTab, type PatchMembers, type TemplateTab, type TooltipTab, type Workspace, type WorkspaceTab
 } from '../model/workspace';
 import { isObject, type JsonObject } from './dataFormat';
 import { buildMenuObject, buildOwnerObject, buildTemplateObject, buildTooltipObject, exportJson, menuKey, printJson } from './export';
@@ -118,14 +118,17 @@ function tabKey(tab: WorkspaceTab): string {
   return tab.kind === 'owner' ? tab.owner : `${tabOwner(tab)}/${tabName(tab)}`;
 }
 
-/** The workspace file text: the content.json as written, plus `$designer` (tab order, active tab, preview state). */
-export function serializeWorkspace(ws: Workspace): string {
+/**
+ * The workspace file text: the content.json as written, plus `$designer` (tab order, active tab, preview state).
+ * Autosave and share links use it too (share links unindented).
+ */
+export function serializeWorkspace(ws: Workspace, indent = 2): string {
   const tabs: DesignerTab[] = ws.tabs.map(t => {
     const state = t.kind === 'menu' || t.kind === 'template' ? t.doc.previewState : {};
     return Object.keys(state).length > 0 ? { kind: t.kind, key: tabKey(t), previewState: state } : { kind: t.kind, key: tabKey(t) };
   });
   const active = ws.tabs.findIndex(t => t.id === ws.activeTab);
-  return printJson({ ...workspaceValue(ws, 'contentJson', asWritten), [DesignerMember]: { owner: ws.owner, active, tabs } }, 2);
+  return printJson({ ...workspaceValue(ws, 'contentJson', asWritten), [DesignerMember]: { owner: ws.owner, active, tabs } }, indent);
 }
 
 /** A workspace from a `.uifw.json` file, a content.json, an ImportData file or a single menu; null when it holds none. */
@@ -171,4 +174,50 @@ export function exportTab(tab: WorkspaceTab, options: JsonExportOptions): string
     case 'tooltip': return printJson({ [tab.name]: buildTooltipObject(tab.doc) }, options.indent);
     case 'owner': return printJson({ [tab.owner]: buildOwnerObject(tab.doc) }, options.indent);
   }
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+//  Raw JSON view of one tab
+// ---------------------------------------------------------------------------------------------------------------------
+
+/** The raw JSON view of a tab: an ImportData file holding just that tab, fields as written, so it reads back losslessly. */
+export function rawTab(tab: WorkspaceTab): string {
+  switch (tab.kind) {
+    case 'menu': return printJson({ Menus: { [menuKey(tab.doc)]: buildMenuObject(tab.doc, asWritten).value } }, 2);
+    case 'template': return printJson({ Owners: { [tab.owner]: { Templates: { [tab.name]: buildTemplateObject(tab.doc, tab.doc.nodes, asWritten) } } } }, 2);
+    case 'tooltip': return printJson({ Owners: { [tab.owner]: { Tooltips: { [tab.name]: buildTooltipObject(tab.doc) } } } }, 2);
+    case 'owner': return printJson({ Owners: { [tab.owner]: buildOwnerObject(tab.doc) } }, 2);
+  }
+}
+
+/** The owner templates of the workspace's template tabs, for reading a menu or template on its own. */
+function workspaceTemplates(ws: Workspace): Map<string, Set<string>> {
+  const map = new Map<string, Set<string>>();
+  for (const tab of ws.tabs) {
+    if (tab.kind === 'template') {
+      const key = tab.owner.trim().toLowerCase();
+      map.set(key, (map.get(key) ?? new Set()).add(tab.name));
+    }
+  }
+
+  return map;
+}
+
+/**
+ * Read a raw JSON view back through the import: the tab it holds, of `tab`'s kind, keeping `tab`'s id, CP patch
+ * members and preview state; null with the problems when the text has errors or holds no such tab.
+ */
+export function parseRawTab(ws: Workspace, tab: WorkspaceTab, text: string): { tab: WorkspaceTab | null; problems: Problem[] } {
+  const result = importText(text, workspaceTemplates(ws));
+  const errors = result.problems.filter(p => p.severity === 'error');
+  const found = result.workspace?.tabs.find(t => t.kind === tab.kind);
+  if (errors.length > 0 || !found) {
+    return { tab: null, problems: errors.length > 0 ? errors : [{ severity: 'error', path: '', message: `the text holds no ${tabKindLabels[tab.kind].toLowerCase()}.` }] };
+  }
+
+  // the text has no preview state (never exported): the tab's own is kept
+  const patch = tab.kind === 'menu' || tab.kind === 'owner' ? tab.patch : undefined;
+  const doc = (found.kind === 'menu' || found.kind === 'template') && (tab.kind === 'menu' || tab.kind === 'template')
+    ? { ...found.doc, previewState: tab.doc.previewState } : found.doc;
+  return { tab: { ...found, doc, id: tab.id, ...(patch ? { patch } : {}) } as WorkspaceTab, problems: result.problems };
 }

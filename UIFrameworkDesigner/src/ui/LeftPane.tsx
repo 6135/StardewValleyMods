@@ -12,7 +12,7 @@ import { focusRow, Tree, type DropTarget } from './Tree';
 import { WorkspacePane } from './WorkspacePane';
 
 // The left column: the workspace's definitions, then (for tabs with a node tree) palette above tree, sharing one
-// DndContext so palette items can be dropped into the tree.
+// DndContext so palette items can be dropped into the tree. Read-only (phone width): the tree alone, nothing to drag.
 // A drop lands before / after the row under the pointer, or inside it when it holds children (middle of the row).
 
 /** Pointer collisions while a pointer drives the drag, nearest row for keyboard drags. */
@@ -25,7 +25,7 @@ interface Dragged {
   type: string;
 }
 
-export function LeftPane() {
+export function LeftPane({ readOnly = false }: { readOnly?: boolean }) {
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
@@ -86,12 +86,12 @@ export function LeftPane() {
   };
 
   return (
-    <DndContext sensors={sensors} collisionDetection={collision} onDragStart={onDragStart} onDragMove={onDragMove}
+    <DndContext sensors={readOnly ? [] : sensors} collisionDetection={collision} onDragStart={onDragStart} onDragMove={onDragMove}
       onDragOver={onDragMove} onDragEnd={onDragEnd} onDragCancel={finish}>
       <div className="pane left">
-        <WorkspacePane />
-        {tree && <Palette />}
-        {tree && <Tree tree={tree} drop={drop} dragging={dragged !== null} />}
+        {!readOnly && <WorkspacePane />}
+        {tree && !readOnly && <Palette />}
+        {tree && <Tree tree={tree} drop={drop} dragging={dragged !== null} readOnly={readOnly} />}
       </div>
       <DragOverlay dropAnimation={null}>
         {dragged && <div className={drop?.refusal ? 'drag-chip refused' : 'drag-chip'}>{dragged.type}</div>}

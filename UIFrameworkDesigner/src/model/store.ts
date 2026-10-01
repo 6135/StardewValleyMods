@@ -2,19 +2,23 @@ import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
 import { produce, type Draft } from 'immer';
 import type { DesignerDocument, NodeId, NodeTree } from './document';
+import { newNodeId } from './factory';
 import * as ops from './ops';
 import { renameEdits, renameRefusal, resolverOf, type Definition, type TabEdit } from './resolve';
+import type { PreviewSettings } from '../preview/PreviewPane';
 import { createTab, createWorkspace, menuTab, treeOf, type TabId, type TabKind, type Workspace, type WorkspaceTab } from './workspace';
 
 // The workspace store (architecture.md §5, §18.2): the only editable state. Each tab has its own undo history (an edit
 // records the tab's previous content), so undo never jumps tabs; a rename across tabs records one entry per touched
-// tab under one group and undoes them together. Selection and collapsed tree nodes are per-tab UI state outside the
-// history. The node / menu actions keep their single-document names and act on the active tab.
+// tab under one group and undoes them together. Selection, collapsed tree nodes and preview settings are per-tab UI
+// state outside the history (and never exported). The node / menu actions keep their single-document names and act on the active tab.
 
 export interface TabUi {
   selection: NodeId | null;
   /** Tree nodes shown collapsed. */
   collapsed: Record<NodeId, true>;
+  /** Screen, zoom and rows of the preview; the defaults until changed. */
+  preview?: PreviewSettings;
 }
 
 interface HistoryEntry {
@@ -34,6 +38,8 @@ const emptyHistory: TabHistory = { past: [], future: [] };
 
 export interface DesignerState {
   workspace: Workspace;
+  /** The workspace's autosave slot (io/autosave.ts): a replaced workspace gets a new one unless one is given. */
+  slot: string;
   ui: Record<TabId, TabUi>;
   history: Record<TabId, TabHistory>;
   /** Each tab's content when the workspace was last opened or saved; a tab is dirty while it differs. */
@@ -42,8 +48,8 @@ export interface DesignerState {
   i18n: Record<string, string> | null;
 
   setI18n(map: Record<string, string> | null): void;
-  /** Replace the whole workspace (open, import all); clears the histories. */
-  replaceWorkspace(ws: Workspace): void;
+  /** Replace the whole workspace (open, import all, a Recent entry with its `slot`); clears the histories. */
+  replaceWorkspace(ws: Workspace, slot?: string): void;
   /** Record the current tabs as saved (clears the dirty dots). */
   markSaved(): void;
   openTab(id: TabId): void;
@@ -58,6 +64,9 @@ export interface DesignerState {
 
   /** Replace the active menu's document (New, Import); one undo step. Opens a new tab when the active tab is not a menu. */
   replaceDocument(doc: DesignerDocument): void;
+  /** Replace the active tab's content with `tab` (same id, the raw JSON view); one undo step. */
+  replaceTab(tab: WorkspaceTab): void;
+  setPreviewSettings(settings: PreviewSettings): void;
   select(id: NodeId | null): void;
   toggleCollapsed(id: NodeId, collapsed?: boolean): void;
   /** Set a node field; undefined removes it. */
@@ -106,16 +115,16 @@ let groupCounter = 0;
 export const useDesigner = create<DesignerState>()(
   immer((set, get) => {
     /**
-     * Apply `edit` to a tab; when the tab changed, record its previous content in its history (one undo step) and
+     * Apply `edit` to a tab (or replace it with a new tab value); when the tab changed, record its previous content in its history (one undo step) and
      * apply `after` (selection, collapsed) in the same update. False when nothing changed.
      */
-    const commit = (tabId: TabId, edit: TabEdit, group?: number, after?: (s: Draft<DesignerState>) => void): boolean => {
+    const commit = (tabId: TabId, edit: TabEdit | WorkspaceTab, group?: number, after?: (s: Draft<DesignerState>) => void): boolean => {
       const tab = get().workspace.tabs.find(t => t.id === tabId);
       if (!tab) {
         return false;
       }
 
-      const next = produce(tab, edit);
+      const next = typeof edit === 'function' ? produce(tab, edit) : edit;
       if (next === tab) {
         return false;
       }
@@ -188,6 +197,7 @@ export const useDesigner = create<DesignerState>()(
     const initial = createWorkspace();
     return {
       workspace: initial,
+      slot: newNodeId(),
       ui: {},
       history: {},
       saved: Object.fromEntries(initial.tabs.map(t => [t.id, t])),
@@ -195,7 +205,7 @@ export const useDesigner = create<DesignerState>()(
 
       setI18n: map => set({ i18n: map }),
 
-      replaceWorkspace: ws => set({ workspace: ws, ui: {}, history: {}, saved: Object.fromEntries(ws.tabs.map(t => [t.id, t])) }),
+      replaceWorkspace: (ws, slot = newNodeId()) => set({ workspace: ws, slot, ui: {}, history: {}, saved: Object.fromEntries(ws.tabs.map(t => [t.id, t])) }),
 
       markSaved: () => set(s => {
         s.saved = Object.fromEntries(s.workspace.tabs.map(t => [t.id, t]));
@@ -271,7 +281,7 @@ export const useDesigner = create<DesignerState>()(
           commit(get().workspace.activeTab, tab => {
             tab.doc = doc as Draft<DesignerDocument>;
           }, undefined, s => {
-            s.ui[s.workspace.activeTab] = { selection: null, collapsed: {} };
+            s.ui[s.workspace.activeTab] = { ...ui(s), selection: null, collapsed: {} };
           });
         } else {
           const tab = menuTab(doc);
@@ -281,6 +291,16 @@ export const useDesigner = create<DesignerState>()(
           });
         }
       },
+
+      replaceTab: tab => {
+        commit(get().workspace.activeTab, { ...tab, id: get().workspace.activeTab } as WorkspaceTab, undefined, s => {
+          s.ui[s.workspace.activeTab] = { ...ui(s), selection: null, collapsed: {} };
+        });
+      },
+
+      setPreviewSettings: settings => set(s => {
+        ui(s).preview = settings;
+      }),
 
       select: id => set(s => {
         ui(s).selection = id;

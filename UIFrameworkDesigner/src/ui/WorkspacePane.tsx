@@ -28,7 +28,8 @@ export function definitionOf(resolver: Resolver, kind: RefKind, owner: string, n
 
 const kindBadges: Record<TabKind, string> = { menu: 'M', template: 'T', tooltip: 'Tip', owner: 'O' };
 
-export function TabStrip() {
+/** The workspace's tabs; read-only (phone width): switching tabs only. */
+export function TabStrip({ readOnly = false }: { readOnly?: boolean }) {
   const workspace = useDesigner(s => s.workspace);
   const saved = useDesigner(s => s.saved);
   const { openTab, closeTab, moveTab, addTab } = useDesigner.getState();
@@ -54,26 +55,26 @@ export function TabStrip() {
         const dirty = saved[tab.id] !== tab;
         const active = tab.id === workspace.activeTab;
         return (
-          <div key={tab.id} role="tab" aria-selected={active} tabIndex={active ? 0 : -1} draggable className={active ? 'tab active' : 'tab'}
+          <div key={tab.id} role="tab" aria-selected={active} tabIndex={active ? 0 : -1} draggable={!readOnly} className={active ? 'tab active' : 'tab'}
             title={`${tabKindLabels[tab.kind]} ${tabOwner(tab)}/${tabName(tab)}`} onClick={() => openTab(tab.id)}
             onKeyDown={e => { if (e.key === 'Enter') { openTab(tab.id); } }}
             onDragStart={() => setDragged(tab.id)} onDragOver={e => e.preventDefault()} onDrop={e => { e.stopPropagation(); drop(e, i); }}>
             <span className={`tab-kind ${tab.kind}`}>{kindBadges[tab.kind]}</span>
             <span className="tab-name">{tabName(tab)}</span>
             {dirty && <span className="tab-dirty" title="Changed since the workspace was opened or saved">●</span>}
-            {workspace.tabs.length > 1 && (
+            {workspace.tabs.length > 1 && !readOnly && (
               <button type="button" className="icon tab-close" title="Close the tab" onClick={e => { e.stopPropagation(); close(tab.id, dirty); }}>×</button>
             )}
           </div>
         );
       })}
-      <select className="tab-add" value="" aria-label="New tab" onChange={e => { if (e.target.value) { addTab(e.target.value as TabKind); } }}>
+      {!readOnly && <select className="tab-add" value="" aria-label="New tab" onChange={e => { if (e.target.value) { addTab(e.target.value as TabKind); } }}>
         <option value="">+</option>
         <option value="menu">New menu</option>
         <option value="template">New owner template</option>
         <option value="tooltip">New named tooltip</option>
         {!workspace.tabs.some(t => t.kind === 'owner') && <option value="owner">New owner entry</option>}
-      </select>
+      </select>}
     </nav>
   );
 }

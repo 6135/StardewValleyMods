@@ -25,10 +25,29 @@ export interface PreviewPaneProps {
    * nothing, the node's Tooltip / TooltipTitle fields are shown.
    */
   resolveTooltip?: (nodeId: NodeId) => unknown;
+  /** Screen, zoom and rows; controlled when given (with `onSettingsChange`), the pane's own state otherwise. */
+  settings?: PreviewSettings;
+  onSettingsChange?(settings: PreviewSettings): void;
+  /** The menu (`owner/menu`) a node's action opens (`6135.UIFramework_OpenMenu …`), when it is one the host can open. */
+  resolveMenuLink?: (nodeId: NodeId) => string | undefined;
+  /** Open the menu of a link badge. */
+  onOpenMenu?(key: string): void;
 }
 
 const screens = { '1280×720': [1280, 720], '1920×1080': [1920, 1080] } as const;
 type ScreenKey = keyof typeof screens | 'custom';
+
+export interface PreviewSettings {
+  screen: ScreenKey;
+  custom: { width: number; height: number };
+  zoom: number | 'fit';
+  /** Rows rendered by Repeat, List and DataGrid. */
+  repeatCount: number;
+  showHidden: boolean;
+}
+
+export const defaultPreviewSettings: PreviewSettings = { screen: '1280×720', custom: { width: 1600, height: 900 }, zoom: 'fit', repeatCount: 3, showHidden: false };
+
 type Skin = 'default' | 'dark' | 'art';
 const zooms = [0.25, 0.5, 0.75, 1, 1.5, 2];
 
@@ -114,12 +133,19 @@ const inside = (box: LayoutBox, x: number, y: number): boolean => {
   return x >= r.x && y >= r.y && x < r.x + r.width && y < r.y + r.height;
 };
 
-export function PreviewPane({ doc, selection, onSelect, switchCases, i18n, resolveTooltip }: PreviewPaneProps): ReactNode {
-  const [screen, setScreen] = useState<ScreenKey>('1280×720');
-  const [custom, setCustom] = useState({ width: 1600, height: 900 });
-  const [zoom, setZoom] = useState<number | 'fit'>('fit');
-  const [repeatCount, setRepeatCount] = useState(3);
-  const [showHidden, setShowHidden] = useState(false);
+export function PreviewPane(props: PreviewPaneProps): ReactNode {
+  const { doc, selection, onSelect, switchCases, i18n, resolveTooltip, resolveMenuLink, onOpenMenu } = props;
+  const [ownSettings, setOwnSettings] = useState(defaultPreviewSettings);
+  const settings = props.settings ?? ownSettings;
+  const { screen, custom, zoom, repeatCount, showHidden } = settings;
+  const change = (patch: Partial<PreviewSettings>): void => {
+    const next = { ...settings, ...patch };
+    if (props.onSettingsChange) {
+      props.onSettingsChange(next);
+    } else {
+      setOwnSettings(next);
+    }
+  };
   const [skin, setSkin] = useState<Skin>('default');
   const [art, setArt] = useState<GameArt | undefined>(undefined);
   const [hovered, setHovered] = useState<NodeId | null>(null);
@@ -242,6 +268,7 @@ export function PreviewPane({ doc, selection, onSelect, switchCases, i18n, resol
     const own = !box.synthetic || subItemKind(doc.nodes[box.nodeId]?.type ?? '') !== undefined;
     if (own && box.nodeId === selection) classes.push('pv-selected');
     if (own && box.nodeId === hovered) classes.push('pv-hover');
+    const link = !box.synthetic && box.instance === 0 && onOpenMenu ? resolveMenuLink?.(box.nodeId) : undefined;
     const style: CSSProperties = { left: r.x, top: r.y, width: r.width, height: r.height };
     if (box.clipped) {
       const c = box.clipped;
@@ -252,9 +279,13 @@ export function PreviewPane({ doc, selection, onSelect, switchCases, i18n, resol
         <BoxContent box={box} i18n={i18n} art={shownArt} />
         {box.detail?.scrollbar ? <div className="pv-scrollbar" style={{ width: box.detail.scrollbar }} /> : null}
         {box.kind === 'Template' ? <span className="pv-tag">{renderText(box.label ?? '', i18n)}</span> : null}
+        {link !== undefined ? (
+          <button type="button" className="pv-link" style={{ transform: `scale(${1 / scale})` }} title={`Open ${link}`}
+            onClick={e => { e.stopPropagation(); onOpenMenu?.(link); }}>↗</button>
+        ) : null}
       </div>
     );
-  }), [layout, doc.nodes, selection, hovered, i18n, shownArt]);
+  }), [layout, doc.nodes, selection, hovered, i18n, shownArt, scale, resolveMenuLink, onOpenMenu]);
 
   const tipFields = tipNode ? doc.nodes[tipNode]?.fields : undefined;
   const tipDefinition = tipNode ? resolveTooltip?.(tipNode) : undefined;
@@ -264,7 +295,7 @@ export function PreviewPane({ doc, selection, onSelect, switchCases, i18n, resol
     <div className="pv-pane">
       <div className="pv-toolbar">
         <label>Screen{' '}
-          <select value={screen} onChange={e => setScreen(e.target.value as ScreenKey)}>
+          <select value={screen} onChange={e => change({ screen: e.target.value as ScreenKey })}>
             {Object.keys(screens).map(k => <option key={k} value={k}>{k}</option>)}
             <option value="custom">Custom</option>
           </select>
@@ -272,23 +303,23 @@ export function PreviewPane({ doc, selection, onSelect, switchCases, i18n, resol
         {screen === 'custom' ? (
           <span className="pv-custom">
             <input type="number" min={320} max={7680} value={custom.width} aria-label="Screen width"
-              onChange={e => setCustom({ ...custom, width: Math.max(320, Number(e.target.value) || 320) })} />
+              onChange={e => change({ custom: { ...custom, width: Math.max(320, Number(e.target.value) || 320) } })} />
             ×
             <input type="number" min={240} max={4320} value={custom.height} aria-label="Screen height"
-              onChange={e => setCustom({ ...custom, height: Math.max(240, Number(e.target.value) || 240) })} />
+              onChange={e => change({ custom: { ...custom, height: Math.max(240, Number(e.target.value) || 240) } })} />
           </span>
         ) : null}
         <label>Zoom{' '}
-          <select value={String(zoom)} onChange={e => setZoom(e.target.value === 'fit' ? 'fit' : Number(e.target.value))}>
+          <select value={String(zoom)} onChange={e => change({ zoom: e.target.value === 'fit' ? 'fit' : Number(e.target.value) })}>
             <option value="fit">Fit ({Math.round(fit * 100)}%)</option>
             {zooms.map(z => <option key={z} value={z}>{z * 100}%</option>)}
           </select>
         </label>
         <label title="Rows rendered by Repeat, List and DataGrid">Rows{' '}
           <input type="number" min={0} max={50} value={repeatCount} className="pv-small"
-            onChange={e => setRepeatCount(Math.min(50, Math.max(0, Number(e.target.value) || 0)))} />
+            onChange={e => change({ repeatCount: Math.min(50, Math.max(0, Number(e.target.value) || 0)) })} />
         </label>
-        <label><input type="checkbox" checked={showHidden} onChange={e => setShowHidden(e.target.checked)} /> Show hidden</label>
+        <label><input type="checkbox" checked={showHidden} onChange={e => change({ showHidden: e.target.checked })} /> Show hidden</label>
         <label>Theme{' '}
           <select value={skin} onChange={e => void chooseSkin(e.target.value as Skin)}>
             <option value="default">Default</option>

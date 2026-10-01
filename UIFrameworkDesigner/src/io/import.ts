@@ -37,8 +37,12 @@ const ImportDataMembers = ['menus', 'huds', 'sprites', 'composites', 'contributi
 /** The `$designer` member a saved / shared document carries (architecture.md §11); the framework ignores it. */
 export const DesignerMember = '$designer';
 
-/** Parse `text` (JSON with comments and trailing commas) and return every menu it holds, and all of it as a workspace. */
-export function importText(text: string): ImportResult {
+/**
+ * Parse `text` (JSON with comments and trailing commas) and return every menu it holds, and all of it as a workspace.
+ * `knownTemplates` (owner, lower case, to template names) adds owner templates defined outside the text, so instances of
+ * them are not read as unknown types.
+ */
+export function importText(text: string, knownTemplates: ReadonlyMap<string, ReadonlySet<string>> = new Map()): ImportResult {
   const problems: Problem[] = [];
   let hadComments = false;
   visit(text, { onComment: () => { hadComments = true; } }, { allowTrailingComma: true, disallowComments: false });
@@ -52,7 +56,7 @@ export function importText(text: string): ImportResult {
 
   const found: Found = { candidates: [], tabs: [], content: {}, otherChanges: [] };
   if (isObject(root)) {
-    collect(root, found, problems);
+    collect(root, found, problems, knownTemplates);
   }
 
   if (found.tabs.length === 0) {
@@ -86,7 +90,7 @@ const PatchOwnMembers = ['action', 'target', 'entries'];
 /** EditData members that edit entries in other ways: such a patch is kept verbatim, not opened as tabs. */
 const PatchOtherEdits = ['targetfield', 'fields', 'moveentries', 'textoperations'];
 
-function collect(root: JsonObject, found: Found, problems: Problem[]): void {
+function collect(root: JsonObject, found: Found, problems: Problem[], known: ReadonlyMap<string, ReadonlySet<string>>): void {
   const changesMember = getMember(root, 'Changes');
   const changes = Array.isArray(changesMember) ? changesMember : isEditData(root, MenusAsset) ? [root] : null;
   if (changes !== null) {
@@ -99,7 +103,7 @@ function collect(root: JsonObject, found: Found, problems: Problem[]): void {
       }
     }
 
-    const ownerTemplates = new Map<string, Set<string>>();
+    const ownerTemplates = copyTemplates(known);
     changes.forEach(change => {
       if (isEditData(change, OwnersAsset)) {
         const entries = getMember(change, 'Entries');
@@ -135,7 +139,7 @@ function collect(root: JsonObject, found: Found, problems: Problem[]): void {
   const keys = Object.keys(root).filter(k => !k.startsWith('$'));
   if (keys.some(k => ImportDataMembers.includes(k.toLowerCase()))) {
     // an ImportData file: keys without an owner belong to the importing mod
-    const ownerTemplates = new Map<string, Set<string>>();
+    const ownerTemplates = copyTemplates(known);
     const ownerDef = getMember(root, 'Owner');
     addOwnerTemplates(ownerTemplates, DefaultOwner, ownerDef);
     const owners = getMember(root, 'Owners');
@@ -174,15 +178,19 @@ function collect(root: JsonObject, found: Found, problems: Problem[]): void {
   }
 
   if (getMember(root, DesignerMember) !== undefined || keys.some(k => canonicalMember('MenuDefinition', k) !== null)) {
-    addCandidate(found, problems, 'Menu definition', `${DefaultOwner}/menu`, root, new Map(), false);
+    addCandidate(found, problems, 'Menu definition', `${DefaultOwner}/menu`, root, copyTemplates(known), false);
     return;
   }
 
   if (keys.length > 0 && keys.every(k => isObject(root[k]))) {
     for (const key of keys) {
-      addCandidate(found, problems, key, key, root[key] as JsonObject, new Map(), true);
+      addCandidate(found, problems, key, key, root[key] as JsonObject, copyTemplates(known), true);
     }
   }
+}
+
+function copyTemplates(known: ReadonlyMap<string, ReadonlySet<string>>): Map<string, Set<string>> {
+  return new Map([...known].map(([owner, names]) => [owner, new Set(names)]));
 }
 
 function isEditData(change: unknown, asset: string): change is JsonObject {

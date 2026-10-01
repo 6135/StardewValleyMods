@@ -45,7 +45,7 @@ export function focusRow(id: NodeId): void {
 /** No item shifting while dragging: the tree shows the drop target instead. */
 const stayInPlace = () => null;
 
-export function Tree({ tree: doc, drop, dragging }: { tree: NodeTree; drop: DropTarget | null; dragging: boolean }) {
+export function Tree({ tree: doc, drop, dragging, readOnly = false }: { tree: NodeTree; drop: DropTarget | null; dragging: boolean; readOnly?: boolean }) {
   const tab = useDesigner(activeTab);
   const collapsed = useDesigner(s => activeUi(s).collapsed);
   const rows = visibleRows(doc, collapsed);
@@ -69,7 +69,7 @@ export function Tree({ tree: doc, drop, dragging }: { tree: NodeTree; drop: Drop
     };
 
     if (e.altKey && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) {
-      if (parent !== null) {
+      if (parent !== null && !readOnly) {
         const index = doc.nodes[parent]!.children.indexOf(current) + (e.key === 'ArrowUp' ? -1 : 1);
         if (index >= 0 && moveNode(current, parent, index)) {
           focusRow(current);

@@ -23,9 +23,9 @@ Progress against §14. Update this table when a phase changes; §14 stays the pl
 | 2 — JSON import / export, validation | Done | Both example files round-trip; owner templates are not loaded (info messages) |
 | 3 — Schematic preview | Built, unverified | No `ui_dump` fixtures yet |
 | 4 — C# export | Not started | |
-| 5 — Data features, sharing, polish | Not started | |
-| 6 — Optional: game-art preview, live in-game loop | Not started | |
-| 7 — Workspace tabs and cross-references (§18) | Built, unverified in the browser | Steps 1–5 except autosave; the example content.json round-trips (Menus and Owners equal) and opens with no problems |
+| 5 — Data features, sharing, polish | Built, unverified in the browser | Preview state, Repeat / Switch / templates, i18n, theme; autosave + Recent (`io/autosave.ts`), workspace share links (`io/share.ts`, `#w=`), raw JSON view (center pane), phone-width read-only layout. Open: `ui_dump` layout fixtures (need the game) |
+| 6 — Optional: game-art preview, live in-game loop | Built, unverified in game | Game-art skin (`preview/gameArt.ts`); live save to a picked file from the export dialog (`io/liveSave.ts`, Chromium only) |
+| 7 — Workspace tabs and cross-references (§18) | Built, unverified in the browser | Steps 1–5 (autosave with phase 5); preview settings are per tab, OpenMenu actions show a link badge that opens the menu's tab; the example content.json round-trips (Menus and Owners equal) and opens with no problems |
 
 ---
 
@@ -255,8 +255,8 @@ In Chromium browsers the designer can save straight to a file in the user's mod 
 
 ## 11. Persistence and sharing
 
-- **Autosave:** the current document in `localStorage` (wrapped in `try / catch`; the app works without it). One slot per document, plus a "recent documents" list.
-- **Share link:** the document compressed with `lz-string` in the URL **hash**, so it is never sent to GitHub. Links over about 8 KB fall back to "download JSON".
+- **Autosave:** the whole workspace (its `.uifw.json` text) in `localStorage`, a moment after each change (wrapped in `try / catch`; the app works without it). One slot per workspace, plus a Recent list of the last five in the header.
+- **Share link:** the workspace file compressed with `lz-string` in the URL **hash** (`#w=`), so it is never sent to GitHub. Opening one starts a new workspace (the autosaved one stays in Recent) and clears the hash. Links over about 8 KB fall back to "download".
 - **Files:** open / save `.json` documents. The saved file is plain exported JSON plus an optional `"$designer"` member (preview state, collapsed groups) that the framework ignores as an unknown member.
 
 ---
