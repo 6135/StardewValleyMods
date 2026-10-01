@@ -237,7 +237,7 @@
   font: 11px/16px system-ui, sans-serif;
   background: rgba(130, 80, 223, 0.85);
   color: #fff;
-  border-radius: 0 0 4px 0;
+  border-radius: 0 0 4px;
   pointer-events: none;
 }
 
