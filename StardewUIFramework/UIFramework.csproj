@@ -28,6 +28,11 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- tools/DesignerMetadata serializes the internal tables (element types, defaults, emitter calls) for the designer -->
+    <InternalsVisibleTo Include="DesignerMetadata" />
+  </ItemGroup>
+
+  <ItemGroup>
     <!-- data-driven UIs (v1.3): the JSON models use SMAPI's own Newtonsoft.Json (not bundled with the mod) -->
     <Reference Include="Newtonsoft.Json">
       <HintPath>$(GamePath)\smapi-internal\Newtonsoft.Json.dll</HintPath>

@@ -31,9 +31,6 @@ namespace UIFramework.Data.Building
     /// </summary>
     internal sealed partial class DataBuilder
     {
-        private const int DefaultRowHeight = 48;
-        private const int DefaultVisibleRows = 6;
-
         // ---------------------------------------------------------------------------------------------------------
         //  Row templates
         // ---------------------------------------------------------------------------------------------------------
@@ -104,8 +101,8 @@ namespace UIFramework.Data.Building
         private IUIElement CreateList(BuildContext ctx, IUIContainer parent, ElementDefinition def, DataScope scope, DataPath path)
         {
             PropertyApplier a = ctx.Applier;
-            int rowHeight = Math.Max(1, a.Initial(def.RowHeight, ValueParsers.Int, DefaultRowHeight, scope, path.Field("RowHeight")));
-            int visibleRows = Math.Max(1, a.Initial(def.VisibleRows, ValueParsers.Int, DefaultVisibleRows, scope, path.Field("VisibleRows")));
+            int rowHeight = Math.Max(1, a.Initial(def.RowHeight, ValueParsers.Int, DataDefaults.List.RowHeight, scope, path.Field("RowHeight")));
+            int visibleRows = Math.Max(1, a.Initial(def.VisibleRows, ValueParsers.Int, DataDefaults.List.VisibleRows, scope, path.Field("VisibleRows")));
             SourceBinding? source = CreateSource(ctx, def.Source, scope, def.As, path.Field("Source"), "a List");
             source?.Update(opening: true);
             var rows = new TemplateRows(this, ctx, def.RowTemplate, path.Field("RowTemplate"));
