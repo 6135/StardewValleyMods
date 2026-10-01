@@ -540,7 +540,7 @@ export function createEvaluator(doc: DesignerDocument, functions: ExternalFuncti
   return (expr, locals) => evaluateExpression(expr, Object.keys(locals).length > 0 ? { ...state, ...locals } : state, functions);
 }
 
-const namePattern = /\b(menu|session|player|config|stat|args)\.[A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)*/g;
+const namePattern = /\b(menu|session|player|config|stat|args|model)\.[A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)*/g;
 
 function scan(value: unknown, found: Set<string>): void {
   if (typeof value === 'string') {
@@ -554,7 +554,7 @@ function scan(value: unknown, found: Set<string>): void {
   }
 }
 
-/** Expression names (menu.x, session.x, player.x, config.x, stat.x, args.x) used anywhere in the document, sorted. */
+/** Expression names (menu.x, session.x, player.x, config.x, stat.x, args.x, model.x — objects exposed from C#) used anywhere in the document, sorted. */
 export function findExpressionNames(doc: DesignerDocument): string[] {
   const found = new Set<string>();
   scan(doc.menu, found);
