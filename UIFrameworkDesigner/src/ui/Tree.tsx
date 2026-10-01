@@ -1,9 +1,10 @@
 import { useSortable, SortableContext } from '@dnd-kit/sortable';
 import type { KeyboardEvent } from 'react';
-import type { DesignerDocument, DesignerNode, NodeId } from '../model/document';
+import type { DesignerNode, NodeId, NodeTree } from '../model/document';
 import { acceptsChildren, parentOf } from '../model/ops';
 import { subItemKind } from '../model/subItems';
-import { useDesigner } from '../model/store';
+import { activeTab, activeUi, useDesigner } from '../model/store';
+import { tabKindLabels, tabName, type WorkspaceTab } from '../model/workspace';
 
 // The element tree (architecture.md §6.3). Rows are dnd-kit sortables that stay in place while dragging (the drop
 // position is shown as a line / outline instead); LeftPane owns the DndContext and computes the drop target.
@@ -24,7 +25,7 @@ export interface VisibleRow {
 }
 
 /** The rows shown, in order (children of collapsed nodes hidden). */
-export function visibleRows(doc: DesignerDocument, collapsed: Record<NodeId, true>): VisibleRow[] {
+export function visibleRows(doc: NodeTree, collapsed: Record<NodeId, true>): VisibleRow[] {
   const rows: VisibleRow[] = [];
   const walk = (id: NodeId, depth: number): void => {
     rows.push({ id, depth });
@@ -44,9 +45,9 @@ export function focusRow(id: NodeId): void {
 /** No item shifting while dragging: the tree shows the drop target instead. */
 const stayInPlace = () => null;
 
-export function Tree({ drop, dragging }: { drop: DropTarget | null; dragging: boolean }) {
-  const doc = useDesigner(s => s.doc);
-  const collapsed = useDesigner(s => s.collapsed);
+export function Tree({ tree: doc, drop, dragging, readOnly = false }: { tree: NodeTree; drop: DropTarget | null; dragging: boolean; readOnly?: boolean }) {
+  const tab = useDesigner(activeTab);
+  const collapsed = useDesigner(s => activeUi(s).collapsed);
   const rows = visibleRows(doc, collapsed);
 
   const onKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
@@ -54,7 +55,8 @@ export function Tree({ drop, dragging }: { drop: DropTarget | null; dragging: bo
       return;
     }
 
-    const { selection, select, toggleCollapsed, moveNode } = useDesigner.getState();
+    const { select, toggleCollapsed, moveNode } = useDesigner.getState();
+    const selection = activeUi(useDesigner.getState()).selection;
     const current = selection !== null && doc.nodes[selection] ? selection : doc.root;
     const at = rows.findIndex(r => r.id === current);
     const node = doc.nodes[current]!;
@@ -67,7 +69,7 @@ export function Tree({ drop, dragging }: { drop: DropTarget | null; dragging: bo
     };
 
     if (e.altKey && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) {
-      if (parent !== null) {
+      if (parent !== null && !readOnly) {
         const index = doc.nodes[parent]!.children.indexOf(current) + (e.key === 'ArrowUp' ? -1 : 1);
         if (index >= 0 && moveNode(current, parent, index)) {
           focusRow(current);
@@ -105,7 +107,7 @@ export function Tree({ drop, dragging }: { drop: DropTarget | null; dragging: bo
       <div className="pane-title">Tree</div>
       <SortableContext items={rows.map(r => r.id)} strategy={stayInPlace}>
         <div className="tree" role="tree" aria-label="Elements" onKeyDown={onKeyDown}>
-          {rows.map(r => <Row key={r.id} node={doc.nodes[r.id]!} depth={r.depth} isRoot={r.id === doc.root} doc={doc}
+          {rows.map(r => <Row key={r.id} node={doc.nodes[r.id]!} depth={r.depth} isRoot={r.id === doc.root} tab={tab}
             collapsed={collapsed[r.id] === true} drop={drop?.overId === r.id ? drop : null} />)}
         </div>
       </SortableContext>
@@ -114,10 +116,13 @@ export function Tree({ drop, dragging }: { drop: DropTarget | null; dragging: bo
   );
 }
 
-/** A short text preview of a node: its text, label or main value (a sub-item's caption: a field's Label, a column's Header). */
-function preview(node: DesignerNode, doc: DesignerDocument, isRoot: boolean): string | undefined {
+/**
+ * A short text preview of a node: its text, label or main value (a sub-item's caption: a field's Label, a column's
+ * Header); for the root, the menu title or the template / tooltip name.
+ */
+function preview(node: DesignerNode, tab: WorkspaceTab, isRoot: boolean): string | undefined {
   if (isRoot) {
-    return doc.menu['Title'];
+    return tab.kind === 'menu' ? tab.doc.menu['Title'] : tabName(tab);
   }
 
   const f = node.fields;
@@ -129,12 +134,12 @@ function preview(node: DesignerNode, doc: DesignerDocument, isRoot: boolean): st
   return f['Text'] ?? f['Label'] ?? f['Button'] ?? f['Checkbox'] ?? f['Switch'] ?? f['Repeat'] ?? f['Source'] ?? f['Sprite'] ?? f['Image'] ?? f['Item'] ?? f['Case'];
 }
 
-function Row({ node, depth, isRoot, doc, collapsed, drop }: { node: DesignerNode; depth: number; isRoot: boolean; doc: DesignerDocument; collapsed: boolean; drop: DropTarget | null }) {
-  const selected = useDesigner(s => s.selection === node.id || (s.selection === null && isRoot));
+function Row({ node, depth, isRoot, tab, collapsed, drop }: { node: DesignerNode; depth: number; isRoot: boolean; tab: WorkspaceTab; collapsed: boolean; drop: DropTarget | null }) {
+  const selected = useDesigner(s => activeUi(s).selection === node.id || (activeUi(s).selection === null && isRoot));
   const select = useDesigner(s => s.select);
   const toggleCollapsed = useDesigner(s => s.toggleCollapsed);
   const { attributes, listeners, setNodeRef, isDragging } = useSortable({ id: node.id, disabled: { draggable: isRoot, droppable: false } });
-  const text = preview(node, doc, isRoot);
+  const text = preview(node, tab, isRoot);
   const elementId = isRoot ? undefined : node.fields['Id'];
   const hasChildren = node.children.length > 0;
   const classes = ['row', selected && 'selected', isDragging && 'dragging', !isRoot && !acceptsChildren(node.type) && 'leaf',
@@ -149,7 +154,7 @@ function Row({ node, depth, isRoot, doc, collapsed, drop }: { node: DesignerNode
         onClick={e => { e.stopPropagation(); toggleCollapsed(node.id); }} onPointerDown={e => e.stopPropagation()}>
         {collapsed ? '▸' : '▾'}
       </button>
-      <span className="row-type">{isRoot ? 'Menu' : node.type}</span>
+      <span className="row-type">{isRoot ? tabKindLabels[tab.kind] : node.type}</span>
       {elementId && <span className="row-id">#{elementId}</span>}
       {text && <span className="row-text">{text}</span>}
     </div>

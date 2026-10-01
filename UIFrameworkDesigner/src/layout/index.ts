@@ -4,3 +4,4 @@ export { CHIP_END, CHIP_EXPR, CHIP_I18N, CHIP_MARKS, CHIP_TOKEN } from './types'
 export { layoutDocument } from './menu';
 export { approximateTextMeasurer, calibratedCssFont, canvasTextMeasurer, CALIBRATION_SAMPLE, GAME_FONTS } from './textMetrics';
 export { hasTemplate } from './values';
+export { chipTokens } from './build';

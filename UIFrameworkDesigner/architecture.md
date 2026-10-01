@@ -23,9 +23,9 @@ Progress against §14. Update this table when a phase changes; §14 stays the pl
 | 2 — JSON import / export, validation | Done | Both example files round-trip; owner templates are not loaded (info messages) |
 | 3 — Schematic preview | Built, unverified | No `ui_dump` fixtures yet |
 | 4 — C# export | Not started | |
-| 5 — Data features, sharing, polish | Not started | |
-| 6 — Optional: game-art preview, live in-game loop | Not started | |
-| 7 — Workspace tabs and cross-references (§18) | Not started | |
+| 5 — Data features, sharing, polish | Built, unverified in the browser | Preview state, Repeat / Switch / templates, i18n, theme; autosave + Recent (`io/autosave.ts`), workspace share links (`io/share.ts`, `#w=`), raw JSON view (center pane), phone-width read-only layout. Open: `ui_dump` layout fixtures (need the game) |
+| 6 — Optional: game-art preview, live in-game loop | Built, unverified in game | Game-art skin (`preview/gameArt.ts`); live save to a picked file from the export dialog (`io/liveSave.ts`, Chromium only) |
+| 7 — Workspace tabs and cross-references (§18) | Built, unverified in the browser | Steps 1–5 (autosave with phase 5); preview settings are per tab, OpenMenu actions show a link badge that opens the menu's tab; the example content.json round-trips (Menus and Owners equal) and opens with no problems |
 
 ---
 
@@ -106,7 +106,7 @@ UIFrameworkDesigner/src/generated/
                 └───────────────────────────────────────────────────────────────────┘
 ```
 
-- **Document store** (Zustand + Immer, `zundo` for history) holds the only editable state. Every pane is a view of it; every edit is one undoable command.
+- **Document store** (Zustand + Immer, one undo history per workspace tab) holds the only editable state. Every pane is a view of it; every edit is one undoable command.
 - **io**, **validate**, **layout** and **codegen** are pure TypeScript modules with no React imports, so they can be unit-tested and reused by a CLI later.
 - **React** renders panes: Palette, Tree, Preview, Inspector, Problems, Export dialog, raw JSON tab.
 
@@ -115,7 +115,7 @@ UIFrameworkDesigner/src/generated/
 | Need | Choice | Why |
 |---|---|---|
 | Build | Vite + React + TypeScript (strict) | Static output, fast dev server |
-| State + undo | Zustand + Immer + zundo | Small, command-friendly, structural sharing |
+| State + undo | Zustand + Immer, per-tab history of tab snapshots | Small, command-friendly, structural sharing makes snapshots cheap |
 | Tree drag and drop | dnd-kit (sortable tree) | Accessible, keyboard support |
 | JSONC parse / edit | `jsonc-parser` (Microsoft) | Comments, trailing commas, error offsets |
 | Schema validation | Ajv (draft-07, as `SchemaWriter` writes) | Precompiled validators |
@@ -255,8 +255,8 @@ In Chromium browsers the designer can save straight to a file in the user's mod 
 
 ## 11. Persistence and sharing
 
-- **Autosave:** the current document in `localStorage` (wrapped in `try / catch`; the app works without it). One slot per document, plus a "recent documents" list.
-- **Share link:** the document compressed with `lz-string` in the URL **hash**, so it is never sent to GitHub. Links over about 8 KB fall back to "download JSON".
+- **Autosave:** the whole workspace (its `.uifw.json` text) in `localStorage`, a moment after each change (wrapped in `try / catch`; the app works without it). One slot per workspace, plus a Recent list of the last five in the header.
+- **Share link:** the workspace file compressed with `lz-string` in the URL **hash** (`#w=`), so it is never sent to GitHub. Opening one starts a new workspace (the autosaved one stays in Recent) and clears the hash. Links over about 8 KB fall back to "download".
 - **Files:** open / save `.json` documents. The saved file is plain exported JSON plus an optional `"$designer"` member (preview state, collapsed groups) that the framework ignores as an unknown member.
 
 ---
@@ -394,16 +394,19 @@ interface Workspace {
   activeTab: TabId;
 }
 
-type WorkspaceTab =
-  | { id: TabId; kind: 'menu'; doc: DesignerDocument }
-  | { id: TabId; kind: 'template'; owner: string; name: string; template: TemplateDoc; nodes: Record<NodeId, DesignerNode> }
-  | { id: TabId; kind: 'tooltip'; owner: string; name: string; tooltip: TooltipDoc }
-  | { id: TabId; kind: 'owner'; owner: string; fields: Record<string, string>; extra: Record<string, unknown> }; // classes, hotkeys, delay
+type WorkspaceTab =                      // every tab's `doc` is its unit of editing and undo
+  | { id: TabId; kind: 'menu'; doc: DesignerDocument; patch?: PatchMembers }
+  | { id: TabId; kind: 'template'; owner: string; name: string; doc: OwnerTemplateDoc }   // TemplateDoc + nodes + previewState
+  | { id: TabId; kind: 'tooltip'; owner: string; name: string; doc: TooltipDoc }          // "Tooltip" root, block nodes
+  | { id: TabId; kind: 'owner'; owner: string; doc: OwnerDoc; patch?: PatchMembers };   // delay, classes, hotkeys, style, shared state
 ```
 
-- `DesignerDocument` stays the unit of editing; the workspace only owns the list. The store gets one history per tab (zundo instance per tab), so undo never jumps tabs.
-- `TooltipDoc` is a block tree (`TooltipBlockDefinition`) edited with the same tree / inspector: block types are the palette, `When` and `Color` are ordinary fields.
-- A **resolver** (`src/model/resolve.ts`, pure) answers "what does this reference mean": `resolveTemplate(workspace, owner, name, fromDoc)` (menu templates first, then the owner tab), `resolveTooltip`, `resolveClass`, `resolveMenu`, `resolveSprite`. Layout, preview, validation and codegen take the resolver instead of looking at one document, so cross-tab references work everywhere at once.
+The workspace also keeps, verbatim, the imported content.json's other root members (`content`) and the changes it does not edit (`otherChanges`: Sprites, Composites, other assets). `patch` holds the EditData members an entry came with (LogName, When …) so export re-creates one change per asset and patch.
+
+- Menus, owner templates and tooltips are all `NodeTree`s (`root` + `nodes`), so the tree, palette, inspector and `model/ops.ts` edit every kind. The store (`model/store.ts`, zundo removed) keeps per tab a history of the tab's previous snapshots, so undo never jumps tabs; selection and collapsed nodes are per-tab UI state. The existing node / menu actions keep their names and act on the active tab.
+- `TooltipDoc` is a block tree (`TooltipBlockDefinition`): block nodes have the block kind as type (the schema's Type enum is the palette), `When`, `Color` … are ordinary fields; a tooltip written as a bare array / string is written back that way.
+- The **resolver** (`src/model/resolve.ts`, pure, memoised on the tab list) indexes every definition and reference: `resolve(kind, owner, name, fromTab)` (menu templates first, then the owner's), `usages`, `names` (pickers, did-you-mean), `knows` (whether the workspace holds that owner's entry; otherwise the answer is `'external'`). Validation passes the owner templates to the ported rules; the preview gets `previewDocument(ws, tab)`: the tab as one self-contained document with the owner templates it can instantiate added after its own (DataBuilder's lookup order), so `layout/build.ts` expands them unchanged. A template tab previews its body; a tooltip tab previews a stand-in element that shows the tooltip on hover.
+- Per the framework (`DataBuilder.CompileTooltip`), only an element's `RichTooltip.From` is followed, one level: a named tooltip's own `From` is not read (validation warns), so tooltips cannot form cycles.
 
 ### 18.3 UI
 
@@ -418,12 +421,13 @@ type WorkspaceTab =
 
 - Importing a CP `content.json` offers "Open all as a workspace": every `Menus` entry becomes a menu tab, each `Owners` entry an owner tab plus one tab per template and tooltip. Single-menu import (today's picker) stays.
 - Export per tab (today's dialog) and **Export workspace**: a full `content.json` with one `EditData` change per asset (`Menus`, `Owners`, later `Sprites`) in a stable order; or an `ImportData` file (`{ "Menus": …, "Owner": … }`) for C# mods.
-- Workspaces save to a `.uifw.json` file (the exported `content.json` plus a `$designer` member with tab order and per-tab preview state) and autosave to `localStorage`, so a saved workspace is still a valid CP file.
+- Workspaces save to a `.uifw.json` file (the exported `content.json`, fields as written, plus a `$designer` member with tab order, active tab and per-tab preview state) and autosave to `localStorage`, so a saved workspace is still a valid CP file. `io/workspace.ts` has `serializeWorkspace(ws)` / `parseWorkspace(text)` for autosave and share links.
+- Order of a workspace content.json: Owners changes, Menus changes (one per distinct patch, in tab order), then the kept changes verbatim. Entries keep their data; members follow the emitter order (§6.1).
 
 ### 18.5 Validation
 
 - The resolver removes today's info message "'tab' is not a built-in type or a template of this menu" when the owner tab defines it.
-- New checks: unknown tooltip / class / menu / sprite reference (with "did you mean" over workspace names), required template params missing, recursive templates or tooltips (`From` cycles), and definitions nothing uses (info).
+- New checks: unknown template / tooltip / class / menu / sprite reference (with "did you mean" over workspace names) when the workspace holds that owner's entry (or named sprites), required params of owner templates missing, recursive templates, and owner templates / tooltips / classes nothing uses (info). References to owners the workspace does not hold are not reported (templates keep today's info message).
 - The problems pane gains a scope switch: active tab or whole workspace.
 
 ### 18.6 Steps

@@ -1,9 +1,9 @@
 import { useEffect } from 'react';
-import { useDesigner } from '../model/store';
+import { activeTree, activeUi, useDesigner } from '../model/store';
 import { focusRow } from './Tree';
 
 // Global shortcuts (architecture.md §6.3): undo / redo, duplicate, delete. Ignored while typing in a text control,
-// which keeps its own undo.
+// which keeps its own undo, and while the app is read-only (phone width).
 
 function isTyping(target: EventTarget | null): boolean {
   return target instanceof HTMLElement
@@ -11,8 +11,12 @@ function isTyping(target: EventTarget | null): boolean {
       || (target.tagName === 'INPUT' && !['checkbox', 'radio', 'button', 'color'].includes((target as HTMLInputElement).type)));
 }
 
-export function useGlobalShortcuts(): void {
+export function useGlobalShortcuts(enabled: boolean): void {
   useEffect(() => {
+    if (!enabled) {
+      return undefined;
+    }
+
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.defaultPrevented || isTyping(e.target)) {
         return;
@@ -21,7 +25,8 @@ export function useGlobalShortcuts(): void {
       const store = useDesigner.getState();
       const mod = e.ctrlKey || e.metaKey;
       const key = e.key.toLowerCase();
-      const selection = store.selection !== null && store.selection !== store.doc.root ? store.selection : null;
+      const current = activeUi(store).selection;
+      const selection = current !== null && current !== activeTree(store)?.root ? current : null;
       if (mod && !e.altKey && ((key === 'z' && e.shiftKey) || (key === 'y' && !e.shiftKey))) {
         store.redo();
       } else if (mod && !e.altKey && !e.shiftKey && key === 'z') {
@@ -33,7 +38,7 @@ export function useGlobalShortcuts(): void {
         }
       } else if (e.key === 'Delete' && !mod && selection !== null) {
         store.deleteNode(selection);
-        const next = useDesigner.getState().selection;
+        const next = activeUi(useDesigner.getState()).selection;
         if (next !== null) {
           focusRow(next);
         }
@@ -46,5 +51,5 @@ export function useGlobalShortcuts(): void {
 
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, []);
+  }, [enabled]);
 }

@@ -15,10 +15,12 @@ export interface FieldRowProps {
   description?: string;
   /** Shown as a warning marker (e.g. "not read by Label"). */
   warning?: string;
+  /** Go to the definition the value names (a template, class, tooltip or menu in the workspace). */
+  goto?: () => void;
   commit(value: string | undefined): void;
 }
 
-export function FieldRow({ name, shape, value, defaultValue, description, warning, commit }: FieldRowProps) {
+export function FieldRow({ name, shape, value, defaultValue, description, warning, goto, commit }: FieldRowProps) {
   const id = useId();
   const literal = value === undefined || isLiteral(shape, value);
   const [exprWanted, setExprWanted] = useState(false);
@@ -39,6 +41,7 @@ export function FieldRow({ name, shape, value, defaultValue, description, warnin
         title={literal ? (expr ? 'Back to the widget' : 'Edit as an expression') : 'Not a literal value: clear it to use the widget'}
         onClick={() => setExprWanted(!expr)}>ƒx</button>
       <button type="button" className="icon clear" title="Remove the field" disabled={value === undefined} onClick={() => commit(undefined)}>×</button>
+      {goto && <button type="button" className="icon goto" title="Go to the definition" onClick={goto}>→</button>}
       {description && <div className="help">{description}</div>}
     </div>
   );

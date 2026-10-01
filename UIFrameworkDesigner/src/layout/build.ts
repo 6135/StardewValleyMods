@@ -238,7 +238,7 @@ function substituteArgs(raw: string, args: Record<string, string> | null, bare: 
 }
 
 /** CP tokens in text as chips: `{{i18n:key}}` → an i18n chip with the key, other `{{Token}}` → a token chip. */
-function chipTokens(text: string): string {
+export function chipTokens(text: string): string {
   return text.replace(/\{\{\s*([^{}]*?)\s*\}\}/g, (_m, inner: string) => {
     const i18n = /^i18n\s*:\s*(.+)$/i.exec(inner);
     return i18n ? CHIP_I18N + i18n[1]!.trim() + CHIP_END : CHIP_TOKEN + inner + CHIP_END;
