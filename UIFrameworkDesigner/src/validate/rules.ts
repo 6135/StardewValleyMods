@@ -443,7 +443,7 @@ class Checker {
             this.addField('warning', path, ptr, 'Fields', 'Fields are ignored when the Form has a Model (its members are the fields).');
           }
         } else {
-          this.formFields(get('Fields'), fieldPath(path, 'Fields'), ptr);
+          this.formFields(get('Fields'), fieldPath(path, 'Fields'), ptr, pointer(ptr, memberKey(def, 'Fields')));
         }
 
         break;
@@ -475,12 +475,12 @@ class Checker {
       this.unknown(column, 'ColumnDefinition', columnPath, columnPtr);
       const id = scalarText(getMember(column, 'Id'))?.trim();
       if (!id) {
-        this.add('error', fieldPath(columnPath, 'Id'), columnPtr, 'a DataGrid column needs an Id; the column is skipped.', 'Columns');
+        this.add('error', fieldPath(columnPath, 'Id'), columnPtr, 'a DataGrid column needs an Id; the column is skipped.', 'Id');
         return;
       }
 
       if (ids.has(id)) {
-        this.add('warning', fieldPath(columnPath, 'Id'), columnPtr, `column id '${id}' is used more than once; the last one wins.`, 'Columns');
+        this.add('warning', fieldPath(columnPath, 'Id'), columnPtr, `column id '${id}' is used more than once; the last one wins.`, 'Id');
       }
 
       ids.add(id);
@@ -496,7 +496,7 @@ class Checker {
     }
   }
 
-  private formFields(fields: unknown, path: string, ptr: string): void {
+  private formFields(fields: unknown, path: string, ptr: string, listPtr: string): void {
     if (!Array.isArray(fields) || fields.length === 0) {
       this.add('warning', path, ptr, 'a Form needs Fields.', 'Fields');
       return;
@@ -510,17 +510,19 @@ class Checker {
 
       const id = scalarText(getMember(field, 'Id'))?.trim();
       const fieldItem = indexPath(path, i, id);
+      const fieldPtr = pointer(listPtr, i);
+      this.unknown(field, 'FormFieldDefinition', fieldItem, fieldPtr);
       if (id === undefined && getMember(field, 'Bind') == null) {
-        this.add('warning', fieldItem, ptr, 'the field has no Id or Bind; it is named field<index> and bound to menu.field<index>.', 'Fields');
+        this.add('warning', fieldItem, fieldPtr, 'the field has no Id or Bind; it is named field<index> and bound to menu.field<index>.');
       } else if (id !== undefined && ids.has(id)) {
-        this.add('warning', fieldPath(fieldItem, 'Id'), ptr, `field id '${id}' is used more than once in this form.`, 'Fields');
+        this.add('warning', fieldPath(fieldItem, 'Id'), fieldPtr, `field id '${id}' is used more than once in this form.`, 'Id');
       } else if (id !== undefined) {
         ids.add(id);
       }
 
       const kind = scalarText(getMember(field, 'Kind'))?.trim();
       if (kind !== undefined && !['checkbox', 'number', 'integer', 'text', 'dropdown'].includes(kind.toLowerCase())) {
-        this.add('error', fieldPath(fieldItem, 'Kind'), ptr, `'${kind}' is not Checkbox, Number, Integer, Text or Dropdown; the field is skipped.`, 'Fields');
+        this.add('error', fieldPath(fieldItem, 'Kind'), fieldPtr, `'${kind}' is not Checkbox, Number, Integer, Text or Dropdown; the field is skipped.`, 'Kind');
       }
     });
   }

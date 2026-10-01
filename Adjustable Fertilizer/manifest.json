@@ -1,12 +1,13 @@
-﻿{
-  "Name": "Adjustable_Fertilizer",
-  "Author": "ModAuthor",
+{
+  "Name": "Adjustable Fertilizer",
+  "Author": "6135",
   "Version": "%ProjectVersion%",
-  "Description": "Mod Template",
-  "UniqueID": "ModAuthor.SMAPIMod",
-  "MinimumApiVersion": "2.11",
-  "UpdateKeys": [ "Nexus:" ],
+  "Description": "Change how many fertilizers, Speed-Gros and retaining soils each crafting recipe makes. Based on Adjustable Fertilizer by UnknownLegacy.",
+  "UniqueID": "UnknownLegacy.AdjustableFertilizer",
+  "MinimumApiVersion": "4.0.0",
+  "UpdateKeys": [],
   "ContentPackFor": {
-    "UniqueID": "Pathoschild.ContentPatcher"
+    "UniqueID": "Pathoschild.ContentPatcher",
+    "MinimumVersion": "2.0.0"
   }
 }

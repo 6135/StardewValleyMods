@@ -1,0 +1,219 @@
+{
+  // a Content Patcher patch: tabs (Switch), a menu template with params, a form-like Grid, Repeat over a source,
+  // a sortable / filterable DataGrid, computed values, conditional visibility and state actions
+  "Action": "EditData",
+  "Target": "Mods/6135.UIFramework/Menus",
+  "Entries": {
+    "{{ModId}}/planner": {
+      "Title": "Farm Planner",
+      "Width": "900",
+      "Hotkey": "LeftControl + P",
+      "State": {
+        "tab": "crops",
+        "farmName": "Parsnip Farm",
+        "budget": "500",
+        "season": "spring",
+        "minPrice": "0",
+        "showTips": "true",
+        "picked": "0"
+      },
+      "Sources": {
+        "crops": {
+          "Rows": [
+            { "item": "(O)24", "seed": 20, "price": 35, "days": 4, "season": "spring" },
+            { "item": "(O)190", "seed": 80, "price": 175, "days": 12, "season": "spring" },
+            { "item": "(O)192", "seed": 50, "price": 80, "days": 6, "season": "spring" },
+            { "item": "(O)254", "seed": 80, "price": 250, "days": 12, "season": "summer" },
+            { "item": "(O)258", "seed": 80, "price": 50, "days": 13, "season": "summer" },
+            { "item": "(O)304", "seed": 60, "price": 25, "days": 11, "season": "summer" },
+            { "item": "(O)276", "seed": 100, "price": 320, "days": 13, "season": "fall" },
+            { "item": "(O)282", "seed": 240, "price": 75, "days": 7, "season": "fall" },
+            { "item": "(O)398", "seed": 60, "price": 80, "days": 10, "season": "fall" }
+          ]
+        },
+        "seasons": {
+          "Rows": [
+            { "id": "spring", "name": "Spring", "crops": [ "(O)24", "(O)190", "(O)192" ] },
+            { "id": "summer", "name": "Summer", "crops": [ "(O)254", "(O)258", "(O)304" ] },
+            { "id": "fall", "name": "Fall", "crops": [ "(O)276", "(O)282", "(O)398" ] }
+          ]
+        }
+      },
+      "Computed": {
+        "seedsAffordable": "floor(menu.budget / 20)",
+        "summary": "menu.farmName + ' - ' + menu.season"
+      },
+      "Templates": {
+        // a tab button, disabled while its page is shown
+        "tab": {
+          "Params": {
+            "page": { "Type": "string", "Required": true },
+            "label": { "Type": "string", "Required": true }
+          },
+          "Children": [
+            { "Id": "button", "Button": "${args.label}", "Enabled": "menu.tab != args.page", "OnClick": "6135.UIFramework_SetState menu.tab ${args.page}" }
+          ]
+        },
+        // a titled panel section with an optional note
+        "section": {
+          "Params": {
+            "title": { "Type": "string", "Required": true },
+            "note": { "Type": "string", "Default": "" }
+          },
+          "Spacing": 6,
+          "Children": [
+            { "Id": "title", "Label": "${args.title}", "Font": "dialogue" },
+            { "Id": "note", "Label": "${args.note}", "Wrap": true, "Visible": "len(args.note) > 0" },
+            { "Id": "body", "Type": "Outlet", "Spacing": 8 }
+          ]
+        }
+      },
+      "Children": [
+        {
+          "Id": "header",
+          "Type": "Stack",
+          "Horizontal": true,
+          "Spacing": 16,
+          "Alignment": "Center",
+          "Children": [
+            { "Id": "icon", "Type": "ItemImage", "Item": "(O)24", "Scale": 3 },
+            { "Id": "summary", "Label": "${menu.summary}", "Font": "dialogue" },
+            { "Id": "spacer", "Type": "Spacer", "Width": 24 },
+            { "Id": "tipsToggle", "Checkbox": "Show tips", "Bind": "menu.showTips" }
+          ]
+        },
+        {
+          "Id": "tabs",
+          "Type": "Stack",
+          "Horizontal": true,
+          "Spacing": 8,
+          "Children": [
+            { "Id": "tabCrops", "Type": "tab", "page": "crops", "label": "Crops" },
+            { "Id": "tabSeasons", "Type": "tab", "page": "seasons", "label": "Seasons" },
+            { "Id": "tabSettings", "Type": "tab", "page": "settings", "label": "Settings" }
+          ]
+        },
+        { "Id": "tip", "Label": "Tip: sort the table by profit per day to find the best crop.", "Wrap": true, "Visible": "menu.showTips" },
+        { "Id": "divider", "Type": "Spacer", "Line": true, "Height": 8, "HorizontalAlign": "Stretch" },
+        {
+          "Id": "pages",
+          "Type": "Switch",
+          "Switch": "menu.tab",
+          "Children": [
+            {
+              "Id": "cropsPage",
+              "Case": "crops",
+              "Type": "Stack",
+              "Spacing": 12,
+              "Children": [
+                {
+                  "Id": "filters",
+                  "Type": "Stack",
+                  "Horizontal": true,
+                  "Spacing": 12,
+                  "Alignment": "Center",
+                  "Children": [
+                    { "Id": "minPriceLabel", "Label": "Minimum price: ${menu.minPrice}g" },
+                    { "Id": "minPrice", "Type": "Slider", "Bind": "menu.minPrice", "Min": 0, "Max": 300, "Step": 10, "Width": 240 }
+                  ]
+                },
+                {
+                  "Id": "grid",
+                  "Type": "DataGrid",
+                  "Source": "crops",
+                  "RowHeight": 40,
+                  "VisibleRows": 5,
+                  "Selectable": true,
+                  "Sort": "perDay desc",
+                  "Filter": "row.price >= menu.minPrice",
+                  "HorizontalAlign": "Stretch",
+                  "OnRowClick": "6135.UIFramework_SetState menu.picked ${menu.picked + 1}",
+                  "Columns": [
+                    { "Id": "icon", "Header": "", "Width": "56px", "Cell": { "Id": "img", "Type": "ItemImage", "Item": "${row.item}", "Scale": 2 } },
+                    { "Id": "name", "Header": "Crop", "Width": "*", "Text": "${itemName(row.item)}", "Sortable": true, "Resizable": true },
+                    { "Id": "season", "Header": "Season", "Width": "auto", "Text": "${row.season}", "Sortable": true },
+                    { "Id": "price", "Header": "Price", "Width": "auto", "Text": "${money(row.price)}", "SortNumber": "row.price", "Sortable": true, "Align": "End" },
+                    {
+                      "Id": "perDay",
+                      "Header": "Per day",
+                      "Width": "auto",
+                      "Text": "${money(round((row.price - row.seed) / row.days, 1))}",
+                      "SortNumber": "(row.price - row.seed) / row.days",
+                      "Sortable": true,
+                      "Align": "End",
+                      "Tooltip": "(sell price - seed price) / days to grow"
+                    }
+                  ]
+                },
+                { "Id": "pickedCount", "Label": "Rows clicked: ${menu.picked}" }
+              ]
+            },
+            {
+              "Id": "seasonsPage",
+              "Case": "seasons",
+              "Type": "ScrollView",
+              "ViewportHeight": 360,
+              "Children": [
+                {
+                  "Id": "seasonList",
+                  "Repeat": "seasons",
+                  "As": "season",
+                  "Spacing": 12,
+                  "Children": [
+                    {
+                      "Id": "seasonPanel",
+                      "Type": "Panel",
+                      "Padding": 16,
+                      "HorizontalAlign": "Stretch",
+                      "Children": [
+                        {
+                          "Id": "seasonSection",
+                          "Type": "section",
+                          "title": "${season.name}",
+                          "note": "Click a season to plan for it.",
+                          "Children": [
+                            {
+                              "Id": "seasonCrops",
+                              "Repeat": "${season.crops}",
+                              "As": "crop",
+                              "Horizontal": true,
+                              "Spacing": 8,
+                              "Children": [
+                                { "Id": "cropIcon", "Type": "ItemImage", "Item": "${crop}", "Scale": 3, "Tooltip": "${itemName(crop)}" }
+                              ]
+                            },
+                            { "Id": "pickSeason", "Button": "Plan ${season.name}", "Enabled": "menu.season != season.id", "OnClick": "6135.UIFramework_SetState menu.season ${season.id}" }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "Id": "settingsPage",
+              "Case": "settings",
+              "Type": "Grid",
+              "Columns": "auto, *",
+              "Rows": "auto, auto, auto, auto",
+              "ColumnSpacing": 16,
+              "RowSpacing": 12,
+              "HorizontalAlign": "Stretch",
+              "Children": [
+                { "Id": "nameLabel", "Label": "Farm name", "Cell": "0,0", "VerticalAlign": "Center" },
+                { "Id": "nameInput", "Type": "TextInput", "Bind": "menu.farmName", "MaxLength": 32, "Placeholder": "Your farm", "Cell": "0,1", "HorizontalAlign": "Stretch" },
+                { "Id": "budgetLabel", "Label": "Budget", "Cell": "1,0", "VerticalAlign": "Center" },
+                { "Id": "budgetInput", "Type": "NumberInput", "Bind": "menu.budget", "Min": 0, "Max": 100000, "Step": 50, "Cell": "1,1" },
+                { "Id": "seasonLabel", "Label": "Season", "Cell": "2,0", "VerticalAlign": "Center" },
+                { "Id": "seasonPick", "Type": "Dropdown", "Bind": "menu.season", "Choices": [ "spring", "summer", "fall" ], "Labels": [ "Spring", "Summer", "Fall" ], "Cell": "2,1" },
+                { "Id": "affordLabel", "Label": "Seeds you can afford", "Cell": "3,0" },
+                { "Id": "afford", "Label": "${menu.seedsAffordable} parsnip seeds", "Cell": "3,1" }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

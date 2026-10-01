@@ -28,7 +28,8 @@ export function scalarText(value: unknown): string | undefined {
 //  Models (from menu.schema.json definitions)
 // ---------------------------------------------------------------------------------------------------------------
 
-export type Model = 'MenuDefinition' | 'ElementDefinition' | 'StyleDefinition' | 'TemplateDefinition' | 'ParamDefinition' | 'ColumnDefinition';
+export type Model = 'MenuDefinition' | 'ElementDefinition' | 'StyleDefinition' | 'TemplateDefinition' | 'ParamDefinition' | 'ColumnDefinition'
+  | 'FormFieldDefinition';
 
 interface SchemaDefinition {
   properties?: Record<string, { $ref?: string }>;
@@ -93,7 +94,7 @@ export function canonicalMember(model: Model, name: string): string | null {
 
 /** True when the member is a plain value (string, number or bool), so a literal may be written as a JSON number / bool. */
 export function isValueMember(model: Model, name: string): boolean {
-  const prop = definitions()[model]?.properties?.[name];
+  const prop = definitions()[model]?.properties?.[canonicalMember(model, name) ?? name];
   if (!prop) {
     // unknown to the schema (a template / custom tag argument, or no bundle): a plain value
     return canonicalMember(model, name) === null;

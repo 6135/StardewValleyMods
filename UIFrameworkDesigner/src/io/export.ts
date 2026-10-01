@@ -1,5 +1,6 @@
 import type { DesignerDocument, DesignerNode, JsonExportOptions, NodeId } from '../model/document';
 import { defaultOf, typeInfo } from '../model/metadata';
+import { subItemsOf, type SubItemKind } from '../model/subItems';
 import { inferType, isValueMember, modelMembers, pointer, valueShorthands, type JsonObject, type Model } from './dataFormat';
 
 // JSON export (architecture.md §9.1): a Menus entry, a Content Patcher EditData patch or a standalone From file.
@@ -214,15 +215,17 @@ class Writer {
       values.set(key, literal('ElementDefinition', key, text));
     }
 
+    const items = subItemsOf(type);
+    const listMember = items?.member ?? 'Children';
     for (const [key, value] of Object.entries(node.extra)) {
-      if (!values.has(key) && !(key in node.fields) && !(key === 'Children' && node.children.length > 0)) {
+      if (!values.has(key) && !(key in node.fields) && !(key === listMember && node.children.length > 0)) {
         values.set(key, value);
       }
     }
 
-    const children = this.childList(node.id, at);
+    const children = items !== undefined ? this.subItemList(node, items, pointer(at, items.member)) : this.childList(node.id, at);
     if (children.length > 0) {
-      values.set('Children', children);
+      values.set(listMember, children);
     }
 
     // shorthand: move the main value back into the shorthand member, and drop Type when the definition still reads as
@@ -270,6 +273,57 @@ class Writer {
         rank: key === shorthandKey ? 2 : rank(key),
         order: typeIndex >= 0 ? typeIndex : modelIndex >= 0 ? 1000 + modelIndex : 10000 + unknown++
       });
+    }
+
+    return assemble(members);
+  }
+
+  /** A Form's Fields / a DataGrid's Columns from the node's sub-item children. */
+  private subItemList(parent: DesignerNode, kind: SubItemKind, listPointer: string): unknown[] {
+    const list: unknown[] = [];
+    for (const childId of parent.children) {
+      const child = this.doc.nodes[childId];
+      if (child) {
+        list.push(this.subItem(child, kind, pointer(listPointer, list.length)));
+      }
+    }
+
+    return list;
+  }
+
+  /** One sub-item: its fields in the schema definition's order, unknown members after, its elements member last. */
+  private subItem(node: DesignerNode, kind: SubItemKind, at: string): unknown {
+    this.nodeAt.set(at, node.id);
+    const names = Object.keys(node.fields);
+    if (kind.valueMember !== undefined && node.shorthand === kind.valueMember && names.length === 1 && names[0] === kind.valueMember
+      && Object.keys(node.extra).length === 0 && node.children.length === 0) {
+      return node.fields[kind.valueMember];
+    }
+
+    const order = modelMembers(kind.schema);
+    const members: Member[] = [];
+    let unknown = 0;
+    const add = (key: string, value: unknown) => {
+      const index = order.indexOf(key);
+      members.push({ key, value, rank: index >= 0 ? 0 : 1, order: index >= 0 ? index : unknown++ });
+    };
+
+    for (const [key, text] of Object.entries(node.fields)) {
+      add(key, literal(kind.schema, key, text));
+    }
+
+    for (const [key, value] of Object.entries(node.extra)) {
+      if (!(key in node.fields) && !(key === kind.elements && node.children.length > 0)) {
+        add(key, value);
+      }
+    }
+
+    if (kind.elements !== undefined && node.children.length > 0) {
+      const base = pointer(at, kind.elements);
+      const elements = node.children.map(id => this.doc.nodes[id]).filter((n): n is DesignerNode => n !== undefined);
+      add(kind.elements, node.singleElement && elements.length === 1
+        ? this.element(elements[0]!, base)
+        : elements.map((e, i) => this.element(e, pointer(base, i))));
     }
 
     return assemble(members);

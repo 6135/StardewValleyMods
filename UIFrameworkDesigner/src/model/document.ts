@@ -24,15 +24,24 @@ export interface DesignerDocument {
 
 export interface DesignerNode {
   id: NodeId;
-  /** Canonical built-in type, template name or custom tag; "Menu" / "Template" for synthetic roots. */
+  /**
+   * Canonical built-in type, template name or custom tag; "Menu" / "Template" for synthetic roots; a sub-item type
+   * (model/subItems.ts) for an item of an element's list member: "FormField" (one of a Form's Fields, children: none) and
+   * "Column" (one of a DataGrid's Columns, children: its Cell elements). A Form / DataGrid holds only those as children.
+   */
   type: string;
   /** Every string-valued member the element sets, as written in the data format (raw strings, expressions included). */
   fields: Record<string, string>;
-  /** Members that are not plain strings (Columns definitions, Args objects, RichTooltip, Fields …) or not known, verbatim. */
+  /** Members that are not plain strings (Args objects, RichTooltip, Choices arrays …) or not known, verbatim. */
   extra: Record<string, unknown>;
   children: NodeId[];
-  /** The shorthand member the element was imported with ("Label", "Button", "Checkbox", "Image"), re-used on export. */
+  /**
+   * The shorthand member the element was imported with ("Label", "Button", "Checkbox", "Image"), re-used on export;
+   * for a sub-item, its valueMember when it was written as a bare string ("Width" for a `"Columns": ["auto"]` item).
+   */
   shorthand?: string;
+  /** Sub-item: its elements member (a Column's Cell) was written as one element, not an array; kept while it has one. */
+  singleElement?: boolean;
 }
 
 export interface TemplateDoc {
