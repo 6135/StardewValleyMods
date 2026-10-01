@@ -1,6 +1,6 @@
 import type { JsonExportOptions, Problem } from '../model/document';
 import {
-  sameName, tabKindLabels, tabName, tabOwner, type OwnerTab, type PatchMembers, type TemplateTab, type TooltipTab, type Workspace, type WorkspaceTab
+  sameName, tabKindLabels, tabName, tabOwner, type OwnerTab, type PatchMembers, type PreviewData, type PreviewFunction, type TemplateTab, type TooltipTab, type Workspace, type WorkspaceTab
 } from '../model/workspace';
 import { isObject, type JsonObject } from './dataFormat';
 import { buildMenuObject, buildOwnerObject, buildTemplateObject, buildTooltipObject, exportJson, menuKey, printJson } from './export';
@@ -128,7 +128,12 @@ export function serializeWorkspace(ws: Workspace, indent = 2): string {
     return Object.keys(state).length > 0 ? { kind: t.kind, key: tabKey(t), previewState: state } : { kind: t.kind, key: tabKey(t) };
   });
   const active = ws.tabs.findIndex(t => t.id === ws.activeTab);
-  return printJson({ ...workspaceValue(ws, 'contentJson', asWritten), [DesignerMember]: { owner: ws.owner, active, tabs } }, indent);
+  const data = ws.previewData;
+  const preview = {
+    ...(data && Object.keys(data.functions).length > 0 ? { functions: data.functions } : {}),
+    ...(data && Object.keys(data.rows).length > 0 ? { rows: data.rows } : {})
+  };
+  return printJson({ ...workspaceValue(ws, 'contentJson', asWritten), [DesignerMember]: { owner: ws.owner, active, tabs, ...preview } }, indent);
 }
 
 /** A workspace from a `.uifw.json` file, a content.json, an ImportData file or a single menu; null when it holds none. */
@@ -163,7 +168,30 @@ export function parseWorkspace(text: string): { workspace: Workspace | null; pro
   const tabs = [...ordered, ...rest];
   const active = typeof designer['active'] === 'number' ? tabs[designer['active']] : undefined;
   const owner = typeof designer['owner'] === 'string' && designer['owner'].length > 0 ? designer['owner'] : ws.owner;
-  return { workspace: { ...ws, owner, tabs, activeTab: active?.id ?? ws.activeTab }, problems: result.problems };
+  const previewData = readPreviewData(designer);
+  return { workspace: { ...ws, owner, tabs, activeTab: active?.id ?? ws.activeTab, ...(previewData ? { previewData } : {}) }, problems: result.problems };
+}
+
+const functionKinds: readonly PreviewFunction['kind'][] = ['unknown', 'i18n', 'first', 'fixed'];
+
+/** The preview functions and sample rows of a `$designer` member; undefined when it has none. */
+function readPreviewData(designer: Record<string, unknown>): PreviewData | undefined {
+  const functions: Record<string, PreviewFunction> = {};
+  const rows: Record<string, unknown[]> = {};
+  for (const [name, fn] of Object.entries(isObject(designer['functions']) ? designer['functions'] : {})) {
+    const kind = isObject(fn) ? functionKinds.find(k => k === fn['kind']) : undefined;
+    if (kind) {
+      functions[name] = isObject(fn) && typeof fn['value'] === 'string' ? { kind, value: fn['value'] } : { kind };
+    }
+  }
+
+  for (const [source, list] of Object.entries(isObject(designer['rows']) ? designer['rows'] : {})) {
+    if (Array.isArray(list)) {
+      rows[source] = list;
+    }
+  }
+
+  return Object.keys(functions).length > 0 || Object.keys(rows).length > 0 ? { functions, rows } : undefined;
 }
 
 /** One tab as JSON: a menu in the chosen shape; a template, tooltip or owner entry as `{ "<name>": definition }`. */

@@ -3,12 +3,13 @@
 // gap and the name / amount, Divider 2 px with 4 px margins), placed 32 px right / below the cursor and kept on screen.
 // The definition is the TooltipDefinition JSON (Data/Model/TooltipBlockDefinition.cs): an object { MaxWidth, Blocks },
 // the block array alone, or a string (one Line); members are matched without case like Json.NET.
-import { useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { GAME_FONTS } from '../layout';
-import { evaluateExpression, evaluateTemplateText } from './evaluate';
+import { evaluateExpression, evaluateTemplateText, type ExternalFunctions } from './evaluate';
 import { objectIndex, itemDisplayName } from './gameData';
 import type { GameArt } from './gameArt';
 import { chipTokens, fontStyle, renderText } from './text';
+import { previewThemes, themeVariables } from './theme';
 
 const Padding = 16;
 const CursorOffset = 32;
@@ -66,31 +67,32 @@ export interface TooltipBoxProps {
   definition: unknown;
   title?: string;
   text?: string;
-  /** Cursor in screen (UI) pixels. */
-  cursor: { x: number; y: number };
+  /** Cursor in screen (UI) pixels; absent: the tooltip is centred on the screen (a tooltip tab's preview). */
+  cursor?: { x: number; y: number };
   screen: { width: number; height: number };
   state: Record<string, string>;
+  functions?: ExternalFunctions;
   i18n?: Record<string, string>;
   art?: GameArt;
 }
 
-export function TooltipBox({ definition, title, text, cursor, screen, state, i18n, art }: TooltipBoxProps): ReactNode {
+export function TooltipBox({ definition, title, text, cursor, screen, state, functions, i18n, art }: TooltipBoxProps): ReactNode {
   const ref = useRef<HTMLDivElement>(null);
-  const [at, setAt] = useState({ x: cursor.x + CursorOffset, y: cursor.y + CursorOffset });
+  const [at, setAt] = useState(cursor ? { x: cursor.x + CursorOffset, y: cursor.y + CursorOffset } : { x: 0, y: 0 });
 
   const { maxWidth, blocks } = definition !== undefined && definition !== null
     ? normalize(definition)
     : { maxWidth: undefined, blocks: [...(title ? [{ type: 'title', text: title }] : []), ...(text ? [{ type: 'line', text }] : [])] as Block[] };
-  const wrapLimit = Number(maxWidth !== undefined ? evaluateExpression(maxWidth, state) : undefined);
+  const wrapLimit = Number(maxWidth !== undefined ? evaluateExpression(maxWidth, state, functions) : undefined);
   let wrap = Math.max(1, screen.width - (2 * Padding) - ViewportSlack);
   if (wrapLimit > 0) wrap = Math.min(wrap, wrapLimit);
 
-  const textOf = (raw: string | undefined): string => chipTokens(evaluateTemplateText(raw ?? '', state));
+  const textOf = (raw: string | undefined): string => chipTokens(evaluateTemplateText(raw ?? '', state, functions));
   const lineHeight = GAME_FONTS.small.lineSpacing;
   const rows: ReactNode[] = [];
   blocks.forEach((b, i) => {
     if (b.when !== undefined) {
-      const shown = evaluateExpression(b.when, state);
+      const shown = evaluateExpression(b.when, state, functions);
       if (shown !== undefined && !truthy(shown)) return;
     }
     const color = b.color !== undefined ? textOf(b.color).trim() : '';
@@ -116,7 +118,7 @@ export function TooltipBox({ definition, title, text, cursor, screen, state, i18
         break;
       }
       case 'money': {
-        const amount = Number(b.amount !== undefined ? evaluateExpression(b.amount, state) : undefined);
+        const amount = Number(b.amount !== undefined ? evaluateExpression(b.amount, state, functions) : undefined);
         rows.push(
           <div key={i} className="pv-tip-icon-row" style={fontStyle()}>
             <span className="pv-tip-coin" style={{ width: lineHeight, height: lineHeight }} />
@@ -151,6 +153,11 @@ export function TooltipBox({ definition, title, text, cursor, screen, state, i18
     // TooltipRenderer.Place
     const w = el.offsetWidth;
     const h = el.offsetHeight;
+    if (!cursor) {
+      const centre = { x: Math.max(0, Math.round((screen.width - w) / 2)), y: Math.max(0, Math.round((screen.height - h) / 2)) };
+      setAt(prev => (prev.x === centre.x && prev.y === centre.y ? prev : centre));
+      return;
+    }
     let x = cursor.x + CursorOffset;
     let y = cursor.y + CursorOffset;
     if (x + w > screen.width) {
@@ -171,6 +178,44 @@ export function TooltipBox({ definition, title, text, cursor, screen, state, i18
   return (
     <div ref={ref} className="pv-tooltip" style={{ left: at.x, top: at.y }}>
       {rows}
+    </div>
+  );
+}
+
+export interface TooltipPreviewProps {
+  definition: unknown;
+  state: Record<string, string>;
+  functions?: ExternalFunctions;
+  i18n?: Record<string, string>;
+}
+
+/** A named tooltip's own preview: the tooltip centred on the preview background, as large as the pane. */
+export function TooltipPreview({ definition, state, functions, i18n }: TooltipPreviewProps): ReactNode {
+  const ref = useRef<HTMLDivElement>(null);
+  const [size, setSize] = useState({ width: 800, height: 600 });
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || typeof ResizeObserver === 'undefined') {
+      return undefined;
+    }
+    const observer = new ResizeObserver(entries => {
+      const r = entries[0]?.contentRect;
+      if (r) {
+        setSize({ width: Math.round(r.width), height: Math.round(r.height) });
+      }
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
+  return (
+    <div className="pv-pane">
+      <div className="pv-view">
+        <div ref={ref} className="pv-screen pv-tooltip-screen" style={themeVariables(previewThemes.default) as CSSProperties}>
+          <TooltipBox definition={definition} screen={size} state={state}
+            {...(functions ? { functions } : {})} {...(i18n ? { i18n } : {})} />
+        </div>
+      </div>
     </div>
   );
 }

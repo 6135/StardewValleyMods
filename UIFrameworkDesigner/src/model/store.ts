@@ -6,7 +6,7 @@ import { newNodeId } from './factory';
 import * as ops from './ops';
 import { renameEdits, renameRefusal, resolverOf, type Definition, type TabEdit } from './resolve';
 import type { PreviewSettings } from '../preview/PreviewPane';
-import { createTab, createWorkspace, menuTab, treeOf, type TabId, type TabKind, type Workspace, type WorkspaceTab } from './workspace';
+import { createTab, createWorkspace, menuTab, treeOf, type PreviewFunction, type TabId, type TabKind, type Workspace, type WorkspaceTab } from './workspace';
 
 // The workspace store (architecture.md §5, §18.2): the only editable state. Each tab has its own undo history (an edit
 // records the tab's previous content), so undo never jumps tabs; a rename across tabs records one entry per touched
@@ -91,6 +91,10 @@ export interface DesignerState {
   deleteNode(nodeId: NodeId): void;
   /** Set a preview sample value of the active menu / template; undefined removes it. */
   setPreviewState(key: string, value: string | undefined): void;
+  /** Set how the preview evaluates a C# function (workspace-wide, outside the histories); undefined removes it. */
+  setPreviewFunction(name: string, fn: PreviewFunction | undefined): void;
+  /** Set the sample rows of a C# source (workspace-wide, outside the histories); undefined removes them. */
+  setSampleRows(source: string, rows: unknown[] | undefined): void;
   undo(): void;
   redo(): void;
 }
@@ -444,6 +448,24 @@ export const useDesigner = create<DesignerState>()(
           }
         });
       },
+
+      setPreviewFunction: (name, fn) => set(s => {
+        const data = s.workspace.previewData ??= { functions: {}, rows: {} };
+        if (fn === undefined) {
+          delete data.functions[name];
+        } else {
+          data.functions[name] = fn;
+        }
+      }),
+
+      setSampleRows: (source, rows) => set(s => {
+        const data = s.workspace.previewData ??= { functions: {}, rows: {} };
+        if (rows === undefined) {
+          delete data.rows[source];
+        } else {
+          data.rows[source] = rows;
+        }
+      }),
 
       setPreviewState: (key, value) => {
         commit(get().workspace.activeTab, tab => {

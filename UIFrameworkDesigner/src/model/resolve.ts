@@ -144,6 +144,87 @@ function collectDefinitions(ws: Workspace): Definition[] {
   return defs;
 }
 
+/** TooltipDefinition members of an element. */
+const tooltipMembers = ['RichTooltip', 'RowTooltip'];
+/** Members holding element definitions (ElementDefinition.Children / RowTemplate, ColumnDefinition.Cell). */
+const elementLists = new Set(['children', 'rowtemplate', 'cell']);
+
+/** The tooltip a TooltipDefinition value names in From, or ''. */
+function tooltipFrom(value: unknown): string {
+  return isRecord(value) && typeof value['From'] === 'string' ? value['From'].trim() : '';
+}
+
+/**
+ * The template, class and tooltip references of the element definitions inside a raw JSON member (a RowTemplate,
+ * column cells, a Composite's Children …) and the tooltips its TooltipDefinition members name.
+ */
+function rawReferences(value: unknown, member: string, push: (kind: RefKind, name: string) => void): void {
+  if (Array.isArray(value)) {
+    value.forEach(v => rawReferences(v, member, push));
+    return;
+  }
+
+  if (!isRecord(value)) {
+    return;
+  }
+
+  const from = tooltipMembers.includes(member) ? tooltipFrom(value) : '';
+  if (from) {
+    push('tooltip', from);
+  }
+
+  if (elementLists.has(member.toLowerCase())) {
+    const use = rawTemplateUse(value);
+    if (use) {
+      push('template', use.name);
+    }
+
+    for (const name of classNames(typeof value['Class'] === 'string' ? value['Class'] : '')) {
+      push('class', name);
+    }
+  }
+
+  for (const [k, v] of Object.entries(value)) {
+    rawReferences(v, k, push);
+  }
+}
+
+/** The template a raw element definition instantiates (templateUse). */
+function rawTemplateUse(element: Record<string, unknown>): ReturnType<typeof templateUse> {
+  const type = typeof element['Type'] === 'string' ? element['Type'] : '';
+  const template = typeof element['Template'] === 'string' ? element['Template'] : undefined;
+  return templateUse({ id: '', type, fields: template !== undefined ? { Template: template } : {}, extra: {}, children: [] });
+}
+
+/** A raw JSON member with the references rawReferences finds to `kind` `from` renamed to `to`. */
+function renameRaw(value: unknown, member: string, kind: RefKind, from: string, to: string): unknown {
+  if (Array.isArray(value)) {
+    return value.map(v => renameRaw(v, member, kind, from, to));
+  }
+
+  if (!isRecord(value)) {
+    return value;
+  }
+
+  const out = Object.fromEntries(Object.entries(value).map(([k, v]) => [k, renameRaw(v, k, kind, from, to)]));
+  if (kind === 'tooltip' && tooltipMembers.includes(member) && sameName(tooltipFrom(out), from)) {
+    out['From'] = to;
+  }
+
+  if (elementLists.has(member.toLowerCase())) {
+    const use = kind === 'template' ? rawTemplateUse(out) : null;
+    if (use && sameName(use.name, from)) {
+      out[use.field] = to;
+    }
+
+    if (kind === 'class' && typeof out['Class'] === 'string') {
+      out['Class'] = classNames(out['Class']).map(n => (sameName(n, from) ? to : n)).join(' ');
+    }
+  }
+
+  return out;
+}
+
 /** The menu and sprite references in a text. */
 function textReferences(text: string, push: (kind: RefKind, owner: string, name: string) => void): void {
   for (const m of text.matchAll(menuAction)) {
@@ -184,25 +265,23 @@ function collectReferences(ws: Workspace): Reference[] {
         refs.push({ kind: 'class', owner, name, tabId: tab.id, nodeId: node.id, field: 'Class' });
       }
 
-      const rich = node.extra['RichTooltip'];
-      const from = isRecord(rich) && typeof rich['From'] === 'string' ? rich['From'].trim() : '';
-      if (from) {
-        refs.push({ kind: 'tooltip', owner, name: from, tabId: tab.id, nodeId: node.id, field: 'RichTooltip' });
-      }
-
       for (const [field, value] of [...Object.entries(node.fields), ...Object.entries(node.extra)]) {
         scan(node.id, field, value);
+        rawReferences(value, field, (kind, name) => refs.push({ kind, owner, name, tabId: tab.id, nodeId: node.id, field }));
       }
     }
 
-    if (tab.kind === 'menu') {
-      for (const [field, value] of [...Object.entries(tab.doc.menu), ...Object.entries(tab.doc.menuExtra)]) {
-        scan(null, field, value);
-      }
-    } else if (tab.kind === 'owner') {
-      for (const [field, value] of [...Object.entries(tab.doc.fields), ...Object.entries(tab.doc.extra)]) {
-        scan(null, field, value);
-      }
+    const members = tab.kind === 'menu' ? [...Object.entries(tab.doc.menu), ...Object.entries(tab.doc.menuExtra)]
+      : tab.kind === 'owner' || tab.kind === 'tooltip' ? [...Object.entries(tab.doc.fields), ...Object.entries(tab.doc.extra)] : [];
+    // a named tooltip's own From
+    const from = tab.kind === 'tooltip' ? tab.doc.fields['From']?.trim() : '';
+    if (from) {
+      refs.push({ kind: 'tooltip', owner, name: from, tabId: tab.id, nodeId: null, field: 'From' });
+    }
+
+    for (const [field, value] of members) {
+      scan(null, field, value);
+      rawReferences(value, field, (kind, name) => refs.push({ kind, owner, name, tabId: tab.id, nodeId: null, field }));
     }
   }
 
@@ -272,8 +351,8 @@ const previewCache = new WeakMap<object, { resolver: Resolver; doc: DesignerDocu
 
 /**
  * The tab as one self-contained menu document for the preview, the way DataBuilder sees it: the menu (or a template's
- * body, or a stand-in element that shows a tooltip on hover) with the owner templates it can instantiate added after
- * its own (menu templates win). Null for an owner entry.
+ * body) with the owner templates it can instantiate added after its own (menu templates win). Null for a tooltip
+ * (previewed by itself, preview/Tooltip.tsx) and an owner entry.
  */
 export function previewDocument(ws: Workspace, tab: WorkspaceTab): DesignerDocument | null {
   const resolver = resolverOf(ws);
@@ -285,11 +364,6 @@ export function previewDocument(ws: Workspace, tab: WorkspaceTab): DesignerDocum
   const doc = buildPreviewDocument(ws, tab);
   previewCache.set(tab.doc, { resolver, doc });
   return doc;
-}
-
-/** The node id of a tooltip tab's stand-in element (hovering it shows the tooltip). */
-export function tooltipStandIn(tab: WorkspaceTab): NodeId {
-  return `${tab.id}:tooltip`;
 }
 
 function buildPreviewDocument(ws: Workspace, tab: WorkspaceTab): DesignerDocument | null {
@@ -325,14 +399,7 @@ function buildPreviewDocument(ws: Workspace, tab: WorkspaceTab): DesignerDocumen
 
       return withOwnerTemplates({ owner, menuId: tab.name, menu, menuExtra: {}, root, nodes, templates: {}, previewState });
     }
-    case 'tooltip': {
-      const standIn: DesignerNode = { id: tooltipStandIn(tab), type: 'Button', fields: { Text: `Hover: ${tab.name}` }, extra: {}, children: [] };
-      const root: DesignerNode = { id: `${tab.id}:root`, type: 'Menu', fields: {}, extra: {}, children: [standIn.id] };
-      return {
-        owner, menuId: tab.name, menu: { Title: `Tooltip ${tab.name}` }, menuExtra: {}, root: root.id,
-        nodes: { [root.id]: root, [standIn.id]: standIn }, templates: {}, previewState: {}
-      };
-    }
+    case 'tooltip':
     case 'owner':
       return null;
   }
@@ -435,17 +502,26 @@ export function renameEdits(resolver: Resolver, def: Definition, name: string): 
 
       const node = ref.nodeId !== null && tab.kind !== 'owner' ? tab.doc.nodes[ref.nodeId] : undefined;
       if (!node) {
+        // a member of the menu, owner entry or named tooltip
+        if (tab.kind === 'tooltip' && ref.field === 'From') {
+          tab.doc.fields['From'] = to;
+        } else if (tab.kind === 'menu' && ref.field in tab.doc.menuExtra) {
+          tab.doc.menuExtra[ref.field] = renameRaw(tab.doc.menuExtra[ref.field], ref.field, def.kind, def.name, to);
+        } else if ((tab.kind === 'owner' || tab.kind === 'tooltip') && ref.field in tab.doc.extra) {
+          tab.doc.extra[ref.field] = renameRaw(tab.doc.extra[ref.field], ref.field, def.kind, def.name, to);
+        }
+
         return;
       }
 
-      if (def.kind === 'template') {
+      if (ref.field in node.extra) {
+        node.extra[ref.field] = renameRaw(node.extra[ref.field], ref.field, def.kind, def.name, to);
+      } else if (def.kind === 'template') {
         if (ref.field === 'Type') {
           node.type = to;
         } else {
           node.fields['Template'] = to;
         }
-      } else if (def.kind === 'tooltip' && isRecord(node.extra['RichTooltip'])) {
-        node.extra['RichTooltip'] = { ...node.extra['RichTooltip'], From: to };
       } else if (def.kind === 'class') {
         node.fields['Class'] = classNames(node.fields['Class'] ?? '').map(n => (sameName(n, def.name) ? to : n)).join(' ');
       }

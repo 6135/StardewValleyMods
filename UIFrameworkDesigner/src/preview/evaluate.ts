@@ -4,13 +4,20 @@
 // true / false / null) and DataValue's conversions (+ concatenates when a side is text, / and % by 0 give 0, loose ==).
 // Dotted paths (menu.count) are looked up whole in the preview state (a JSON array text reads as a list). Calls run the
 // framework's pure built-ins (Data/Expressions/BuiltinFunctions.cs, same names, arity and semantics) and itemName from
-// Data/GameFunctions.cs over a small bundled table (gameData.ts); anything else (other game functions, indexing,
-// unknown names) makes the result undefined.
+// Data/GameFunctions.cs over a small bundled table (gameData.ts); `@name(…)` calls (functions C# registers, Lexer
+// AtReference + ExternalCallNode) run the preview's stand-ins (ExternalFunctions); anything else (other game
+// functions, indexing, unknown names) makes the result undefined.
 import type { DesignerDocument } from '../model/document';
 import { CHIP_END, CHIP_EXPR, hasTemplate } from '../layout';
 import { itemDisplayName } from './gameData';
 
 type Value = number | string | boolean | null | Value[];
+
+/**
+ * Stand-ins for functions C# registers (RegisterFunction: string arguments, a string result), by lower-case name;
+ * undefined when the call cannot be evaluated.
+ */
+export type ExternalFunctions = Record<string, (args: string[]) => string | undefined>;
 
 class Unknown extends Error {}
 
@@ -39,6 +46,13 @@ function lex(source: string): Token[] {
       const m = /^[A-Za-z_][A-Za-z0-9_]*/.exec(source.slice(i))!;
       tokens.push({ kind: 'id', text: m[0] });
       i += m[0].length;
+      continue;
+    }
+    if (c === '@') {
+      // Lexer.ReadReference: @name, @owner/name (identifier characters, '.', '-')
+      const m = /^[A-Za-z0-9_.-]+(?:\/[A-Za-z0-9_-]+)?/.exec(source.slice(i + 1)) ?? unknown();
+      tokens.push({ kind: 'at', text: m[0] });
+      i += 1 + m[0].length;
       continue;
     }
     if (c === '"' || c === '\'') {
@@ -287,7 +301,7 @@ const power: Record<string, number> = { '?': 1, '||': 2, '&&': 3, '==': 4, '!=':
 class Parser {
   private pos = 0;
 
-  constructor(private readonly tokens: Token[], private readonly state: Record<string, string>) {}
+  constructor(private readonly tokens: Token[], private readonly state: Record<string, string>, private readonly functions: ExternalFunctions) {}
 
   private peek(): Token { return this.tokens[this.pos]!; }
   private next(): Token { return this.tokens[this.pos++]!; }
@@ -357,6 +371,15 @@ class Parser {
         return !asBool(this.expression(8));
       case '-':
         return -asNumber(this.expression(8));
+      case 'at': {
+        if (this.peek().kind === '(') {
+          const args = this.arguments().map(valueText);
+          const result = this.functions[t.text.toLowerCase()]?.(args);
+          return result === undefined ? unknown() : result;
+        }
+        const path = '@' + t.text;
+        return Object.prototype.hasOwnProperty.call(this.state, path) ? inferValue(this.state[path]!) : unknown();
+      }
       case 'id': {
         const lower = t.text.toLowerCase();
         if (this.peek().kind === '(') {
@@ -381,7 +404,8 @@ class Parser {
     }
   }
 
-  private call(name: string): Value {
+  /** `( a, b … )` after a function name. */
+  private arguments(): Value[] {
     this.next();
     const args: Value[] = [];
     if (this.peek().kind !== ')') {
@@ -392,6 +416,11 @@ class Parser {
       }
     }
     this.expect(')');
+    return args;
+  }
+
+  private call(name: string): Value {
+    const args = this.arguments();
     const builtin = Object.prototype.hasOwnProperty.call(builtins, name) ? builtins[name]! : unknown();
     return args.length >= builtin.min && args.length <= builtin.max ? builtin.run(args) : unknown();
   }
@@ -435,24 +464,24 @@ function segments(raw: string): Array<{ text: string } | { expr: string }> {
   return out;
 }
 
-function evaluateBare(expr: string, state: Record<string, string>): Value {
-  return new Parser(lex(expr), state).parseAll();
+function evaluateBare(expr: string, state: Record<string, string>, functions: ExternalFunctions): Value {
+  return new Parser(lex(expr), state, functions).parseAll();
 }
 
 /**
  * Evaluates a bare expression (`menu.count + 1`) or a template (`Day ${menu.day}`) against the preview state;
  * undefined when a name has no sample value or the text uses something this evaluator does not support.
  */
-export function evaluateExpression(expr: string, state: Record<string, string>): string | undefined {
+export function evaluateExpression(expr: string, state: Record<string, string>, functions: ExternalFunctions = {}): string | undefined {
   try {
     if (!hasTemplate(expr)) {
-      return valueText(evaluateBare(expr, state));
+      return valueText(evaluateBare(expr, state, functions));
     }
     const parts = segments(expr);
     if (parts.length === 1 && 'expr' in parts[0]!) {
-      return valueText(evaluateBare(parts[0].expr, state));
+      return valueText(evaluateBare(parts[0].expr, state, functions));
     }
-    return parts.map(p => ('text' in p ? p.text : valueText(evaluateBare(p.expr, state)))).join('');
+    return parts.map(p => ('text' in p ? p.text : valueText(evaluateBare(p.expr, state, functions)))).join('');
   } catch (e) {
     if (e instanceof Unknown) {
       return undefined;
@@ -462,13 +491,13 @@ export function evaluateExpression(expr: string, state: Record<string, string>):
 }
 
 /** A text template (`Profit: ${money(row.profit)}`) with each `${…}` the preview cannot evaluate left as an expression chip. */
-export function evaluateTemplateText(raw: string, state: Record<string, string>): string {
+export function evaluateTemplateText(raw: string, state: Record<string, string>, functions: ExternalFunctions = {}): string {
   return segments(raw).map(p => {
     if ('text' in p) return p.text;
     try {
-      return valueText(evaluateBare(p.expr, state));
+      return valueText(evaluateBare(p.expr, state, functions));
     } catch {
-      return CHIP_EXPR + p.expr + CHIP_END;
+      return CHIP_EXPR + 'ƒ ' + p.expr + CHIP_END;
     }
   }).join('');
 }
@@ -484,11 +513,11 @@ const table = (value: unknown): Record<string, unknown> =>
  * arrays / objects as their JSON text), the preview state over them, then Computed as menu.<name> (in order, unless the
  * preview state sets that name).
  */
-export function previewValues(doc: DesignerDocument): Record<string, string> {
+export function previewValues(doc: DesignerDocument, functions: ExternalFunctions = {}): Record<string, string> {
   const state: Record<string, string> = {};
   for (const [key, value] of Object.entries(table(doc.menuExtra.State))) {
     const text = scalar(value) ?? JSON.stringify(value);
-    const evaluated = text.trimStart().startsWith('$:{') ? evaluateExpression(text, state) : text;
+    const evaluated = text.trimStart().startsWith('$:{') ? evaluateExpression(text, state, functions) : text;
     if (evaluated !== undefined) {
       state[`menu.${key.trim()}`] = evaluated;
     }
@@ -497,7 +526,7 @@ export function previewValues(doc: DesignerDocument): Record<string, string> {
   for (const [key, value] of Object.entries(table(doc.menuExtra.Computed))) {
     const name = `menu.${key.trim()}`;
     const text = scalar(value);
-    const result = text !== undefined && !(name in doc.previewState) ? evaluateExpression(text, state) : undefined;
+    const result = text !== undefined && !(name in doc.previewState) ? evaluateExpression(text, state, functions) : undefined;
     if (result !== undefined) {
       state[name] = result;
     }
@@ -506,9 +535,9 @@ export function previewValues(doc: DesignerDocument): Record<string, string> {
 }
 
 /** An evaluator over the document's preview values (previewValues) and a place's row locals, as LayoutOptions.evaluate expects. */
-export function createEvaluator(doc: DesignerDocument): (expr: string, locals: Record<string, string>) => string | undefined {
-  const state = previewValues(doc);
-  return (expr, locals) => evaluateExpression(expr, Object.keys(locals).length > 0 ? { ...state, ...locals } : state);
+export function createEvaluator(doc: DesignerDocument, functions: ExternalFunctions = {}): (expr: string, locals: Record<string, string>) => string | undefined {
+  const state = previewValues(doc, functions);
+  return (expr, locals) => evaluateExpression(expr, Object.keys(locals).length > 0 ? { ...state, ...locals } : state, functions);
 }
 
 const namePattern = /\b(menu|session|player|config|stat|args)\.[A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)*/g;
