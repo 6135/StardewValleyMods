@@ -19,7 +19,8 @@ const collision: CollisionDetection = args => args.pointerCoordinates ? pointerW
 interface Dragged {
   /** The dragged tree node, or null for a palette type. */
   nodeId: NodeId | null;
-  label: string;
+  /** The node's or the palette item's type. */
+  type: string;
 }
 
 export function LeftPane() {
@@ -37,7 +38,7 @@ export function LeftPane() {
   const onDragStart = ({ active }: DragStartEvent) => {
     const paletteType = active.data.current?.['paletteType'] as string | undefined;
     const node = useDesigner.getState().doc.nodes[String(active.id)];
-    setDragged(paletteType ? { nodeId: null, label: paletteType } : { nodeId: String(active.id), label: node?.type ?? '' });
+    setDragged(paletteType ? { nodeId: null, type: paletteType } : { nodeId: String(active.id), type: node?.type ?? '' });
   };
 
   const onDragMove = ({ active, over, activatorEvent, delta }: DragMoveEvent) => {
@@ -50,7 +51,7 @@ export function LeftPane() {
     const y = 'clientY' in activatorEvent
       ? (activatorEvent as PointerEvent).clientY + delta.y
       : translated ? translated.top + translated.height / 2 : 0;
-    const next = computeDrop(useDesigner.getState().doc, dragged.nodeId, String(over.id), y);
+    const next = computeDrop(useDesigner.getState().doc, dragged, String(over.id), y);
     setDrop(prev => sameDrop(prev, next) ? prev : next);
   };
 
@@ -69,7 +70,7 @@ export function LeftPane() {
 
     const store = useDesigner.getState();
     if (source.nodeId === null) {
-      const id = store.addNode(target.parentId, source.label, target.index);
+      const id = store.addNode(target.parentId, source.type, target.index);
       if (id) {
         focusRow(id);
       }
@@ -88,7 +89,7 @@ export function LeftPane() {
         <Tree drop={drop} dragging={dragged !== null} />
       </div>
       <DragOverlay dropAnimation={null}>
-        {dragged && <div className={drop?.refusal ? 'drag-chip refused' : 'drag-chip'}>{dragged.label}</div>}
+        {dragged && <div className={drop?.refusal ? 'drag-chip refused' : 'drag-chip'}>{dragged.type}</div>}
       </DragOverlay>
     </DndContext>
   );
@@ -98,8 +99,8 @@ function sameDrop(a: DropTarget | null, b: DropTarget | null): boolean {
   return a === b || (a !== null && b !== null && a.overId === b.overId && a.zone === b.zone && a.refusal === b.refusal);
 }
 
-/** Where a node (null: a new palette element) lands when released at client `y` over the row of `overId`. */
-function computeDrop(doc: DesignerDocument, nodeId: NodeId | null, overId: NodeId, y: number): DropTarget | null {
+/** Where a dragged node or palette element lands when released at client `y` over the row of `overId`. */
+function computeDrop(doc: DesignerDocument, { nodeId, type }: Dragged, overId: NodeId, y: number): DropTarget | null {
   const over = doc.nodes[overId];
   const rect = document.querySelector(`.tree [data-node-id="${CSS.escape(overId)}"]`)?.getBoundingClientRect();
   if (!over || !rect || overId === nodeId) {
@@ -114,11 +115,11 @@ function computeDrop(doc: DesignerDocument, nodeId: NodeId | null, overId: NodeI
 
   if (zone === 'inside') {
     const children = over.children.filter(c => c !== nodeId);
-    return { overId, zone, parentId: overId, index: children.length, refusal: moveRefusal(doc, nodeId, overId) };
+    return { overId, zone, parentId: overId, index: children.length, refusal: moveRefusal(doc, nodeId, overId, type) };
   }
 
   const parentId = parentOf(doc, overId)!;
   const siblings = doc.nodes[parentId]!.children.filter(c => c !== nodeId);
   const index = siblings.indexOf(overId) + (zone === 'after' ? 1 : 0);
-  return { overId, zone, parentId, index, refusal: moveRefusal(doc, nodeId, parentId) };
+  return { overId, zone, parentId, index, refusal: moveRefusal(doc, nodeId, parentId, type) };
 }

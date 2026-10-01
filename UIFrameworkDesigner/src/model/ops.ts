@@ -1,6 +1,7 @@
 import type { DesignerDocument, DesignerNode, NodeId } from './document';
 import { createNode, newNodeId } from './factory';
 import { isContainer, typeInfo } from './metadata';
+import { subItemKind, subItemsOf } from './subItems';
 
 // Pure tree operations on a DesignerDocument (no React). Mutating functions take a draft (Immer) or a document the
 // caller owns; they return false / null when the operation is refused and leave the document untouched.
@@ -28,22 +29,40 @@ export function isInSubtree(doc: DesignerDocument, ancestor: NodeId, id: NodeId)
 }
 
 /**
- * True when nodes of this type can hold children: containers, the synthetic Menu / Template roots, and Repeat (its
- * children are the row template, so they are authored like a container's even though IsContainer excludes it).
+ * True when nodes of this type can hold children: containers, the synthetic Menu / Template roots, Repeat (its
+ * children are the row template, so they are authored like a container's even though IsContainer excludes it), the
+ * holders of sub-items (Form, DataGrid) and sub-items with an elements member (a Column's Cell).
  */
 export function acceptsChildren(type: string): boolean {
-  return type === 'Menu' || isContainer(type) || (typeInfo(type)?.members.includes('Children') ?? false);
+  return type === 'Menu' || isContainer(type) || (typeInfo(type)?.members.includes('Children') ?? false)
+    || subItemsOf(type) !== undefined || subItemKind(type)?.elements !== undefined;
 }
 
-/** Why a node cannot go into `parentId`, or null when it can. */
-export function moveRefusal(doc: DesignerDocument, nodeId: NodeId | null, parentId: NodeId): string | null {
+/** Why a node of `type` cannot go into a node of `parentType`, or null when it can. */
+export function placementRefusal(parentType: string, type: string): string | null {
+  if (!acceptsChildren(parentType)) {
+    return `${parentType} cannot hold children.`;
+  }
+
+  const items = subItemsOf(parentType);
+  if (items !== undefined) {
+    return type === items.type ? null : `A ${parentType} holds only ${items.title.toLowerCase()} items.`;
+  }
+
+  const kind = subItemKind(type);
+  return kind !== undefined ? `A ${kind.title.toLowerCase()} goes only in a ${kind.parent}.` : null;
+}
+
+/** Why a node of `type` (an existing node `nodeId`, or null for a new one) cannot go into `parentId`, or null when it can. */
+export function moveRefusal(doc: DesignerDocument, nodeId: NodeId | null, parentId: NodeId, type: string): string | null {
   const parent = doc.nodes[parentId];
   if (!parent) {
     return 'Unknown target.';
   }
 
-  if (!acceptsChildren(parent.type)) {
-    return `${parent.type} cannot hold children.`;
+  const refusal = placementRefusal(parent.type, type);
+  if (refusal !== null) {
+    return refusal;
   }
 
   if (nodeId !== null && isInSubtree(doc, nodeId, parentId)) {
@@ -78,23 +97,29 @@ export function suggestId(doc: DesignerDocument, type: string, existing?: string
   }
 }
 
-/** Starter fields so a new element shows something. */
-function starterFields(type: string): Record<string, string> {
+/** Starter fields so a new element (or sub-item: an id and its caption) shows something. */
+function starterFields(doc: DesignerDocument, type: string): Record<string, string> {
+  const kind = subItemKind(type);
+  if (kind !== undefined) {
+    return { Id: suggestId(doc, kind.title), [kind.caption]: kind.title };
+  }
+
+  const id = suggestId(doc, type);
   switch (type) {
-    case 'Label': return { Text: 'Label' };
-    case 'Button': return { Text: 'Button' };
-    case 'Checkbox': return { Label: 'Checkbox' };
-    default: return {};
+    case 'Label': return { Id: id, Text: 'Label' };
+    case 'Button': return { Id: id, Text: 'Button' };
+    case 'Checkbox': return { Id: id, Label: 'Checkbox' };
+    default: return { Id: id };
   }
 }
 
 /** Add a new element of `type` under `parentId` at `index` (default: last); returns its node id, or null when refused. */
 export function addNode(doc: DesignerDocument, parentId: NodeId, type: string, index?: number): NodeId | null {
-  if (moveRefusal(doc, null, parentId)) {
+  if (moveRefusal(doc, null, parentId, type)) {
     return null;
   }
 
-  const node = createNode(type, { Id: suggestId(doc, type), ...starterFields(type) });
+  const node = createNode(type, starterFields(doc, type));
   doc.nodes[node.id] = node;
   insertChild(doc.nodes[parentId]!, node.id, index);
   return node.id;
@@ -111,7 +136,7 @@ function insertChild(parent: DesignerNode, id: NodeId, index?: number): void {
  */
 export function moveNode(doc: DesignerDocument, nodeId: NodeId, newParentId: NodeId, index: number): boolean {
   const oldParentId = parentOf(doc, nodeId);
-  if (oldParentId === null || moveRefusal(doc, nodeId, newParentId)) {
+  if (oldParentId === null || moveRefusal(doc, nodeId, newParentId, doc.nodes[nodeId]!.type)) {
     return false;
   }
 
@@ -182,6 +207,23 @@ export function deleteNode(doc: DesignerDocument, nodeId: NodeId): boolean {
 }
 
 /** Set (or with undefined, remove) a string field of a node. */
+/** Set or remove (undefined) a non-string member; it replaces a string value of the same name. */
+export function setExtra(doc: DesignerDocument, nodeId: NodeId, field: string, value: unknown): boolean {
+  const node = doc.nodes[nodeId];
+  if (!node) {
+    return false;
+  }
+
+  delete node.fields[field];
+  if (value === undefined) {
+    delete node.extra[field];
+  } else {
+    node.extra[field] = value;
+  }
+
+  return true;
+}
+
 export function setField(doc: DesignerDocument, nodeId: NodeId, field: string, value: string | undefined): boolean {
   const node = doc.nodes[nodeId];
   if (!node || node.fields[field] === value) {

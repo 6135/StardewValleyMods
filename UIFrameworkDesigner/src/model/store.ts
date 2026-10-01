@@ -22,6 +22,10 @@ export interface DesignerState {
   setField(nodeId: NodeId, field: string, value: string | undefined): void;
   /** Set a menu field; undefined removes it. */
   setMenuField(field: string, value: string | undefined): void;
+  /** Set or remove a non-string member (JSON value) of an element. */
+  setExtra(nodeId: NodeId, field: string, value: unknown): void;
+  /** Set or remove a non-string menu member (State, Sources, Keys …). */
+  setMenuExtra(field: string, value: unknown): void;
   setMeta(meta: { owner?: string; menuId?: string }): void;
   /** Add an element of `type` under `parentId` (default index: last) and select it; null when refused. */
   addNode(parentId: NodeId, type: string, index?: number): NodeId | null;
@@ -59,6 +63,19 @@ export const useDesigner = create<DesignerState>()(
 
       setField: (nodeId, field, value) => set(s => {
         ops.setField(s.doc, nodeId, field, value);
+      }),
+
+      setExtra: (nodeId, field, value) => set(s => {
+        ops.setExtra(s.doc, nodeId, field, value);
+      }),
+
+      setMenuExtra: (field, value) => set(s => {
+        delete s.doc.menu[field];
+        if (value === undefined) {
+          delete s.doc.menuExtra[field];
+        } else {
+          s.doc.menuExtra[field] = value;
+        }
       }),
 
       setMenuField: (field, value) => set(s => {

@@ -2,6 +2,7 @@ import { useSortable, SortableContext } from '@dnd-kit/sortable';
 import type { KeyboardEvent } from 'react';
 import type { DesignerDocument, DesignerNode, NodeId } from '../model/document';
 import { acceptsChildren, parentOf } from '../model/ops';
+import { subItemKind } from '../model/subItems';
 import { useDesigner } from '../model/store';
 
 // The element tree (architecture.md §6.3). Rows are dnd-kit sortables that stay in place while dragging (the drop
@@ -113,13 +114,18 @@ export function Tree({ drop, dragging }: { drop: DropTarget | null; dragging: bo
   );
 }
 
-/** A short text preview of a node: its text, label or main value. */
+/** A short text preview of a node: its text, label or main value (a sub-item's caption: a field's Label, a column's Header). */
 function preview(node: DesignerNode, doc: DesignerDocument, isRoot: boolean): string | undefined {
   if (isRoot) {
     return doc.menu['Title'];
   }
 
   const f = node.fields;
+  const kind = subItemKind(node.type);
+  if (kind !== undefined) {
+    return f[kind.caption];
+  }
+
   return f['Text'] ?? f['Label'] ?? f['Button'] ?? f['Checkbox'] ?? f['Switch'] ?? f['Repeat'] ?? f['Source'] ?? f['Sprite'] ?? f['Image'] ?? f['Item'] ?? f['Case'];
 }
 

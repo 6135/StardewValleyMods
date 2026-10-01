@@ -303,7 +303,9 @@ body.drop-refused, body.drop-refused * {
 }
 
 .field.json .control {
-  grid-column: 2 / -1;
+  grid-column: 2 / 4;
+  color: inherit;
+  resize: vertical;
   margin: 0;
   padding: 4px 6px;
   max-height: 160px;
@@ -459,3 +461,4 @@ textarea.w-text {
 .io-head > :last-child { margin-left: auto; }
 .io-text { flex: 1; font-family: monospace; font-size: 12px; resize: none; }
 .io-result { display: flex; flex-direction: column; gap: 4px; max-height: 30%; overflow: auto; }
+.field .help.error { display: block; color: #d14343; }

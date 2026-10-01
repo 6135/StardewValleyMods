@@ -1,4 +1,5 @@
 import { menuSchema } from './model/metadata';
+import { subItemKinds } from './model/subItems';
 
 // The one hand-written metadata table (architecture.md §6.2): the literal shape of each string field, which the
 // schema cannot express because every data field is a string. Shapes follow the framework's ValueParsers use in
@@ -79,10 +80,17 @@ export const fieldShapes: Record<string, FieldShape> = {
   OnOpen: actions, OnClose: actions, OnUpdate: actions
 };
 
-/** Shapes that differ by element type (DataGrid Columns are objects in extra; an Image Source is a rectangle). */
+/**
+ * Shapes that differ by node type: an Image Source is a rectangle; a Form field (FormFieldDefinition, kinds of
+ * DataBuilder.Form) and a DataGrid column (ColumnDefinition, DataGridColumn) are sub-item nodes with their own fields.
+ */
 const typeShapes: Record<string, Record<string, FieldShape>> = {
-  DataGrid: { Columns: text },
-  Image: { Source: text }
+  Image: { Source: text },
+  FormField: {
+    Kind: { kind: 'enum', values: ['Text', 'Number', 'Integer', 'Checkbox', 'Dropdown'] },
+    Label: text, Tooltip: multiline, Section: text, ReadOnly: bool
+  },
+  Column: { Header: text, Width: text, MinWidth: int, Align: textAlign, Sortable: bool, Resizable: bool, Text: text, SortKey: text, SortNumber: text }
 };
 
 /** The shape of `field` on an element of `type` (or on the menu); text when unknown. */
@@ -90,12 +98,17 @@ export function shapeOf(type: string | 'menu', field: string): FieldShape {
   return (type === 'menu' ? undefined : typeShapes[type]?.[field]) ?? fieldShapes[field] ?? text;
 }
 
-/** Schema ElementDefinition / MenuDefinition fields that can hold a string but have no shape entry (logged in dev). */
+/** Schema element, menu and sub-item fields that can hold a string but have no shape entry (logged in dev). */
 export function missingShapes(): string[] {
   const missing: string[] = [];
-  for (const model of ['ElementDefinition', 'MenuDefinition']) {
+  const models: [string, Record<string, FieldShape>][] = [
+    ['ElementDefinition', {}],
+    ['MenuDefinition', {}],
+    ...subItemKinds.map((k): [string, Record<string, FieldShape>] => [k.schema, typeShapes[k.type] ?? {}])
+  ];
+  for (const [model, own] of models) {
     for (const [name, schema] of Object.entries(schemaProperties(model))) {
-      if (name !== 'Type' && name !== '$schema' && !(name in fieldShapes) && allowsString(schema)) {
+      if (name !== 'Type' && name !== '$schema' && !(name in own) && !(name in fieldShapes) && allowsString(schema)) {
         missing.push(`${model}.${name}`);
       }
     }
