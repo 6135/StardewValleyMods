@@ -5,6 +5,7 @@ import {
   CHIP_END, CHIP_EXPR, CHIP_I18N, CHIP_TOKEN, calibratedCssFont, canvasTextMeasurer, GAME_FONTS, layoutDocument,
   type FontName, type LayoutBox
 } from '../layout';
+import { subItemKind } from '../model/subItems';
 import { createEvaluator } from './evaluate';
 import { previewThemes, themeVariables } from './theme';
 import './PreviewPane.css';
@@ -252,9 +253,11 @@ export function PreviewPane({ doc, selection, onSelect, switchCases }: PreviewPa
               if (box.instance > 0) classes.push('pv-dim');
               if (box.hidden) classes.push('pv-hidden');
               if (box.detail?.enabled === false) classes.push('pv-disabled');
-              // a node's own boxes (every instance) show its selection / hover; framework-made parts do not
-              if (!box.synthetic && box.nodeId === selection) classes.push('pv-selected');
-              if (!box.synthetic && box.nodeId === hovered) classes.push('pv-hover');
+              // a node's own boxes (every instance) show its selection / hover; framework-made parts only when they stand for
+              // a sub-item (a form field's caption and control, a column's header and cells), not for their parent
+              const own = !box.synthetic || subItemKind(doc.nodes[box.nodeId]?.type ?? '') !== undefined;
+              if (own && box.nodeId === selection) classes.push('pv-selected');
+              if (own && box.nodeId === hovered) classes.push('pv-hover');
               const style: CSSProperties = { left: r.x, top: r.y, width: r.width, height: r.height };
               if (box.clipped) {
                 const c = box.clipped;
