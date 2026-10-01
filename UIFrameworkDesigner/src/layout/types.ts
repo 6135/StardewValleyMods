@@ -55,6 +55,11 @@ export interface LayoutResult {
   drawBox: boolean;
   /** Every placed element, parents before children (draw order). */
   boxes: LayoutBox[];
+  /**
+   * The layout-affecting expressions (menu Width / Height / X / Y / Padding, element Row, Column, spans, Cell, size,
+   * margins, Visible / If / Condition, Switch) the preview could not evaluate, in build order (repeats possible).
+   */
+  unresolved: string[];
 }
 
 /** What a box draws, for the schematic renderer. Text carries chip marks (see CHIP_I18N). */
@@ -102,6 +107,8 @@ export interface LayoutBox {
   ownerId?: NodeId;
   /** True for elements the framework creates (rows, headers, form fields) rather than a document element. */
   synthetic?: boolean;
+  /** Its position or size depends on an expression the preview could not evaluate (LayoutResult.unresolved). */
+  unresolved?: boolean;
   detail?: BoxDetail;
 }
 

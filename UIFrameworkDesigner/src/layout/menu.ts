@@ -42,6 +42,7 @@ function emit(element: LElement, clip: Rect | null, depth: number, boxes: Layout
     if (info.hidden) box.hidden = true;
     if (info.ownerId !== undefined) box.ownerId = info.ownerId;
     if (info.synthetic) box.synthetic = true;
+    if (info.unresolved) box.unresolved = true;
     if (info.detail) box.detail = info.detail;
     boxes.push(box);
     childDepth = depth + 1;
@@ -64,12 +65,14 @@ export function layoutDocument(doc: DesignerDocument, opts: LayoutOptions): Layo
   const menuInt = (field: string): number => v.int(menu[field], scope) ?? parseInt32(defaultOf('menu', field) ?? '') ?? 0;
 
   const drawBox = menuBool('DrawBox');
-  const padding = Math.max(0, menuInt('Padding'));
-  const width = v.optInt(menu.Width, scope) ?? null;
-  const height = v.optInt(menu.Height, scope) ?? null;
-  const anchor: Anchor = v.typed(menu.Anchor, scope, parseAnchor, false) ?? parseAnchor(defaultOf('menu', 'Anchor') ?? '') ?? 'center';
-  const x = menuInt('X');
-  const y = menuInt('Y');
+  const { padding, width, height, anchor, x, y } = v.collect(builder.unresolved, () => ({
+    padding: Math.max(0, menuInt('Padding')),
+    width: v.optInt(menu.Width, scope) ?? null,
+    height: v.optInt(menu.Height, scope) ?? null,
+    anchor: v.typed(menu.Anchor, scope, parseAnchor, false) ?? parseAnchor(defaultOf('menu', 'Anchor') ?? '') ?? 'center' as Anchor,
+    x: menuInt('X'),
+    y: menuInt('Y')
+  }));
   const hasTitle = menu.Title !== undefined;
   const titleText = hasTitle ? v.text(menu.Title, scope) : undefined;
 
@@ -120,7 +123,7 @@ export function layoutDocument(doc: DesignerDocument, opts: LayoutOptions): Layo
   const boxes: LayoutBox[] = [];
   emit(viewport, null, 0, boxes);
 
-  const result: LayoutResult = { window, content, drawBox, boxes };
+  const result: LayoutResult = { window, content, drawBox, boxes, unresolved: builder.unresolved };
   if (titleText !== undefined && titleText.replace(CHIP_MARKS, '').length > 0) {
     result.titleText = titleText;
     // SpriteText's width is approximated with the dialogue font

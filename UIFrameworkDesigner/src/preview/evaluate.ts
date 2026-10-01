@@ -577,3 +577,30 @@ export function findExpressionNames(doc: DesignerDocument): string[] {
   }
   return [...found].sort((a, b) => a.localeCompare(b));
 }
+
+/**
+ * The expression names (as findExpressionNames) the given expressions read that have no preview value, in first-use
+ * order; a menu.* Computed member without a value stands for the names its own expression reads.
+ */
+export function unknownNames(exprs: string[], doc: DesignerDocument, functions: ExternalFunctions = {}): string[] {
+  const values = previewValues(doc, functions);
+  const computed = table(doc.menuExtra.Computed);
+  const seen = new Set<string>();
+  const unknown: string[] = [];
+  const visit = (expr: string): void => {
+    for (const m of expr.matchAll(namePattern)) {
+      const name = m[0];
+      if (seen.has(name) || name in values) continue;
+      seen.add(name);
+      const key = Object.keys(computed).find(k => `menu.${k.trim()}` === name);
+      const source = key !== undefined && !(name in doc.previewState) ? scalar(computed[key]) : undefined;
+      if (source !== undefined) {
+        visit(source);
+      } else {
+        unknown.push(name);
+      }
+    }
+  };
+  new Set(exprs).forEach(visit);
+  return unknown;
+}

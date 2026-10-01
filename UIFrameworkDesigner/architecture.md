@@ -196,12 +196,17 @@ A TypeScript port of the framework's measure / arrange pass (`Core/LayoutEngine.
 
 The preview is drawn with DOM elements (absolute positioned), not a `<canvas>`, so hover, selection outlines, and click-to-select are plain DOM events.
 
+**Canvas.** The menu is laid out against the selected game screen as in game, but drawn on an unbounded pan / zoom canvas (`panZoom.ts`), like a diagram viewer: the screen is a framed rectangle, nothing is clipped by it, and whatever lies outside it is slightly dimmed. Wheel (or a trackpad pinch) zooms around the cursor; a drag pans (a left-button drag only once it has moved a few pixels, so clicks still select; middle button or space + drag at once); one finger pans and two pinch on touch; a double click on empty canvas or **Fit** fits the screen and the content, **100%** shows actual size. The view is kept per tab with the other preview settings (absent: fit). A tooltip tab uses the same pane, toolbar and canvas: its tooltip is centred on the screen and each block selects its node in the tree and inspector, with the same hover / selection outlines.
+
+**Preview state drawer.** Below the canvas, the Preview state panel is a collapsible drawer with its own scroll, resized by its top edge; it never covers the toolbar or takes the canvas below a usable height.
+
 ### 7.2 Data features in the preview
 
 | Feature | Preview |
 |---|---|
 | Expression in a text field | Shown as `ƒ menu.count`; evaluated if every name has a sample value in the **Preview state** panel (a tiny evaluator for literals, paths, `+ - * / == != && ||`, string interpolation) |
 | `Visible` / `If` / `Condition` | Shown, with a toggle to hide elements whose sample value is false |
+| Layout values that cannot be evaluated | When a layout-affecting expression (menu `Width` / `Height` / `X` / `Y` / `Padding`; an element's `Row`, `Column`, spans, `Cell`, size, margins, `Visible` / `If` / `Condition`, `Switch`) cannot be evaluated, its default applies, the element gets a dashed warning outline, and a notice bar lists the unknown names it depends on (a `Computed` member followed to the names it reads); its button opens the Preview state drawer with those names first, highlighted, the first focused |
 | `Switch` / `Case` | Case picker in the inspector; the chosen case renders |
 | `@name(…)` (functions C# registers) | Listed per workspace under **Preview functions** (every `@name` the workspace calls), each set to *unknown* (the call stays a chip; default), *i18n lookup of first argument* (the loaded i18n map, else the key), *first argument as text* or a *fixed value*; a function only ever called with one string literal gets a one-click "Use i18n lookup" while an i18n file is loaded. Autosaved and shared with the workspace (`$designer.functions`), never exported |
 | `Repeat`, `List`, `DataGrid` | The row template renders N times (N set in the inspector, default 3) with `${row.*}` shown as placeholders; inline `Sources` rows render as written |

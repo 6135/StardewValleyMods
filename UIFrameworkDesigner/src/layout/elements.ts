@@ -20,6 +20,8 @@ export interface ElementInfo {
   hidden?: boolean;
   ownerId?: NodeId;
   synthetic?: boolean;
+  /** A layout member (Row, Width, Margin …) is an expression the preview could not evaluate. */
+  unresolved?: boolean;
   detail?: BoxDetail;
 }
 

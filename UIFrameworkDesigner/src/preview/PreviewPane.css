@@ -55,26 +55,68 @@
 .pv-toolbar .pv-small { width: 52px; }
 .pv-custom { display: inline-flex; gap: 4px; align-items: center; }
 
+.pv-zoom { display: inline-flex; gap: 4px; align-items: center; }
+.pv-zoom button {
+  background: var(--pv-ui-input);
+  color: var(--pv-ui-fg);
+  border: 1px solid var(--pv-ui-border);
+  border-radius: 4px;
+  padding: 1px 6px;
+  font: inherit;
+  cursor: pointer;
+}
+.pv-zoom output { min-width: 3.5em; text-align: right; font-variant-numeric: tabular-nums; }
+
+/* layout values the preview could not evaluate (PreviewPane onShowState) */
+.pv-notice {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding: 3px 8px;
+  font-size: 12px;
+  background: rgba(217, 119, 6, 0.15);
+  border-bottom: 1px solid rgba(217, 119, 6, 0.5);
+}
+.pv-notice-text { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pv-notice button { flex: none; font: inherit; cursor: pointer; }
+
+/* the pan / zoom canvas (panZoom.ts): an unbounded stage, the world (screen coordinates) transformed in it */
 .pv-view {
+  position: relative;
   flex: 1;
   min-height: 0;
-  overflow: auto;
-  padding: 8px;
+  overflow: hidden;
   background: var(--pv-stage-bg);
+  touch-action: none;
+  cursor: default;
 }
-
-.pv-stage-size { position: relative; margin: auto; }
+.pv-view.pv-grabbing { cursor: grabbing; }
+.pv-world {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 0;
+  height: 0;
+  transform-origin: 0 0;
+  color: var(--pv-text);
+  user-select: none;
+}
 .pv-screen {
   position: absolute;
   left: 0;
   top: 0;
-  transform-origin: 0 0;
-  overflow: hidden;
   background: rgba(0, 0, 0, 0.4) linear-gradient(135deg, #5b7f4b 0%, #46663a 100%);
   background-blend-mode: multiply;
-  color: var(--pv-text);
-  cursor: default;
-  user-select: none;
+}
+/* drawn over the content: the screen's edge, everything outside it dimmed (nothing is clipped) */
+.pv-screen-frame {
+  position: absolute;
+  left: 0;
+  top: 0;
+  pointer-events: none;
+  z-index: 20;
+  outline: 2px dashed rgba(255, 255, 255, 0.55);
+  box-shadow: 0 0 0 100000px rgba(0, 0, 0, 0.3);
 }
 
 .pv-window {
@@ -110,6 +152,7 @@
 .pv-dim { opacity: 0.45; }
 .pv-hidden { opacity: 0.35; outline: 2px dashed #cf222e; outline-offset: -2px; }
 .pv-disabled { filter: grayscale(1) opacity(0.6); }
+.pv-unresolved { outline: 2px dashed #d97706; outline-offset: -2px; }
 .pv-hover { outline: 2px solid var(--pv-hover-outline); outline-offset: -1px; z-index: 1; }
 .pv-selected { outline: 3px solid var(--pv-select); outline-offset: -1px; z-index: 2; }
 
@@ -266,6 +309,8 @@
   min-width: 0;
 }
 .pv-state-hint { opacity: 0.7; font-size: 12px; }
+.pv-state-needed label { color: #d97706; font-weight: 600; }
+.pv-state-needed input { border-color: #d97706; box-shadow: 0 0 0 1px #d97706; }
 
 /* Hover tooltips (Tooltip.tsx, after TooltipRenderer): panel box, 16 px padding, rows 4 px apart. */
 .pv-tooltip {
@@ -284,6 +329,9 @@
   pointer-events: none;
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.35);
 }
+/* a tooltip tab's tooltip: its blocks select their nodes */
+.pv-tooltip-tab { pointer-events: auto; }
+.pv-tip-block { position: relative; }
 .pv-tip-text { white-space: pre-wrap; overflow-wrap: break-word; }
 .pv-tip-icon-row { display: flex; align-items: center; gap: 8px; white-space: pre; }
 .pv-tip-icon { display: inline-flex; align-items: center; justify-content: center; flex: none; border: 1px solid rgba(34, 17, 34, 0.4); box-sizing: border-box; }
@@ -300,7 +348,7 @@
 /* Game-art skin (gameArt.ts): the vanilla pieces as CSS border-images, a class per loaded sheet. drawTextureBox boxes
    are border-image slices of a third of the source, drawn at the framework's scale; parts that keep their layout
    borders draw the art on a ::before behind their content. */
-.pv-screen[class*='pv-art-'] { image-rendering: pixelated; }
+.pv-world[class*='pv-art-'] { image-rendering: pixelated; }
 
 .pv-art-menu .pv-window:not(.pv-window-bare) {
   border: 64px solid transparent;

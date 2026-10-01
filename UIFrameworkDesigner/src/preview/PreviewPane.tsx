@@ -1,19 +1,33 @@
 // Schematic preview (architecture.md §7): the layout port's boxes drawn as absolutely positioned DOM elements, in the
-// schematic skin or, when the user picks their Content folder, the game-art skin (gameArt.ts).
+// schematic skin or, when the user picks their Content folder, the game-art skin (gameArt.ts), on a pan / zoom canvas
+// (panZoom.ts) around the game screen. A tooltip tab shows its tooltip on the same canvas, its blocks selectable.
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type MouseEvent, type ReactNode } from 'react';
 import type { DesignerDocument, NodeId } from '../model/document';
-import { canvasTextMeasurer, CHIP_MARKS, layoutDocument, type LayoutBox } from '../layout';
+import { canvasTextMeasurer, CHIP_MARKS, layoutDocument, type LayoutBox, type Rect } from '../layout';
 import { subItemKind } from '../model/subItems';
-import { createEvaluator, previewValues, type ExternalFunctions } from './evaluate';
+import { createEvaluator, previewValues, unknownNames, type ExternalFunctions } from './evaluate';
 import { gameArtSupported, pickGameArt, releaseGameArt, type GameArt } from './gameArt';
 import { objectIndex } from './gameData';
 import { fontStyle, renderText } from './text';
 import { ItemSprite, TooltipBox } from './Tooltip';
 import { previewThemes, themeVariables } from './theme';
+import { usePanZoom, type CanvasView } from './panZoom';
 import './PreviewPane.css';
 
+/** A named tooltip shown by itself (a tooltip tab), centred on the screen. */
+export interface TooltipContent {
+  /** The TooltipDefinition JSON. */
+  definition: unknown;
+  /** The values its expressions read. */
+  state: Record<string, string>;
+  /** Each block's node, in block order (clicking a block selects it). */
+  blocks: NodeId[];
+}
+
 export interface PreviewPaneProps {
-  doc: DesignerDocument;
+  /** The menu or template laid out; absent when `tooltip` is shown instead. */
+  doc?: DesignerDocument;
+  tooltip?: TooltipContent;
   selection: NodeId | null;
   onSelect(id: NodeId | null): void;
   /** The case each Switch shows (from the inspector's case picker); the first page otherwise. */
@@ -25,7 +39,7 @@ export interface PreviewPaneProps {
    * nothing, the node's Tooltip / TooltipTitle fields are shown.
    */
   resolveTooltip?: (nodeId: NodeId) => unknown;
-  /** Screen, zoom and rows; controlled when given (with `onSettingsChange`), the pane's own state otherwise. */
+  /** Screen, view and rows; controlled when given (with `onSettingsChange`), the pane's own state otherwise. */
   settings?: PreviewSettings;
   onSettingsChange?(settings: PreviewSettings): void;
   /** The menu (`owner/menu`) a node's action opens (`6135.UIFramework_OpenMenu …`), when it is one the host can open. */
@@ -36,6 +50,8 @@ export interface PreviewPaneProps {
   functions?: ExternalFunctions;
   /** Sample rows of the sources C# provides, by source key (LayoutOptions.sampleRows). */
   sampleRows?: Record<string, unknown[]>;
+  /** Open the Preview state panel with these names (values the layout depends on that are unknown) first. */
+  onShowState?(names: string[]): void;
 }
 
 const screens = { '1280×720': [1280, 720], '1920×1080': [1920, 1080] } as const;
@@ -44,16 +60,16 @@ type ScreenKey = keyof typeof screens | 'custom';
 export interface PreviewSettings {
   screen: ScreenKey;
   custom: { width: number; height: number };
-  zoom: number | 'fit';
+  /** The canvas pan / zoom; absent: fit the screen and the content. */
+  view?: CanvasView;
   /** Rows rendered by Repeat, List and DataGrid. */
   repeatCount: number;
   showHidden: boolean;
 }
 
-export const defaultPreviewSettings: PreviewSettings = { screen: '1280×720', custom: { width: 1600, height: 900 }, zoom: 'fit', repeatCount: 3, showHidden: false };
+export const defaultPreviewSettings: PreviewSettings = { screen: '1280×720', custom: { width: 1600, height: 900 }, repeatCount: 3, showHidden: false };
 
 type Skin = 'default' | 'dark' | 'art';
-const zooms = [0.25, 0.5, 0.75, 1, 1.5, 2];
 
 interface BoxProps { box: LayoutBox; i18n: Record<string, string> | undefined; art: GameArt | undefined }
 
@@ -140,42 +156,39 @@ const inside = (box: LayoutBox, x: number, y: number): boolean => {
   return x >= r.x && y >= r.y && x < r.x + r.width && y < r.y + r.height;
 };
 
+function union(a: Rect, b: Rect): Rect {
+  const x = Math.min(a.x, b.x);
+  const y = Math.min(a.y, b.y);
+  return { x, y, width: Math.max(a.x + a.width, b.x + b.width) - x, height: Math.max(a.y + a.height, b.y + b.height) - y };
+}
+
+/** Clickable content: a layout box or a tooltip block. */
+const itemSelector = '[data-box],[data-node]';
+
 export function PreviewPane(props: PreviewPaneProps): ReactNode {
-  const { doc, selection, onSelect, switchCases, i18n, resolveTooltip, resolveMenuLink, onOpenMenu, functions, sampleRows } = props;
+  const { doc, tooltip, selection, onSelect, switchCases, i18n, resolveTooltip, resolveMenuLink, onOpenMenu, functions, sampleRows, onShowState } = props;
   const [ownSettings, setOwnSettings] = useState(defaultPreviewSettings);
-  const settings = props.settings ?? ownSettings;
-  const { screen, custom, zoom, repeatCount, showHidden } = settings;
-  const change = (patch: Partial<PreviewSettings>): void => {
-    const next = { ...settings, ...patch };
+  // settings saved before a member existed take its default
+  const settings: PreviewSettings = { ...defaultPreviewSettings, ...(props.settings ?? ownSettings) };
+  const { screen, custom, repeatCount, showHidden } = settings;
+  const emit = (next: PreviewSettings): void => {
     if (props.onSettingsChange) {
       props.onSettingsChange(next);
     } else {
       setOwnSettings(next);
     }
   };
+  const change = (patch: Partial<Omit<PreviewSettings, 'view'>>): void => emit({ ...settings, ...patch });
+  const setView = (view: CanvasView | undefined): void => {
+    const { view: _old, ...rest } = settings;
+    emit(view ? { ...rest, view } : rest);
+  };
   const [skin, setSkin] = useState<Skin>('default');
   const [art, setArt] = useState<GameArt | undefined>(undefined);
   const [hovered, setHovered] = useState<NodeId | null>(null);
   const [cursor, setCursor] = useState<{ x: number; y: number } | null>(null);
   const [tipNode, setTipNode] = useState<NodeId | null>(null);
-  const [paneSize, setPaneSize] = useState({ width: 800, height: 600 });
-  const viewRef = useRef<HTMLDivElement>(null);
-  const screenRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const el = viewRef.current;
-    if (!el || typeof ResizeObserver === 'undefined') {
-      return undefined;
-    }
-    const observer = new ResizeObserver(entries => {
-      const r = entries[0]?.contentRect;
-      if (r) {
-        setPaneSize({ width: r.width, height: r.height });
-      }
-    });
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, []);
+  const worldRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => () => releaseGameArt(art), [art]);
 
@@ -192,7 +205,7 @@ export function PreviewPane(props: PreviewPaneProps): ReactNode {
 
   const [screenW, screenH] = screen === 'custom' ? [custom.width, custom.height] : screens[screen];
   const measureText = useMemo(() => canvasTextMeasurer(i18n), [i18n]);
-  const layout = useMemo(() => layoutDocument(doc, {
+  const layout = useMemo(() => (doc ? layoutDocument(doc, {
     screenWidth: screenW,
     screenHeight: screenH,
     repeatCount,
@@ -201,27 +214,45 @@ export function PreviewPane(props: PreviewPaneProps): ReactNode {
     showHidden,
     ...(switchCases ? { switchCases } : {}),
     ...(sampleRows ? { sampleRows } : {})
-  }), [doc, screenW, screenH, repeatCount, measureText, showHidden, switchCases, functions, sampleRows]);
-  const values = useMemo(() => previewValues(doc, functions), [doc, functions]);
+  }) : null), [doc, screenW, screenH, repeatCount, measureText, showHidden, switchCases, functions, sampleRows]);
+  const values = useMemo(() => (doc ? previewValues(doc, functions) : {}), [doc, functions]);
+  const unknown = useMemo(() => (doc && layout ? unknownNames(layout.unresolved, doc, functions) : []), [doc, layout, functions]);
 
-  const fit = Math.max(0.05, Math.min((paneSize.width - 16) / screenW, (paneSize.height - 16) / screenH));
-  const scale = zoom === 'fit' ? fit : zoom;
+  // what a fit shows: the screen and everything laid out beyond it
+  const bounds = useMemo(() => {
+    let b: Rect = { x: 0, y: 0, width: screenW, height: screenH };
+    if (layout) {
+      b = union(b, layout.window);
+      if (layout.title) b = union(b, layout.title);
+      for (const box of layout.boxes) b = union(b, box.clipped ?? box.rect);
+    }
+    return b;
+  }, [layout, screenW, screenH]);
+  const canvas = usePanZoom(bounds, settings.view, setView, itemSelector);
+  const { x: viewX, y: viewY, zoom: scale } = canvas.view;
+
   const pick = (box: LayoutBox, alt: boolean): NodeId => (alt ? box.nodeId : box.ownerId ?? box.nodeId);
   const artOn = skin === 'art' && art !== undefined;
   const shownArt = artOn ? art : undefined;
 
-  const boxAt = (target: EventTarget): LayoutBox | undefined => {
-    const el = (target as HTMLElement).closest?.('[data-box]');
-    const index = el ? Number(el.getAttribute('data-box')) : -1;
-    return index >= 0 ? layout.boxes[index] : undefined;
+  /** The node under an event target: a layout box's (its owner unless alt is held) or a tooltip block's. */
+  const nodeAt = (target: EventTarget, alt: boolean): NodeId | null => {
+    const el = (target as HTMLElement).closest?.(itemSelector);
+    const node = el?.getAttribute('data-node');
+    if (node) {
+      return node;
+    }
+    const box = el ? layout?.boxes[Number(el.getAttribute('data-box'))] : undefined;
+    return box ? pick(box, alt) : null;
   };
 
   /** The node whose tooltip shows at a point: the topmost box there whose node has one. */
   const tooltipNodeAt = (x: number, y: number): NodeId | null => {
-    for (let i = layout.boxes.length - 1; i >= 0; i--) {
-      const box = layout.boxes[i]!;
+    const boxes = layout?.boxes ?? [];
+    for (let i = boxes.length - 1; i >= 0; i--) {
+      const box = boxes[i]!;
       if (!inside(box, x, y)) continue;
-      const fields = doc.nodes[box.nodeId]?.fields;
+      const fields = doc?.nodes[box.nodeId]?.fields;
       if (fields?.Tooltip || fields?.TooltipTitle || (resolveTooltip?.(box.nodeId) ?? undefined) !== undefined) {
         return box.nodeId;
       }
@@ -230,18 +261,16 @@ export function PreviewPane(props: PreviewPaneProps): ReactNode {
   };
 
   const onClick = (e: MouseEvent): void => {
-    const box = boxAt(e.target);
-    onSelect(box ? pick(box, e.altKey) : null);
+    onSelect(nodeAt(e.target, e.altKey));
   };
 
   const onMove = (e: MouseEvent): void => {
-    const box = boxAt(e.target);
-    const id = box ? pick(box, e.altKey) : null;
+    const id = nodeAt(e.target, e.altKey);
     if (id !== hovered) {
       setHovered(id);
     }
-    const r = screenRef.current?.getBoundingClientRect();
-    if (r) {
+    const r = worldRef.current?.getBoundingClientRect();
+    if (r && layout) {
       const point = { x: Math.round((e.clientX - r.left) / scale), y: Math.round((e.clientY - r.top) / scale) };
       setCursor(point);
       const tip = tooltipNodeAt(point.x, point.y);
@@ -257,7 +286,7 @@ export function PreviewPane(props: PreviewPaneProps): ReactNode {
     setTipNode(null);
   };
 
-  const boxes = useMemo(() => layout.boxes.map((box, i) => {
+  const boxes = useMemo(() => layout?.boxes.map((box, i) => {
     const r = box.rect;
     if (r.width <= 0 && r.height <= 0 && box.kind !== 'Slot') {
       return null;
@@ -271,9 +300,10 @@ export function PreviewPane(props: PreviewPaneProps): ReactNode {
     if (box.instance > 0) classes.push('pv-dim');
     if (box.hidden) classes.push('pv-hidden');
     if (box.detail?.enabled === false) classes.push('pv-disabled');
+    if (box.unresolved) classes.push('pv-unresolved');
     // a node's own boxes (every instance) show its selection / hover; framework-made parts only when they stand for
     // a sub-item (a form field's caption and control, a column's header and cells), not for their parent
-    const own = !box.synthetic || subItemKind(doc.nodes[box.nodeId]?.type ?? '') !== undefined;
+    const own = !box.synthetic || subItemKind(doc?.nodes[box.nodeId]?.type ?? '') !== undefined;
     if (own && box.nodeId === selection) classes.push('pv-selected');
     if (own && box.nodeId === hovered) classes.push('pv-hover');
     const link = !box.synthetic && box.instance === 0 && onOpenMenu ? resolveMenuLink?.(box.nodeId) : undefined;
@@ -283,7 +313,8 @@ export function PreviewPane(props: PreviewPaneProps): ReactNode {
       style.clipPath = `inset(${c.y - r.y}px ${r.x + r.width - (c.x + c.width)}px ${r.y + r.height - (c.y + c.height)}px ${c.x - r.x}px)`;
     }
     return (
-      <div key={i} data-box={i} className={classes.join(' ')} style={style} title={`${box.kind}${box.instance > 0 ? ` #${box.instance}` : ''}`}>
+      <div key={i} data-box={i} className={classes.join(' ')} style={style}
+        title={`${box.kind}${box.instance > 0 ? ` #${box.instance}` : ''}${box.unresolved ? ' (position depends on unknown values)' : ''}`}>
         <BoxContent box={box} i18n={i18n} art={shownArt} />
         {box.detail?.scrollbar ? <div className="pv-scrollbar" style={{ width: box.detail.scrollbar }} /> : null}
         {box.kind === 'Template' ? <span className="pv-tag">{renderText(box.label ?? '', i18n)}</span> : null}
@@ -293,12 +324,12 @@ export function PreviewPane(props: PreviewPaneProps): ReactNode {
         ) : null}
       </div>
     );
-  }), [layout, doc.nodes, selection, hovered, i18n, shownArt, scale, resolveMenuLink, onOpenMenu]);
+  }), [layout, doc?.nodes, selection, hovered, i18n, shownArt, scale, resolveMenuLink, onOpenMenu]);
 
-  const tipFields = tipNode ? doc.nodes[tipNode]?.fields : undefined;
+  const tipFields = tipNode ? doc?.nodes[tipNode]?.fields : undefined;
   const tipDefinition = tipNode ? resolveTooltip?.(tipNode) : undefined;
-  const screenClasses = ['pv-screen', ...(shownArt ? shownArt.sheets.map(s => `pv-art-${s}`) : [])];
-  const w = layout.window;
+  const worldClasses = ['pv-world', ...(shownArt ? shownArt.sheets.map(s => `pv-art-${s}`) : [])];
+  const screenSize = { width: screenW, height: screenH };
   return (
     <div className="pv-pane">
       <div className="pv-toolbar">
@@ -317,14 +348,13 @@ export function PreviewPane(props: PreviewPaneProps): ReactNode {
               onChange={e => change({ custom: { ...custom, height: Math.max(240, Number(e.target.value) || 240) } })} />
           </span>
         ) : null}
-        <label>Zoom{' '}
-          <select value={String(zoom)} onChange={e => change({ zoom: e.target.value === 'fit' ? 'fit' : Number(e.target.value) })}>
-            <option value="fit">Fit ({Math.round(fit * 100)}%)</option>
-            {zooms.map(z => <option key={z} value={z}>{z * 100}%</option>)}
-          </select>
-        </label>
+        <span className="pv-zoom" role="group" aria-label="Zoom">
+          <button type="button" onClick={canvas.fit} title="Fit the screen and the content (double-click empty canvas)">Fit</button>
+          <button type="button" onClick={canvas.actualSize} title="Actual size">100%</button>
+          <output title="Wheel or pinch to zoom; drag empty canvas, middle button or space + drag to pan">{Math.round(scale * 100)}%</output>
+        </span>
         <label title="Rows rendered by Repeat, List and DataGrid">Rows{' '}
-          <input type="number" min={0} max={50} value={repeatCount} className="pv-small"
+          <input type="number" min={0} max={50} value={repeatCount} className="pv-small" disabled={!doc}
             onChange={e => change({ repeatCount: Math.min(50, Math.max(0, Number(e.target.value) || 0)) })} />
         </label>
         <label><input type="checkbox" checked={showHidden} onChange={e => change({ showHidden: e.target.checked })} /> Show hidden</label>
@@ -337,38 +367,54 @@ export function PreviewPane(props: PreviewPaneProps): ReactNode {
         </label>
         {artOn ? <button type="button" onClick={() => void pickGameArt().then(a => a && setArt(a))} title="Pick another Content folder">Content…</button> : null}
       </div>
-      <div className="pv-view" ref={viewRef}>
-        <div className="pv-stage-size" style={{ width: screenW * scale, height: screenH * scale }}>
-          <div
-            ref={screenRef}
-            className={screenClasses.join(' ')}
-            style={{ width: screenW, height: screenH, transform: `scale(${scale})`, ...themeVariables(previewThemes[skin === 'dark' ? 'dark' : 'default']), ...shownArt?.vars } as CSSProperties}
-            onClick={onClick}
-            onMouseMove={onMove}
-            onMouseLeave={onLeave}
-          >
-            <div className={layout.drawBox ? 'pv-window' : 'pv-window pv-window-bare'} style={{ left: w.x, top: w.y, width: w.width, height: w.height }} />
-            {layout.title && layout.titleText ? (
-              <div className={layout.drawBox ? 'pv-title pv-title-scroll' : 'pv-title'}
-                style={{ left: layout.title.x, top: layout.title.y, width: layout.title.width, height: layout.title.height, ...fontStyle('dialogue') }}>
-                <span className="pv-nowrap">{renderText(layout.titleText, i18n)}</span>
-              </div>
-            ) : null}
-            {boxes}
-            {cursor && tipNode ? (
-              <TooltipBox
-                definition={tipDefinition}
-                {...(tipFields?.TooltipTitle ? { title: tipFields.TooltipTitle } : {})}
-                {...(tipFields?.Tooltip ? { text: tipFields.Tooltip } : {})}
-                cursor={cursor}
-                screen={{ width: screenW, height: screenH }}
-                state={values}
-                {...(functions ? { functions } : {})}
-                {...(i18n ? { i18n } : {})}
-                {...(shownArt ? { art: shownArt } : {})}
-              />
-            ) : null}
-          </div>
+      {unknown.length > 0 ? (
+        <div className="pv-notice" role="status">
+          <span className="pv-notice-text" title={unknown.join(', ')}>
+            Layout depends on {unknown.length} unknown value{unknown.length === 1 ? '' : 's'}: <code>{unknown.join(', ')}</code>
+          </span>
+          {onShowState ? <button type="button" onClick={() => onShowState(unknown)}>Set them in Preview state</button> : null}
+        </div>
+      ) : null}
+      <div ref={canvas.viewportRef} className={canvas.grabbing ? 'pv-view pv-grabbing' : 'pv-view'} {...canvas.handlers}
+        onClick={onClick} onMouseMove={onMove} onMouseLeave={onLeave}>
+        <div
+          ref={worldRef}
+          className={worldClasses.join(' ')}
+          style={{ transform: `translate(${viewX}px, ${viewY}px) scale(${scale})`, ...themeVariables(previewThemes[skin === 'dark' ? 'dark' : 'default']), ...shownArt?.vars } as CSSProperties}
+        >
+          <div className="pv-screen" style={screenSize} />
+          {layout ? (
+            <>
+              <div className={layout.drawBox ? 'pv-window' : 'pv-window pv-window-bare'}
+                style={{ left: layout.window.x, top: layout.window.y, width: layout.window.width, height: layout.window.height }} />
+              {layout.title && layout.titleText ? (
+                <div className={layout.drawBox ? 'pv-title pv-title-scroll' : 'pv-title'}
+                  style={{ left: layout.title.x, top: layout.title.y, width: layout.title.width, height: layout.title.height, ...fontStyle('dialogue') }}>
+                  <span className="pv-nowrap">{renderText(layout.titleText, i18n)}</span>
+                </div>
+              ) : null}
+              {boxes}
+            </>
+          ) : null}
+          {tooltip ? (
+            <TooltipBox definition={tooltip.definition} screen={screenSize} state={tooltip.state} blocks={tooltip.blocks}
+              selection={selection} hovered={hovered} showHidden={showHidden}
+              {...(functions ? { functions } : {})} {...(i18n ? { i18n } : {})} {...(shownArt ? { art: shownArt } : {})} />
+          ) : null}
+          <div className="pv-screen-frame" style={screenSize} />
+          {cursor && tipNode ? (
+            <TooltipBox
+              definition={tipDefinition}
+              {...(tipFields?.TooltipTitle ? { title: tipFields.TooltipTitle } : {})}
+              {...(tipFields?.Tooltip ? { text: tipFields.Tooltip } : {})}
+              cursor={cursor}
+              screen={screenSize}
+              state={values}
+              {...(functions ? { functions } : {})}
+              {...(i18n ? { i18n } : {})}
+              {...(shownArt ? { art: shownArt } : {})}
+            />
+          ) : null}
         </div>
       </div>
     </div>

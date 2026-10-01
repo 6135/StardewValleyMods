@@ -3,13 +3,13 @@
 // gap and the name / amount, Divider 2 px with 4 px margins), placed 32 px right / below the cursor and kept on screen.
 // The definition is the TooltipDefinition JSON (Data/Model/TooltipBlockDefinition.cs): an object { MaxWidth, Blocks },
 // the block array alone, or a string (one Line); members are matched without case like Json.NET.
-import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { GAME_FONTS } from '../layout';
+import type { NodeId } from '../model/document';
 import { evaluateExpression, evaluateTemplateText, type ExternalFunctions } from './evaluate';
 import { objectIndex, itemDisplayName } from './gameData';
 import type { GameArt } from './gameArt';
 import { chipTokens, fontStyle, renderText } from './text';
-import { previewThemes, themeVariables } from './theme';
 
 const Padding = 16;
 const CursorOffset = 32;
@@ -74,9 +74,16 @@ export interface TooltipBoxProps {
   functions?: ExternalFunctions;
   i18n?: Record<string, string>;
   art?: GameArt;
+  /** A tooltip tab's preview: each block's node, in block order; its blocks then select (data-node) and show outlines. */
+  blocks?: NodeId[];
+  selection?: NodeId | null;
+  hovered?: NodeId | null;
+  /** Show blocks whose When is false (marked hidden). */
+  showHidden?: boolean;
 }
 
-export function TooltipBox({ definition, title, text, cursor, screen, state, functions, i18n, art }: TooltipBoxProps): ReactNode {
+export function TooltipBox(props: TooltipBoxProps): ReactNode {
+  const { definition, title, text, cursor, screen, state, functions, i18n, art, blocks: nodes, selection, hovered, showHidden } = props;
   const ref = useRef<HTMLDivElement>(null);
   const [at, setAt] = useState(cursor ? { x: cursor.x + CursorOffset, y: cursor.y + CursorOffset } : { x: 0, y: 0 });
 
@@ -91,10 +98,13 @@ export function TooltipBox({ definition, title, text, cursor, screen, state, fun
   const lineHeight = GAME_FONTS.small.lineSpacing;
   const rows: ReactNode[] = [];
   blocks.forEach((b, i) => {
+    let hidden = false;
     if (b.when !== undefined) {
       const shown = evaluateExpression(b.when, state, functions);
-      if (shown !== undefined && !truthy(shown)) return;
+      hidden = shown !== undefined && !truthy(shown);
+      if (hidden && !showHidden) return;
     }
+    const before = rows.length;
     const color = b.color !== undefined ? textOf(b.color).trim() : '';
     const colorStyle: CSSProperties = color && typeof CSS !== 'undefined' && CSS.supports('color', color) ? { color } : {};
     switch (b.type) {
@@ -145,6 +155,12 @@ export function TooltipBox({ definition, title, text, cursor, screen, state, fun
       default:
         break;
     }
+    // a tooltip tab's block: its row wrapped to select its node
+    const node = nodes?.[i];
+    if (node !== undefined && rows.length > before) {
+      const classes = ['pv-tip-block', ...(hidden ? ['pv-hidden'] : []), ...(node === selection ? ['pv-selected'] : []), ...(node === hovered ? ['pv-hover'] : [])];
+      rows[before] = <div key={i} data-node={node} className={classes.join(' ')}>{rows[before]}</div>;
+    }
   });
 
   useLayoutEffect(() => {
@@ -176,53 +192,8 @@ export function TooltipBox({ definition, title, text, cursor, screen, state, fun
     return null;
   }
   return (
-    <div ref={ref} className="pv-tooltip" style={{ left: at.x, top: at.y }}>
+    <div ref={ref} className={nodes ? 'pv-tooltip pv-tooltip-tab' : 'pv-tooltip'} style={{ left: at.x, top: at.y }}>
       {rows}
-    </div>
-  );
-}
-
-export interface TooltipPreviewProps {
-  definition: unknown;
-  state: Record<string, string>;
-  functions?: ExternalFunctions;
-  i18n?: Record<string, string>;
-}
-
-/** A named tooltip's own preview: the tooltip centred on the preview background, as large as the pane. */
-/** The screen a tooltip tab is previewed on (the preview's default screen). */
-const TooltipScreen = { width: 1280, height: 720 };
-
-export function TooltipPreview({ definition, state, functions, i18n }: TooltipPreviewProps): ReactNode {
-  // a fixed game screen scaled to fit the pane, like PreviewPane: the tooltip wraps against the screen, never against the pane
-  const ref = useRef<HTMLDivElement>(null);
-  const [pane, setPane] = useState({ width: 800, height: 600 });
-  useEffect(() => {
-    const el = ref.current;
-    if (!el || typeof ResizeObserver === 'undefined') {
-      return undefined;
-    }
-    const observer = new ResizeObserver(entries => {
-      const r = entries[0]?.contentRect;
-      if (r) {
-        setPane({ width: Math.round(r.width), height: Math.round(r.height) });
-      }
-    });
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, []);
-  const scale = Math.max(0.05, Math.min(pane.width / TooltipScreen.width, pane.height / TooltipScreen.height));
-
-  return (
-    <div className="pv-pane">
-      <div ref={ref} className="pv-view">
-        <div className="pv-stage-size" style={{ width: TooltipScreen.width * scale, height: TooltipScreen.height * scale }}>
-          <div className="pv-screen" style={{ width: TooltipScreen.width, height: TooltipScreen.height, transform: `scale(${scale})`, ...themeVariables(previewThemes.default) } as CSSProperties}>
-            <TooltipBox definition={definition} screen={TooltipScreen} state={state}
-              {...(functions ? { functions } : {})} {...(i18n ? { i18n } : {})} />
-          </div>
-        </div>
-      </div>
     </div>
   );
 }
