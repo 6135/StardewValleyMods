@@ -1,0 +1,38 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <AssemblyName>DesignerMetadata</AssemblyName>
+    <RootNamespace>DesignerMetadata</RootNamespace>
+    <!-- the game's runtime, like the framework it loads (NETSDK1138 only fires for executables) -->
+    <TargetFramework>net6.0</TargetFramework>
+    <CheckEolTargetFramework>false</CheckEolTargetFramework>
+    <Nullable>enable</Nullable>
+    <LangVersion>latest</LangVersion>
+    <GamePath>$(STARDEW_GAME_DIR)</GamePath>
+    <!-- a build tool, not a mod: ModBuildConfig only finds the game folder and references its assemblies -->
+    <EnableModDeploy>false</EnableModDeploy>
+    <EnableModZip>false</EnableModZip>
+    <EnableGameDebugging>false</EnableGameDebugging>
+    <DefaultItemExcludes>$(DefaultItemExcludes);obj/**;bin/**</DefaultItemExcludes>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Pathoschild.Stardew.ModBuildConfig" Version="4.4.0" />
+    <ProjectReference Include="..\..\StardewUIFramework\UIFramework.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- SMAPI's own Newtonsoft.Json, like the framework; resolved from the game folder at run time (Program.Resolve) -->
+    <Reference Include="Newtonsoft.Json">
+      <HintPath>$(GamePath)\smapi-internal\Newtonsoft.Json.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <AssemblyMetadata Include="GamePath" Value="$(GamePath)" />
+    <AssemblyMetadata Include="OutputDir" Value="$([System.IO.Path]::GetFullPath('$(MSBuildProjectDirectory)\..\..\UIFrameworkDesigner\src\generated'))" />
+  </ItemGroup>
+
+</Project>

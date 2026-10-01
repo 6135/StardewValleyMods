@@ -1,0 +1,1902 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "UI Framework data menu (a Menus entry or a standalone From file)",
+  "$ref": "#/definitions/MenuDefinition",
+  "definitions": {
+    "Value": {
+      "description": "A value: text, a number or true / false (numbers and bools may also be written as strings).",
+      "type": [
+        "string",
+        "number",
+        "boolean"
+      ]
+    },
+    "StringList": {
+      "description": "A list of strings, or one comma-separated string.",
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "array",
+          "items": {
+            "type": [
+              "string",
+              "number",
+              "boolean"
+            ]
+          }
+        }
+      ]
+    },
+    "ActionList": {
+      "description": "Actions: a trigger action string, an action object, or an array of either.",
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "$ref": "#/definitions/ActionDefinition"
+        },
+        {
+          "type": "array",
+          "items": {
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "$ref": "#/definitions/ActionDefinition"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "Source": {
+      "description": "Where a collection's rows come from: a string (\"menu.items\", \"themes\", \"range:1..10\", \"query:ALL_ITEMS (O)\", \"asset:Data/X\", a Sources entry name; on an Image, the source rectangle \"x,y,w,h\"), an array of inline rows, or a source object.",
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "array"
+        },
+        {
+          "$ref": "#/definitions/SourceDefinition"
+        }
+      ]
+    },
+    "Columns": {
+      "description": "Grid: column tracks (\"auto, *, 120\"). DataGrid: the column objects.",
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "array",
+          "items": {
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "$ref": "#/definitions/ColumnDefinition"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "Tooltip": {
+      "description": "A rich tooltip: { MaxWidth, Blocks }, the block array alone, or one line of text.",
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/TooltipBlockDefinition"
+          }
+        },
+        {
+          "$ref": "#/definitions/TooltipDefinition"
+        }
+      ]
+    },
+    "ElementList": {
+      "description": "One element or an array of elements.",
+      "oneOf": [
+        {
+          "$ref": "#/definitions/ElementDefinition"
+        },
+        {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/ElementDefinition"
+          }
+        }
+      ]
+    },
+    "StateValue": {
+      "description": "A default value (text, number, true / false, a one-time \"$:{...}\"), or a JSON array / object kept as its JSON text for State sources.",
+      "type": [
+        "string",
+        "number",
+        "boolean",
+        "array",
+        "object"
+      ]
+    },
+    "MenuDefinition": {
+      "type": "object",
+      "properties": {
+        "From": {
+          "$ref": "#/definitions/Value",
+          "description": "Optional asset to read the definition from (a standalone file loaded with Content Patcher Load, e.g. Mods/{{ModId}}/UI/Main). Members set on the entry itself override the file's."
+        },
+        "Condition": {
+          "$ref": "#/definitions/Value",
+          "description": "A game state query checked when the menu is opened through data (actions, tile actions, console); the menu does not open while it fails."
+        },
+        "Hotkey": {
+          "$ref": "#/definitions/Value",
+          "description": "Keybind list (e.g. \"F10\" or \"LeftControl + U\") that toggles the menu."
+        },
+        "Title": {
+          "$ref": "#/definitions/Value",
+          "description": "Title shown in the scroll banner above the box."
+        },
+        "Width": {
+          "$ref": "#/definitions/Value",
+          "description": "Fixed width in pixels (empty = fit the content)."
+        },
+        "Height": {
+          "$ref": "#/definitions/Value",
+          "description": "Fixed height in pixels (empty = fit the content)."
+        },
+        "ShowCloseButton": {
+          "$ref": "#/definitions/Value",
+          "description": "Show the red close button (default true)."
+        },
+        "Modal": {
+          "$ref": "#/definitions/Value",
+          "description": "Block input to the game while open (default true)."
+        },
+        "DimBackground": {
+          "$ref": "#/definitions/Value",
+          "description": "Dim the game behind the menu (default true)."
+        },
+        "Anchor": {
+          "$ref": "#/definitions/Value",
+          "description": "Screen anchor: Center, TopLeft, TopCenter, TopRight, MiddleLeft, MiddleRight, BottomLeft, BottomCenter, BottomRight or Explicit."
+        },
+        "X": {
+          "$ref": "#/definitions/Value",
+          "description": "X position when Anchor is Explicit."
+        },
+        "Y": {
+          "$ref": "#/definitions/Value",
+          "description": "Y position when Anchor is Explicit."
+        },
+        "DrawBox": {
+          "$ref": "#/definitions/Value",
+          "description": "Draw the dialogue box chrome (default true)."
+        },
+        "Padding": {
+          "$ref": "#/definitions/Value",
+          "description": "Padding inside the chrome."
+        },
+        "CloseOnEscape": {
+          "$ref": "#/definitions/Value",
+          "description": "Close on Escape / B (default true)."
+        },
+        "PlayerLayout": {
+          "$ref": "#/definitions/Value",
+          "description": "Let the player move / resize / collapse the window (default true)."
+        },
+        "Resizable": {
+          "$ref": "#/definitions/Value",
+          "description": "Let the player resize the window even when it sizes to its content (default false; fixed-size windows are always resizable)."
+        },
+        "Horizontal": {
+          "$ref": "#/definitions/Value",
+          "description": "Lay the root's children out in a row instead of a column."
+        },
+        "Spacing": {
+          "$ref": "#/definitions/Value",
+          "description": "Pixels between the root's children (default 8)."
+        },
+        "Alignment": {
+          "$ref": "#/definitions/Value",
+          "description": "Default cross-axis alignment of the root's children."
+        },
+        "DefaultButton": {
+          "$ref": "#/definitions/Value",
+          "description": "Id of the button activated by Enter."
+        },
+        "CancelButton": {
+          "$ref": "#/definitions/Value",
+          "description": "Id of the button activated by Escape."
+        },
+        "State": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/StateValue"
+          },
+          "description": "Defaults of the menu's menu.* values ({ \"count\": 0, \"name\": \"Farmer\" }); only added for values that do not exist yet. A value may be a one-time \"$:{...}\" expression, or a JSON array (kept as its JSON text) read by a State source."
+        },
+        "Sources": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/Source"
+          },
+          "description": "Named row sources the menu's collections reference by name: { \"fruits\": { \"Rows\": [...] }, \"wines\": \"query:FLAVORED_ITEM Wine (O)398\" }."
+        },
+        "StateLifetime": {
+          "$ref": "#/definitions/Value",
+          "description": "How long menu.* values live: Session (default, until the return to title) or Open (reset every time the menu opens)."
+        },
+        "Computed": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/Value"
+          },
+          "description": "Derived values readable as menu.<name>: { \"total\": \"menu.price * menu.count\" }."
+        },
+        "Watch": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/ActionList"
+          },
+          "description": "Actions run when a state value changes: { \"menu.count\": [ ... ] } (event.old, event.new, event.key)."
+        },
+        "Templates": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/TemplateDefinition"
+          },
+          "description": "Menu-local templates by name, expanded where an element's Type (or Template) names them."
+        },
+        "Expose": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/Value"
+          },
+          "description": "Values shared with contributors (ctx.<key> in their data, IUIScreenContext.GetString / GetNumber / GetBool in C#): { \"name\": \"menu.name\" }."
+        },
+        "Commands": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/ActionList"
+          },
+          "description": "Commands shared with contributors (_Invoke ctx.<key>, IUIScreenContext.Invoke): { \"log\": [ ... ] }, run in the menu's scope."
+        },
+        "OnUpdate": {
+          "$ref": "#/definitions/ActionList",
+          "description": "Actions run while the menu is open, every UpdateIntervalMs (default: every tick); event.elapsed is the time since the last run."
+        },
+        "UpdateIntervalMs": {
+          "$ref": "#/definitions/Value",
+          "description": "Milliseconds between OnUpdate runs (0 = every tick)."
+        },
+        "Keys": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/KeyBindingDefinition"
+          },
+          "description": "Menu-level key handlers: [{ Key, Shift, Ctrl, Alt, Actions }]."
+        },
+        "OnOpen": {
+          "$ref": "#/definitions/ActionList",
+          "description": "Actions run after the menu opened."
+        },
+        "OnClose": {
+          "$ref": "#/definitions/ActionList",
+          "description": "Actions run after the menu closed."
+        },
+        "OnScroll": {
+          "$ref": "#/definitions/ActionList",
+          "description": "Actions run when the menu's viewport scrolls."
+        },
+        "Children": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/ElementDefinition"
+          },
+          "description": "The elements of the menu's root stack."
+        },
+        "$schema": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "description": "One entry of the Mods/6135.UIFramework/Menus asset, keyed <owner>/<menuId> where the owner is a loaded mod or content pack id. Holds the menu options (the data form of IUIMenuOptions), the root stack's layout, menu events and the element tree."
+    },
+    "ElementDefinition": {
+      "type": "object",
+      "properties": {
+        "Type": {
+          "anyOf": [
+            {
+              "enum": [
+                "Stack",
+                "Grid",
+                "Panel",
+                "Canvas",
+                "ScrollView",
+                "Slot",
+                "Spacer",
+                "Label",
+                "Button",
+                "Image",
+                "ItemImage",
+                "Checkbox",
+                "TextInput",
+                "NumberInput",
+                "Dropdown",
+                "Slider",
+                "Switch",
+                "Repeat",
+                "List",
+                "DataGrid",
+                "Form",
+                "Composite",
+                "Template",
+                "Outlet"
+              ]
+            },
+            {
+              "type": "string"
+            }
+          ],
+          "description": "Element type: Stack, Grid, Panel, Canvas, ScrollView, Slot, Spacer, Label, Button, Image, ItemImage, Checkbox, TextInput, NumberInput, Dropdown, Slider, Switch, Repeat, List, DataGrid, Form, Composite, Template or Outlet. A dotted name (\"6135.Example.Gauge\") is a custom tag: the composite of that name (C# or data), with the element's other fields as its arguments; the name of a template (the menu's Templates, else the owner's) expands that template the same way."
+        },
+        "Id": {
+          "$ref": "#/definitions/Value",
+          "description": "Element id, unique within the menu. Content Patcher TargetField reaches nested elements by it; missing ids are generated as parent.index."
+        },
+        "Condition": {
+          "$ref": "#/definitions/Value",
+          "description": "A game state query evaluated when the menu opens; the element is hidden while it does not match."
+        },
+        "Children": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/ElementDefinition"
+          },
+          "description": "Child elements (containers only; the pages of a Switch)."
+        },
+        "If": {
+          "$ref": "#/definitions/Value",
+          "description": "An expression; the element is only built while it is true (rebuilt when it changes), unlike Visible which keeps it built but hidden."
+        },
+        "Switch": {
+          "$ref": "#/definitions/Value",
+          "description": "Switch: an expression whose value selects the child page with the matching Case (pages are built the first time they are shown). Also the shorthand for a Switch element."
+        },
+        "Case": {
+          "$ref": "#/definitions/Value",
+          "description": "A page of a Switch: the value(s) that select it (\"general\" or \"a, b\"); \"*\" or no Case is the default page."
+        },
+        "With": {
+          "$ref": "#/definitions/Value",
+          "description": "Narrows the scope: inside this element, \".day\" means \"<With>.day\" (e.g. \"menu.settings\")."
+        },
+        "Out": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/Value"
+          },
+          "description": "Output bindings: runtime values written into state when they change, e.g. { \"IsHovered\": \"menu.hoverOk\", \"ScrollOffset\": \"menu.scroll\" }. Keys: IsHovered, IsFocused, Visible, ScrollOffset, MaxScroll, SelectedIndex, SelectedValue, SelectedRow, Value, Text, IsOpen, X, Y, Width, Height."
+        },
+        "Class": {
+          "$ref": "#/definitions/Value",
+          "description": "Style classes from the owner's Owners entry (\"header big\"), merged in order before the inline Style."
+        },
+        "Keys": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/KeyBindingDefinition"
+          },
+          "description": "Key handlers: [{ Key, Shift, Ctrl, Alt, Actions }]; the key counts as handled when an entry matches."
+        },
+        "Label": {
+          "$ref": "#/definitions/Value",
+          "description": "Shorthand for a Label element with this text; on a Checkbox, the checkbox label."
+        },
+        "Button": {
+          "$ref": "#/definitions/Value",
+          "description": "Shorthand for a Button element with this text."
+        },
+        "Checkbox": {
+          "$ref": "#/definitions/Value",
+          "description": "Shorthand for a Checkbox element with this label."
+        },
+        "Image": {
+          "$ref": "#/definitions/Value",
+          "description": "Shorthand for an Image element showing this image reference (sprite:Owner/name, item:(O)24, asset:Path@x,y,w,h)."
+        },
+        "Visible": {
+          "$ref": "#/definitions/Value",
+          "description": "Whether the element is shown (hidden elements take no space in stacks)."
+        },
+        "Enabled": {
+          "$ref": "#/definitions/Value",
+          "description": "Whether the element takes input."
+        },
+        "Tooltip": {
+          "$ref": "#/definitions/Value",
+          "description": "Tooltip text shown after the hover delay."
+        },
+        "TooltipTitle": {
+          "$ref": "#/definitions/Value",
+          "description": "Bold title line of the tooltip."
+        },
+        "Tag": {
+          "$ref": "#/definitions/Value",
+          "description": "Free-form tag (a string) for other mods."
+        },
+        "Sealed": {
+          "$ref": "#/definitions/Value",
+          "description": "Opt out of modification by other mods (slot contributors / decorators)."
+        },
+        "AccessibleName": {
+          "$ref": "#/definitions/Value",
+          "description": "Name read by screen readers instead of the visible text."
+        },
+        "Margin": {
+          "$ref": "#/definitions/Value",
+          "description": "Margin shorthand: \"all\", \"horizontal,vertical\" or \"left,top,right,bottom\"."
+        },
+        "MarginLeft": {
+          "$ref": "#/definitions/Value",
+          "description": "Left margin in pixels."
+        },
+        "MarginTop": {
+          "$ref": "#/definitions/Value",
+          "description": "Top margin in pixels."
+        },
+        "MarginRight": {
+          "$ref": "#/definitions/Value",
+          "description": "Right margin in pixels."
+        },
+        "MarginBottom": {
+          "$ref": "#/definitions/Value",
+          "description": "Bottom margin in pixels."
+        },
+        "Width": {
+          "$ref": "#/definitions/Value",
+          "description": "Fixed width in pixels (\"auto\" or empty = measured). On a Spacer, its width."
+        },
+        "Height": {
+          "$ref": "#/definitions/Value",
+          "description": "Fixed height in pixels (\"auto\" or empty = measured). On a Spacer, its height."
+        },
+        "MinWidth": {
+          "$ref": "#/definitions/Value",
+          "description": "Smallest width in pixels, margins excluded (\"auto\" or empty = none; wins over MaxWidth, ignored with a fixed Width)."
+        },
+        "MaxWidth": {
+          "$ref": "#/definitions/Value",
+          "description": "Largest width in pixels, margins excluded (\"auto\" or empty = none; ignored with a fixed Width)."
+        },
+        "HorizontalAlign": {
+          "$ref": "#/definitions/Value",
+          "description": "Horizontal alignment in the parent's slot: Start, Center, End or Stretch."
+        },
+        "VerticalAlign": {
+          "$ref": "#/definitions/Value",
+          "description": "Vertical alignment in the parent's slot: Start, Center, End or Stretch."
+        },
+        "X": {
+          "$ref": "#/definitions/Value",
+          "description": "X position inside a Canvas."
+        },
+        "Y": {
+          "$ref": "#/definitions/Value",
+          "description": "Y position inside a Canvas."
+        },
+        "Row": {
+          "$ref": "#/definitions/Value",
+          "description": "Grid row (0-based)."
+        },
+        "Column": {
+          "$ref": "#/definitions/Value",
+          "description": "Grid column (0-based)."
+        },
+        "RowSpan": {
+          "$ref": "#/definitions/Value",
+          "description": "Number of grid rows spanned."
+        },
+        "ColumnSpan": {
+          "$ref": "#/definitions/Value",
+          "description": "Number of grid columns spanned."
+        },
+        "Cell": {
+          "$ref": "#/definitions/Value",
+          "description": "Grid cell shorthand: \"row,column\"."
+        },
+        "Span": {
+          "$ref": "#/definitions/Value",
+          "description": "Grid span shorthand: \"rows,columns\"."
+        },
+        "Style": {
+          "$ref": "#/definitions/StyleDefinition",
+          "description": "Inline style overrides for this element."
+        },
+        "OnClick": {
+          "$ref": "#/definitions/ActionList",
+          "description": "Actions run on a left click."
+        },
+        "OnRightClick": {
+          "$ref": "#/definitions/ActionList",
+          "description": "Actions run on a right click."
+        },
+        "OnHover": {
+          "$ref": "#/definitions/ActionList",
+          "description": "Actions run when the cursor enters the element."
+        },
+        "OnHoverEnd": {
+          "$ref": "#/definitions/ActionList",
+          "description": "Actions run when the cursor leaves the element."
+        },
+        "OnFocus": {
+          "$ref": "#/definitions/ActionList",
+          "description": "Actions run when the element gains keyboard / gamepad focus."
+        },
+        "OnBlur": {
+          "$ref": "#/definitions/ActionList",
+          "description": "Actions run when the element loses focus."
+        },
+        "OnValueChanged": {
+          "$ref": "#/definitions/ActionList",
+          "description": "Actions run when an input's value changes (List / DataGrid: the selection; event.index, event.row)."
+        },
+        "OnSubmit": {
+          "$ref": "#/definitions/ActionList",
+          "description": "Actions run when Enter is pressed in a text / number input."
+        },
+        "OnLink": {
+          "$ref": "#/definitions/ActionList",
+          "description": "Actions run when a [link=...] span of a rich text label is clicked."
+        },
+        "OnScroll": {
+          "$ref": "#/definitions/ActionList",
+          "description": "Actions run when a scroll view / dropdown / list / grid scrolls (event.delta)."
+        },
+        "Horizontal": {
+          "$ref": "#/definitions/Value",
+          "description": "Stack / Slot: lay children out in a row instead of a column."
+        },
+        "Spacing": {
+          "$ref": "#/definitions/Value",
+          "description": "Stack: pixels between children."
+        },
+        "Alignment": {
+          "$ref": "#/definitions/Value",
+          "description": "Stack: default cross-axis alignment of the children."
+        },
+        "Columns": {
+          "$ref": "#/definitions/Columns",
+          "description": "Grid: column tracks, e.g. \"auto, *, 2*, 120\" (or [{ \"Width\": \"auto\" }, ...]). DataGrid: the columns, [{ \"Id\", \"Header\", \"Width\", \"Text\", \"SortNumber\", \"Cell\", ... }]."
+        },
+        "Rows": {
+          "$ref": "#/definitions/Value",
+          "description": "Grid: row tracks, e.g. \"auto, auto\"."
+        },
+        "ColumnSpacing": {
+          "$ref": "#/definitions/Value",
+          "description": "Grid: pixels between columns."
+        },
+        "RowSpacing": {
+          "$ref": "#/definitions/Value",
+          "description": "Grid: pixels between rows."
+        },
+        "DrawBox": {
+          "$ref": "#/definitions/Value",
+          "description": "Panel / Button: draw the 9-slice box."
+        },
+        "Padding": {
+          "$ref": "#/definitions/Value",
+          "description": "Panel: padding inside the box."
+        },
+        "ViewportHeight": {
+          "$ref": "#/definitions/Value",
+          "description": "ScrollView: height of the visible area in pixels."
+        },
+        "ScrollStep": {
+          "$ref": "#/definitions/Value",
+          "description": "ScrollView: pixels scrolled per wheel notch."
+        },
+        "ShowScrollbar": {
+          "$ref": "#/definitions/Value",
+          "description": "ScrollView: show the scrollbar when the content overflows."
+        },
+        "MaxHeight": {
+          "$ref": "#/definitions/Value",
+          "description": "Slot: maximum height before the slot scrolls."
+        },
+        "MaxContributions": {
+          "$ref": "#/definitions/Value",
+          "description": "Slot: maximum number of contributions accepted (0 = unlimited)."
+        },
+        "Text": {
+          "$ref": "#/definitions/Value",
+          "description": "Label / Button text."
+        },
+        "Font": {
+          "$ref": "#/definitions/Value",
+          "description": "Font: small, dialogue or tiny."
+        },
+        "Color": {
+          "$ref": "#/definitions/Value",
+          "description": "Label text color (#RRGGBB, #RRGGBBAA, R,G,B[,A] or a color name)."
+        },
+        "Shadow": {
+          "$ref": "#/definitions/Value",
+          "description": "Label: draw the text shadow."
+        },
+        "Wrap": {
+          "$ref": "#/definitions/Value",
+          "description": "Label: wrap the text to the available width. Stack / Repeat / Outlet / Slot (rows only): wrap the children onto further lines when they do not fit (default false)."
+        },
+        "Shrink": {
+          "$ref": "#/definitions/Value",
+          "description": "Button / Checkbox / Dropdown / single-line Label: may shorten the text with \"...\" to fit a narrow space (default false: the minimum width keeps the whole text)."
+        },
+        "TextAlign": {
+          "$ref": "#/definitions/Value",
+          "description": "Label: text alignment inside the label (Start, Center, End)."
+        },
+        "Scale": {
+          "$ref": "#/definitions/Value",
+          "description": "Label text scale, or Image / ItemImage scale."
+        },
+        "RichText": {
+          "$ref": "#/definitions/Value",
+          "description": "Label / Button: parse [b], [color=...], [link=...] and [[ markup."
+        },
+        "Icon": {
+          "$ref": "#/definitions/Value",
+          "description": "Button icon: an image reference (sprite:Owner/name, item:(O)24, asset:Path@x,y,w,h)."
+        },
+        "IconScale": {
+          "$ref": "#/definitions/Value",
+          "description": "Button icon scale."
+        },
+        "ClickSound": {
+          "$ref": "#/definitions/Value",
+          "description": "Sound cue played on click (empty = silent)."
+        },
+        "HoverSound": {
+          "$ref": "#/definitions/Value",
+          "description": "Sound cue played when the cursor enters (empty = silent)."
+        },
+        "Sprite": {
+          "$ref": "#/definitions/Value",
+          "description": "Image: an image reference (sprite:Owner/name, item:(O)24, asset:Path@x,y,w,h, or a texture asset name)."
+        },
+        "Tint": {
+          "$ref": "#/definitions/Value",
+          "description": "Image / ItemImage tint color."
+        },
+        "Item": {
+          "$ref": "#/definitions/Value",
+          "description": "ItemImage: a qualified item id ((O)24), an item query (FLAVORED_ITEM Wine (O)398) or an expression giving an item (${row.item}); resolved items are cached by text."
+        },
+        "Quality": {
+          "$ref": "#/definitions/Value",
+          "description": "ItemImage: item quality (0 normal, 1 silver, 2 gold, 4 iridium)."
+        },
+        "Count": {
+          "$ref": "#/definitions/Value",
+          "description": "ItemImage: stack size."
+        },
+        "Stack": {
+          "$ref": "#/definitions/Value",
+          "description": "ItemImage: what to draw over the item: Hide, Quality or NumberAndQuality."
+        },
+        "DrawShadow": {
+          "$ref": "#/definitions/Value",
+          "description": "ItemImage: draw the item's shadow."
+        },
+        "Alpha": {
+          "$ref": "#/definitions/Value",
+          "description": "ItemImage: opacity (0-1)."
+        },
+        "Line": {
+          "$ref": "#/definitions/Value",
+          "description": "Spacer: draw a horizontal divider line."
+        },
+        "Value": {
+          "$ref": "#/definitions/Value",
+          "description": "Default value of an input (text, number, true/false or the selected choice); only used when its state value does not exist yet."
+        },
+        "Bind": {
+          "$ref": "#/definitions/Value",
+          "description": "The state value an input reads and writes (two-way), e.g. \"menu.name\", \"config.volume\", \"player.nickname\" or \".day\" inside a With. Default: menu.<Id>."
+        },
+        "Validate": {
+          "$ref": "#/definitions/Value",
+          "description": "TextInput / NumberInput: an expression checked for every new value (event.value); false or a message rejects it, and OnInvalid runs with event.error."
+        },
+        "OnInvalid": {
+          "$ref": "#/definitions/ActionList",
+          "description": "Actions run when Validate rejects a value (event.value, event.error)."
+        },
+        "Placeholder": {
+          "$ref": "#/definitions/Value",
+          "description": "TextInput: text shown while empty."
+        },
+        "MaxLength": {
+          "$ref": "#/definitions/Value",
+          "description": "TextInput: maximum number of characters (0 = unlimited)."
+        },
+        "Texture": {
+          "$ref": "#/definitions/Value",
+          "description": "TextInput / NumberInput: text box texture (an image reference or asset name, e.g. Mods/6135.UIFramework/TextBoxSmall)."
+        },
+        "Min": {
+          "$ref": "#/definitions/Value",
+          "description": "NumberInput / Slider minimum."
+        },
+        "Max": {
+          "$ref": "#/definitions/Value",
+          "description": "NumberInput / Slider maximum."
+        },
+        "Step": {
+          "$ref": "#/definitions/Value",
+          "description": "NumberInput / Slider step."
+        },
+        "Clamp": {
+          "$ref": "#/definitions/Value",
+          "description": "NumberInput: clamp typed values to Min / Max."
+        },
+        "Decimals": {
+          "$ref": "#/definitions/Value",
+          "description": "NumberInput: decimals shown."
+        },
+        "Choices": {
+          "$ref": "#/definitions/StringList",
+          "description": "Dropdown: choice values (array, or one comma-separated string)."
+        },
+        "Labels": {
+          "$ref": "#/definitions/StringList",
+          "description": "Dropdown: display labels matching Choices (defaults to the values)."
+        },
+        "MaxVisible": {
+          "$ref": "#/definitions/Value",
+          "description": "Dropdown: rows visible in the open list before it scrolls."
+        },
+        "ChoicesSource": {
+          "$ref": "#/definitions/Source",
+          "description": "Dropdown: take the choices from a source instead of Choices (e.g. \"themes\" or { \"Query\": \"ALL_ITEMS (O)\" })."
+        },
+        "ChoiceValue": {
+          "$ref": "#/definitions/Value",
+          "description": "Dropdown with ChoicesSource: an expression giving a row's value (default: row.value, row.id, row.key, else the row itself)."
+        },
+        "ChoiceLabel": {
+          "$ref": "#/definitions/Value",
+          "description": "Dropdown with ChoicesSource: an expression giving a row's label (default: row.label, row.displayName, row.name, else the value)."
+        },
+        "Source": {
+          "$ref": "#/definitions/Source",
+          "description": "List / DataGrid: where the rows come from (\"menu.items\", \"themes\", \"range:1..10\", { \"Query\": \"ALL_ITEMS (O)\" }, { \"Rows\": [...] }...). Image: the source rectangle \"x,y,w,h\" (overrides the sprite's own)."
+        },
+        "Repeat": {
+          "$ref": "#/definitions/Source",
+          "description": "Repeat: the source to repeat the children over (a non-virtualized copy per row); also the shorthand for a Repeat element."
+        },
+        "As": {
+          "$ref": "#/definitions/Value",
+          "description": "List / DataGrid / Repeat: the name of the row variable besides \"row\" (nested repeats reach outer rows by it), e.g. \"fruit\"."
+        },
+        "RowTemplate": {
+          "$ref": "#/definitions/ElementList",
+          "description": "List: the elements of one row (an element or an array); ids are prefixed with the row container's id."
+        },
+        "RowHeight": {
+          "$ref": "#/definitions/Value",
+          "description": "List / DataGrid: row height in pixels (default 48)."
+        },
+        "VisibleRows": {
+          "$ref": "#/definitions/Value",
+          "description": "List / DataGrid: number of rows shown (default 6)."
+        },
+        "Selectable": {
+          "$ref": "#/definitions/Value",
+          "description": "List / DataGrid: clicking a row selects it."
+        },
+        "MultiSelect": {
+          "$ref": "#/definitions/Value",
+          "description": "DataGrid: Ctrl-click toggles rows, Shift-click selects a range."
+        },
+        "BindSelected": {
+          "$ref": "#/definitions/Value",
+          "description": "List / DataGrid: a state value holding the selected row index (two-way; -1 = none)."
+        },
+        "BindSelection": {
+          "$ref": "#/definitions/Value",
+          "description": "DataGrid: a state value holding every selected row index as comma-separated text (two-way)."
+        },
+        "Sort": {
+          "$ref": "#/definitions/Value",
+          "description": "DataGrid: the column sorted by when the grid is built (\"profit\" or \"profit desc\")."
+        },
+        "SortDescending": {
+          "$ref": "#/definitions/Value",
+          "description": "DataGrid: sort the initial Sort column descending."
+        },
+        "Filter": {
+          "$ref": "#/definitions/Value",
+          "description": "DataGrid: an expression over the row; rows where it is false are hidden (row indices stay stable). Re-run when state changes."
+        },
+        "RowTooltip": {
+          "$ref": "#/definitions/Tooltip",
+          "description": "DataGrid: a rich tooltip for each row (blocks read row.x)."
+        },
+        "OnRowClick": {
+          "$ref": "#/definitions/ActionList",
+          "description": "DataGrid: actions run on every click on a row (event.row, event.index, event.button)."
+        },
+        "OnRowActivated": {
+          "$ref": "#/definitions/ActionList",
+          "description": "DataGrid: actions run on a double-click or Enter on a row (event.row, event.index)."
+        },
+        "OnColumnResized": {
+          "$ref": "#/definitions/ActionList",
+          "description": "DataGrid: actions run after a column was resized by dragging (event.column, event.width)."
+        },
+        "ScrollSound": {
+          "$ref": "#/definitions/Value",
+          "description": "DataGrid: sound cue of scrolling (empty = silent)."
+        },
+        "SelectSound": {
+          "$ref": "#/definitions/Value",
+          "description": "DataGrid: sound cue of selecting (empty = silent)."
+        },
+        "SortSound": {
+          "$ref": "#/definitions/Value",
+          "description": "DataGrid: sound cue of sorting (empty = silent)."
+        },
+        "RichTooltip": {
+          "$ref": "#/definitions/Tooltip",
+          "description": "A rich tooltip: { \"MaxWidth\": 400, \"Blocks\": [ { \"Type\": \"Title\" | \"Line\" | \"Icon\" | \"Item\" | \"Divider\" | \"Money\", ..., \"When\": \"expr\" } ] } (or the block array alone)."
+        },
+        "Fields": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/FormFieldDefinition"
+          },
+          "description": "Form: the fields, each bound to a state value: [{ \"Id\", \"Bind\", \"Kind\", \"Label\", \"Tooltip\", \"Section\", \"Min\", \"Max\", \"Choices\", \"ReadOnly\", \"Validate\" }]."
+        },
+        "ShowButtons": {
+          "$ref": "#/definitions/Value",
+          "description": "Form: show the Save / Cancel / Undo / Redo buttons (default true)."
+        },
+        "OnSaved": {
+          "$ref": "#/definitions/ActionList",
+          "description": "Form: actions run after Save."
+        },
+        "OnCancelled": {
+          "$ref": "#/definitions/ActionList",
+          "description": "Form: actions run after Cancel restored the saved values."
+        },
+        "OnChanged": {
+          "$ref": "#/definitions/ActionList",
+          "description": "Form: actions run after every edit, undo, redo or cancel."
+        },
+        "Composite": {
+          "$ref": "#/definitions/Value",
+          "description": "Composite: the global name of the composite to instantiate (defined in C# with DefineComposite), e.g. \"6135.Example.Gauge\"."
+        },
+        "Args": {
+          "type": "object",
+          "additionalProperties": {},
+          "description": "Composite: its arguments by name. Text that is a state / model path (\"menu.volume\", \"model.settings.Day\") is a reference (read and written by the composite); \"${...}\" is live; action lists work for command arguments."
+        },
+        "ContentTarget": {
+          "$ref": "#/definitions/Value",
+          "description": "Composite: the id of the element inside the composite that receives this element's Children (default: the host of its first custom component, \"<id>.host\", else the composite itself)."
+        },
+        "On": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/ActionList"
+          },
+          "description": "Composite instance: actions run when the composite publishes an event ({ \"changed\": [ ... ] }; C# host.Publish or the body's 6135.UIFramework_Publish)."
+        },
+        "Template": {
+          "$ref": "#/definitions/Value",
+          "description": "An instance of a template (the menu's Templates, else the owner's): its body is expanded here; the other fields are its arguments (args.*). Writing the template's name as the Type does the same."
+        },
+        "Outlet": {
+          "$ref": "#/definitions/Value",
+          "description": "On a child of a template / composite instance: the Outlet placeholder it goes into (default: the unnamed one). In a template / composite body, an element with only an Outlet name is that placeholder."
+        },
+        "DrawExtra": {
+          "$ref": "#/definitions/Value",
+          "description": "A draw hook registered in C# (RegisterDrawHook), \"ModId/name\" (or the owner's short name): drawn after the element's own content."
+        },
+        "DrawOverlay": {
+          "$ref": "#/definitions/Value",
+          "description": "A draw hook registered in C# (RegisterDrawHook), \"ModId/name\": drawn above the whole menu, over the element's bounds."
+        },
+        "Model": {
+          "$ref": "#/definitions/Value",
+          "description": "Form: a model exposed from C# (ExposeModel) whose public members become the fields: \"settings\", \"model.settings.Sub\" or \"model[ModId/settings]\"."
+        }
+      },
+      "if": {
+        "anyOf": [
+          {
+            "required": [
+              "Template"
+            ]
+          },
+          {
+            "properties": {
+              "Type": {
+                "type": "string",
+                "not": {
+                  "enum": [
+                    "Stack",
+                    "Grid",
+                    "Panel",
+                    "Canvas",
+                    "ScrollView",
+                    "Slot",
+                    "Spacer",
+                    "Label",
+                    "Button",
+                    "Image",
+                    "ItemImage",
+                    "Checkbox",
+                    "TextInput",
+                    "NumberInput",
+                    "Dropdown",
+                    "Slider",
+                    "Switch",
+                    "Repeat",
+                    "List",
+                    "DataGrid",
+                    "Form",
+                    "Composite",
+                    "Template",
+                    "Outlet"
+                  ]
+                }
+              }
+            },
+            "required": [
+              "Type"
+            ]
+          }
+        ]
+      },
+      "then": {},
+      "else": {
+        "propertyNames": {
+          "enum": [
+            "Type",
+            "Id",
+            "Condition",
+            "Children",
+            "If",
+            "Switch",
+            "Case",
+            "With",
+            "Out",
+            "Class",
+            "Keys",
+            "Label",
+            "Button",
+            "Checkbox",
+            "Image",
+            "Visible",
+            "Enabled",
+            "Tooltip",
+            "TooltipTitle",
+            "Tag",
+            "Sealed",
+            "AccessibleName",
+            "Margin",
+            "MarginLeft",
+            "MarginTop",
+            "MarginRight",
+            "MarginBottom",
+            "Width",
+            "Height",
+            "MinWidth",
+            "MaxWidth",
+            "HorizontalAlign",
+            "VerticalAlign",
+            "X",
+            "Y",
+            "Row",
+            "Column",
+            "RowSpan",
+            "ColumnSpan",
+            "Cell",
+            "Span",
+            "Style",
+            "OnClick",
+            "OnRightClick",
+            "OnHover",
+            "OnHoverEnd",
+            "OnFocus",
+            "OnBlur",
+            "OnValueChanged",
+            "OnSubmit",
+            "OnLink",
+            "OnScroll",
+            "Horizontal",
+            "Spacing",
+            "Alignment",
+            "Columns",
+            "Rows",
+            "ColumnSpacing",
+            "RowSpacing",
+            "DrawBox",
+            "Padding",
+            "ViewportHeight",
+            "ScrollStep",
+            "ShowScrollbar",
+            "MaxHeight",
+            "MaxContributions",
+            "Text",
+            "Font",
+            "Color",
+            "Shadow",
+            "Wrap",
+            "Shrink",
+            "TextAlign",
+            "Scale",
+            "RichText",
+            "Icon",
+            "IconScale",
+            "ClickSound",
+            "HoverSound",
+            "Sprite",
+            "Tint",
+            "Item",
+            "Quality",
+            "Count",
+            "Stack",
+            "DrawShadow",
+            "Alpha",
+            "Line",
+            "Value",
+            "Bind",
+            "Validate",
+            "OnInvalid",
+            "Placeholder",
+            "MaxLength",
+            "Texture",
+            "Min",
+            "Max",
+            "Step",
+            "Clamp",
+            "Decimals",
+            "Choices",
+            "Labels",
+            "MaxVisible",
+            "ChoicesSource",
+            "ChoiceValue",
+            "ChoiceLabel",
+            "Source",
+            "Repeat",
+            "As",
+            "RowTemplate",
+            "RowHeight",
+            "VisibleRows",
+            "Selectable",
+            "MultiSelect",
+            "BindSelected",
+            "BindSelection",
+            "Sort",
+            "SortDescending",
+            "Filter",
+            "RowTooltip",
+            "OnRowClick",
+            "OnRowActivated",
+            "OnColumnResized",
+            "ScrollSound",
+            "SelectSound",
+            "SortSound",
+            "RichTooltip",
+            "Fields",
+            "ShowButtons",
+            "OnSaved",
+            "OnCancelled",
+            "OnChanged",
+            "Composite",
+            "Args",
+            "ContentTarget",
+            "On",
+            "Template",
+            "Outlet",
+            "DrawExtra",
+            "DrawOverlay",
+            "Model"
+          ]
+        }
+      },
+      "description": "One element of a data menu tree. A single flat shape for every element type: Type selects the element and each type reads the members that apply to it (the others are reported by the validator). Value members are strings so numbers, bools and (from v1.4) expressions share one field; parsing is case-insensitive. Shorthand: { \"Label\": \"Hello\" }, { \"Button\": \"OK\" }, { \"Checkbox\": \"Enabled\" } and { \"Image\": \"sprite:Owner/name\" } set both the type and its main value; a definition with only is a vertical stack."
+    },
+    "StyleDefinition": {
+      "type": "object",
+      "properties": {
+        "Font": {
+          "$ref": "#/definitions/Value",
+          "description": "Font: small, dialogue or tiny."
+        },
+        "TextColor": {
+          "$ref": "#/definitions/Value",
+          "description": "Text color."
+        },
+        "HoverColor": {
+          "$ref": "#/definitions/Value",
+          "description": "Tint applied while hovered or focused."
+        },
+        "BoxTexture": {
+          "$ref": "#/definitions/Value",
+          "description": "Box texture: an image reference (sprite:Owner/name, asset:Path@x,y,w,h) or a texture asset name."
+        },
+        "BoxSource": {
+          "$ref": "#/definitions/Value",
+          "description": "3x3 tile region \"x,y,w,h\" of the box texture (overrides the sprite's Border / Source)."
+        },
+        "BoxScale": {
+          "$ref": "#/definitions/Value",
+          "description": "Box scale."
+        },
+        "Padding": {
+          "$ref": "#/definitions/Value",
+          "description": "Padding inside boxes."
+        },
+        "TextShadow": {
+          "$ref": "#/definitions/Value",
+          "description": "Draw text shadows."
+        },
+        "ClickSound": {
+          "$ref": "#/definitions/Value",
+          "description": "Click sound cue (empty = silent)."
+        },
+        "HoverSound": {
+          "$ref": "#/definitions/Value",
+          "description": "Hover sound cue (empty = silent)."
+        }
+      },
+      "additionalProperties": false,
+      "description": "Inline style of a data element (the data form of IUIStyle). Every member is optional."
+    },
+    "ActionDefinition": {
+      "type": "object",
+      "properties": {
+        "Action": {
+          "$ref": "#/definitions/Value",
+          "description": "A trigger action to run (vanilla, this framework's 6135.UIFramework_* or another mod's), e.g. AddMoney 100."
+        },
+        "Condition": {
+          "$ref": "#/definitions/Value",
+          "description": "A game state query; the entry (its action and nested actions) only runs when it matches, otherwise Else runs."
+        },
+        "When": {
+          "$ref": "#/definitions/Value",
+          "description": "A bool value or expression (expressions arrive in v1.4); combined with Condition."
+        },
+        "Actions": {
+          "$ref": "#/definitions/ActionList",
+          "description": "Actions run after Action when the entry's conditions hold."
+        },
+        "Else": {
+          "$ref": "#/definitions/ActionList",
+          "description": "Actions run instead when Condition / When do not hold."
+        }
+      },
+      "additionalProperties": false,
+      "description": "One entry of an action list (an event handler written as data). The short form is a plain trigger action string (\"AddMoney 100\"); the object form adds a game state query Condition, a When expression, nested Actions and an Else branch."
+    },
+    "SpriteDefinition": {
+      "type": "object",
+      "properties": {
+        "Texture": {
+          "$ref": "#/definitions/Value",
+          "description": "Texture asset name, e.g. Maps/springobjects or Mods/Your.Pack/Icons."
+        },
+        "Source": {
+          "$ref": "#/definitions/Value",
+          "description": "Source rectangle \"x,y,w,h\" (empty = the whole texture)."
+        },
+        "Border": {
+          "$ref": "#/definitions/Value",
+          "description": "3x3 tile region \"x,y,w,h\" used when the sprite is a box texture (the theme's 9-slice convention; empty = Source)."
+        },
+        "Scale": {
+          "$ref": "#/definitions/Value",
+          "description": "Default draw scale where the element does not set one."
+        },
+        "Tint": {
+          "$ref": "#/definitions/Value",
+          "description": "Default tint where the element does not set one."
+        }
+      },
+      "additionalProperties": false,
+      "description": "One entry of the Mods/6135.UIFramework/Sprites asset, keyed <owner>/<name> and referenced as sprite:<owner>/<name>. A pack can reskin a UI by editing only this asset."
+    },
+    "HudDefinition": {
+      "type": "object",
+      "properties": {
+        "Visible": {
+          "$ref": "#/definitions/Value",
+          "description": "Whether the widget starts shown for each player (default true)."
+        },
+        "ShowWhen": {
+          "$ref": "#/definitions/Value",
+          "description": "A live bool expression; the widget is only shown while it is true (combined with the per-player visibility)."
+        },
+        "Hotkey": {
+          "$ref": "#/definitions/Value",
+          "description": "Keybind list that toggles the widget for the current player."
+        },
+        "Anchor": {
+          "$ref": "#/definitions/Value",
+          "description": "Screen anchor (TopLeft default): Center, TopLeft, TopCenter, TopRight, MiddleLeft, MiddleRight, BottomLeft, BottomCenter, BottomRight or Explicit."
+        },
+        "X": {
+          "$ref": "#/definitions/Value",
+          "description": "Offset from the anchor (or the position with Explicit)."
+        },
+        "Y": {
+          "$ref": "#/definitions/Value",
+          "description": "Offset from the anchor (or the position with Explicit)."
+        },
+        "Width": {
+          "$ref": "#/definitions/Value",
+          "description": "Fixed width (empty = fit the content)."
+        },
+        "Height": {
+          "$ref": "#/definitions/Value",
+          "description": "Fixed height (empty = fit the content)."
+        },
+        "DrawBox": {
+          "$ref": "#/definitions/Value",
+          "description": "Draw the box behind the widget (default true)."
+        },
+        "Opacity": {
+          "$ref": "#/definitions/Value",
+          "description": "Opacity of the box, 0-1."
+        },
+        "Interactive": {
+          "$ref": "#/definitions/Value",
+          "description": "Take hover / clicks (and let the player drag the widget)."
+        },
+        "ShowOverMenus": {
+          "$ref": "#/definitions/Value",
+          "description": "Stay drawn on top of an open menu (like toasts) instead of hiding while one is open; input stays world-only."
+        },
+        "Horizontal": {
+          "$ref": "#/definitions/Value",
+          "description": "Lay the root's children out in a row."
+        },
+        "Spacing": {
+          "$ref": "#/definitions/Value",
+          "description": "Pixels between the root's children."
+        },
+        "Alignment": {
+          "$ref": "#/definitions/Value",
+          "description": "Default cross-axis alignment of the root's children."
+        },
+        "State": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/StateValue"
+          },
+          "description": "Defaults of the widget's menu.* values (a JSON array or object is kept as its JSON text, for State sources)."
+        },
+        "Sources": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/Source"
+          },
+          "description": "Named row sources the widget's collections reference by name ({ \"fruits\": { \"Rows\": [...] } })."
+        },
+        "Computed": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/Value"
+          },
+          "description": "Derived values readable as menu.<name>."
+        },
+        "Watch": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/ActionList"
+          },
+          "description": "Actions run when a state value changes."
+        },
+        "OnUpdate": {
+          "$ref": "#/definitions/ActionList",
+          "description": "Actions run while the widget is shown, every UpdateIntervalMs (default: every tick)."
+        },
+        "UpdateIntervalMs": {
+          "$ref": "#/definitions/Value",
+          "description": "Milliseconds between OnUpdate runs (0 = every tick)."
+        },
+        "Children": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/ElementDefinition"
+          },
+          "description": "The elements of the widget's root stack."
+        }
+      },
+      "additionalProperties": false,
+      "description": "One entry of the Mods/6135.UIFramework/Huds asset, keyed <owner>/<hudId>: a HUD widget (the data form of CreateHud) with its options, state and element tree. Shown in the world while no menu is open; ShowHud / HideHud / ToggleHud and the Hotkey switch it per player."
+    },
+    "OwnerDefinition": {
+      "type": "object",
+      "properties": {
+        "TooltipDelayMs": {
+          "$ref": "#/definitions/Value",
+          "description": "Tooltip delay in milliseconds for this owner's UIs (empty = the player's setting)."
+        },
+        "DefaultStyle": {
+          "$ref": "#/definitions/StyleDefinition",
+          "description": "Default style of every element of this owner."
+        },
+        "Classes": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/StyleDefinition"
+          },
+          "description": "Named styles used by elements' Class (\"Class\": \"header big\" merges header then big, then the inline Style)."
+        },
+        "Hotkeys": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/HotkeyDefinition"
+          },
+          "description": "Global hotkeys: { \"id\": { \"Keys\": \"LeftControl + J\", \"Actions\": [...] } }, active in the world and in menus."
+        },
+        "Templates": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/TemplateDefinition"
+          },
+          "description": "Owner-wide templates by name (v1.7), usable in every data UI of this owner (a menu's own Templates win)."
+        },
+        "Tooltips": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/TooltipDefinition"
+          },
+          "description": "Named rich tooltips, used by any RichTooltip / RowTooltip of this owner with { \"From\": \"name\" }."
+        },
+        "SharedState": {
+          "$ref": "#/definitions/Value",
+          "description": "\"true\" lets other mods' and packs' data write this owner's config.* and player.* values (config[owner].x); without it only the owner's own data can."
+        }
+      },
+      "additionalProperties": false,
+      "description": "One entry of the Mods/6135.UIFramework/Owners asset, keyed by mod id: settings shared by every data (and C#) UI of that owner, the data form of SetTooltipDelay, SetDefaultStyle and RegisterHotkey."
+    },
+    "HotkeyDefinition": {
+      "type": "object",
+      "properties": {
+        "Keys": {
+          "$ref": "#/definitions/Value",
+          "description": "SMAPI keybind list, e.g. \"F9\" or \"LeftControl + J, ControllerBack\"."
+        },
+        "Condition": {
+          "$ref": "#/definitions/Value",
+          "description": "A game state query; the actions only run while it matches."
+        },
+        "Actions": {
+          "$ref": "#/definitions/ActionList",
+          "description": "Actions run when the keys are pressed (in the owner's scope: session.*, config.*, player.* work unqualified)."
+        }
+      },
+      "additionalProperties": false,
+      "description": "A global hotkey of an owner."
+    },
+    "KeyBindingDefinition": {
+      "type": "object",
+      "properties": {
+        "Key": {
+          "$ref": "#/definitions/Value",
+          "description": "The key (an XNA key name such as Enter, Delete, F5, A, Up)."
+        },
+        "Shift": {
+          "$ref": "#/definitions/Value",
+          "description": "Shift must be held (true) or not held (false); unset = either."
+        },
+        "Ctrl": {
+          "$ref": "#/definitions/Value",
+          "description": "Control must be held (true) or not held (false); unset = either."
+        },
+        "Alt": {
+          "$ref": "#/definitions/Value",
+          "description": "Alt must be held (true) or not held (false); unset = either."
+        },
+        "Actions": {
+          "$ref": "#/definitions/ActionList",
+          "description": "Actions run when the key matches (event.key, event.shift, event.ctrl, event.alt)."
+        }
+      },
+      "additionalProperties": false,
+      "description": "One key handler of an element or menu (Keys), the data form of OnKey: when Key is pressed with the given modifiers, Actions run and the key counts as handled."
+    },
+    "SourceDefinition": {
+      "type": "object",
+      "properties": {
+        "Type": {
+          "enum": [
+            "Rows",
+            "Range",
+            "ItemQuery",
+            "State",
+            "Value",
+            "Themes",
+            "Asset",
+            "Hook",
+            "Named"
+          ],
+          "description": "Source kind: Rows, Range, ItemQuery, State, Value, Themes, Asset, Hook or Named (inferred from the other members when omitted)."
+        },
+        "Rows": {
+          "type": "array",
+          "description": "Rows: inline rows; each row is a JSON object (read as row.<field>) or a plain value (read as row)."
+        },
+        "From": {
+          "$ref": "#/definitions/Value",
+          "description": "Range: first number (an expression is allowed)."
+        },
+        "To": {
+          "$ref": "#/definitions/Value",
+          "description": "Range: last number, inclusive."
+        },
+        "Step": {
+          "$ref": "#/definitions/Value",
+          "description": "Range: step (default 1; negative counts down)."
+        },
+        "Query": {
+          "$ref": "#/definitions/Value",
+          "description": "ItemQuery: a vanilla item query (ALL_ITEMS (O), FLAVORED_ITEM Wine (O)398, RANDOM_ITEMS (O)...). Rows expose id, qualifiedId, name, displayName, description, price, category, quality, stack, type and item. ${...} is allowed."
+        },
+        "PerItemCondition": {
+          "$ref": "#/definitions/Value",
+          "description": "ItemQuery: a game state query each item must match (ITEM_CATEGORY Target -75 ...)."
+        },
+        "Value": {
+          "$ref": "#/definitions/Value",
+          "description": "Value: an expression giving a list (e.g. \"${season.crops}\", an outer row's field inside a nested Repeat); re-checked when state changes."
+        },
+        "State": {
+          "$ref": "#/definitions/Value",
+          "description": "State: the state key holding a JSON array (menu.items, config.favorites...)."
+        },
+        "Asset": {
+          "$ref": "#/definitions/Value",
+          "description": "Asset: a Dictionary<string, string> asset (Data/Machines-like string data); rows expose key, value and fields (value split on '/')."
+        },
+        "Hook": {
+          "$ref": "#/definitions/Value",
+          "description": "Hook: a row source registered from C# (arrives in UI Framework 1.6)."
+        },
+        "Name": {
+          "$ref": "#/definitions/Value",
+          "description": "Named: an entry of the menu's Sources (its Filter / Sort / Limit are applied first)."
+        },
+        "Filter": {
+          "$ref": "#/definitions/Value",
+          "description": "An expression over the row (row.x, or the collection's As name); rows where it is false are left out."
+        },
+        "Sort": {
+          "$ref": "#/definitions/Value",
+          "description": "An expression over the row giving its sort key (numbers sort numerically, text alphabetically)."
+        },
+        "SortDescending": {
+          "$ref": "#/definitions/Value",
+          "description": "Sort descending (default false)."
+        },
+        "Limit": {
+          "$ref": "#/definitions/Value",
+          "description": "At most this many rows (after Filter and Sort)."
+        }
+      },
+      "additionalProperties": false,
+      "description": "Where the rows of a collection (List, DataGrid, Repeat, dropdown ChoicesSource) come from. Sources are resolved when the UI opens, on _Refresh / _Rebuild and when what they read changes (never every frame); Filter and Sort run over the resolved rows. Shorthand (a string instead of an object): \"${outer.items}\" (an expression giving a list, e.g. an outer row's field in a nested Repeat), \"themes\", \"range:1..10\" (or 1..10..2), \"query:ALL_ITEMS (O)\", \"asset:Data/Machines\", \"hook:Name\", the name of an entry of the menu's Sources, or a state key holding a JSON array (\"menu.items\")."
+    },
+    "ColumnDefinition": {
+      "type": "object",
+      "properties": {
+        "Id": {
+          "$ref": "#/definitions/Value",
+          "description": "DataGrid: column id (sorting, _Sort, OnColumnResized's event.column). Content Patcher TargetField reaches the column by it."
+        },
+        "Header": {
+          "$ref": "#/definitions/Value",
+          "description": "DataGrid: header text."
+        },
+        "Width": {
+          "$ref": "#/definitions/Value",
+          "description": "Track width: auto, 120 / 120px, * or 2* (star columns share the leftover width)."
+        },
+        "MinWidth": {
+          "$ref": "#/definitions/Value",
+          "description": "DataGrid: smallest width in pixels (resize floor)."
+        },
+        "Align": {
+          "$ref": "#/definitions/Value",
+          "description": "DataGrid: alignment of the header and the text cells (Start, Center, End)."
+        },
+        "Sortable": {
+          "$ref": "#/definitions/Value",
+          "description": "DataGrid: clicking the header sorts by this column."
+        },
+        "Resizable": {
+          "$ref": "#/definitions/Value",
+          "description": "DataGrid: the divider right of the header can be dragged."
+        },
+        "Text": {
+          "$ref": "#/definitions/Value",
+          "description": "DataGrid: cell text for a row, e.g. \"${row.name}\" (also the default sort key)."
+        },
+        "SortKey": {
+          "$ref": "#/definitions/Value",
+          "description": "DataGrid: an expression giving the text sort key of a row (instead of the Text)."
+        },
+        "SortNumber": {
+          "$ref": "#/definitions/Value",
+          "description": "DataGrid: an expression giving the numeric sort key of a row; when set the column sorts numerically."
+        },
+        "Cell": {
+          "$ref": "#/definitions/ElementList",
+          "description": "DataGrid: elements built into each cell instead of a text label (an element or an array); ids are prefixed with the cell's id."
+        },
+        "Tooltip": {
+          "$ref": "#/definitions/Value",
+          "description": "DataGrid: tooltip text of a cell (an empty result hides it for that row)."
+        }
+      },
+      "additionalProperties": false,
+      "description": "One column. On a DataGrid: header, width and the per-row values (expressions over the row, read as row.x or the grid's As name). On a Grid: only Width (a track), which is what the string form \"Columns\": \"auto, *, 120\" expands to."
+    },
+    "TooltipDefinition": {
+      "type": "object",
+      "properties": {
+        "From": {
+          "$ref": "#/definitions/Value",
+          "description": "The name of one of the owner's Tooltips (Mods/6135.UIFramework/Owners) this tooltip starts from: its blocks come first, then this tooltip's own; this tooltip's MaxWidth wins when set."
+        },
+        "MaxWidth": {
+          "$ref": "#/definitions/Value",
+          "description": "Wrap lines wider than this many pixels (0 = only the screen limits the width)."
+        },
+        "Blocks": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/TooltipBlockDefinition"
+          },
+          "description": "The blocks, top to bottom."
+        }
+      },
+      "additionalProperties": false,
+      "description": "A rich tooltip (RichTooltip on any element, RowTooltip on a DataGrid): an optional wrap width and a list of blocks. May also be written as the block array alone."
+    },
+    "TooltipBlockDefinition": {
+      "type": "object",
+      "properties": {
+        "Type": {
+          "enum": [
+            "Title",
+            "Line",
+            "Icon",
+            "Item",
+            "Divider",
+            "Money"
+          ],
+          "description": "Block kind: Title, Line, Icon, Item, Divider or Money."
+        },
+        "Text": {
+          "$ref": "#/definitions/Value",
+          "description": "Title / Line: the (rich) text; ${...} is live."
+        },
+        "Color": {
+          "$ref": "#/definitions/Value",
+          "description": "Title / Line: text color; may be an expression (e.g. \"${row.profit < 0 ? 'red' : 'green'}\")."
+        },
+        "Sprite": {
+          "$ref": "#/definitions/Value",
+          "description": "Icon: an image reference (sprite:Owner/name, item:(O)24, asset:Path@x,y,w,h)."
+        },
+        "Source": {
+          "$ref": "#/definitions/Value",
+          "description": "Icon: source rectangle \"x,y,w,h\" (overrides the reference's own)."
+        },
+        "Scale": {
+          "$ref": "#/definitions/Value",
+          "description": "Icon: scale (default: the sprite's, else 1)."
+        },
+        "Item": {
+          "$ref": "#/definitions/Value",
+          "description": "Item: a qualified item id or item query (\"(O)24\", \"FLAVORED_ITEM Wine (O)398\"), or an expression giving an item (\"${row.item}\"); items keep their tint."
+        },
+        "Amount": {
+          "$ref": "#/definitions/Value",
+          "description": "Money: the amount (an expression is allowed)."
+        },
+        "When": {
+          "$ref": "#/definitions/Value",
+          "description": "An expression; the block is only shown while it is true."
+        }
+      },
+      "additionalProperties": false,
+      "description": "One block of a rich tooltip; which members apply depends on Type."
+    },
+    "FormFieldDefinition": {
+      "type": "object",
+      "properties": {
+        "Id": {
+          "$ref": "#/definitions/Value",
+          "description": "Field id (the input's id is <form id>.<Id>). Default: the last part of Bind."
+        },
+        "Bind": {
+          "$ref": "#/definitions/Value",
+          "description": "The state value the field edits (menu.x, config.x, player.x, .x inside a With). Default: menu.<Id>."
+        },
+        "Kind": {
+          "enum": [
+            "Checkbox",
+            "Number",
+            "Integer",
+            "Text",
+            "Dropdown"
+          ],
+          "description": "Input kind: Checkbox, Number, Integer, Text or Dropdown (default: Dropdown with Choices, else Text)."
+        },
+        "Label": {
+          "$ref": "#/definitions/Value",
+          "description": "Caption text (default: the id split into words)."
+        },
+        "Tooltip": {
+          "$ref": "#/definitions/Value",
+          "description": "Tooltip of the input."
+        },
+        "Section": {
+          "$ref": "#/definitions/Value",
+          "description": "Starts a new section with this title above the field."
+        },
+        "Value": {
+          "$ref": "#/definitions/Value",
+          "description": "Default value (only used while the state value does not exist yet)."
+        },
+        "Min": {
+          "$ref": "#/definitions/Value",
+          "description": "Number: minimum."
+        },
+        "Max": {
+          "$ref": "#/definitions/Value",
+          "description": "Number: maximum."
+        },
+        "Choices": {
+          "$ref": "#/definitions/StringList",
+          "description": "Dropdown: choice values (array, or one comma-separated string)."
+        },
+        "ReadOnly": {
+          "$ref": "#/definitions/Value",
+          "description": "Show the value without allowing edits."
+        },
+        "Validate": {
+          "$ref": "#/definitions/Value",
+          "description": "An expression checked for every new value (event.value): false or a message rejects it, shown under the field."
+        }
+      },
+      "additionalProperties": false,
+      "description": "One field of a data Form: a row with a caption and an input bound to a state value. The form keeps the usual auto-form behavior (snapshot for Cancel, undo / redo history, dirty tracking, Save / Cancel / Undo / Redo buttons); edits write straight into state."
+    },
+    "TemplateDefinition": {
+      "type": "object",
+      "properties": {
+        "Params": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/ParamDefinition"
+          },
+          "description": "The parameters: { \"label\": { \"Type\": \"string\", \"Default\": \"\", \"Required\": true } }. Arguments are validated against them when the data loads; missing ones take their Default."
+        },
+        "Children": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/ElementDefinition"
+          },
+          "description": "The body: the elements an instance expands to (ids are prefixed with the instance's id). Outlet placeholders ({ \"Outlet\": \"header\" }, or { \"Type\": \"Outlet\" } for the default one) receive the instance's children."
+        },
+        "Horizontal": {
+          "$ref": "#/definitions/Value",
+          "description": "Lay the body out in a row instead of a column."
+        },
+        "Spacing": {
+          "$ref": "#/definitions/Value",
+          "description": "Pixels between the body's elements (default 0 for templates; composites are always a column)."
+        },
+        "Alignment": {
+          "$ref": "#/definitions/Value",
+          "description": "Default cross-axis alignment of the body's elements."
+        }
+      },
+      "additionalProperties": false,
+      "description": "A template (v1.7): a parameterized element tree expanded where it is used. Menu-local templates live in a menu's Templates, owner-wide ones in the owner's Owners entry. An instance is written { \"Type\": \"<template>\", \"<param>\": value, \"Children\": [...] } (or \"Template\": \"<template>\"); its extra fields are the arguments (args.<param> in the body) and its children go into the body's Outlet placeholders."
+    },
+    "ParamDefinition": {
+      "type": "object",
+      "properties": {
+        "Type": {
+          "enum": [
+            "string",
+            "number",
+            "bool",
+            "any"
+          ],
+          "description": "The value type: string (default), number, bool or any. Literal arguments are checked against it; values are converted to it when read."
+        },
+        "Default": {
+          "description": "The value used when an instance does not set the argument."
+        },
+        "Required": {
+          "$ref": "#/definitions/Value",
+          "description": "An instance must set the argument (a validation error otherwise)."
+        },
+        "Description": {
+          "$ref": "#/definitions/Value",
+          "description": "What the parameter is for (documentation only)."
+        }
+      },
+      "additionalProperties": false,
+      "description": "One parameter of a template or data composite."
+    },
+    "DataCompositeDefinition": {
+      "type": "object",
+      "properties": {
+        "Owner": {
+          "$ref": "#/definitions/Value",
+          "description": "The owning mod or content pack (default: the longest loaded mod id the composite's name starts with)."
+        },
+        "Expose": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/Value"
+          },
+          "description": "Values the composite exposes: { \"value\": \"args.value\", \"label\": \"upper(args.label)\" } (expressions over the body's scope)."
+        },
+        "Commands": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/ActionList"
+          },
+          "description": "Commands the composite exposes: { \"reset\": \"6135.UIFramework_SetState ...\" } (run in the body's scope; _Invoke #id.reset, IUIComposite.Invoke)."
+        },
+        "Publish": {
+          "$ref": "#/definitions/StringList",
+          "description": "The events the body raises with 6135.UIFramework_Publish; when set, an instance's On names are checked against it."
+        },
+        "Params": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/ParamDefinition"
+          }
+        },
+        "Children": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/ElementDefinition"
+          }
+        },
+        "Horizontal": {
+          "$ref": "#/definitions/Value"
+        },
+        "Spacing": {
+          "$ref": "#/definitions/Value"
+        },
+        "Alignment": {
+          "$ref": "#/definitions/Value"
+        }
+      },
+      "additionalProperties": false,
+      "description": "One entry of the Mods/6135.UIFramework/Composites asset (v1.7), keyed by the composite's global name (<ModId>.<Name>). A data composite is registered like DefineComposite, so C# code can instantiate it with AddComposite and data with \"Type\": \"<name>\"; the owner is the longest loaded mod id the name starts with, or Owner. Its body reads args.*; it can expose values (el[id].<key>, IUIComposite.GetValue) and commands (_Invoke #id.cmd), and raise events with _Publish (\"On\": { \"event\": [...] } on the instance, Subscribe in C#). A changed definition rebuilds every live instance."
+    },
+    "ContributionDefinition": {
+      "type": "object",
+      "properties": {
+        "Target": {
+          "$ref": "#/definitions/Value",
+          "description": "The menu: \"<owner mod id>/<menu id>\"."
+        },
+        "Slot": {
+          "$ref": "#/definitions/Value",
+          "description": "The id of the Slot the Children go into."
+        },
+        "Priority": {
+          "$ref": "#/definitions/Value",
+          "description": "Order among the slot's contributions (lower first, default 0)."
+        },
+        "Children": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/ElementDefinition"
+          },
+          "description": "The elements contributed to the Slot (built every time the menu opens)."
+        },
+        "On": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/ActionList"
+          },
+          "description": "Actions run when the menu's owner publishes an event: { \"saved\": [ ... ] } (one subscription per contributor, menu and event)."
+        },
+        "Decorate": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/DecorationOp"
+          },
+          "description": "Edits of the menu's tree applied every time it opens: [{ \"Op\": \"Hide\", \"Target\": \"id\" }, { \"Op\": \"InsertAfter\", \"Target\": \"id\", \"Children\": [...] }, ...]. Sealed elements refuse them."
+        }
+      },
+      "additionalProperties": false,
+      "description": "One entry of the Mods/6135.UIFramework/Contributions asset (v1.7), keyed <contributor>/<name>: what a mod or content pack adds to another mod's menu (C# or data) through its own API instance, the data form of ContributeTo, OnScreenBuilt and IUIScreenContext.Subscribe. Expressions read the owner's exposed values as ctx.*; _Invoke ctx.<cmd> runs its exposed commands."
+    },
+    "DecorationOp": {
+      "type": "object",
+      "properties": {
+        "Op": {
+          "enum": [
+            "Hide",
+            "Show",
+            "Set",
+            "InsertBefore",
+            "InsertAfter",
+            "Append",
+            "Move",
+            "Remove",
+            "Replace"
+          ],
+          "description": "Hide, Show, Set, InsertBefore, InsertAfter, Append, Move, Remove or Replace."
+        },
+        "Target": {
+          "$ref": "#/definitions/Value",
+          "description": "The element id the edit applies to (for Append: the container the children are added to)."
+        },
+        "Children": {
+          "$ref": "#/definitions/ElementList",
+          "description": "InsertBefore / InsertAfter / Append / Replace: the elements to add (built by the contributor)."
+        },
+        "Fields": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/Value"
+          },
+          "description": "Set: the members to change and their values ({ \"Text\": \"${ctx.name}\", \"Enabled\": false }); Visible, Enabled, Text, Tooltip, TooltipTitle, Tag, Width, Height, Margin, HorizontalAlign, VerticalAlign, Color, Font."
+        },
+        "Before": {
+          "$ref": "#/definitions/Value",
+          "description": "Move: the element Target is moved in front of."
+        },
+        "After": {
+          "$ref": "#/definitions/Value",
+          "description": "Move: the element Target is moved behind."
+        },
+        "Into": {
+          "$ref": "#/definitions/Value",
+          "description": "Move: the container Target is moved to the end of."
+        }
+      },
+      "additionalProperties": false,
+      "description": "One decoration of a contribution (v1.7): an edit of another mod's menu tree, applied through the contributor's API instance every time the menu opens (the previous application is undone first, so the edits never pile up). Elements inside a sealed subtree refuse every edit (a logged error)."
+    }
+  }
+}

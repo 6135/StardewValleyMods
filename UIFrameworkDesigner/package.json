@@ -1,0 +1,32 @@
+{
+  "name": "ui-framework-designer",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview",
+    "metadata": "dotnet run --project ../tools/DesignerMetadata -- src/generated"
+  },
+  "dependencies": {
+    "@dnd-kit/core": "^6.3.1",
+    "@dnd-kit/sortable": "^10.0.0",
+    "@dnd-kit/utilities": "^3.2.2",
+    "ajv": "^8.20.0",
+    "immer": "^11.1.18",
+    "jsonc-parser": "^3.3.1",
+    "lz-string": "^1.5.0",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
+    "zundo": "^2.3.0",
+    "zustand": "^5.0.15"
+  },
+  "devDependencies": {
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.1.1",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.2"
+  }
+}

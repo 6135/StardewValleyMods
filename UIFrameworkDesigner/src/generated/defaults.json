@@ -1,0 +1,74 @@
+{
+  "menu": {
+    "ShowCloseButton": "true",
+    "Modal": "true",
+    "DimBackground": "true",
+    "Anchor": "Center",
+    "X": "0",
+    "Y": "0",
+    "DrawBox": "true",
+    "Padding": "0",
+    "CloseOnEscape": "true",
+    "PlayerLayout": "true",
+    "Resizable": "false",
+    "Horizontal": "false",
+    "Spacing": "8",
+    "Alignment": "Start"
+  },
+  "elements": {
+    "Stack": {
+      "Horizontal": "false",
+      "Spacing": "8"
+    },
+    "Grid": {
+      "Columns": "*",
+      "Rows": "auto"
+    },
+    "Panel": {
+      "DrawBox": "true",
+      "Padding": "16"
+    },
+    "ScrollView": {
+      "ViewportHeight": "300"
+    },
+    "Spacer": {
+      "Width": "0",
+      "Height": "0"
+    },
+    "Image": {
+      "Scale": "4"
+    },
+    "ItemImage": {
+      "Quality": "0",
+      "Count": "1",
+      "Scale": "4"
+    },
+    "NumberInput": {
+      "Min": "0",
+      "Max": "999999",
+      "Step": "1",
+      "Clamp": "true"
+    },
+    "Slider": {
+      "Min": "0",
+      "Max": "100"
+    },
+    "Repeat": {
+      "Horizontal": "false",
+      "Spacing": "8"
+    },
+    "List": {
+      "RowHeight": "48",
+      "VisibleRows": "6"
+    },
+    "DataGrid": {
+      "RowHeight": "48",
+      "VisibleRows": "6",
+      "SortDescending": "false"
+    },
+    "Outlet": {
+      "Horizontal": "false",
+      "Spacing": "8"
+    }
+  }
+}

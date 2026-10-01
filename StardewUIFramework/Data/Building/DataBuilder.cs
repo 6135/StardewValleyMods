@@ -26,14 +26,6 @@ namespace UIFramework.Data.Building
     /// </summary>
     internal sealed partial class DataBuilder
     {
-        // defaults for construction arguments the C# API requires
-        private const int DefaultSpacing = 8;
-        private const int DefaultPanelPadding = 16;
-        private const int DefaultViewportHeight = 300;
-        private const float DefaultImageScale = 4f;
-        private const double DefaultNumberMax = 999999;
-        private const double DefaultSliderMax = 100;
-
         private readonly ExpressionValueResolver resolver;
         private readonly SpriteRefs sprites;
         private readonly Func<string, OwnerDefinition?> owners;
@@ -116,22 +108,22 @@ namespace UIFramework.Data.Building
             menu.TitleFunc = applier.Text(def.Title, scope, path.Field("Title"));
             applier.ApplyOr(def.Width, ValueParsers.OptionalInt, null, scope, path.Field("Width"), v => m.Width = v);
             applier.ApplyOr(def.Height, ValueParsers.OptionalInt, null, scope, path.Field("Height"), v => m.Height = v);
-            applier.ApplyOr(def.ShowCloseButton, ValueParsers.Bool, true, scope, path.Field("ShowCloseButton"), v => m.ShowCloseButton = v);
-            applier.ApplyOr(def.Modal, ValueParsers.Bool, true, scope, path.Field("Modal"), v => m.Modal = v);
-            applier.ApplyOr(def.DimBackground, ValueParsers.Bool, true, scope, path.Field("DimBackground"), v => m.DimBackground = v);
-            applier.ApplyOr(def.Anchor, ValueParsers.Anchor, UIAnchor.Center, scope, path.Field("Anchor"), v => m.Anchor = v);
-            applier.ApplyOr(def.X, ValueParsers.Int, 0, scope, path.Field("X"), v => m.X = v);
-            applier.ApplyOr(def.Y, ValueParsers.Int, 0, scope, path.Field("Y"), v => m.Y = v);
-            applier.ApplyOr(def.DrawBox, ValueParsers.Bool, true, scope, path.Field("DrawBox"), v => m.DrawBox = v);
-            applier.ApplyOr(def.Padding, ValueParsers.Int, 0, scope, path.Field("Padding"), v => m.Padding = v);
-            applier.ApplyOr(def.CloseOnEscape, ValueParsers.Bool, true, scope, path.Field("CloseOnEscape"), v => m.CloseOnEscape = v);
-            applier.ApplyOr(def.PlayerLayout, ValueParsers.Bool, true, scope, path.Field("PlayerLayout"), v => m.PlayerLayout = v);
-            applier.ApplyOr(def.Resizable, ValueParsers.Bool, false, scope, path.Field("Resizable"), v => m.Resizable = v);
+            applier.ApplyOr(def.ShowCloseButton, ValueParsers.Bool, DataDefaults.Menu.ShowCloseButton, scope, path.Field("ShowCloseButton"), v => m.ShowCloseButton = v);
+            applier.ApplyOr(def.Modal, ValueParsers.Bool, DataDefaults.Menu.Modal, scope, path.Field("Modal"), v => m.Modal = v);
+            applier.ApplyOr(def.DimBackground, ValueParsers.Bool, DataDefaults.Menu.DimBackground, scope, path.Field("DimBackground"), v => m.DimBackground = v);
+            applier.ApplyOr(def.Anchor, ValueParsers.Anchor, DataDefaults.Menu.Anchor, scope, path.Field("Anchor"), v => m.Anchor = v);
+            applier.ApplyOr(def.X, ValueParsers.Int, DataDefaults.Menu.X, scope, path.Field("X"), v => m.X = v);
+            applier.ApplyOr(def.Y, ValueParsers.Int, DataDefaults.Menu.Y, scope, path.Field("Y"), v => m.Y = v);
+            applier.ApplyOr(def.DrawBox, ValueParsers.Bool, DataDefaults.Menu.DrawBox, scope, path.Field("DrawBox"), v => m.DrawBox = v);
+            applier.ApplyOr(def.Padding, ValueParsers.Int, DataDefaults.Menu.Padding, scope, path.Field("Padding"), v => m.Padding = v);
+            applier.ApplyOr(def.CloseOnEscape, ValueParsers.Bool, DataDefaults.Menu.CloseOnEscape, scope, path.Field("CloseOnEscape"), v => m.CloseOnEscape = v);
+            applier.ApplyOr(def.PlayerLayout, ValueParsers.Bool, DataDefaults.Menu.PlayerLayout, scope, path.Field("PlayerLayout"), v => m.PlayerLayout = v);
+            applier.ApplyOr(def.Resizable, ValueParsers.Bool, DataDefaults.Menu.Resizable, scope, path.Field("Resizable"), v => m.Resizable = v);
 
             // root stack
-            applier.ApplyOr(def.Horizontal, ValueParsers.Bool, false, scope, path.Field("Horizontal"), v => menu.Root.Horizontal = v);
-            applier.ApplyOr(def.Spacing, ValueParsers.Int, DefaultSpacing, scope, path.Field("Spacing"), v => menu.Root.Spacing = v);
-            applier.ApplyOr(def.Alignment, ValueParsers.Align, UIAlign.Start, scope, path.Field("Alignment"), v => menu.Root.Alignment = v);
+            applier.ApplyOr(def.Horizontal, ValueParsers.Bool, DataDefaults.Menu.Horizontal, scope, path.Field("Horizontal"), v => menu.Root.Horizontal = v);
+            applier.ApplyOr(def.Spacing, ValueParsers.Int, DataDefaults.Menu.Spacing, scope, path.Field("Spacing"), v => menu.Root.Spacing = v);
+            applier.ApplyOr(def.Alignment, ValueParsers.Align, DataDefaults.Menu.Alignment, scope, path.Field("Alignment"), v => menu.Root.Alignment = v);
 
             // events
             menu.OnOpen = DataActionRunner.Handler<IUIMenu>(def.OnOpen, scope, "OnOpen");
@@ -440,8 +432,9 @@ namespace UIFramework.Data.Building
             switch (def.Type)
             {
                 case ElementTypes.Stack:
+                    return api.AddStack(parent, id, DataDefaults.Stack.Horizontal, DataDefaults.Stack.Spacing);
                 case ElementTypes.Repeat:
-                    return api.AddStack(parent, id, false, DefaultSpacing);
+                    return api.AddStack(parent, id, DataDefaults.Repeat.Horizontal, DataDefaults.Repeat.Spacing);
                 case ElementTypes.List:
                     return CreateList(ctx, parent, def, scope, path);
                 case ElementTypes.DataGrid:
@@ -453,19 +446,19 @@ namespace UIFramework.Data.Building
                 case ElementTypes.Template:
                     return CreateTemplate(ctx, parent, def, scope, path);
                 case ElementTypes.Outlet:
-                    return api.AddStack(parent, id, false, DefaultSpacing);
+                    return api.AddStack(parent, id, DataDefaults.Outlet.Horizontal, DataDefaults.Outlet.Spacing);
                 case ElementTypes.Grid:
-                    return api.AddGrid(parent, id, "*", def.Rows ?? "auto"); // the column tracks are applied (possibly live) with the type members
+                    return api.AddGrid(parent, id, DataDefaults.Grid.Columns, def.Rows ?? DataDefaults.Grid.Rows); // the column tracks are applied (possibly live) with the type members
                 case ElementTypes.Panel:
-                    return api.AddPanel(parent, id, true, DefaultPanelPadding);
+                    return api.AddPanel(parent, id, DataDefaults.Panel.DrawBox, DataDefaults.Panel.Padding);
                 case ElementTypes.Canvas:
                     return api.AddCanvas(parent, id);
                 case ElementTypes.ScrollView:
-                    return api.AddScrollView(parent, id, DefaultViewportHeight);
+                    return api.AddScrollView(parent, id, DataDefaults.ScrollView.ViewportHeight);
                 case ElementTypes.Slot:
                     return api.AddSlot(parent, id);
                 case ElementTypes.Spacer:
-                    return api.AddSpacer(parent, id, 0, 0);
+                    return api.AddSpacer(parent, id, DataDefaults.Spacer.Width, DataDefaults.Spacer.Height);
                 case ElementTypes.Label:
                     return api.AddLabel(parent, id, applier.Text(def.Text, scope, path.Field("Text")) ?? (() => string.Empty));
                 case ElementTypes.Button:
@@ -486,10 +479,10 @@ namespace UIFramework.Data.Building
                 }
                 case ElementTypes.NumberInput:
                 {
-                    double min = applier.Initial(def.Min, ValueParsers.Number, 0, scope, path.Field("Min"));
-                    double max = applier.Initial(def.Max, ValueParsers.Number, DefaultNumberMax, scope, path.Field("Max"));
-                    double step = applier.Initial(def.Step, ValueParsers.Number, 1, scope, path.Field("Step"));
-                    bool clamp = applier.Initial(def.Clamp, ValueParsers.Bool, true, scope, path.Field("Clamp"));
+                    double min = applier.Initial(def.Min, ValueParsers.Number, DataDefaults.NumberInput.Min, scope, path.Field("Min"));
+                    double max = applier.Initial(def.Max, ValueParsers.Number, DataDefaults.NumberInput.Max, scope, path.Field("Max"));
+                    double step = applier.Initial(def.Step, ValueParsers.Number, DataDefaults.NumberInput.Step, scope, path.Field("Step"));
+                    bool clamp = applier.Initial(def.Clamp, ValueParsers.Bool, DataDefaults.NumberInput.Clamp, scope, path.Field("Clamp"));
                     BindTarget target = BindInput(ctx, def, scope, path, ValueParsers.Number, min, DataValue.FromNumber);
                     return api.AddNumberInput(parent, id, () => target.Read().AsNumber(), v => Write(scope, target, DataValue.FromNumber(v)), min, max, step, clamp);
                 }
@@ -507,8 +500,8 @@ namespace UIFramework.Data.Building
                 }
                 case ElementTypes.Slider:
                 {
-                    double min = applier.Initial(def.Min, ValueParsers.Number, 0, scope, path.Field("Min"));
-                    double max = applier.Initial(def.Max, ValueParsers.Number, DefaultSliderMax, scope, path.Field("Max"));
+                    double min = applier.Initial(def.Min, ValueParsers.Number, DataDefaults.Slider.Min, scope, path.Field("Min"));
+                    double max = applier.Initial(def.Max, ValueParsers.Number, DataDefaults.Slider.Max, scope, path.Field("Max"));
                     BindTarget target = BindInput(ctx, def, scope, path, ValueParsers.Number, min, DataValue.FromNumber);
                     return api.AddSlider(parent, id, () => target.Read().AsNumber(), v => Write(scope, target, DataValue.FromNumber(v)), min, max);
                 }
@@ -586,7 +579,7 @@ namespace UIFramework.Data.Building
         /// </summary>
         private IUIElement CreateImage(StardewUIApi api, IUIContainer parent, string id, ElementDefinition def, DataScope scope, DataPath path, PropertyApplier applier)
         {
-            IUIImage image = api.AddImage(parent, id, null!, null, DefaultImageScale);
+            IUIImage image = api.AddImage(parent, id, null!, null, DataDefaults.Image.Scale);
             if (string.IsNullOrWhiteSpace(def.Sprite))
             {
                 applier.Log.Warn(path.Field("Sprite"), "an Image needs a Sprite (sprite:Owner/name, item:(O)24 or asset:Path@x,y,w,h); it draws nothing.");
@@ -666,14 +659,14 @@ namespace UIFramework.Data.Building
         private static IUIElement CreateItemImage(StardewUIApi api, IUIContainer parent, string id, ElementDefinition def, DataScope scope, DataPath path, PropertyApplier applier)
         {
             DataValue value = DataValue.Null;
-            int count = 1;
-            int quality = 0;
+            int count = DataDefaults.ItemImage.Count;
+            int quality = DataDefaults.ItemImage.Quality;
             applier.Apply(def.Count, ValueParsers.Int, scope, path.Field("Count"), v => count = Math.Max(1, v));
             applier.Apply(def.Quality, ValueParsers.Int, scope, path.Field("Quality"), v => quality = Math.Clamp(v, 0, 4));
 
             // the getter goes through the item cache (a dictionary hit once created), so an item that cannot be created
             // yet (an item query on the title screen) is retried instead of staying empty
-            IUIItemImage image = api.AddItemImage(parent, id, () => RowScope.ItemOf(value, count, quality)!, DefaultImageScale);
+            IUIItemImage image = api.AddItemImage(parent, id, () => RowScope.ItemOf(value, count, quality)!, DataDefaults.ItemImage.Scale);
             if (!string.IsNullOrWhiteSpace(def.Item))
             {
                 applier.Apply(def.Item.Trim(), ValueParsers.Raw, scope, path.Field("Item"), v => value = v);
