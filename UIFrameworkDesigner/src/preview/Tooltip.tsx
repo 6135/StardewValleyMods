@@ -190,9 +190,13 @@ export interface TooltipPreviewProps {
 }
 
 /** A named tooltip's own preview: the tooltip centred on the preview background, as large as the pane. */
+/** The screen a tooltip tab is previewed on (the preview's default screen). */
+const TooltipScreen = { width: 1280, height: 720 };
+
 export function TooltipPreview({ definition, state, functions, i18n }: TooltipPreviewProps): ReactNode {
+  // a fixed game screen scaled to fit the pane, like PreviewPane: the tooltip wraps against the screen, never against the pane
   const ref = useRef<HTMLDivElement>(null);
-  const [size, setSize] = useState({ width: 800, height: 600 });
+  const [pane, setPane] = useState({ width: 800, height: 600 });
   useEffect(() => {
     const el = ref.current;
     if (!el || typeof ResizeObserver === 'undefined') {
@@ -201,19 +205,22 @@ export function TooltipPreview({ definition, state, functions, i18n }: TooltipPr
     const observer = new ResizeObserver(entries => {
       const r = entries[0]?.contentRect;
       if (r) {
-        setSize({ width: Math.round(r.width), height: Math.round(r.height) });
+        setPane({ width: Math.round(r.width), height: Math.round(r.height) });
       }
     });
     observer.observe(el);
     return () => observer.disconnect();
   }, []);
+  const scale = Math.max(0.05, Math.min(pane.width / TooltipScreen.width, pane.height / TooltipScreen.height));
 
   return (
     <div className="pv-pane">
-      <div className="pv-view">
-        <div ref={ref} className="pv-screen pv-tooltip-screen" style={themeVariables(previewThemes.default) as CSSProperties}>
-          <TooltipBox definition={definition} screen={size} state={state}
-            {...(functions ? { functions } : {})} {...(i18n ? { i18n } : {})} />
+      <div ref={ref} className="pv-view">
+        <div className="pv-stage-size" style={{ width: TooltipScreen.width * scale, height: TooltipScreen.height * scale }}>
+          <div className="pv-screen" style={{ width: TooltipScreen.width, height: TooltipScreen.height, transform: `scale(${scale})`, ...themeVariables(previewThemes.default) } as CSSProperties}>
+            <TooltipBox definition={definition} screen={TooltipScreen} state={state}
+              {...(functions ? { functions } : {})} {...(i18n ? { i18n } : {})} />
+          </div>
         </div>
       </div>
     </div>
