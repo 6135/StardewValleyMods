@@ -1,9 +1,11 @@
-import type { DesignerDocument, DesignerNode, JsonExportOptions, NodeId } from '../model/document';
+import type { DesignerDocument, DesignerNode, JsonExportOptions, NodeId, TemplateDoc } from '../model/document';
+import type { OwnerDoc, TooltipDoc } from '../model/workspace';
 import { defaultOf, typeInfo } from '../model/metadata';
 import { subItemsOf, type SubItemKind } from '../model/subItems';
 import { inferType, isValueMember, modelMembers, pointer, valueShorthands, type JsonObject, type Model } from './dataFormat';
 
-// JSON export (architecture.md §9.1): a Menus entry, a Content Patcher EditData patch or a standalone From file.
+// JSON export (architecture.md §9.1): a Menus entry, a Content Patcher EditData patch or a standalone From file; and
+// the owner-level definitions of a workspace (§18.4): an owner template, a named tooltip, an Owners entry.
 // Members follow Core/Export/JsonEmitter's order (type / id, main value, type members, layout, state, tooltips, style,
 // events, args, children); unknown members are written back verbatim. Never writes previewState or designer node ids.
 
@@ -43,8 +45,63 @@ export interface BuiltMenu {
 /** Build the MenuDefinition object (the fromFile shape) as plain JSON. */
 export function buildMenuObject(doc: DesignerDocument, options: Pick<JsonExportOptions, 'collapseShorthands' | 'omitDefaults'>): BuiltMenu {
   const nodeAt = new Map<string, NodeId>();
-  const writer = new Writer(doc, options, nodeAt);
-  return { value: writer.menu(), nodeAt };
+  const writer = new Writer(doc.nodes, options, nodeAt);
+  return { value: writer.menu(doc), nodeAt };
+}
+
+/** A TemplateDefinition object (an owner template: `nodes` holds its body). */
+export function buildTemplateObject(template: TemplateDoc, nodes: Record<NodeId, DesignerNode>, options: Pick<JsonExportOptions, 'collapseShorthands' | 'omitDefaults'>): JsonObject {
+  return new Writer(nodes, options, new Map()).template(template, '');
+}
+
+/** A TooltipDefinition: blocks in member order, written as a bare block array / string again when it was and still fits. */
+export function buildTooltipObject(doc: TooltipDoc): unknown {
+  const blocks = (doc.nodes[doc.root]?.children ?? []).map(id => doc.nodes[id]).filter((n): n is DesignerNode => n !== undefined).map(node => {
+    const members: Member[] = [];
+    const order = modelMembers('TooltipBlockDefinition');
+    let unknown = 0;
+    const add = (key: string, value: unknown) => {
+      const index = order.indexOf(key);
+      members.push({ key, value, rank: index >= 0 ? 0 : 1, order: index >= 0 ? index : unknown++ });
+    };
+    add('Type', node.type);
+    Object.entries(node.fields).forEach(([key, text]) => add(key, literal('TooltipBlockDefinition', key, text)));
+    Object.entries(node.extra).filter(([key]) => !(key in node.fields)).forEach(([key, value]) => add(key, value));
+    return assemble(members);
+  });
+
+  const plain = Object.keys(doc.fields).length === 0 && Object.keys(doc.extra).length === 0;
+  const only = blocks.length === 1 ? blocks[0]! : null;
+  if (plain && doc.shorthand === 'text' && only && only['Type'] === 'Line' && typeof only['Text'] === 'string' && Object.keys(only).length === 2) {
+    return only['Text'];
+  }
+
+  if (plain && doc.shorthand === 'blocks') {
+    return blocks;
+  }
+
+  const result = modelObject('TooltipDefinition', doc.fields, doc.extra);
+  result['Blocks'] = blocks;
+  return result;
+}
+
+/** An OwnerDefinition without Templates and Tooltips (the caller adds them from their tabs). */
+export function buildOwnerObject(doc: OwnerDoc): JsonObject {
+  return modelObject('OwnerDefinition', doc.fields, doc.extra);
+}
+
+/** String members (as literals) and JSON members of a model, in the model's member order, unknown members after. */
+function modelObject(model: Model, fields: Record<string, string>, extra: Record<string, unknown>): JsonObject {
+  const order = modelMembers(model);
+  const members: Member[] = [];
+  let unknown = 0;
+  const add = (key: string, value: unknown) => {
+    const index = order.indexOf(key);
+    members.push({ key, value, rank: index >= 0 ? 0 : 1, order: index >= 0 ? index : unknown++ });
+  };
+  Object.entries(fields).forEach(([key, text]) => add(key, literal(model, key, text)));
+  Object.entries(extra).filter(([key]) => !(key in fields)).forEach(([key, value]) => add(key, value));
+  return assemble(members);
 }
 
 // ---------------------------------------------------------------------------------------------------------------
@@ -109,13 +166,12 @@ interface Member {
 
 class Writer {
   constructor(
-    private readonly doc: DesignerDocument,
+    private readonly nodes: Record<NodeId, DesignerNode>,
     private readonly options: Pick<JsonExportOptions, 'collapseShorthands' | 'omitDefaults'>,
     private readonly nodeAt: Map<string, NodeId>
   ) {}
 
-  menu(): JsonObject {
-    const { doc } = this;
+  menu(doc: DesignerDocument): JsonObject {
     const order = modelMembers('MenuDefinition');
     const members: Member[] = [];
     let unknown = 0;
@@ -143,7 +199,7 @@ class Writer {
     if (templateNames.length > 0) {
       const templates: JsonObject = {};
       for (const name of templateNames) {
-        templates[name] = this.template(name);
+        templates[name] = this.template(doc.templates[name]!, pointer('/Templates', name));
       }
 
       add('Templates', templates);
@@ -159,9 +215,7 @@ class Writer {
     return result;
   }
 
-  private template(name: string): JsonObject {
-    const t = this.doc.templates[name]!;
-    const base = pointer('/Templates', name);
+  template(t: TemplateDoc, base: string): JsonObject {
     this.nodeAt.set(base, t.root);
     const result: JsonObject = {};
     if (Object.keys(t.params).length > 0) {
@@ -187,14 +241,14 @@ class Writer {
   }
 
   private children(id: NodeId): NodeId[] {
-    return this.doc.nodes[id]?.children ?? [];
+    return this.nodes[id]?.children ?? [];
   }
 
   private childList(parent: NodeId, parentPointer: string): JsonObject[] {
     const list: JsonObject[] = [];
     const base = pointer(parentPointer, 'Children');
     for (const childId of this.children(parent)) {
-      const child = this.doc.nodes[childId];
+      const child = this.nodes[childId];
       if (child) {
         list.push(this.element(child, pointer(base, list.length)));
       }
@@ -282,7 +336,7 @@ class Writer {
   private subItemList(parent: DesignerNode, kind: SubItemKind, listPointer: string): unknown[] {
     const list: unknown[] = [];
     for (const childId of parent.children) {
-      const child = this.doc.nodes[childId];
+      const child = this.nodes[childId];
       if (child) {
         list.push(this.subItem(child, kind, pointer(listPointer, list.length)));
       }
@@ -320,7 +374,7 @@ class Writer {
 
     if (kind.elements !== undefined && node.children.length > 0) {
       const base = pointer(at, kind.elements);
-      const elements = node.children.map(id => this.doc.nodes[id]).filter((n): n is DesignerNode => n !== undefined);
+      const elements = node.children.map(id => this.nodes[id]).filter((n): n is DesignerNode => n !== undefined);
       add(kind.elements, node.singleElement && elements.length === 1
         ? this.element(elements[0]!, base)
         : elements.map((e, i) => this.element(e, pointer(base, i))));

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type FocusEvent, type KeyboardEvent } from 'react';
 import type { FieldShape } from '../../fieldShapes';
+import type { RefKind } from '../../model/resolve';
 import {
   colorToHex, enumValue, formatColor, formatMargin, formatTracks, parseBool, parseMargin, parseTracks, type Track
 } from './literals';
@@ -211,6 +212,11 @@ export function TracksWidget({ value, commit, id }: WidgetProps) {
   );
 }
 
+/** The id of the datalist with the workspace's names of a reference kind (ui/WorkspaceLists.tsx); menus list open actions. */
+export function refListId(ref: RefKind): string {
+  return `ref-${ref}`;
+}
+
 /** The editor for a shape in literal mode. */
 export function ShapeWidget({ shape, ...props }: WidgetProps & { shape: FieldShape }) {
   switch (shape.kind) {
@@ -221,8 +227,9 @@ export function ShapeWidget({ shape, ...props }: WidgetProps & { shape: FieldSha
     case 'margin': return <MarginWidget {...props} />;
     case 'color': return <ColorWidget {...props} />;
     case 'tracks': return <TracksWidget {...props} />;
-    case 'sprite': return <TextWidget {...props} mono list="sprite-prefixes" placeholder={props.placeholder ?? 'sprite:Owner/name, item:(O)24, asset:Path@x,y,w,h'} />;
-    case 'actions': return <TextWidget {...props} mono placeholder={props.placeholder ?? 'a trigger action, e.g. AddMoney 100'} />;
+    case 'sprite': return <TextWidget {...props} mono list={refListId('sprite')} placeholder={props.placeholder ?? 'sprite:Owner/name, item:(O)24, asset:Path@x,y,w,h'} />;
+    case 'actions': return <TextWidget {...props} mono list={refListId('menu')} placeholder={props.placeholder ?? 'a trigger action, e.g. AddMoney 100'} />;
+    case 'ref': return <TextWidget {...props} mono list={refListId(shape.ref)} />;
     case 'multiline': return <TextWidget {...props} multiline />;
     case 'text': return <TextWidget {...props} />;
   }

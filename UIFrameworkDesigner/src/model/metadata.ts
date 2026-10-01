@@ -52,3 +52,14 @@ export function usesStyle(type: string, field: string): boolean {
 export function defaultOf(type: string | 'menu', field: string): string | undefined {
   return type === 'menu' ? defaults.menu[field] : defaults.elements[canonicalType(type) ?? type]?.[field];
 }
+
+/** The tooltip block kinds (TooltipBlockKinds.All, from the schema's TooltipBlockDefinition.Type enum). */
+export const tooltipBlockTypes: readonly string[] = (() => {
+  const defs = menuSchema['definitions'] as Record<string, { properties?: Record<string, { enum?: unknown[] }> }> | undefined;
+  return (defs?.['TooltipBlockDefinition']?.properties?.['Type']?.enum ?? []).filter((v): v is string => typeof v === 'string');
+})();
+
+/** True for a tooltip block node type (Title, Line, Icon, Item, Divider, Money). */
+export function isTooltipBlock(type: string): boolean {
+  return tooltipBlockTypes.includes(type);
+}

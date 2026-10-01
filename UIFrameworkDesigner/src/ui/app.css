@@ -3,9 +3,10 @@
 .app {
   display: grid;
   grid-template-columns: minmax(220px, 280px) minmax(0, 1fr) minmax(300px, 380px);
-  grid-template-rows: auto minmax(0, 1fr) 150px;
+  grid-template-rows: auto auto minmax(0, 1fr) 150px;
   grid-template-areas:
     'header header header'
+    'left tabs inspector'
     'left preview inspector'
     'left problems problems';
   gap: 6px;
@@ -23,7 +24,7 @@
   .app {
     grid-template-columns: minmax(0, 1fr);
     grid-template-rows: auto;
-    grid-template-areas: 'header' 'left' 'preview' 'inspector' 'problems';
+    grid-template-areas: 'header' 'left' 'tabs' 'preview' 'inspector' 'problems';
     height: auto;
   }
 
@@ -462,3 +463,26 @@ textarea.w-text {
 .io-text { flex: 1; font-family: monospace; font-size: 12px; resize: none; }
 .io-result { display: flex; flex-direction: column; gap: 4px; max-height: 30%; overflow: auto; }
 .field .help.error { display: block; color: #d14343; }
+
+/* workspace (architecture.md §18.3) */
+
+.tabs { grid-area: tabs; display: flex; flex-wrap: wrap; gap: 4px; align-items: center; min-width: 0; }
+.tab { display: flex; align-items: center; gap: 6px; padding: 3px 6px; border: 1px solid var(--border); border-radius: 6px; background: var(--surface); cursor: pointer; font-size: 12px; max-width: 220px; }
+.tab.active { border-color: var(--accent); box-shadow: inset 0 -2px 0 var(--accent); }
+.tab-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tab-kind { font-size: 10px; font-weight: 600; padding: 0 4px; border-radius: 3px; background: var(--accent-soft); color: var(--muted); }
+.tab-dirty { color: var(--accent); font-size: 9px; }
+.tab-close { padding: 0 2px; }
+.tab-add { width: auto; }
+.workspace-pane { border-bottom: 1px solid var(--border); }
+.workspace-pane > summary { cursor: pointer; }
+.workspace-body { max-height: 30vh; overflow: auto; padding: 0 6px 6px; }
+.ws-item { display: flex; width: 100%; gap: 6px; background: none; border: 0; padding: 1px 4px; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.ws-item:hover, .ws-item.active { background: var(--accent-soft); }
+.ws-name { flex: 1; overflow: hidden; text-overflow: ellipsis; font-family: monospace; font-size: 12px; }
+.ws-count { color: var(--muted); font-size: 11px; }
+.used-by { list-style: none; margin: 0; padding: 0 0 4px; }
+.link { background: none; border: 0; padding: 1px 0; color: var(--accent); font: inherit; cursor: pointer; text-align: left; }
+.goto { color: var(--accent); }
+.problems-scope { margin-left: 8px; font-size: 11px; }
+.problem-tab { color: var(--muted); font-family: monospace; font-size: 0.85em; }

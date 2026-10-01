@@ -1,4 +1,5 @@
 import { menuSchema } from './model/metadata';
+import type { RefKind } from './model/resolve';
 import { subItemKinds } from './model/subItems';
 
 // The one hand-written metadata table (architecture.md §6.2): the literal shape of each string field, which the
@@ -17,6 +18,8 @@ export type FieldShape =
   | { kind: 'tracks' }
   | { kind: 'sprite' }
   | { kind: 'actions' }
+  /** The name of a workspace definition (a style class, a template): text with the workspace's names as suggestions. */
+  | { kind: 'ref'; ref: RefKind }
   | { kind: 'text' }
   | { kind: 'multiline' };
 
@@ -46,9 +49,9 @@ const anchor: FieldShape = {
 /** Shapes by field name (element and menu fields share names and shapes). */
 export const fieldShapes: Record<string, FieldShape> = {
   // identity and behaviour
-  Id: text, Condition: text, If: text, Switch: text, Case: text, With: text, Class: text, Tag: text, AccessibleName: text,
+  Id: text, Condition: text, If: text, Switch: text, Case: text, With: text, Class: { kind: 'ref', ref: 'class' }, Tag: text, AccessibleName: text,
   Visible: bool, Enabled: bool, Sealed: bool, Tooltip: multiline, TooltipTitle: text, RichTooltip: multiline,
-  DrawExtra: text, DrawOverlay: text, Outlet: text, Template: text, Composite: text, ContentTarget: text,
+  DrawExtra: text, DrawOverlay: text, Outlet: text, Template: { kind: 'ref', ref: 'template' }, Composite: text, ContentTarget: text,
   // layout
   Margin: { kind: 'margin' }, MarginLeft: int, MarginTop: int, MarginRight: int, MarginBottom: int,
   Width: size, Height: size, MinWidth: size, MaxWidth: size, MaxHeight: size,
@@ -77,7 +80,9 @@ export const fieldShapes: Record<string, FieldShape> = {
   From: text, Hotkey: text, Title: text, ShowCloseButton: bool, Modal: bool, DimBackground: bool, Anchor: anchor,
   CloseOnEscape: bool, PlayerLayout: bool, Resizable: bool, DefaultButton: text, CancelButton: text,
   StateLifetime: { kind: 'enum', values: ['Session', 'Open'] }, UpdateIntervalMs: int,
-  OnOpen: actions, OnClose: actions, OnUpdate: actions
+  OnOpen: actions, OnClose: actions, OnUpdate: actions,
+  // owner entry and tooltip blocks
+  TooltipDelayMs: int, SharedState: text, Amount: text, When: text
 };
 
 /**
@@ -104,6 +109,8 @@ export function missingShapes(): string[] {
   const models: [string, Record<string, FieldShape>][] = [
     ['ElementDefinition', {}],
     ['MenuDefinition', {}],
+    ['OwnerDefinition', {}],
+    ['TooltipBlockDefinition', {}],
     ...subItemKinds.map((k): [string, Record<string, FieldShape>] => [k.schema, typeShapes[k.type] ?? {}])
   ];
   for (const [model, own] of models) {

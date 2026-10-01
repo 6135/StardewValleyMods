@@ -34,9 +34,19 @@ const ParamTypes = ['string', 'number', 'bool', 'any'];
 /** Members ExpandTag leaves on a custom tag / template instance (the rest become its arguments). */
 const TagKeeps = new Set(['Type', 'Children', 'Composite', 'Args', 'ContentTarget', 'On', 'Template']);
 
+/**
+ * The owner-level templates a menu's instances can expand (from the workspace resolver, model/resolve.ts): their names
+ * and Params; null when the owner's Owners entry is not in the workspace (instances of other templates are assumed to
+ * name one of it).
+ */
+export interface OwnerTemplates {
+  names: string[];
+  params(name: string): unknown;
+}
+
 /** Check a MenuDefinition object. */
-export function checkMenu(menu: JsonObject): RawProblem[] {
-  return new Checker(menu).run();
+export function checkMenu(menu: JsonObject, ownerTemplates: OwnerTemplates | null = null): RawProblem[] {
+  return new Checker(menu, ownerTemplates).run();
 }
 
 /** One element after NormalizeType: its canonical members (shorthands expanded, tag arguments moved into Args). */
@@ -45,17 +55,17 @@ interface Normalized {
   members: Map<string, unknown>;
   /** The template an instance expands ("Template" type), when it is one. */
   template?: string;
-  /** True when the template is not one of the menu's (an owner template, assumed to exist). */
-  external?: boolean;
 }
 
 class Checker {
   private readonly problems: RawProblem[] = [];
   private readonly templates = new Map<string, JsonObject>();
   private readonly isLocalTemplate: (name: string) => boolean;
+  /** A template of the menu or (when the workspace holds the owner's entry) of the owner. */
+  private readonly isKnownTemplate: (name: string) => boolean;
   private bodyDepth = 0;
 
-  constructor(private readonly menu: JsonObject) {
+  constructor(private readonly menu: JsonObject, private readonly ownerTemplates: OwnerTemplates | null) {
     const templates = getMember(menu, 'Templates');
     if (isObject(templates)) {
       for (const [name, def] of Object.entries(templates)) {
@@ -66,6 +76,24 @@ class Checker {
     }
 
     this.isLocalTemplate = templateMatcher(this.templates.keys());
+    const isOwnerTemplate = templateMatcher(ownerTemplates?.names ?? []);
+    this.isKnownTemplate = name => this.isLocalTemplate(name) || isOwnerTemplate(name);
+  }
+
+  /** The Params of a template an instance names: the menu's first, then the owner's; undefined when unknown. */
+  private templateParams(name: string): unknown {
+    const local = this.templates.get(name.trim().toLowerCase());
+    if (local) {
+      return getMember(local, 'Params');
+    }
+
+    const owner = this.ownerTemplates?.names.find(n => n.trim().toLowerCase() === name.trim().toLowerCase());
+    return owner !== undefined ? this.ownerTemplates!.params(owner) : undefined;
+  }
+
+  /** "'x' is not … of the owner's Owners entry" for a name no template of the menu or owner has (did you mean). */
+  private missingTemplate(name: string): string {
+    return `'${name}' is not a template of this menu or of the owner's Owners entry${didYouMean(name, [...this.templates.keys(), ...(this.ownerTemplates?.names ?? [])])}`;
   }
 
   run(): RawProblem[] {
@@ -162,11 +190,8 @@ class Checker {
       this.addField('error', path, ptr, 'Composite', 'a Composite needs the name of a composite defined in C# or the Composites asset ("Composite": "ModId.Name"); nothing is built.');
     }
 
-    if (type === 'Template' && n.template !== undefined && !n.external) {
-      const template = this.templates.get(n.template.trim().toLowerCase());
-      if (template) {
-        this.args(n.template, getMember(template, 'Params'), get('Args'), path, ptr);
-      }
+    if (type === 'Template' && n.template !== undefined) {
+      this.args(n.template, this.templateParams(n.template), get('Args'), path, ptr);
     }
 
     if (type === 'Outlet' && this.bodyDepth === 0) {
@@ -243,7 +268,7 @@ class Checker {
 
     const set = (m: string) => members.get(m) !== undefined && members.get(m) !== null;
     const typeText = set('Type') ? (scalarText(members.get('Type')) ?? '').trim() : null;
-    const kind = typeText !== null ? typeKind(typeText, this.isLocalTemplate) : null;
+    const kind = typeText !== null ? typeKind(typeText, this.isKnownTemplate) : null;
     const hasTemplate = set('Template');
 
     if (hasTemplate || kind === 'template' || kind === 'customTag' || kind === 'unknown') {
@@ -254,8 +279,12 @@ class Checker {
           return null;
         }
 
-        // most likely a template of the owner's Owners entry, which a single menu document cannot see
-        this.addField('info', path, ptr, 'Type', `'${typeText}' is not a built-in type or a template of this menu; it must be a template of the owner's Owners entry, otherwise the element is skipped.`);
+        if (this.ownerTemplates === null) {
+          // most likely a template of the owner's Owners entry, which the workspace does not hold
+          this.addField('info', path, ptr, 'Type', `'${typeText}' is not a built-in type or a template of this menu; it must be a template of the owner's Owners entry, otherwise the element is skipped.`);
+        } else {
+          this.addField('warning', path, ptr, 'Type', `${this.missingTemplate(typeText!)} or a built-in type; the element is skipped.`);
+        }
       }
 
       const isComposite = kind === 'customTag' && !hasTemplate;
@@ -272,12 +301,15 @@ class Checker {
 
       members.set('Template', name.trim());
       members.set('Type', 'Template');
-      const external = !this.isLocalTemplate(name);
-      if (external && hasTemplate) {
-        this.addField('info', path, ptr, 'Template', `'${name}' is not a template of this menu; it must be a template of the owner's Owners entry, otherwise the instance is empty.`);
+      if (hasTemplate && !this.isKnownTemplate(name)) {
+        if (this.ownerTemplates === null) {
+          this.addField('info', path, ptr, 'Template', `'${name}' is not a template of this menu; it must be a template of the owner's Owners entry, otherwise the instance is empty.`);
+        } else {
+          this.addField('warning', path, ptr, 'Template', `${this.missingTemplate(name)}; the instance is empty.`);
+        }
       }
 
-      return { type: 'Template', members, template: name.trim(), external };
+      return { type: 'Template', members, template: name.trim() };
     }
 
     for (const name of unknownNames) {

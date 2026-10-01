@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { useDesigner } from '../model/store';
+import { activeTree, activeUi, useDesigner } from '../model/store';
 import { focusRow } from './Tree';
 
 // Global shortcuts (architecture.md §6.3): undo / redo, duplicate, delete. Ignored while typing in a text control,
@@ -21,7 +21,8 @@ export function useGlobalShortcuts(): void {
       const store = useDesigner.getState();
       const mod = e.ctrlKey || e.metaKey;
       const key = e.key.toLowerCase();
-      const selection = store.selection !== null && store.selection !== store.doc.root ? store.selection : null;
+      const current = activeUi(store).selection;
+      const selection = current !== null && current !== activeTree(store)?.root ? current : null;
       if (mod && !e.altKey && ((key === 'z' && e.shiftKey) || (key === 'y' && !e.shiftKey))) {
         store.redo();
       } else if (mod && !e.altKey && !e.shiftKey && key === 'z') {
@@ -33,7 +34,7 @@ export function useGlobalShortcuts(): void {
         }
       } else if (e.key === 'Delete' && !mod && selection !== null) {
         store.deleteNode(selection);
-        const next = useDesigner.getState().selection;
+        const next = activeUi(useDesigner.getState()).selection;
         if (next !== null) {
           focusRow(next);
         }

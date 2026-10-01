@@ -1,10 +1,18 @@
 // The designer's document model (architecture.md §6.1). Shared contract between the store, io, validate,
 // layout, preview and codegen modules; keep it free of React and of any module-specific state.
 
+import type { Workspace } from './workspace';
+
 /** Designer-internal node id: stable across edits, never exported (not the element's "Id"). */
 export type NodeId = string;
 
-export interface DesignerDocument {
+/** A node table with its root: what the tree, the inspector and the tree operations (model/ops.ts) edit. */
+export interface NodeTree {
+  root: NodeId;
+  nodes: Record<NodeId, DesignerNode>;
+}
+
+export interface DesignerDocument extends NodeTree {
   /** "{{ModId}}" or a literal mod id; the Menus key is `${owner}/${menuId}`. */
   owner: string;
   menuId: string;
@@ -12,10 +20,7 @@ export interface DesignerDocument {
   menu: Record<string, string>;
   /** Menu-level members the designer does not model as strings (State, Sources, Computed, Watch, Keys, OnOpen …) and unknown members, verbatim. */
   menuExtra: Record<string, unknown>;
-  /** Synthetic root node holding the menu's Children; its type is "Menu" and it has no fields. */
-  root: NodeId;
-  /** Every node of the menu tree and of the templates, flat. */
-  nodes: Record<NodeId, DesignerNode>;
+  /** Synthetic root node holding the menu's Children (type "Menu", no fields); `nodes` holds the menu tree and the templates. */
   /** Menu-level Templates, edited like menus. */
   templates: Record<string, TemplateDoc>;
   /** Sample values for expressions in the preview (§7.2); never exported. */
@@ -25,7 +30,8 @@ export interface DesignerDocument {
 export interface DesignerNode {
   id: NodeId;
   /**
-   * Canonical built-in type, template name or custom tag; "Menu" / "Template" for synthetic roots; a sub-item type
+   * Canonical built-in type, template name or custom tag; "Menu" / "Template" / "Tooltip" for synthetic roots; a tooltip
+   * block kind ("Title", "Line" … under a "Tooltip" root, metadata.tooltipBlockTypes); a sub-item type
    * (model/subItems.ts) for an item of an element's list member: "FormField" (one of a Form's Fields, children: none) and
    * "Column" (one of a DataGrid's Columns, children: its Cell elements). A Form / DataGrid holds only those as children.
    */
@@ -73,6 +79,13 @@ export interface ImportCandidate {
 
 export interface ImportResult {
   candidates: ImportCandidate[];
+  /**
+   * Everything the text holds as a workspace (§18.4): each Owners entry as an owner tab plus a tab per template and
+   * tooltip, each menu as a menu tab, in the text's order; null when it holds nothing the designer edits.
+   */
+  workspace: Workspace | null;
+  /** The root's `$designer` member (a saved workspace's tab order and preview state, io/workspace.ts), verbatim. */
+  designer?: unknown;
   problems: Problem[];
   /** True when the text had comments (they are not preserved on export, §6.1). */
   hadComments: boolean;

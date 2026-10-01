@@ -1,14 +1,18 @@
 import { useState, type ReactNode } from 'react';
 import type { DesignerDocument, DesignerNode } from '../model/document';
-import { defaultOf, elementTypes, typeInfo, usesMember } from '../model/metadata';
-import { useDesigner } from '../model/store';
+import { defaultOf, elementTypes, isTooltipBlock, typeInfo, usesMember } from '../model/metadata';
+import { templateUse, type Definition } from '../model/resolve';
+import { activeTab, activeUi, useDesigner } from '../model/store';
 import { subItemKind, subItemsOf, type SubItemKind } from '../model/subItems';
+import { tabOwner, treeOf, type OwnerTab, type TemplateTab, type TooltipTab, type WorkspaceTab } from '../model/workspace';
 import { allowsString, describe, schemaProperties, shapeOf } from '../fieldShapes';
 import { FieldRow, JsonRow } from './fields/FieldRow';
-import { TextWidget } from './fields/widgets';
+import { refListId, TextWidget } from './fields/widgets';
+import { definitionOf, RenameRow, revealDefinition, UsedBy, useNodeTargets, useResolver } from './WorkspacePane';
 
-// The inspector (architecture.md §6.2): menu fields for the root, the type's fields for an element, the schema
-// definition's fields for a sub-item (a Form field, a DataGrid column), grouped.
+// The inspector (architecture.md §6.2, §18.3): menu fields for a menu's root, the type's fields for an element, the
+// schema definition's fields for a sub-item (a Form field, a DataGrid column) or a tooltip block; the members of a
+// template, named tooltip or owner entry for those tabs, with the definition's name (rename) and its uses.
 
 interface Group {
   name: string;
@@ -42,19 +46,167 @@ const menuGroups: Group[] = [
 ];
 
 export function Inspector() {
-  const doc = useDesigner(s => s.doc);
-  const selection = useDesigner(s => s.selection);
-  const node = selection !== null && selection !== doc.root ? doc.nodes[selection] : undefined;
+  const tab = useDesigner(activeTab);
+  const selection = useDesigner(s => activeUi(s).selection);
+  const tree = treeOf(tab);
+  const node = tree && selection !== null && selection !== tree.root ? tree.nodes[selection] : undefined;
 
   return (
     <aside className="pane inspector" aria-label="Inspector">
       <div className="pane-title">Inspector</div>
       <div className="pane-body">
-        {!node ? <MenuInspector doc={doc} />
-          : subItemKind(node.type) ? <SubItemInspector key={node.id} node={node} kind={subItemKind(node.type)!} />
-          : <ElementInspector key={node.id} node={node} />}
+        {node ? (
+          subItemKind(node.type) ? <SubItemInspector key={node.id} node={node} kind={subItemKind(node.type)!} />
+            : tab.kind === 'tooltip' ? <BlockInspector key={node.id} node={node} />
+            : <ElementInspector key={node.id} node={node} owner={tabOwner(tab)} />
+        ) : <DefinitionInspector key={tab.id} tab={tab} />}
       </div>
     </aside>
+  );
+}
+
+function DefinitionInspector({ tab }: { tab: WorkspaceTab }) {
+  switch (tab.kind) {
+    case 'menu': return <MenuInspector doc={tab.doc} tabId={tab.id} />;
+    case 'template': return <TemplateInspector tab={tab} />;
+    case 'tooltip': return <TooltipInspector tab={tab} />;
+    case 'owner': return <OwnerInspector tab={tab} />;
+  }
+}
+
+/** The workspace definition a tab is (the subject of its rename and Used by). */
+function useTabDefinition(kind: Definition['kind'], tabId: string): Definition | undefined {
+  const resolver = useResolver();
+  return resolver.definitions.find(d => d.kind === kind && d.tabId === tabId && d.nodeId === undefined);
+}
+
+/** The Owners entry a tab belongs to. */
+function OwnerRow({ owner, id, title }: { owner: string; id: string; title: string }) {
+  const setMeta = useDesigner(s => s.setMeta);
+  return (
+    <div className="field set">
+      <label htmlFor={id} title={title}>Owner</label>
+      <div className="control"><TextWidget id={id} mono value={owner} commit={v => setMeta({ owner: v ?? '' })} /></div>
+    </div>
+  );
+}
+
+/** A model's string members as widgets, other members as JSON, unknown members after (template, tooltip, owner entry). */
+function useModelEntries(model: string, fields: Record<string, string>, extra: Record<string, unknown>, skip: Set<string>, what: string): Entry[] {
+  const setTabField = useDesigner(s => s.setTabField);
+  const setTabExtra = useDesigner(s => s.setTabExtra);
+  const props = schemaProperties(model);
+  const names = [...Object.keys(props), ...Object.keys(fields), ...Object.keys(extra)].filter((n, i, all) => !skip.has(n) && all.indexOf(n) === i);
+  return names.map(name => {
+    const description = describe(model, name);
+    const warning = name in props ? undefined : `Not a ${what} field`;
+    if (name in extra || (fields[name] === undefined && !allowsString(props[name]))) {
+      return { name, set: name in extra, row: <JsonRow name={name} value={extra[name]} description={description} warning={warning} commit={v => setTabExtra(name, v)} /> };
+    }
+
+    return {
+      name,
+      set: fields[name] !== undefined,
+      row: <FieldRow name={name} shape={shapeOf('menu', name)} value={fields[name]} description={description} warning={warning} commit={v => setTabField(name, v)} />
+    };
+  });
+}
+
+function TemplateInspector({ tab }: { tab: TemplateTab }) {
+  const def = useTabDefinition('template', tab.id);
+  const setTabExtra = useDesigner(s => s.setTabExtra);
+  const entries = useModelEntries('TemplateDefinition', tab.doc.fields, tab.doc.extra, new Set(['Params', 'Children']), 'template');
+  return (
+    <>
+      <div className="inspector-head">
+        <span className="type">Owner template</span>
+        <span className="muted">instances: "Type": "{tab.name}"</span>
+      </div>
+      <details className="group" open>
+        <summary>Definition</summary>
+        {def && <RenameRow def={def} label="Name" id="template-name" />}
+        <OwnerRow owner={tab.owner} id="template-owner" title="The Owners entry the template belongs to; every UI of that owner can use it." />
+        <JsonRow name="Params" value={tab.doc.params} description={describe('TemplateDefinition', 'Params')} commit={v => setTabExtra('Params', v)} />
+      </details>
+      <GroupedFields scope="template" groups={[{ name: 'Body stack', open: true }]} entries={entries} />
+      {def && <UsedBy def={def} />}
+    </>
+  );
+}
+
+function TooltipInspector({ tab }: { tab: TooltipTab }) {
+  const def = useTabDefinition('tooltip', tab.id);
+  const entries = useModelEntries('TooltipDefinition', tab.doc.fields, tab.doc.extra, new Set(['Blocks']), 'tooltip');
+  return (
+    <>
+      <div className="inspector-head">
+        <span className="type">Named tooltip</span>
+        <span className="muted">elements show it with RichTooltip From "{tab.name}"</span>
+      </div>
+      <details className="group" open>
+        <summary>Definition</summary>
+        {def && <RenameRow def={def} label="Name" id="tooltip-name" />}
+        <OwnerRow owner={tab.owner} id="tooltip-owner" title="The Owners entry the tooltip belongs to." />
+      </details>
+      <GroupedFields scope="tooltip" groups={[{ name: 'Tooltip', open: true }]} entries={entries} />
+      {def && <UsedBy def={def} />}
+    </>
+  );
+}
+
+/** A tooltip block: the TooltipBlockDefinition members (its Type is the node type). */
+function BlockInspector({ node }: { node: DesignerNode }) {
+  const setField = useDesigner(s => s.setField);
+  const setExtra = useDesigner(s => s.setExtra);
+  const props = schemaProperties('TooltipBlockDefinition');
+  const names = [...Object.keys(props), ...Object.keys(node.fields), ...Object.keys(node.extra)].filter((n, i, all) => n !== 'Type' && all.indexOf(n) === i);
+  const entries: Entry[] = names.map(name => {
+    const description = describe('TooltipBlockDefinition', name);
+    const warning = name in props ? undefined : 'Not a block field';
+    return name in node.extra
+      ? { name, set: true, row: <JsonRow name={name} value={node.extra[name]} description={description} warning={warning} commit={v => setExtra(node.id, name, v)} /> }
+      : {
+        name,
+        set: node.fields[name] !== undefined,
+        row: <FieldRow name={name} shape={shapeOf(node.type, name)} value={node.fields[name]} description={description} warning={warning} commit={v => setField(node.id, name, v)} />
+      };
+  });
+
+  return (
+    <>
+      <div className="inspector-head">
+        <span className="type">{node.type}</span>
+        <span className="muted">{isTooltipBlock(node.type) ? 'a tooltip block' : 'unknown block type'}</span>
+      </div>
+      <GroupedFields scope={node.id} groups={[{ name: 'Block', open: true }]} entries={entries} />
+    </>
+  );
+}
+
+/** An Owners entry: TooltipDelayMs, DefaultStyle, Classes, Hotkeys, SharedState (its Templates and Tooltips are tabs). */
+function OwnerInspector({ tab }: { tab: OwnerTab }) {
+  const resolver = useResolver();
+  const classes = resolver.definitions.filter(d => d.kind === 'class' && d.tabId === tab.id);
+  const entries = useModelEntries('OwnerDefinition', tab.doc.fields, tab.doc.extra, new Set(['Templates', 'Tooltips']), 'owner');
+  return (
+    <>
+      <div className="inspector-head">
+        <span className="type">Owner entry</span>
+        <span className="muted">its templates and tooltips are tabs of their own</span>
+      </div>
+      <details className="group" open>
+        <summary>Entry</summary>
+        <OwnerRow owner={tab.owner} id="owner-id" title="A loaded mod or content pack id, usually {{ModId}}." />
+      </details>
+      <GroupedFields scope="owner" groups={[{ name: 'Members', open: true }]} entries={entries} />
+      {classes.map((def, i) => (
+        <details key={def.name} className="group">
+          <summary>Class {def.name} ({resolver.usages(def).length})</summary>
+          <RenameRow def={def} label="Name" id={`class-${i}`} />
+          <UsedBy def={def} />
+        </details>
+      ))}
+    </>
   );
 }
 
@@ -85,10 +237,19 @@ function GroupedFields({ groups, entries, scope }: { groups: Group[]; entries: E
   );
 }
 
-function ElementInspector({ node }: { node: DesignerNode }) {
+function ElementInspector({ node, owner }: { node: DesignerNode; owner: string }) {
   const setField = useDesigner(s => s.setField);
   const setExtra = useDesigner(s => s.setExtra);
+  const resolver = useResolver();
+  const tabId = useDesigner(s => s.workspace.activeTab);
+  const targets = useNodeTargets(node.id);
+  const goto = (field: string) => {
+    const def = targets.get(field);
+    return def ? () => revealDefinition(def) : undefined;
+  };
   const info = typeInfo(node.type);
+  const use = templateUse(node);
+  const template = use ? definitionOf(resolver, 'template', owner, use.name, tabId) : undefined;
   const props = schemaProperties('ElementDefinition');
   // the child list member (Children, or a Form's Fields / a DataGrid's Columns, edited as tree items) is not a field
   const listMember = subItemsOf(node.type)?.member ?? 'Children';
@@ -110,7 +271,7 @@ function ElementInspector({ node }: { node: DesignerNode }) {
         name,
         set: value !== undefined,
         row: <FieldRow name={name} shape={shapeOf(node.type, name)} value={value} defaultValue={defaultOf(node.type, name)}
-          description={description} warning={warning} commit={v => setField(node.id, name, v)} />
+          description={description} warning={warning} goto={goto(name)} commit={v => setField(node.id, name, v)} />
       });
     }
   }
@@ -120,10 +281,39 @@ function ElementInspector({ node }: { node: DesignerNode }) {
       <div className="inspector-head">
         <span className="type">{node.type}</span>
         {!info && <span className="muted">{node.type.includes('.') ? 'custom tag' : 'template instance'}: other fields are its arguments</span>}
+        {template && use?.field === 'Type' && (
+          <button type="button" className="small" title="Open the template" onClick={() => revealDefinition(template)}>→ {template.name}</button>
+        )}
       </div>
+      <TooltipFrom node={node} goto={goto('RichTooltip')} />
       <GroupedFields scope={node.id} groups={elementGroups(members)} entries={entries} />
       {!info && <AddArgument onAdd={name => setField(node.id, name, '')} />}
     </>
+  );
+}
+
+/** RichTooltip.From: the named tooltip an element's rich tooltip starts from, picked from the workspace's tooltips. */
+function TooltipFrom({ node, goto }: { node: DesignerNode; goto: (() => void) | undefined }) {
+  const setExtra = useDesigner(s => s.setExtra);
+  const rich = node.extra['RichTooltip'];
+  const object = typeof rich === 'object' && rich !== null && !Array.isArray(rich) ? rich as Record<string, unknown> : undefined;
+  if (rich !== undefined && object === undefined) {
+    return null;
+  }
+
+  const from = typeof object?.['From'] === 'string' ? object['From'] : undefined;
+  const commit = (value: string | undefined) => {
+    const rest = Object.fromEntries(Object.entries(object ?? {}).filter(([k]) => k !== 'From'));
+    setExtra(node.id, 'RichTooltip', value !== undefined ? { From: value, ...rest } : Object.keys(rest).length > 0 ? rest : undefined);
+  };
+
+  return (
+    <div className={from === undefined ? 'field' : 'field set'}>
+      <label htmlFor={`${node.id}-from`} title="RichTooltip.From: a named tooltip of the owner (Owners Tooltips); its blocks come first.">Tooltip from</label>
+      <div className="control"><TextWidget id={`${node.id}-from`} mono list={refListId('tooltip')} value={from} placeholder="named tooltip" commit={commit} /></div>
+      <button type="button" className="icon clear" title="Remove From" disabled={from === undefined} onClick={() => commit(undefined)}>×</button>
+      {goto && <button type="button" className="icon goto" title="Go to the named tooltip" onClick={goto}>→</button>}
+    </div>
   );
 }
 
@@ -183,10 +373,10 @@ function AddArgument({ onAdd }: { onAdd(name: string): void }) {
   );
 }
 
-function MenuInspector({ doc }: { doc: DesignerDocument }) {
+function MenuInspector({ doc, tabId }: { doc: DesignerDocument; tabId: string }) {
   const setMenuField = useDesigner(s => s.setMenuField);
   const setMenuExtra = useDesigner(s => s.setMenuExtra);
-  const setMeta = useDesigner(s => s.setMeta);
+  const def = useTabDefinition('menu', tabId);
   const props = schemaProperties('MenuDefinition');
   const skip = new Set(['Children', 'Templates', '$schema']);
   const names = [...Object.keys(props), ...Object.keys(doc.menu), ...Object.keys(doc.menuExtra)].filter((n, i, all) => !skip.has(n) && all.indexOf(n) === i);
@@ -216,17 +406,12 @@ function MenuInspector({ doc }: { doc: DesignerDocument }) {
       </div>
       <details className="group" open>
         <summary>Entry</summary>
-        <div className="field set">
-          <label htmlFor="menu-owner" title="A loaded mod or content pack id, usually {{ModId}}; the Menus key is owner/menu id.">Owner</label>
-          <div className="control"><TextWidget id="menu-owner" mono value={doc.owner} commit={v => setMeta({ owner: v ?? '' })} /></div>
-        </div>
-        <div className="field set">
-          <label htmlFor="menu-id" title="The menu id; the Menus key is owner/menu id.">Menu id</label>
-          <div className="control"><TextWidget id="menu-id" mono value={doc.menuId} commit={v => setMeta({ menuId: v ?? '' })} /></div>
-        </div>
+        <OwnerRow owner={doc.owner} id="menu-owner" title="A loaded mod or content pack id, usually {{ModId}}; the Menus key is owner/menu id." />
+        {def && <RenameRow def={def} label="Menu id" id="menu-id" />}
       </details>
       <GroupedFields scope="menu" groups={menuGroups} entries={entries} />
       {templates.length > 0 && <p className="note">Templates (read-only in this version): {templates.join(', ')}.</p>}
+      {def && <UsedBy def={def} />}
     </>
   );
 }

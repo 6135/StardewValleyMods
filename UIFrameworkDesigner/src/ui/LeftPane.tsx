@@ -4,13 +4,15 @@ import {
 } from '@dnd-kit/core';
 import { sortableKeyboardCoordinates } from '@dnd-kit/sortable';
 import { useEffect, useState } from 'react';
-import type { DesignerDocument, NodeId } from '../model/document';
+import type { NodeId, NodeTree } from '../model/document';
 import { acceptsChildren, moveRefusal, parentOf } from '../model/ops';
-import { useDesigner } from '../model/store';
+import { activeTree, useDesigner } from '../model/store';
 import { Palette } from './Palette';
 import { focusRow, Tree, type DropTarget } from './Tree';
+import { WorkspacePane } from './WorkspacePane';
 
-// The left column: palette above tree, sharing one DndContext so palette items can be dropped into the tree.
+// The left column: the workspace's definitions, then (for tabs with a node tree) palette above tree, sharing one
+// DndContext so palette items can be dropped into the tree.
 // A drop lands before / after the row under the pointer, or inside it when it holds children (middle of the row).
 
 /** Pointer collisions while a pointer drives the drag, nearest row for keyboard drags. */
@@ -30,6 +32,7 @@ export function LeftPane() {
   );
   const [dragged, setDragged] = useState<Dragged | null>(null);
   const [drop, setDrop] = useState<DropTarget | null>(null);
+  const tree = useDesigner(activeTree);
 
   useEffect(() => {
     document.body.classList.toggle('drop-refused', drop?.refusal != null);
@@ -37,7 +40,7 @@ export function LeftPane() {
 
   const onDragStart = ({ active }: DragStartEvent) => {
     const paletteType = active.data.current?.['paletteType'] as string | undefined;
-    const node = useDesigner.getState().doc.nodes[String(active.id)];
+    const node = activeTree(useDesigner.getState())?.nodes[String(active.id)];
     setDragged(paletteType ? { nodeId: null, type: paletteType } : { nodeId: String(active.id), type: node?.type ?? '' });
   };
 
@@ -51,7 +54,8 @@ export function LeftPane() {
     const y = 'clientY' in activatorEvent
       ? (activatorEvent as PointerEvent).clientY + delta.y
       : translated ? translated.top + translated.height / 2 : 0;
-    const next = computeDrop(useDesigner.getState().doc, dragged, String(over.id), y);
+    const current = activeTree(useDesigner.getState());
+    const next = current ? computeDrop(current, dragged, String(over.id), y) : null;
     setDrop(prev => sameDrop(prev, next) ? prev : next);
   };
 
@@ -85,8 +89,9 @@ export function LeftPane() {
     <DndContext sensors={sensors} collisionDetection={collision} onDragStart={onDragStart} onDragMove={onDragMove}
       onDragOver={onDragMove} onDragEnd={onDragEnd} onDragCancel={finish}>
       <div className="pane left">
-        <Palette />
-        <Tree drop={drop} dragging={dragged !== null} />
+        <WorkspacePane />
+        {tree && <Palette />}
+        {tree && <Tree tree={tree} drop={drop} dragging={dragged !== null} />}
       </div>
       <DragOverlay dropAnimation={null}>
         {dragged && <div className={drop?.refusal ? 'drag-chip refused' : 'drag-chip'}>{dragged.type}</div>}
@@ -100,7 +105,7 @@ function sameDrop(a: DropTarget | null, b: DropTarget | null): boolean {
 }
 
 /** Where a dragged node or palette element lands when released at client `y` over the row of `overId`. */
-function computeDrop(doc: DesignerDocument, { nodeId, type }: Dragged, overId: NodeId, y: number): DropTarget | null {
+function computeDrop(doc: NodeTree, { nodeId, type }: Dragged, overId: NodeId, y: number): DropTarget | null {
   const over = doc.nodes[overId];
   const rect = document.querySelector(`.tree [data-node-id="${CSS.escape(overId)}"]`)?.getBoundingClientRect();
   if (!over || !rect || overId === nodeId) {

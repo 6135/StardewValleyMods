@@ -1,8 +1,11 @@
 import { parse, printParseErrorCode, visit, type ParseError } from 'jsonc-parser';
 import type { DesignerDocument, DesignerNode, ImportCandidate, ImportResult, NodeId, Problem, TemplateDoc } from '../model/document';
-import { createNode } from '../model/factory';
-import { canonicalType, elementTypes } from '../model/metadata';
+import { createNode, newNodeId } from '../model/factory';
+import { canonicalType, elementTypes, tooltipBlockTypes } from '../model/metadata';
 import { subItemsOf, type SubItemKind } from '../model/subItems';
+import {
+  createWorkspace, DefaultOwner, menuTab, type OwnerDoc, type PatchMembers, type TooltipDoc, type Workspace, type WorkspaceTab
+} from '../model/workspace';
 import {
   builtInTypes,
   canonicalMember,
@@ -22,11 +25,11 @@ import {
 
 // JSONC import (architecture.md §9.1, §14 phase 2): a CP content.json (every EditData patch of the Menus asset), an
 // ImportData file ({ "Menus": {...}, "Owner": {...} }), a bare Menus object or a standalone MenuDefinition ("From" file),
-// converted to DesignerDocuments. Shorthands are expanded like DataValidator.NormalizeType and remembered on the node.
+// converted to DesignerDocuments, and the whole text as a workspace (§18.4: each Owners entry becomes an owner tab plus
+// a tab per template and tooltip). Shorthands are expanded like DataValidator.NormalizeType and remembered on the node.
 
 const MenusAsset = 'Mods/6135.UIFramework/Menus';
 const OwnersAsset = 'Mods/6135.UIFramework/Owners';
-const DefaultOwner = '{{ModId}}';
 
 /** The members of an ImportData root (DataImport.Import); a root with none of them is a Menus object. */
 const ImportDataMembers = ['menus', 'huds', 'sprites', 'composites', 'contributions', 'owner', 'owners'];
@@ -34,7 +37,7 @@ const ImportDataMembers = ['menus', 'huds', 'sprites', 'composites', 'contributi
 /** The `$designer` member a saved / shared document carries (architecture.md §11); the framework ignores it. */
 export const DesignerMember = '$designer';
 
-/** Parse `text` (JSON with comments and trailing commas) and return every menu it holds. */
+/** Parse `text` (JSON with comments and trailing commas) and return every menu it holds, and all of it as a workspace. */
 export function importText(text: string): ImportResult {
   const problems: Problem[] = [];
   let hadComments = false;
@@ -47,12 +50,12 @@ export function importText(text: string): ImportResult {
     problems.push({ severity: 'error', path: '', message: `line ${line}, column ${column}: ${describeParseError(printParseErrorCode(e.error))}.` });
   }
 
-  const candidates: ImportCandidate[] = [];
+  const found: Found = { candidates: [], tabs: [], content: {}, otherChanges: [] };
   if (isObject(root)) {
-    collect(root, candidates, problems);
+    collect(root, found, problems);
   }
 
-  if (candidates.length === 0) {
+  if (found.tabs.length === 0) {
     problems.push({
       severity: 'error',
       path: '',
@@ -60,14 +63,42 @@ export function importText(text: string): ImportResult {
     });
   }
 
-  return { candidates, problems, hadComments };
+  const first = found.tabs.find(t => t.kind === 'menu') ?? found.tabs[0];
+  const workspace: Workspace | null = first
+    ? { ...createWorkspace(found.tabs), activeTab: first.id, content: found.content, otherChanges: found.otherChanges }
+    : null;
+  const designer = isObject(root) ? getMember(root, DesignerMember) : undefined;
+  return designer !== undefined
+    ? { candidates: found.candidates, workspace, problems, hadComments, designer }
+    : { candidates: found.candidates, workspace, problems, hadComments };
 }
 
-function collect(root: JsonObject, candidates: ImportCandidate[], problems: Problem[]): void {
+/** What an import collects: the menus (single-menu picker) and every tab, plus what the workspace keeps verbatim. */
+interface Found {
+  candidates: ImportCandidate[];
+  tabs: WorkspaceTab[];
+  content: Record<string, unknown>;
+  otherChanges: unknown[];
+}
+
+/** EditData members the workspace export writes itself; the others (LogName, When …) are kept with the tab. */
+const PatchOwnMembers = ['action', 'target', 'entries'];
+/** EditData members that edit entries in other ways: such a patch is kept verbatim, not opened as tabs. */
+const PatchOtherEdits = ['targetfield', 'fields', 'moveentries', 'textoperations'];
+
+function collect(root: JsonObject, found: Found, problems: Problem[]): void {
   const changesMember = getMember(root, 'Changes');
   const changes = Array.isArray(changesMember) ? changesMember : isEditData(root, MenusAsset) ? [root] : null;
   if (changes !== null) {
     // a Content Patcher content.json (or one EditData patch): owner templates first (instances of them are not unknown types), then the menus
+    if (Array.isArray(changesMember)) {
+      for (const [key, value] of Object.entries(root)) {
+        if (key !== 'Changes' && key !== DesignerMember) {
+          found.content[key] = value;
+        }
+      }
+    }
+
     const ownerTemplates = new Map<string, Set<string>>();
     changes.forEach(change => {
       if (isEditData(change, OwnersAsset)) {
@@ -81,19 +112,21 @@ function collect(root: JsonObject, candidates: ImportCandidate[], problems: Prob
     });
 
     changes.forEach((change, i) => {
-      if (!isEditData(change, MenusAsset)) {
-        return;
-      }
-
-      const entries = getMember(change, 'Entries');
-      if (!isObject(entries)) {
-        return;
-      }
-
-      for (const [key, def] of Object.entries(entries)) {
-        if (isObject(def)) {
-          addCandidate(candidates, problems, `Changes[${i}] › Entries › ${key}`, key, def, ownerTemplates, false);
+      const entries = isObject(change) ? getMember(change, 'Entries') : undefined;
+      const editable = isObject(change) && isObject(entries) && !Object.keys(change).some(k => PatchOtherEdits.includes(k.toLowerCase()));
+      const patch: PatchMembers = editable ? Object.fromEntries(Object.entries(change).filter(([k]) => !PatchOwnMembers.includes(k.toLowerCase()))) : {};
+      if (editable && isEditData(change, OwnersAsset)) {
+        for (const [owner, def] of Object.entries(entries)) {
+          addOwner(found, problems, owner, def, entryPath(owner), ownerTemplates, patch);
         }
+      } else if (editable && isEditData(change, MenusAsset)) {
+        for (const [key, def] of Object.entries(entries)) {
+          if (isObject(def)) {
+            addCandidate(found, problems, `Changes[${i}] › Entries › ${key}`, key, def, ownerTemplates, false, patch);
+          }
+        }
+      } else {
+        found.otherChanges.push(change);
       }
     });
     return;
@@ -103,7 +136,8 @@ function collect(root: JsonObject, candidates: ImportCandidate[], problems: Prob
   if (keys.some(k => ImportDataMembers.includes(k.toLowerCase()))) {
     // an ImportData file: keys without an owner belong to the importing mod
     const ownerTemplates = new Map<string, Set<string>>();
-    addOwnerTemplates(ownerTemplates, DefaultOwner, getMember(root, 'Owner'));
+    const ownerDef = getMember(root, 'Owner');
+    addOwnerTemplates(ownerTemplates, DefaultOwner, ownerDef);
     const owners = getMember(root, 'Owners');
     if (isObject(owners)) {
       for (const [owner, def] of Object.entries(owners)) {
@@ -111,11 +145,27 @@ function collect(root: JsonObject, candidates: ImportCandidate[], problems: Prob
       }
     }
 
+    for (const [key, value] of Object.entries(root)) {
+      if (!['menus', 'owner', 'owners'].includes(key.toLowerCase()) && key !== DesignerMember) {
+        found.content[key] = value;
+      }
+    }
+
+    if (ownerDef !== undefined) {
+      addOwner(found, problems, DefaultOwner, ownerDef, 'Owner', ownerTemplates);
+    }
+
+    if (isObject(owners)) {
+      for (const [owner, def] of Object.entries(owners)) {
+        addOwner(found, problems, owner, def, fieldPath('Owners', owner), ownerTemplates);
+      }
+    }
+
     const menus = getMember(root, 'Menus');
     if (isObject(menus)) {
       for (const [key, def] of Object.entries(menus)) {
         if (!key.startsWith('$') && isObject(def)) {
-          addCandidate(candidates, problems, `Menus › ${key}`, key, def, ownerTemplates, true);
+          addCandidate(found, problems, `Menus › ${key}`, key, def, ownerTemplates, true);
         }
       }
     }
@@ -124,13 +174,13 @@ function collect(root: JsonObject, candidates: ImportCandidate[], problems: Prob
   }
 
   if (getMember(root, DesignerMember) !== undefined || keys.some(k => canonicalMember('MenuDefinition', k) !== null)) {
-    addCandidate(candidates, problems, 'Menu definition', `${DefaultOwner}/menu`, root, new Map(), false);
+    addCandidate(found, problems, 'Menu definition', `${DefaultOwner}/menu`, root, new Map(), false);
     return;
   }
 
   if (keys.length > 0 && keys.every(k => isObject(root[k]))) {
     for (const key of keys) {
-      addCandidate(candidates, problems, key, key, root[key] as JsonObject, new Map(), true);
+      addCandidate(found, problems, key, key, root[key] as JsonObject, new Map(), true);
     }
   }
 }
@@ -161,13 +211,14 @@ function addOwnerTemplates(map: Map<string, Set<string>>, owner: string, def: un
 }
 
 function addCandidate(
-  candidates: ImportCandidate[],
+  found: Found,
   problems: Problem[],
   label: string,
   key: string,
   def: JsonObject,
   ownerTemplates: Map<string, Set<string>>,
-  ownerless: boolean
+  ownerless: boolean,
+  patch?: PatchMembers
 ): void {
   const slash = key.indexOf('/');
   let owner = slash > 0 ? key.slice(0, slash).trim() : '';
@@ -182,7 +233,108 @@ function addCandidate(
   }
 
   const document = convertMenu(def, owner, menuId, ownerTemplates.get(owner.toLowerCase()) ?? new Set(), problems);
-  candidates.push({ label, document });
+  found.candidates.push({ label, document });
+  found.tabs.push(menuTab(document, patch));
+}
+
+// ---------------------------------------------------------------------------------------------------------------
+//  Owners entry: an owner tab plus a tab per template and tooltip
+// ---------------------------------------------------------------------------------------------------------------
+
+function addOwner(found: Found, problems: Problem[], owner: string, def: unknown, path: string, ownerTemplates: Map<string, Set<string>>, patch?: PatchMembers): void {
+  if (!isObject(def)) {
+    problems.push({ severity: 'warning', path, message: 'the owner entry is not an object; it is not imported.' });
+    return;
+  }
+
+  const doc: OwnerDoc = { fields: {}, extra: {} };
+  const templates: [string, unknown][] = [];
+  const tooltips: [string, unknown][] = [];
+  for (const [key, value] of Object.entries(def)) {
+    const member = canonicalMember('OwnerDefinition', key);
+    const text = scalarText(value);
+    if (member === 'Templates' && isObject(value)) {
+      templates.push(...Object.entries(value));
+    } else if (member === 'Tooltips' && isObject(value)) {
+      tooltips.push(...Object.entries(value));
+    } else if (member !== null && text !== undefined) {
+      doc.fields[member] = text;
+    } else {
+      doc.extra[member ?? key] = value;
+    }
+  }
+
+  found.tabs.push(patch ? { id: newNodeId(), kind: 'owner', owner, doc, patch } : { id: newNodeId(), kind: 'owner', owner, doc });
+  const isTemplate = templateMatcher(ownerTemplates.get(owner.trim().toLowerCase()) ?? []);
+  for (const [name, t] of templates) {
+    const templatePath = fieldPath(fieldPath(path, 'Templates'), name);
+    if (!isObject(t)) {
+      problems.push({ severity: 'warning', path: templatePath, message: `template '${name}' is not an object; it is not imported.` });
+      continue;
+    }
+
+    const ctx: Context = { nodes: {}, problems, isTemplate };
+    const template = convertTemplate(t, templatePath, ctx);
+    found.tabs.push({ id: newNodeId(), kind: 'template', owner, name, doc: { ...template, nodes: ctx.nodes, previewState: {} } });
+  }
+
+  for (const [name, t] of tooltips) {
+    found.tabs.push({ id: newNodeId(), kind: 'tooltip', owner, name, doc: convertTooltip(t, fieldPath(fieldPath(path, 'Tooltips'), name), problems) });
+  }
+}
+
+/** A TooltipDefinition (an object, a bare block array or a bare string, TooltipConverter) as a "Tooltip" root with block nodes. */
+function convertTooltip(value: unknown, path: string, problems: Problem[]): TooltipDoc {
+  const root = createNode('Tooltip');
+  const doc: TooltipDoc = { root: root.id, nodes: { [root.id]: root }, fields: {}, extra: {} };
+  let blocks: unknown[] = [];
+  const text = scalarText(value);
+  if (text !== undefined) {
+    doc.shorthand = 'text';
+    blocks = [{ Type: 'Line', Text: text }];
+  } else if (Array.isArray(value)) {
+    doc.shorthand = 'blocks';
+    blocks = value;
+  } else if (isObject(value)) {
+    for (const [key, member] of Object.entries(value)) {
+      const name = canonicalMember('TooltipDefinition', key);
+      const memberText = scalarText(member);
+      if (name === 'Blocks' && Array.isArray(member)) {
+        blocks = member;
+      } else if (name !== null && memberText !== undefined) {
+        doc.fields[name] = memberText;
+      } else {
+        doc.extra[name ?? key] = member;
+      }
+    }
+  }
+
+  blocks.forEach((block, i) => {
+    if (!isObject(block)) {
+      problems.push({ severity: 'warning', path: indexPath(fieldPath(path, 'Blocks'), i), message: 'the block is not an object; it is skipped.' });
+      return;
+    }
+
+    const written = scalarText(getMember(block, 'Type'))?.trim() ?? '';
+    const node = createNode(tooltipBlockTypes.find(t => t.toLowerCase() === written.toLowerCase()) ?? written);
+    for (const [key, member] of Object.entries(block)) {
+      const name = canonicalMember('TooltipBlockDefinition', key);
+      const memberText = scalarText(member);
+      if (name === 'Type') {
+        continue;
+      }
+
+      if (name !== null && memberText !== undefined) {
+        node.fields[name] = memberText;
+      } else {
+        node.extra[name ?? key] = member;
+      }
+    }
+
+    doc.nodes[node.id] = node;
+    root.children.push(node.id);
+  });
+  return doc;
 }
 
 // ---------------------------------------------------------------------------------------------------------------

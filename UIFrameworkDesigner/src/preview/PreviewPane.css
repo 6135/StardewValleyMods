@@ -255,3 +255,97 @@
   min-width: 0;
 }
 .pv-state-hint { opacity: 0.7; font-size: 12px; }
+
+/* Hover tooltips (Tooltip.tsx, after TooltipRenderer): panel box, 16 px padding, rows 4 px apart. */
+.pv-tooltip {
+  position: absolute;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px;
+  box-sizing: border-box;
+  max-width: 100%;
+  background: var(--pv-panel);
+  border: 4px solid var(--pv-window-border);
+  border-radius: 6px;
+  color: var(--pv-text);
+  pointer-events: none;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.35);
+}
+.pv-tip-text { white-space: pre-wrap; overflow-wrap: break-word; }
+.pv-tip-icon-row { display: flex; align-items: center; gap: 8px; white-space: pre; }
+.pv-tip-icon { display: inline-flex; align-items: center; justify-content: center; flex: none; border: 1px solid rgba(34, 17, 34, 0.4); box-sizing: border-box; }
+.pv-tip-coin { flex: none; border-radius: 50%; background: radial-gradient(circle at 40% 35%, #ffe680, #d9a521 60%, #9c6a10); transform: scale(0.6); }
+.pv-tip-divider { height: 2px; margin: 4px 0; background: rgba(221, 148, 84, 0.6); }
+
+.pv-item-image { display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; }
+.pv-item-sprite { display: inline-block; flex: none; background-repeat: no-repeat; image-rendering: pixelated; }
+
+.pv-i18n { display: inline-flex; gap: 6px; align-items: center; }
+.pv-i18n input[type='file'] { max-width: 180px; font-size: 12px; }
+.pv-i18n-status { opacity: 0.7; font-size: 12px; }
+
+/* Game-art skin (gameArt.ts): the vanilla pieces as CSS border-images, a class per loaded sheet. drawTextureBox boxes
+   are border-image slices of a third of the source, drawn at the framework's scale; parts that keep their layout
+   borders draw the art on a ::before behind their content. */
+.pv-screen[class*='pv-art-'] { image-rendering: pixelated; }
+
+.pv-art-menu .pv-window:not(.pv-window-bare) {
+  border: 64px solid transparent;
+  border-image: var(--art-frame) 64 stretch;
+  border-radius: 0;
+  background: var(--art-frame-bg) center / calc(100% - 56px) calc(100% - 56px) no-repeat border-box;
+  box-shadow: none;
+}
+.pv-art-menu .pv-panel-box,
+.pv-art-menu .pv-tooltip {
+  border: 20px solid transparent;
+  border-image: var(--art-panel) 20 fill stretch;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+}
+/* the tooltip's content sits 16 px in (TooltipRenderer.Padding) over the 20 px panel corners */
+.pv-art-menu .pv-tooltip { border-width: 16px; border-image-width: 20px; padding: 0; }
+
+.pv-art-cursors .pv-title-scroll {
+  border: solid transparent;
+  border-width: 0 48px;
+  border-image: var(--art-scroll) 0 12 fill stretch;
+  border-radius: 0;
+  background: none;
+}
+
+.pv-art-cursors .pv-button:not(.pv-flat),
+.pv-art-cursors .pv-dropdown,
+.pv-art-cursors .pv-slider,
+.pv-art-textbox .pv-textbox {
+  position: relative;
+  isolation: isolate;
+  background: none;
+  border-color: transparent;
+  border-radius: 0;
+}
+.pv-art-cursors .pv-button:not(.pv-flat)::before,
+.pv-art-cursors .pv-dropdown::before,
+.pv-art-cursors .pv-slider::before,
+.pv-art-textbox .pv-textbox::before {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  box-sizing: border-box;
+  border-style: solid;
+  border-color: transparent;
+}
+.pv-art-cursors .pv-button:not(.pv-flat)::before { inset: -4px; border-width: 12px; border-image: var(--art-button) 3 fill stretch; }
+.pv-art-cursors .pv-dropdown::before { inset: -3px 45px -3px -3px; border-width: 4px; border-image: var(--art-dropdown) 1 fill stretch; }
+.pv-art-cursors .pv-caret { align-self: flex-start; margin: -3px -3px 0 0; height: 44px; background: var(--art-dropdown-button) left top / 40px 44px no-repeat; border-left: 0; color: transparent; }
+.pv-art-cursors .pv-slider::before { inset: -3px; border-width: 8px; border-image: var(--art-slider) 2 fill stretch; }
+.pv-art-cursors .pv-knob { top: calc(50% - 12px); height: 24px; margin-left: -3px; border: 0; border-radius: 0; background: var(--art-knob) 0 0 / 100% 100%; }
+.pv-art-textbox .pv-textbox { padding-left: 13px; }
+.pv-art-textbox .pv-textbox::before { inset: -3px; border-width: 0 16px; border-image: var(--art-textbox) 0 16 fill stretch; }
+
+.pv-art-cursors .pv-check { border: 0; border-radius: 0; background: var(--art-check) 0 0 / 100% 100%; }
+.pv-art-cursors .pv-checked { background-image: var(--art-checked); }
+.pv-art-cursors .pv-checked::after { content: none; }

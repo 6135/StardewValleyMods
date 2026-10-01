@@ -29,7 +29,7 @@ export function scalarText(value: unknown): string | undefined {
 // ---------------------------------------------------------------------------------------------------------------
 
 export type Model = 'MenuDefinition' | 'ElementDefinition' | 'StyleDefinition' | 'TemplateDefinition' | 'ParamDefinition' | 'ColumnDefinition'
-  | 'FormFieldDefinition';
+  | 'FormFieldDefinition' | 'OwnerDefinition' | 'TooltipDefinition' | 'TooltipBlockDefinition';
 
 interface SchemaDefinition {
   properties?: Record<string, { $ref?: string }>;
