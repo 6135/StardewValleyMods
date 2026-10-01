@@ -1,7 +1,7 @@
 name: Deploy Designer
 
 # builds the UI Framework Designer (UIFrameworkDesigner/) and publishes it to the gh-pages branch,
-# served at https://6135.github.io/StardewValleyMods/
+# served at https://6135.github.io/StardewValleyMods/designer/
 on:
   push:
     branches: [ "master" ]
@@ -48,5 +48,6 @@ jobs:
         github_token: ${{ secrets.GITHUB_TOKEN }}
         publish_dir: ./UIFrameworkDesigner/dist
         publish_branch: gh-pages
+        destination_dir: designer
         user_name: 'github-actions[bot]'
         user_email: 'github-actions[bot]@users.noreply.github.com'

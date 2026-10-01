@@ -53,7 +53,7 @@ Progress against §14. Update this table when a phase changes; §14 stays the pl
 - **Shorthands.** `{ "Label": "Hi" }`, `{ "Button": "OK" }`, `{ "Checkbox": "Enabled" }`, `{ "Image": "sprite:Owner/name" }` set the type and its main value; a definition with only `Children` is a vertical stack. Import expands them (same rules as `DataValidator`); export collapses them again by default.
 - **JSON with comments and CP tokens.** Packs use comments, trailing commas and tokens (`{{ModId}}`, `{{i18n:key}}`). Import uses a JSONC parser; tokens are opaque text, shown as chips in the preview.
 - **Templates and custom tags.** `"Type": "<template>"` and dotted custom tags (`"Type": "Mod.Name"`) are valid element types. The designer treats them as opaque nodes with free-form arguments unless the template is defined in the same document.
-- **Static hosting.** No server, no secrets, no game files. GitHub Pages serves under `https://6135.github.io/StardewValleyMods/`, so the Vite `base` is a sub-path.
+- **Static hosting.** No server, no secrets, no game files. GitHub Pages serves the site under `https://6135.github.io/StardewValleyMods/designer/` (the `designer/` folder of `gh-pages`), so the Vite `base` is a sub-path.
 - **Game art is copyrighted.** Nothing from the game's `Content` folder is committed or served. A user may point the designer at their own unpacked content (§7.3); it stays in the browser.
 
 ---
@@ -297,7 +297,7 @@ Repository:
 ## 13. Build and deploy
 
 - `npm run dev`: Vite dev server.
-- `npm run build`: type-check plus `vite build` with `base: '/StardewValleyMods/'`.
+- `npm run build`: type-check plus `vite build` with `base: '/StardewValleyMods/designer/'`.
 - `npm run metadata`: runs `dotnet run --project tools/DesignerMetadata` against a local framework build (needs the game installed, like the mod build). CI does not run it; it only builds the site from the committed bundle.
 - Pages source: "Deploy from a branch", `gh-pages` / root, in the repository settings (a one-time manual step after the first deploy creates the branch).
 
