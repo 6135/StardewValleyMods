@@ -459,7 +459,14 @@ textarea.w-text {
 }
 
 .preview-body { display: flex; flex-direction: column; gap: 8px; }
-.preview-state summary { cursor: pointer; color: var(--muted); }
+/* the preview: toolbar and canvas over the Preview state drawer (PreviewSlot), which never takes the canvas below 180 px */
+.preview-canvas { padding: 0; gap: 0; overflow: hidden; }
+.preview-canvas > .pv-pane { flex: 1; min-height: 180px; }
+.preview-drawer { flex: none; display: flex; flex-direction: column; position: relative; min-height: 0; max-height: calc(100% - 180px); border-top: 1px solid var(--border); }
+.preview-drawer-grip { position: absolute; left: 0; right: 0; top: -4px; height: 8px; cursor: ns-resize; z-index: 1; touch-action: none; }
+.preview-drawer-head { flex: none; text-align: left; background: none; border: 0; padding: 4px 8px; color: var(--muted); font: inherit; cursor: pointer; }
+.preview-drawer-body { flex: 1; min-height: 0; overflow: auto; display: flex; flex-direction: column; gap: 6px; padding: 0 8px 6px; }
+.preview-drawer-body > .pv-pane { height: auto; flex: none; }
 .problem-list { list-style: none; margin: 0; padding: 0; }
 .problem button { display: flex; gap: 8px; width: 100%; text-align: left; background: none; border: 0; padding: 2px 4px; color: inherit; font: inherit; cursor: pointer; }
 .problem button:disabled { cursor: default; }

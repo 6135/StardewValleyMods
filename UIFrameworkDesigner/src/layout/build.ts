@@ -270,10 +270,28 @@ function stripMarkup(text: string): string {
 const truthy = (v: string): boolean => parseBool(v) ?? (v.length > 0 && parseNumber(v) !== 0 && v.toLowerCase() !== 'false');
 
 class Values {
+  /** While `collect` runs: where the expressions that could not be evaluated go. */
+  private failed: string[] | null = null;
+
   constructor(private readonly opts: LayoutOptions) {}
 
   evaluate(expr: string, scope: Scope): string | undefined {
-    return this.opts.evaluate?.(expr, scope.vars);
+    const v = this.opts.evaluate?.(expr, scope.vars);
+    if (v === undefined && this.failed) {
+      this.failed.push(expr);
+    }
+    return v;
+  }
+
+  /** Runs `read`, adding each expression it could not evaluate to `into`. */
+  collect<T>(into: string[], read: () => T): T {
+    const outer = this.failed;
+    this.failed = into;
+    try {
+      return read();
+    } finally {
+      this.failed = outer;
+    }
   }
 
   /**
@@ -399,6 +417,8 @@ function spriteSize(ref: string | undefined): { x: number; y: number } | null {
 
 export class Builder {
   private readonly values: Values;
+  /** The layout-affecting expressions (LayoutResult.unresolved) that could not be evaluated, in build order. */
+  readonly unresolved: string[] = [];
 
   constructor(private readonly doc: DesignerDocument, private readonly opts: LayoutOptions, private readonly ctx: LayoutContext) {
     this.values = new Values(opts);
@@ -455,7 +475,7 @@ export class Builder {
   /** DataBuilder.BuildOne / BuildIf: an `If` that is false builds nothing. */
   private buildOne(parent: LContainer, src: Src, scope: Scope): void {
     let s = scope;
-    if (src.fields.If !== undefined && this.values.hides(src.fields.If, scope)) {
+    if (src.fields.If !== undefined && this.values.collect(this.unresolved, () => this.values.hides(src.fields.If, scope))) {
       if (!this.opts.showHidden) {
         return;
       }
@@ -467,7 +487,7 @@ export class Builder {
   private buildElement(src: Src, scope: Scope): LElement {
     const v = this.values;
     const f = src.fields;
-    const ownHidden = v.hides(f.Visible, scope) || v.hides(f.Condition, scope);
+    const ownHidden = v.collect(this.unresolved, () => v.hides(f.Visible, scope) || v.hides(f.Condition, scope));
     const hidden = scope.hidden || ownHidden;
     const inner: Scope = hidden === scope.hidden ? scope : { ...scope, hidden };
     const canonical = canonicalType(src.type === 'Menu' ? 'Stack' : src.type);
@@ -491,8 +511,19 @@ export class Builder {
     return element;
   }
 
-  /** DataBuilder.ApplyCommon (layout members). */
+  /** DataBuilder.ApplyCommon (layout members); an element whose members could not all be evaluated is marked `unresolved`. */
   private applyCommon(e: LElement, src: Src, scope: Scope): void {
+    const failed: string[] = [];
+    this.values.collect(failed, () => this.readCommon(e, src, scope));
+    if (failed.length > 0) {
+      this.unresolved.push(...failed);
+      if (e.info) {
+        e.info.unresolved = true;
+      }
+    }
+  }
+
+  private readCommon(e: LElement, src: Src, scope: Scope): void {
     const v = this.values;
     const f = src.fields;
     const margin = v.typed(f.Margin, scope, parseMargin, false);
@@ -818,7 +849,9 @@ export class Builder {
   private selectPage(src: Src, scope: Scope): Src | undefined {
     const pages = src.children();
     const key = (!src.raw ? this.opts.switchCases?.[src.id] : undefined)
-      ?? (src.fields.Switch !== undefined ? this.values.evaluate(substituteArgs(src.fields.Switch, scope.args, true), scope) : undefined);
+      ?? (src.fields.Switch !== undefined
+        ? this.values.collect(this.unresolved, () => this.values.evaluate(substituteArgs(src.fields.Switch!, scope.args, true), scope))
+        : undefined);
     if (key !== undefined) {
       let fallback: Src | undefined;
       for (const page of pages) {

@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useRef, useState, type PointerEvent, type ReactNode } from 'react';
 import type { DesignerDocument, NodeId, Problem } from '../model/document';
 import { buildTooltipObject } from '../io/export';
 import { parseRawTab, rawTab } from '../io/workspace';
@@ -8,14 +8,14 @@ import { activeTab, activeUi, useDesigner } from '../model/store';
 import { tabOwner, type PreviewData, type TabId, type TooltipTab, type Workspace, type WorkspaceTab } from '../model/workspace';
 import { previewValues, type ExternalFunctions } from '../preview/evaluate';
 import { I18nLoader } from '../preview/I18nLoader';
-import { defaultPreviewSettings, PreviewPane } from '../preview/PreviewPane';
+import { defaultPreviewSettings, PreviewPane, type TooltipContent } from '../preview/PreviewPane';
 import { externalFunctions, findPreviewFunctions, findSampleSources } from '../preview/previewData';
 import { PreviewStatePanel } from '../preview/PreviewStatePanel';
-import { TooltipPreview } from '../preview/Tooltip';
 
 // The center pane of the active tab, bound to the store: the schematic preview (architecture.md §7) of a menu (with
 // the owner templates it uses), a template's body, or a named tooltip by itself (§18.3); or the tab's raw JSON,
-// editable and applied through the import as one undo step. Read-only (phone width): preview only.
+// editable and applied through the import as one undo step. Read-only (phone width): preview only. Below the preview,
+// the Preview state panel is a collapsible drawer with its own scroll, resized by its top edge.
 
 export function PreviewSlot({ readOnly = false }: { readOnly?: boolean }) {
   const tab = useDesigner(activeTab);
@@ -32,7 +32,7 @@ export function PreviewSlot({ readOnly = false }: { readOnly?: boolean }) {
           </span>
         )}
       </div>
-      <div className="pane-body preview-body">
+      <div className={json ? 'pane-body preview-body' : 'pane-body preview-body preview-canvas'}>
         {json ? <RawJson key={tab.id} tab={tab} /> : <Preview readOnly={readOnly} />}
       </div>
     </section>
@@ -61,37 +61,85 @@ function Preview({ readOnly }: { readOnly: boolean }) {
     }
   }, [links, openTab]);
 
-  if (!doc && tab.kind !== 'tooltip') {
+  const [drawer, setDrawer] = useState({ open: false, height: 260 });
+  // names the layout needs values for: listed first in the panel; `focus` changes each time they are asked for
+  const [needed, setNeeded] = useState<{ names: string[]; focus: number }>({ names: [], focus: 0 });
+  const showState = useCallback((names: string[]) => {
+    setDrawer(d => ({ ...d, open: true }));
+    setNeeded(n => ({ names, focus: n.focus + 1 }));
+  }, []);
+  const tooltip = useMemo(() => (tab.kind === 'tooltip' ? tooltipContent(workspace, tab, functions) : undefined), [workspace, tab, functions]);
+
+  if (!doc && !tooltip) {
     return <div className="placeholder">An owner entry has no preview: open a menu, template or tooltip tab.</div>;
   }
 
   return (
     <>
-      {tab.kind === 'tooltip' ? <TooltipTabPreview workspace={workspace} tab={tab} functions={functions} i18n={i18n} /> : (
-        <PreviewPane doc={doc!} selection={selection} onSelect={select} i18n={i18n ?? undefined} resolveTooltip={resolveTooltip}
-          settings={settings} onSettingsChange={setPreviewSettings} resolveMenuLink={resolveMenuLink} onOpenMenu={openMenu}
-          functions={functions} {...(data ? { sampleRows: data.rows } : {})} />
-      )}
+      <PreviewPane {...(tooltip ? { tooltip } : { doc: doc! })} selection={selection} onSelect={select} i18n={i18n ?? undefined}
+        resolveTooltip={resolveTooltip} settings={settings} onSettingsChange={setPreviewSettings} resolveMenuLink={resolveMenuLink}
+        onOpenMenu={openMenu} functions={functions} {...(data ? { sampleRows: data.rows } : {})} {...(readOnly ? {} : { onShowState: showState })} />
       {!readOnly && (
-        <details className="preview-state">
-          <summary>Preview state</summary>
+        <PreviewDrawer open={drawer.open} height={drawer.height} onChange={setDrawer}>
           <PreviewStatePanel {...(doc ? { doc } : {})} onChange={setPreviewState} functions={uses} sources={sources} data={data}
-            i18nLoaded={i18n !== null} onFunction={setPreviewFunction} onRows={setSampleRows} />
+            i18nLoaded={i18n !== null} onFunction={setPreviewFunction} onRows={setSampleRows} needed={needed.names} focus={needed.focus} />
           <I18nLoader onLoad={setI18n} />
-        </details>
+        </PreviewDrawer>
       )}
     </>
   );
 }
 
+/** The canvas keeps at least this much height when the drawer is dragged up (CSS pixels). */
+const MinCanvas = 180;
+const MinDrawer = 80;
+
+/** The Preview state drawer: a header that toggles it, its top edge dragged to resize, its content scrolled on its own. */
+function PreviewDrawer({ open, height, onChange, children }: { open: boolean; height: number; onChange(d: { open: boolean; height: number }): void; children: ReactNode }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const drag = useRef<{ y: number; height: number; max: number } | null>(null);
+
+  const onDown = (e: PointerEvent) => {
+    const body = ref.current?.parentElement;
+    if (!open || !body) {
+      return;
+    }
+    e.preventDefault();
+    e.currentTarget.setPointerCapture(e.pointerId);
+    drag.current = { y: e.clientY, height: ref.current!.offsetHeight, max: Math.max(MinDrawer, body.clientHeight - MinCanvas) };
+  };
+  const onMove = (e: PointerEvent) => {
+    const d = drag.current;
+    if (d) {
+      onChange({ open, height: Math.round(Math.min(d.max, Math.max(MinDrawer, d.height + d.y - e.clientY))) });
+    }
+  };
+  const onUp = () => {
+    drag.current = null;
+  };
+
+  return (
+    <div ref={ref} className={open ? 'preview-drawer open' : 'preview-drawer'} style={open ? { height } : undefined}>
+      {open && <div className="preview-drawer-grip" role="separator" aria-orientation="horizontal" aria-label="Resize Preview state"
+        onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={onUp} />}
+      <button type="button" className="preview-drawer-head" aria-expanded={open} onClick={() => onChange({ open: !open, height })}>
+        {open ? '▾' : '▸'} Preview state
+      </button>
+      {open && <div className="preview-drawer-body">{children}</div>}
+    </div>
+  );
+}
+
 /**
  * A named tooltip by itself, its expressions read with the preview state of the first menu or template that shows it
- * and, for a row tooltip, the first sample row of that element's source.
+ * and, for a row tooltip, the first sample row of that element's source; each block selects its node.
  */
-function TooltipTabPreview({ workspace, tab, functions, i18n }: { workspace: Workspace; tab: TooltipTab; functions: ExternalFunctions; i18n: Record<string, string> | null }) {
-  const definition = useMemo(() => asObject(buildTooltipObject(tab.doc)), [tab.doc]);
-  const state = useMemo(() => tooltipState(workspace, tab, functions, workspace.previewData), [workspace, tab, functions]);
-  return <TooltipPreview definition={definition} state={state} functions={functions} {...(i18n ? { i18n } : {})} />;
+function tooltipContent(workspace: Workspace, tab: TooltipTab, functions: ExternalFunctions): TooltipContent {
+  return {
+    definition: asObject(buildTooltipObject(tab.doc)),
+    state: tooltipState(workspace, tab, functions, workspace.previewData),
+    blocks: (tab.doc.nodes[tab.doc.root]?.children ?? []).filter(id => tab.doc.nodes[id] !== undefined)
+  };
 }
 
 function tooltipState(ws: Workspace, tab: TooltipTab, functions: ExternalFunctions, data: PreviewData | undefined): Record<string, string> {

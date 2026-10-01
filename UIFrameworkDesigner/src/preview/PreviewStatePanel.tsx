@@ -1,6 +1,6 @@
 // Preview state panel (architecture.md §7.2): sample values for the expression names the document uses, and the
 // workspace's stand-ins for what only C# provides: the functions it registers (`@name(…)`) and its sources' rows.
-import { useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import type { DesignerDocument } from '../model/document';
 import type { PreviewData, PreviewFunction } from '../model/workspace';
 import { findExpressionNames } from './evaluate';
@@ -21,7 +21,13 @@ export interface PreviewStatePanelProps {
   i18nLoaded: boolean;
   onFunction(name: string, fn: PreviewFunction | undefined): void;
   onRows(source: string, rows: unknown[] | undefined): void;
+  /** Names the layout needs values for (PreviewPane onShowState): listed first and highlighted while unset. */
+  needed?: string[];
+  /** Changes each time `needed` is asked for: the first of them gets the focus. */
+  focus?: number;
 }
+
+const noNames: string[] = [];
 
 const functionKinds: Record<PreviewFunction['kind'], string> = {
   unknown: 'unknown (chip)',
@@ -37,15 +43,24 @@ function choiceOf(data: PreviewData | undefined, name: string): { key: string; f
 }
 
 export function PreviewStatePanel(props: PreviewStatePanelProps): ReactNode {
-  const { doc, onChange, functions, sources, data, i18nLoaded, onFunction, onRows } = props;
+  const { doc, onChange, functions, sources, data, i18nLoaded, onFunction, onRows, needed = noNames, focus } = props;
   const [extra, setExtra] = useState('');
+  const listRef = useRef<HTMLDivElement>(null);
   const names = useMemo(() => {
     if (!doc) {
       return [];
     }
     const all = new Set([...findExpressionNames(doc), ...Object.keys(doc.previewState)]);
-    return [...all].sort((a, b) => a.localeCompare(b));
-  }, [doc]);
+    return [...needed, ...[...all].filter(n => !needed.includes(n)).sort((a, b) => a.localeCompare(b))];
+  }, [doc, needed]);
+
+  useEffect(() => {
+    const name = needed[0];
+    const input = name !== undefined ? listRef.current?.querySelector<HTMLInputElement>(`#${CSS.escape(`pv-state-${name}`)}`) : null;
+    input?.scrollIntoView({ block: 'nearest' });
+    input?.focus();
+    // only when asked again (focus), not on every edit
+  }, [focus]);
 
   const add = (): void => {
     const key = extra.trim();
@@ -61,16 +76,16 @@ export function PreviewStatePanel(props: PreviewStatePanelProps): ReactNode {
 
   return (
     <div className="pv-pane pv-state">
-      <div className="pv-toolbar"><strong>Preview state</strong><span className="pv-state-hint">sample values for expressions (never exported)</span></div>
-      <div className="pv-state-list">
+      <div className="pv-toolbar"><span className="pv-state-hint">sample values for expressions (never exported)</span></div>
+      <div className="pv-state-list" ref={listRef}>
         {doc ? (
           <div className="pv-state-group">
             {names.length === 0 ? <p className="pv-state-hint">The menu uses no menu.*, session.*, player.*, config.*, stat.* or args.* names.</p> : null}
             {names.map(name => {
               const value = doc.previewState[name];
               return (
-                <div key={name} className="pv-state-row">
-                  <label htmlFor={`pv-state-${name}`} title={name}>{name}</label>
+                <div key={name} className={needed.includes(name) && value === undefined ? 'pv-state-row pv-state-needed' : 'pv-state-row'}>
+                  <label htmlFor={`pv-state-${name}`} title={needed.includes(name) ? `${name}: the layout depends on it` : name}>{name}</label>
                   <input
                     id={`pv-state-${name}`}
                     value={value ?? ''}
