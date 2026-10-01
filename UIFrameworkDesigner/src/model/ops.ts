@@ -182,6 +182,23 @@ export function deleteNode(doc: DesignerDocument, nodeId: NodeId): boolean {
 }
 
 /** Set (or with undefined, remove) a string field of a node. */
+/** Set or remove (undefined) a non-string member; it replaces a string value of the same name. */
+export function setExtra(doc: DesignerDocument, nodeId: NodeId, field: string, value: unknown): boolean {
+  const node = doc.nodes[nodeId];
+  if (!node) {
+    return false;
+  }
+
+  delete node.fields[field];
+  if (value === undefined) {
+    delete node.extra[field];
+  } else {
+    node.extra[field] = value;
+  }
+
+  return true;
+}
+
 export function setField(doc: DesignerDocument, nodeId: NodeId, field: string, value: string | undefined): boolean {
   const node = doc.nodes[nodeId];
   if (!node || node.fields[field] === value) {

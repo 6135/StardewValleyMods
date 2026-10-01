@@ -1,4 +1,5 @@
 import { useId, useState } from 'react';
+import { parse, printParseErrorCode, type ParseError } from 'jsonc-parser';
 import type { FieldShape } from '../../fieldShapes';
 import { isLiteral } from './literals';
 import { ShapeWidget, TextWidget } from './widgets';
@@ -43,15 +44,48 @@ export function FieldRow({ name, shape, value, defaultValue, description, warnin
   );
 }
 
-/** A member that is not a plain string (objects, arrays): shown as JSON until it gets its own editor. */
-export function JsonRow({ name, value, description, warning }: { name: string; value: unknown; description?: string; warning?: string }) {
+/** A member that is not a plain string (objects, arrays): edited as JSON (comments allowed), committed on blur when it parses. */
+export function JsonRow({ name, value, description, warning, commit }: {
+  name: string; value: unknown; description?: string; warning?: string; commit(value: unknown): void;
+}) {
+  const id = useId();
+  const text = value === undefined ? '' : JSON.stringify(value, null, 2);
+  const [draft, setDraft] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const apply = () => {
+    if (draft === null) {
+      return;
+    }
+
+    if (draft.trim() === '') {
+      commit(undefined);
+    } else {
+      const errors: ParseError[] = [];
+      const parsed: unknown = parse(draft, errors, { allowTrailingComma: true });
+      if (errors.length > 0) {
+        setError(`Invalid JSON: ${printParseErrorCode(errors[0]!.error)} at offset ${errors[0]!.offset}.`);
+        return;
+      }
+
+      commit(parsed);
+    }
+
+    setDraft(null);
+    setError(null);
+  };
+
   return (
-    <div className="field set json">
-      <label title={description}>
+    <div className={value === undefined ? 'field json' : 'field set json'}>
+      <label htmlFor={id} title={description}>
         {warning && <span className="warn" title={warning}>⚠</span>}
         {name}
       </label>
-      <pre className="control" title="Read-only in this version">{JSON.stringify(value, null, 2)}</pre>
+      <textarea id={id} className="control mono" spellCheck={false} rows={value === undefined ? 1 : Math.min(12, text.split('\n').length)}
+        value={draft ?? text} placeholder="JSON value" onChange={e => setDraft(e.target.value)} onBlur={apply} />
+      <button type="button" className="icon clear" title="Remove the field" disabled={value === undefined} onClick={() => commit(undefined)}>×</button>
+      {error && <div className="help error">{error}</div>}
+      {description && <div className="help">{description}</div>}
     </div>
   );
 }
