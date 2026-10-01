@@ -152,6 +152,12 @@ export function allowsString(schema: SchemaNode | undefined, depth = 0): boolean
     return true;
   }
 
+  // SchemaWriter writes string enums as a bare "enum" (no "type")
+  const values = schema['enum'];
+  if (Array.isArray(values) && values.some(v => typeof v === 'string')) {
+    return true;
+  }
+
   for (const key of ['oneOf', 'anyOf']) {
     const options = schema[key];
     if (Array.isArray(options) && options.some(o => allowsString(o as SchemaNode, depth + 1))) {
