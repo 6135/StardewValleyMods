@@ -64,6 +64,7 @@
 }
 
 .pv-stage-size { position: relative; margin: auto; }
+.pv-tooltip-screen { position: relative; width: 100%; height: 100%; }
 
 .pv-screen {
   position: absolute;
@@ -115,18 +116,23 @@
 .pv-selected { outline: 3px solid var(--pv-select); outline-offset: -1px; z-index: 2; }
 
 .pv-text { width: 100%; height: 100%; overflow: hidden; color: var(--pv-text); }
-.pv-line, .pv-nowrap { white-space: pre; }
-.pv-nowrap { overflow: hidden; text-overflow: ellipsis; }
+.pv-line, .pv-nowrap { white-space: pre; overflow: hidden; text-overflow: ellipsis; }
 
+/* font size and padding: text.tsx (CHIP_FONT_SCALE, CHIP_PADDING, measured the same way) */
 .pv-chip {
+  display: inline-block;
+  max-width: 100%;
+  box-sizing: border-box;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: pre;
+  vertical-align: bottom;
   border-radius: 6px;
-  padding: 0 3px;
   color: #fff;
-  font-size: 0.82em;
 }
 .pv-chip-i18n { background: var(--pv-chip-i18n); }
 .pv-chip-token { background: var(--pv-chip-token); }
-.pv-chip-expr { background: var(--pv-chip-expr); font-style: italic; }
+.pv-chip-expr { background: var(--pv-chip-expr); }
 
 .pv-button {
   display: flex;
@@ -212,6 +218,7 @@
   border: 1px solid rgba(34, 17, 34, 0.4);
   background: repeating-linear-gradient(45deg, rgba(34, 17, 34, 0.08) 0 6px, transparent 6px 12px);
 }
+.pv-image-icon { font-size: 22px; line-height: 1; opacity: 0.55; }
 .pv-unknown { border: 2px dashed rgba(34, 17, 34, 0.5); background: rgba(255, 255, 255, 0.25); font-size: 14px; }
 
 .pv-spacer-line { position: absolute; left: 0; right: 0; top: calc(50% - 2px); height: 4px; background: var(--pv-text); opacity: 0.35; }
@@ -245,7 +252,13 @@
 .pv-state-row { display: grid; grid-template-columns: minmax(80px, 40%) 1fr auto; gap: 6px; align-items: center; }
 .pv-state-row:last-child { grid-template-columns: 1fr auto; }
 .pv-state-row label { font-family: ui-monospace, monospace; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.pv-state-row input, .pv-state-row button {
+.pv-state-group { display: flex; flex-direction: column; gap: 4px; }
+.pv-state-head { margin-top: 8px; }
+.pv-state-rows { display: flex; flex-direction: column; gap: 2px; }
+.pv-state-rows label { font-family: ui-monospace, monospace; }
+.pv-state-rows textarea { font: 12px ui-monospace, monospace; resize: vertical; background: var(--pv-ui-input); color: var(--pv-ui-fg); border: 1px solid var(--pv-ui-border); border-radius: 4px; }
+.pv-state-error { color: #cf222e; font-size: 12px; }
+.pv-state-row input, .pv-state-row select, .pv-state-row button {
   background: var(--pv-ui-input);
   color: var(--pv-ui-fg);
   border: 1px solid var(--pv-ui-border);

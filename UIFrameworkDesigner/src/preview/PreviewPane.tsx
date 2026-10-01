@@ -2,9 +2,9 @@
 // schematic skin or, when the user picks their Content folder, the game-art skin (gameArt.ts).
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type MouseEvent, type ReactNode } from 'react';
 import type { DesignerDocument, NodeId } from '../model/document';
-import { canvasTextMeasurer, layoutDocument, type LayoutBox } from '../layout';
+import { canvasTextMeasurer, CHIP_MARKS, layoutDocument, type LayoutBox } from '../layout';
 import { subItemKind } from '../model/subItems';
-import { createEvaluator, previewValues } from './evaluate';
+import { createEvaluator, previewValues, type ExternalFunctions } from './evaluate';
 import { gameArtSupported, pickGameArt, releaseGameArt, type GameArt } from './gameArt';
 import { objectIndex } from './gameData';
 import { fontStyle, renderText } from './text';
@@ -32,6 +32,10 @@ export interface PreviewPaneProps {
   resolveMenuLink?: (nodeId: NodeId) => string | undefined;
   /** Open the menu of a link badge. */
   onOpenMenu?(key: string): void;
+  /** Stand-ins for the functions C# registers (previewData.ts externalFunctions). */
+  functions?: ExternalFunctions;
+  /** Sample rows of the sources C# provides, by source key (LayoutOptions.sampleRows). */
+  sampleRows?: Record<string, unknown[]>;
 }
 
 const screens = { '1280×720': [1280, 720], '1920×1080': [1920, 1080] } as const;
@@ -112,11 +116,14 @@ function BoxContent(props: BoxProps): ReactNode {
         </div>
       );
     case 'ItemImage':
-      if (d.sprite && objectIndex(d.sprite) !== undefined && art?.objects) {
+    case 'Image':
+      if (box.kind === 'ItemImage' && d.sprite && objectIndex(d.sprite) !== undefined && art?.objects) {
         return <div className="pv-item-image"><ItemSprite id={d.sprite} art={art} size="100%" /></div>;
       }
-      return <div className="pv-image" title={d.sprite}><span>{renderText(d.sprite ?? box.kind, i18n)}</span></div>;
-    case 'Image':
+      // an Item / Sprite expression the preview cannot evaluate: a neutral icon, the expression on hover
+      if (d.sprite !== undefined && /[-]/.test(d.sprite)) {
+        return <div className="pv-image" title={d.sprite.replace(CHIP_MARKS, '')}><span className="pv-image-icon">▣</span></div>;
+      }
       return <div className="pv-image" title={d.sprite}><span>{renderText(d.sprite ?? box.kind, i18n)}</span></div>;
     case 'Spacer':
       return d.line ? <div className="pv-spacer-line" /> : null;
@@ -134,7 +141,7 @@ const inside = (box: LayoutBox, x: number, y: number): boolean => {
 };
 
 export function PreviewPane(props: PreviewPaneProps): ReactNode {
-  const { doc, selection, onSelect, switchCases, i18n, resolveTooltip, resolveMenuLink, onOpenMenu } = props;
+  const { doc, selection, onSelect, switchCases, i18n, resolveTooltip, resolveMenuLink, onOpenMenu, functions, sampleRows } = props;
   const [ownSettings, setOwnSettings] = useState(defaultPreviewSettings);
   const settings = props.settings ?? ownSettings;
   const { screen, custom, zoom, repeatCount, showHidden } = settings;
@@ -190,11 +197,12 @@ export function PreviewPane(props: PreviewPaneProps): ReactNode {
     screenHeight: screenH,
     repeatCount,
     measureText,
-    evaluate: createEvaluator(doc),
+    evaluate: createEvaluator(doc, functions),
     showHidden,
-    ...(switchCases ? { switchCases } : {})
-  }), [doc, screenW, screenH, repeatCount, measureText, showHidden, switchCases]);
-  const values = useMemo(() => previewValues(doc), [doc]);
+    ...(switchCases ? { switchCases } : {}),
+    ...(sampleRows ? { sampleRows } : {})
+  }), [doc, screenW, screenH, repeatCount, measureText, showHidden, switchCases, functions, sampleRows]);
+  const values = useMemo(() => previewValues(doc, functions), [doc, functions]);
 
   const fit = Math.max(0.05, Math.min((paneSize.width - 16) / screenW, (paneSize.height - 16) / screenH));
   const scale = zoom === 'fit' ? fit : zoom;
@@ -355,6 +363,7 @@ export function PreviewPane(props: PreviewPaneProps): ReactNode {
                 cursor={cursor}
                 screen={{ width: screenW, height: screenH }}
                 state={values}
+                {...(functions ? { functions } : {})}
                 {...(i18n ? { i18n } : {})}
                 {...(shownArt ? { art: shownArt } : {})}
               />

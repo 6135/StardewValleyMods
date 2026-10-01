@@ -2,16 +2,20 @@ import { useCallback, useMemo, useState } from 'react';
 import type { DesignerDocument, NodeId, Problem } from '../model/document';
 import { buildTooltipObject } from '../io/export';
 import { parseRawTab, rawTab } from '../io/workspace';
-import { previewDocument, resolverOf, tooltipStandIn } from '../model/resolve';
+import { flattenLocals, sourceKey } from '../layout';
+import { previewDocument, resolverOf } from '../model/resolve';
 import { activeTab, activeUi, useDesigner } from '../model/store';
-import { tabOwner, type TabId, type Workspace, type WorkspaceTab } from '../model/workspace';
+import { tabOwner, type PreviewData, type TabId, type TooltipTab, type Workspace, type WorkspaceTab } from '../model/workspace';
+import { previewValues, type ExternalFunctions } from '../preview/evaluate';
 import { I18nLoader } from '../preview/I18nLoader';
 import { defaultPreviewSettings, PreviewPane } from '../preview/PreviewPane';
+import { externalFunctions, findPreviewFunctions, findSampleSources } from '../preview/previewData';
 import { PreviewStatePanel } from '../preview/PreviewStatePanel';
+import { TooltipPreview } from '../preview/Tooltip';
 
 // The center pane of the active tab, bound to the store: the schematic preview (architecture.md §7) of a menu (with
-// the owner templates it uses), a template's body, or a stand-in element that shows a named tooltip on hover (§18.3);
-// or the tab's raw JSON, editable and applied through the import as one undo step. Read-only (phone width): preview only.
+// the owner templates it uses), a template's body, or a named tooltip by itself (§18.3); or the tab's raw JSON,
+// editable and applied through the import as one undo step. Read-only (phone width): preview only.
 
 export function PreviewSlot({ readOnly = false }: { readOnly?: boolean }) {
   const tab = useDesigner(activeTab);
@@ -42,7 +46,11 @@ function Preview({ readOnly }: { readOnly: boolean }) {
   const selection = useDesigner(s => activeUi(s).selection);
   const settings = useDesigner(s => activeUi(s).preview) ?? defaultPreviewSettings;
   const i18n = useDesigner(s => s.i18n);
-  const { select, setPreviewState, setI18n, setPreviewSettings, openTab } = useDesigner.getState();
+  const { select, setPreviewState, setI18n, setPreviewSettings, openTab, setPreviewFunction, setSampleRows } = useDesigner.getState();
+  const data = workspace.previewData;
+  const functions = useMemo(() => externalFunctions(data, i18n), [data, i18n]);
+  const uses = useMemo(() => findPreviewFunctions(workspace), [workspace]);
+  const sources = useMemo(() => findSampleSources(workspace), [workspace]);
   const resolveTooltip = useCallback((nodeId: NodeId) => (doc ? tooltipOf(workspace, tab, doc, nodeId) : undefined), [workspace, tab, doc]);
   const links = useMemo(() => menuLinks(workspace), [workspace]);
   const resolveMenuLink = useCallback((nodeId: NodeId) => links.get(nodeId)?.key, [links]);
@@ -53,19 +61,59 @@ function Preview({ readOnly }: { readOnly: boolean }) {
     }
   }, [links, openTab]);
 
-  return doc ? (
+  if (!doc && tab.kind !== 'tooltip') {
+    return <div className="placeholder">An owner entry has no preview: open a menu, template or tooltip tab.</div>;
+  }
+
+  return (
     <>
-      <PreviewPane doc={doc} selection={selection} onSelect={select} i18n={i18n ?? undefined} resolveTooltip={resolveTooltip}
-        settings={settings} onSettingsChange={setPreviewSettings} resolveMenuLink={resolveMenuLink} onOpenMenu={openMenu} />
+      {tab.kind === 'tooltip' ? <TooltipTabPreview workspace={workspace} tab={tab} functions={functions} i18n={i18n} /> : (
+        <PreviewPane doc={doc!} selection={selection} onSelect={select} i18n={i18n ?? undefined} resolveTooltip={resolveTooltip}
+          settings={settings} onSettingsChange={setPreviewSettings} resolveMenuLink={resolveMenuLink} onOpenMenu={openMenu}
+          functions={functions} {...(data ? { sampleRows: data.rows } : {})} />
+      )}
       {!readOnly && (
         <details className="preview-state">
           <summary>Preview state</summary>
-          {(tab.kind === 'menu' || tab.kind === 'template') && <PreviewStatePanel doc={doc} onChange={setPreviewState} />}
+          <PreviewStatePanel {...(doc ? { doc } : {})} onChange={setPreviewState} functions={uses} sources={sources} data={data}
+            i18nLoaded={i18n !== null} onFunction={setPreviewFunction} onRows={setSampleRows} />
           <I18nLoader onLoad={setI18n} />
         </details>
       )}
     </>
-  ) : <div className="placeholder">An owner entry has no preview: open a menu, template or tooltip tab.</div>;
+  );
+}
+
+/**
+ * A named tooltip by itself, its expressions read with the preview state of the first menu or template that shows it
+ * and, for a row tooltip, the first sample row of that element's source.
+ */
+function TooltipTabPreview({ workspace, tab, functions, i18n }: { workspace: Workspace; tab: TooltipTab; functions: ExternalFunctions; i18n: Record<string, string> | null }) {
+  const definition = useMemo(() => asObject(buildTooltipObject(tab.doc)), [tab.doc]);
+  const state = useMemo(() => tooltipState(workspace, tab, functions, workspace.previewData), [workspace, tab, functions]);
+  return <TooltipPreview definition={definition} state={state} functions={functions} {...(i18n ? { i18n } : {})} />;
+}
+
+function tooltipState(ws: Workspace, tab: TooltipTab, functions: ExternalFunctions, data: PreviewData | undefined): Record<string, string> {
+  const resolver = resolverOf(ws);
+  const def = resolver.definitions.find(d => d.kind === 'tooltip' && d.tabId === tab.id);
+  for (const ref of def ? resolver.usages(def) : []) {
+    const user = resolver.tab(ref.tabId);
+    const doc = user ? previewDocument(ws, user) : null;
+    const node = doc && ref.nodeId !== null ? doc.nodes[ref.nodeId] : undefined;
+    if (!doc || !node) {
+      continue;
+    }
+
+    const state = previewValues(doc, functions);
+    const key = ref.field === 'RowTooltip' ? sourceKey(node.extra['Source'] ?? node.fields['Source'])?.toLowerCase() : undefined;
+    const rowsKey = key !== undefined ? Object.keys(data?.rows ?? {}).find(k => k.toLowerCase() === key) : undefined;
+    const row = rowsKey !== undefined ? data!.rows[rowsKey]![0] : undefined;
+    const alias = node.fields['As']?.trim();
+    return row === undefined ? state : { ...state, ...flattenLocals({ row, index: 0, ...(alias ? { [alias]: row, [`${alias}Index`]: 0 } : {}) }) };
+  }
+
+  return {};
 }
 
 /** The active tab's raw JSON: edited freely, applied as one undo step when it reads back without errors. */
@@ -140,13 +188,9 @@ function asObject(value: unknown): Record<string, unknown> {
 
 /**
  * The rich tooltip a node shows, From followed like DataBuilder.CompileTooltip: the named tooltip's blocks first, then
- * the node's own; the node's MaxWidth wins. A tooltip tab's stand-in shows the tab's tooltip.
+ * the node's own; the node's MaxWidth wins.
  */
 function tooltipOf(ws: Workspace, tab: WorkspaceTab, doc: DesignerDocument, nodeId: NodeId): unknown {
-  if (tab.kind === 'tooltip' && nodeId === tooltipStandIn(tab)) {
-    return asObject(buildTooltipObject(tab.doc));
-  }
-
   const rich = doc.nodes[nodeId]?.extra['RichTooltip'] ?? doc.nodes[nodeId]?.fields['RichTooltip'];
   if (rich === undefined || rich === null) {
     return undefined;

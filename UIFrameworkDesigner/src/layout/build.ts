@@ -245,6 +245,22 @@ export function chipTokens(text: string): string {
   });
 }
 
+/**
+ * The key of a collection source C# provides (a `hook:name` / `@name` shorthand, or a definition with a Hook), under
+ * which the preview keeps its sample rows (LayoutOptions.sampleRows); undefined for any other source.
+ */
+export function sourceKey(source: unknown): string | undefined {
+  if (isRecord(source)) {
+    return typeof source.Hook === 'string' && source.Hook.trim().length > 0 ? `hook:${source.Hook.trim()}` : undefined;
+  }
+  if (typeof source !== 'string') {
+    return undefined;
+  }
+  const text = source.trim();
+  const name = (/^\$\{([\s\S]*)\}$/.exec(text)?.[1] ?? text).trim();
+  return /^(hook:|@)\S/i.test(name) ? name : undefined;
+}
+
 /** Rich-text markup ([b], [color=…], [link=…], [icon=…]) removed; an icon keeps roughly one glyph pair of room. */
 function stripMarkup(text: string): string {
   return text.replace(/\[(\/?)(b|color|link|icon)(=[^\]]*)?\]/gi, (_m, close: string, tag: string) =>
@@ -705,8 +721,9 @@ export class Builder {
         const dropdown = new LDropdown(ctx, null);
         dropdown.font = this.font(src, scope, false);
         dropdown.shrink = v.bool(f.Shrink, scope) ?? false;
-        const choices = this.stringList(src, 'Choices');
-        const labels = this.stringList(src, 'Labels');
+        const sourced = this.sourcedChoices(src, scope);
+        const choices = sourced?.values ?? this.stringList(src, 'Choices');
+        const labels = sourced?.labels ?? this.stringList(src, 'Labels');
         dropdown.labels = choices.map((c, i) => v.text(labels[i] ?? c, scope));
         const value = f.Value !== undefined ? v.text(f.Value, scope) : choices[0] !== undefined ? v.text(choices[0], scope) : '';
         const index = choices.findIndex(c => c === f.Value);
@@ -756,6 +773,27 @@ export class Builder {
   }
 
   /** A list member written as a JSON array (or a comma list in a string field). */
+  /**
+   * SourcedChoices: a ChoicesSource's rows as choices when the preview has them, each row's ChoiceValue (else the row)
+   * and ChoiceLabel (else the value) evaluated in its row scope; null without rows.
+   */
+  private sourcedChoices(src: Src, scope: Scope): { values: string[]; labels: string[] } | null {
+    const source = src.extra.ChoicesSource ?? src.fields.ChoicesSource;
+    const rows = source !== undefined ? this.inlineRows(source, scope) : null;
+    if (!rows) {
+      return null;
+    }
+    const values: string[] = [];
+    const labels: string[] = [];
+    rows.forEach((row, i) => {
+      const rowScope = this.rowScope(scope, rows, i, src.fields.As);
+      const value = src.fields.ChoiceValue !== undefined ? this.values.text(src.fields.ChoiceValue, rowScope) : stringOf(row);
+      values.push(value);
+      labels.push(src.fields.ChoiceLabel !== undefined ? this.values.text(src.fields.ChoiceLabel, rowScope) : value);
+    });
+    return { values, labels };
+  }
+
   private stringList(src: Src, name: string): string[] {
     const value = src.extra[name] ?? src.fields[name];
     if (Array.isArray(value)) {
@@ -894,14 +932,15 @@ export class Builder {
 
   /**
    * The rows of a collection source when the preview has them (SourceBinding): a Sources entry or inline definition
-   * with Rows, an inline array, or a row local holding an array (`${season.crops}`); null otherwise.
+   * with Rows, an inline array, the sample rows of a source C# provides (sourceKey), or a row local holding an array
+   * (`${season.crops}`); null otherwise.
    */
   private inlineRows(source: unknown, scope: Scope): unknown[] | null {
     if (Array.isArray(source)) {
       return source;
     }
     if (isRecord(source)) {
-      return Array.isArray(source.Rows) ? source.Rows : null;
+      return Array.isArray(source.Rows) ? source.Rows : this.sampleRows(source);
     }
     if (typeof source !== 'string') {
       return null;
@@ -912,13 +951,25 @@ export class Builder {
     const key = isRecord(sources) ? Object.keys(sources).find(k => k.trim().toLowerCase() === name.toLowerCase()) : undefined;
     if (key !== undefined) {
       const def = (sources as Record<string, unknown>)[key];
-      return isRecord(def) && Array.isArray(def.Rows) ? def.Rows : null;
+      return isRecord(def) && Array.isArray(def.Rows) ? def.Rows : this.sampleRows(def);
+    }
+    const sample = this.sampleRows(name);
+    if (sample) {
+      return sample;
     }
     let value: unknown = scope.locals;
     for (const part of name.split('.')) {
       value = isRecord(value) ? value[part] : undefined;
     }
     return Array.isArray(value) ? value : null;
+  }
+
+  /** The preview's sample rows of a source C# provides (LayoutOptions.sampleRows, keys matched without case); null when it has none. */
+  private sampleRows(source: unknown): unknown[] | null {
+    const name = sourceKey(source)?.toLowerCase();
+    const rows = this.opts.sampleRows;
+    const key = name !== undefined && rows ? Object.keys(rows).find(k => k.toLowerCase() === name) : undefined;
+    return key !== undefined ? rows![key]! : null;
   }
 
   /** RowScope.For: row `index` of `rows` as row, index, the As alias and <alias>Index (only the instance without rows). */
@@ -1054,8 +1105,9 @@ export class Builder {
       const cell = new LStack(ctx, null, false, 4);
       cell.row = row;
       cell.column = 1;
-      const choices = this.stringList(field, 'Choices');
-      const kind = (def.Kind ?? (choices.length > 0 ? 'Dropdown' : 'Text')).trim().toLowerCase();
+      const sourced = this.sourcedChoices(field, scope);
+      const choices = sourced?.labels ?? this.stringList(field, 'Choices');
+      const kind = (def.Kind ?? (choices.length > 0 || (field.extra.ChoicesSource ?? def.ChoicesSource) !== undefined ? 'Dropdown' : 'Text')).trim().toLowerCase();
       let control: LElement;
       if (kind === 'checkbox') {
         control = new LCheckbox(ctx, this.synthetic(field.id, 'Checkbox', scope));
@@ -1091,10 +1143,11 @@ export class Builder {
 }
 
 /** Row locals as the dotted scalar names the evaluator reads: { row: { price: 35 } } → row.price = "35". */
-function flattenLocals(locals: Record<string, unknown>): Record<string, string> {
+export function flattenLocals(locals: Record<string, unknown>): Record<string, string> {
   const out: Record<string, string> = {};
   const walk = (name: string, value: unknown): void => {
-    const text = scalarText(value);
+    // null as the text the evaluator reads back as null (row.item != null)
+    const text = value === null ? 'null' : scalarText(value);
     if (text !== undefined) {
       out[name] = text;
     } else if (isRecord(value)) {

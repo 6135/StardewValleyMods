@@ -43,6 +43,25 @@ export interface OwnerTab { id: TabId; kind: 'owner'; owner: string; doc: OwnerD
 export type WorkspaceTab = MenuTab | TemplateTab | TooltipTab | OwnerTab;
 export type TabKind = WorkspaceTab['kind'];
 
+/**
+ * How the preview evaluates a function C# registers (`@name(...)`, RegisterFunction), which the browser cannot run:
+ * an i18n lookup of the first argument (the key when the loaded map lacks it), the first argument as text, a fixed
+ * value, or unknown (the call stays a chip).
+ */
+export interface PreviewFunction {
+  kind: 'unknown' | 'i18n' | 'first' | 'fixed';
+  /** The text of a 'fixed' function. */
+  value?: string;
+}
+
+/** Workspace-wide preview data (architecture.md §7.2); autosaved and shared with the workspace, never exported. */
+export interface PreviewData {
+  /** By function name as written after `@` (matched without case). */
+  functions: Record<string, PreviewFunction>;
+  /** Sample rows of the collection sources C# provides (`hook:name`, `@name`), by source key (layout sourceKey). */
+  rows: Record<string, unknown[]>;
+}
+
 export interface Workspace {
   /** Default owner of new tabs ("{{ModId}}"). */
   owner: string;
@@ -53,6 +72,8 @@ export interface Workspace {
   content: Record<string, unknown>;
   /** Changes the workspace does not edit (Sprites, Composites, other assets …), verbatim and in order. */
   otherChanges: unknown[];
+  /** Preview functions and sample rows; absent while none are set. */
+  previewData?: PreviewData;
 }
 
 export const DefaultOwner = '{{ModId}}';

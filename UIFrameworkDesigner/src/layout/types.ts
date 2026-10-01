@@ -34,6 +34,8 @@ export interface LayoutOptions {
    * (row.x, the As alias, index); undefined when it cannot.
    */
   evaluate?: (expr: string, locals: Record<string, string>) => string | undefined;
+  /** Sample rows of the collection sources C# provides, by source key (sourceKey; matched without case). */
+  sampleRows?: Record<string, unknown[]>;
   /** The case each Switch node shows (its children's `Case` value); the first page when absent. */
   switchCases?: Record<NodeId, string>;
   /** Designer addition: lay out elements hidden by Visible / If / Condition as if visible (their boxes get `hidden`). */
@@ -111,5 +113,9 @@ export const CHIP_I18N = '';
 export const CHIP_END = '';
 export const CHIP_TOKEN = '';
 export const CHIP_EXPR = '';
+/** A chip is drawn (preview/text.tsx) and measured (textMetrics.ts) at this fraction of the font size … */
+export const CHIP_FONT_SCALE = 0.82;
+/** … with this much padding on each side, in UI pixels; a chip is never broken across lines. */
+export const CHIP_PADDING = 3;
 /** Matches every chip mark. */
 export const CHIP_MARKS = /[-]/g;
