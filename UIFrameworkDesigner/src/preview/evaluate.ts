@@ -299,9 +299,42 @@ export function evaluateExpression(expr: string, state: Record<string, string>):
   }
 }
 
-/** An evaluator bound to the preview state, as LayoutOptions.evaluate expects. */
-export function createEvaluator(state: Record<string, string>): (expr: string) => string | undefined {
-  return expr => evaluateExpression(expr, state);
+const scalar = (value: unknown): string | undefined =>
+  (typeof value === 'string' ? value : typeof value === 'number' || typeof value === 'boolean' ? String(value) : undefined);
+
+const table = (value: unknown): Record<string, unknown> =>
+  (value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : {});
+
+/**
+ * The values expressions read in the preview: the menu's State defaults as menu.<key> (a one-time "$:{…}" evaluated,
+ * arrays / objects as their JSON text), the preview state over them, then Computed as menu.<name> (in order, unless the
+ * preview state sets that name).
+ */
+export function previewValues(doc: DesignerDocument): Record<string, string> {
+  const state: Record<string, string> = {};
+  for (const [key, value] of Object.entries(table(doc.menuExtra.State))) {
+    const text = scalar(value) ?? JSON.stringify(value);
+    const evaluated = text.trimStart().startsWith('$:{') ? evaluateExpression(text, state) : text;
+    if (evaluated !== undefined) {
+      state[`menu.${key.trim()}`] = evaluated;
+    }
+  }
+  Object.assign(state, doc.previewState);
+  for (const [key, value] of Object.entries(table(doc.menuExtra.Computed))) {
+    const name = `menu.${key.trim()}`;
+    const text = scalar(value);
+    const result = text !== undefined && !(name in doc.previewState) ? evaluateExpression(text, state) : undefined;
+    if (result !== undefined) {
+      state[name] = result;
+    }
+  }
+  return state;
+}
+
+/** An evaluator over the document's preview values (previewValues) and a place's row locals, as LayoutOptions.evaluate expects. */
+export function createEvaluator(doc: DesignerDocument): (expr: string, locals: Record<string, string>) => string | undefined {
+  const state = previewValues(doc);
+  return (expr, locals) => evaluateExpression(expr, Object.keys(locals).length > 0 ? { ...state, ...locals } : state);
 }
 
 const namePattern = /\b(menu|session|player|config|stat|args)\.[A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)*/g;

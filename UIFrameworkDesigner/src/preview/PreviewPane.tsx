@@ -157,7 +157,7 @@ export function PreviewPane({ doc, selection, onSelect, switchCases }: PreviewPa
     screenHeight: screenH,
     repeatCount,
     measureText,
-    evaluate: createEvaluator(doc.previewState),
+    evaluate: createEvaluator(doc),
     showHidden,
     ...(switchCases ? { switchCases } : {})
   }), [doc, screenW, screenH, repeatCount, measureText, showHidden, switchCases]);

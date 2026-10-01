@@ -29,8 +29,11 @@ export interface LayoutOptions {
   /** How many rows Repeat / List / DataGrid render from their row template. */
   repeatCount: number;
   measureText: TextMeasurer;
-  /** Evaluates a non-literal field value (a bare expression or a `${…}` template); undefined when it cannot. */
-  evaluate?: (expr: string) => string | undefined;
+  /**
+   * Evaluates a non-literal field value (a bare expression or a `${…}` template) with the row locals of its place
+   * (row.x, the As alias, index); undefined when it cannot.
+   */
+  evaluate?: (expr: string, locals: Record<string, string>) => string | undefined;
   /** The case each Switch node shows (its children's `Case` value); the first page when absent. */
   switchCases?: Record<NodeId, string>;
   /** Designer addition: lay out elements hidden by Visible / If / Condition as if visible (their boxes get `hidden`). */

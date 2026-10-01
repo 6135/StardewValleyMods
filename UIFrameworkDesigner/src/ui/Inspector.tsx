@@ -2,11 +2,13 @@ import { useState, type ReactNode } from 'react';
 import type { DesignerDocument, DesignerNode } from '../model/document';
 import { defaultOf, elementTypes, typeInfo, usesMember } from '../model/metadata';
 import { useDesigner } from '../model/store';
+import { subItemKind, subItemsOf, type SubItemKind } from '../model/subItems';
 import { allowsString, describe, schemaProperties, shapeOf } from '../fieldShapes';
 import { FieldRow, JsonRow } from './fields/FieldRow';
 import { TextWidget } from './fields/widgets';
 
-// The inspector (architecture.md §6.2): menu fields for the root, the type's fields for an element, grouped.
+// The inspector (architecture.md §6.2): menu fields for the root, the type's fields for an element, the schema
+// definition's fields for a sub-item (a Form field, a DataGrid column), grouped.
 
 interface Group {
   name: string;
@@ -48,7 +50,9 @@ export function Inspector() {
     <aside className="pane inspector" aria-label="Inspector">
       <div className="pane-title">Inspector</div>
       <div className="pane-body">
-        {node ? <ElementInspector key={node.id} node={node} /> : <MenuInspector doc={doc} />}
+        {!node ? <MenuInspector doc={doc} />
+          : subItemKind(node.type) ? <SubItemInspector key={node.id} node={node} kind={subItemKind(node.type)!} />
+          : <ElementInspector key={node.id} node={node} />}
       </div>
     </aside>
   );
@@ -86,7 +90,9 @@ function ElementInspector({ node }: { node: DesignerNode }) {
   const setExtra = useDesigner(s => s.setExtra);
   const info = typeInfo(node.type);
   const props = schemaProperties('ElementDefinition');
-  const members = new Set((info?.members ?? []).filter(m => m !== 'Children'));
+  // the child list member (Children, or a Form's Fields / a DataGrid's Columns, edited as tree items) is not a field
+  const listMember = subItemsOf(node.type)?.member ?? 'Children';
+  const members = new Set((info?.members ?? []).filter(m => m !== 'Children' && (m !== listMember || m in node.fields)));
   const listed = [...members, ...elementTypes.common.filter(c => c !== 'Type' && !members.has(c))];
   const extraSet = [...Object.keys(node.fields), ...Object.keys(node.extra)].filter(f => f !== 'Children' && f !== 'Type' && !listed.includes(f));
   const entries: Entry[] = [];
@@ -117,6 +123,42 @@ function ElementInspector({ node }: { node: DesignerNode }) {
       </div>
       <GroupedFields scope={node.id} groups={elementGroups(members)} entries={entries} />
       {!info && <AddArgument onAdd={name => setField(node.id, name, '')} />}
+    </>
+  );
+}
+
+/** A Form field / DataGrid column: the members of its schema definition, then unknown members. */
+function SubItemInspector({ node, kind }: { node: DesignerNode; kind: SubItemKind }) {
+  const setField = useDesigner(s => s.setField);
+  const setExtra = useDesigner(s => s.setExtra);
+  const props = schemaProperties(kind.schema);
+  const names = [...Object.keys(props), ...Object.keys(node.fields), ...Object.keys(node.extra)]
+    .filter((n, i, all) => n !== kind.elements && all.indexOf(n) === i);
+  const entries: Entry[] = [];
+
+  for (const name of names) {
+    const description = describe(kind.schema, name);
+    const warning = name in props ? undefined : `Not a ${kind.title.toLowerCase()} field`;
+    const extra = node.extra[name];
+    if (name in node.extra || (node.fields[name] === undefined && !allowsString(props[name]))) {
+      entries.push({ name, set: extra !== undefined, row: <JsonRow name={name} value={extra} description={description} warning={warning} commit={v => setExtra(node.id, name, v)} /> });
+    } else {
+      entries.push({
+        name,
+        set: node.fields[name] !== undefined,
+        row: <FieldRow name={name} shape={shapeOf(node.type, name)} value={node.fields[name]} description={description} warning={warning}
+          commit={v => setField(node.id, name, v)} />
+      });
+    }
+  }
+
+  return (
+    <>
+      <div className="inspector-head">
+        <span className="type">{kind.title}</span>
+        <span className="muted">{kind.elements ? `a ${kind.parent} item; its children are its ${kind.elements}` : `a ${kind.parent} item`}</span>
+      </div>
+      <GroupedFields scope={node.id} groups={[{ name: kind.title, open: true }]} entries={entries} />
     </>
   );
 }

@@ -25,6 +25,7 @@ Progress against §14. Update this table when a phase changes; §14 stays the pl
 | 4 — C# export | Not started | |
 | 5 — Data features, sharing, polish | Not started | |
 | 6 — Optional: game-art preview, live in-game loop | Not started | |
+| 7 — Workspace tabs and cross-references (§18) | Not started | |
 
 ---
 
@@ -151,6 +152,7 @@ interface Node {
 
 - **Normalised tree.** Nodes are stored flat and referenced by id, so moves, undo and selection are cheap and React re-renders only the changed subtree.
 - **Round-trip.** Unknown members go to `extra` and are written back unchanged. Comments are not preserved in v1 (the export says so when the import had any); member order follows the framework's own JSON emitter order.
+- **Sub-items.** A Form's `Fields` and a DataGrid's `Columns` are child nodes of synthetic types `FormField` / `Column` (one table, `model/subItems.ts`); a Column's children are its `Cell` elements. Import, export (with the validation pointer map), tree rules, palette, inspector (the item's schema definition) and preview all read that table.
 - **Element `Id`.** Kept as a normal field. The designer suggests unique ids (`label1`, `button2`) and the problems pane flags duplicates among siblings.
 
 ### 6.2 Inspector
@@ -326,12 +328,15 @@ Preview state panel and evaluator, Repeat / Switch / template expansion in the p
 ### Phase 6 — Optional
 Game-art skin from a local `Content` folder; save-to-mod-folder live loop (§10).
 
+### Phase 7 — Workspace tabs and cross-references
+See §18. Done when the whole `[CP] UI Framework Example/content.json` imports as one workspace (every menu and the owner entry in tabs), its `tab` / `section` template instances and named tooltips preview from their definitions with no info messages, and the workspace exports back to an equivalent `content.json`.
+
 ---
 
 ## 15. Roadmap beyond v1
 
 - Edit the other assets (`Huds`, `Owners` templates and classes, `Sprites`, `Composites`, `Contributions`) with the same tree / inspector. The document model already separates fields from children.
-- Multi-menu projects: one file holding a pack's menus, sprites and owner settings, exported as a full `content.json`.
+- Multi-menu projects: promoted to phase 7 (§18).
 - A CLI (`npx uifw-export menu.json --cs`) reusing `io/` and `codegen/`.
 - A sprite picker that browses `Sprites` entries and, with game art loaded, `Cursors` regions visually.
 
@@ -359,3 +364,81 @@ Game-art skin from a local `Content` folder; save-to-mod-folder live loop (§10)
 | Share links get large | Compressed hash, file download beyond ~8 KB |
 | All fields are strings | Typed widgets with the ƒx fallback; nothing imported becomes uneditable |
 | Hosting in the mods repository | Keeps the generated metadata next to the framework it describes; path-filtered workflow so mod builds are unaffected. Can move to its own repository later without code changes |
+
+---
+
+## 18. Workspace tabs and cross-references (phase 7)
+
+Work on several menus at once, and on the owner-level definitions they share, in one **workspace** shown as tabs. A menu can reference another tab's definition (a template, a named tooltip, another menu), and the preview, validation and export resolve the reference across tabs.
+
+### 18.1 What can reference what (the framework's own mechanisms, nothing new)
+
+| Reference | Written as | Defined in |
+|---|---|---|
+| Owner template instance | `"Type": "tab"` (+ argument fields), `Outlet` children | `Owners[owner].Templates[name]` |
+| Menu template instance | the same, resolved first | the menu's `Templates` |
+| Named tooltip | `"RichTooltip": { "From": "crop" }` | `Owners[owner].Tooltips[name]` (blocks, `When`, nested `From`) |
+| Style class | `"Class": "hint"` | `Owners[owner].Classes[name]` |
+| Another menu | `6135.UIFramework_OpenMenu owner/menu`, `_OpenMenuAsChild`, `_ToggleMenu` in an action | a `Menus` entry |
+| Named sprite | `"sprite:owner/name"` | `Sprites[owner/name]` |
+| Data composite (later) | dotted custom tag `"Type": "Mod.Name"` | `Composites[name]` |
+
+A "complex tooltip" is therefore a named tooltip in its own tab: edit its blocks visually (title, lines, item, money, icon, divider, `When`), and every element that points at it with `From` previews it on hover.
+
+### 18.2 Model
+
+```ts
+interface Workspace {
+  owner: string;                         // default owner for new tabs ("{{ModId}}")
+  tabs: WorkspaceTab[];                  // order = tab strip order
+  activeTab: TabId;
+}
+
+type WorkspaceTab =
+  | { id: TabId; kind: 'menu'; doc: DesignerDocument }
+  | { id: TabId; kind: 'template'; owner: string; name: string; template: TemplateDoc; nodes: Record<NodeId, DesignerNode> }
+  | { id: TabId; kind: 'tooltip'; owner: string; name: string; tooltip: TooltipDoc }
+  | { id: TabId; kind: 'owner'; owner: string; fields: Record<string, string>; extra: Record<string, unknown> }; // classes, hotkeys, delay
+```
+
+- `DesignerDocument` stays the unit of editing; the workspace only owns the list. The store gets one history per tab (zundo instance per tab), so undo never jumps tabs.
+- `TooltipDoc` is a block tree (`TooltipBlockDefinition`) edited with the same tree / inspector: block types are the palette, `When` and `Color` are ordinary fields.
+- A **resolver** (`src/model/resolve.ts`, pure) answers "what does this reference mean": `resolveTemplate(workspace, owner, name, fromDoc)` (menu templates first, then the owner tab), `resolveTooltip`, `resolveClass`, `resolveMenu`, `resolveSprite`. Layout, preview, validation and codegen take the resolver instead of looking at one document, so cross-tab references work everywhere at once.
+
+### 18.3 UI
+
+- **Tab strip** above the preview: one tab per menu / template / tooltip / owner entry, with a type icon, dirty dot, close, drag to reorder, and "+" (new menu, template, tooltip). Each tab keeps its own selection, collapsed tree nodes and preview settings.
+- **Workspace pane** (a section above the tree): every definition grouped by kind, with a usage count; click opens its tab.
+- **Go to definition:** a reference field (template type, `From`, `Class`, a menu id in an action) gets a "→" button that opens the defining tab and selects the definition; the inspector of a definition lists **Used by** (tab and node) with links back.
+- **Pickers:** reference fields offer the names the workspace defines (template types in the palette under "Templates", tooltip names in `RichTooltip.From`, classes in `Class`, menu ids in `_OpenMenu` actions).
+- **Rename:** renaming a template, tooltip, class or menu updates every reference in the workspace in one undoable step (a cross-tab command that records one history entry per touched tab).
+- **Preview:** template instances render the resolved template; hovering an element with a `RichTooltip` (named or inline) shows the tooltip rendered from its blocks (§7 schematic skin); a button whose action opens another menu shows a link badge that opens that tab.
+
+### 18.4 Import / export
+
+- Importing a CP `content.json` offers "Open all as a workspace": every `Menus` entry becomes a menu tab, each `Owners` entry an owner tab plus one tab per template and tooltip. Single-menu import (today's picker) stays.
+- Export per tab (today's dialog) and **Export workspace**: a full `content.json` with one `EditData` change per asset (`Menus`, `Owners`, later `Sprites`) in a stable order; or an `ImportData` file (`{ "Menus": …, "Owner": … }`) for C# mods.
+- Workspaces save to a `.uifw.json` file (the exported `content.json` plus a `$designer` member with tab order and per-tab preview state) and autosave to `localStorage`, so a saved workspace is still a valid CP file.
+
+### 18.5 Validation
+
+- The resolver removes today's info message "'tab' is not a built-in type or a template of this menu" when the owner tab defines it.
+- New checks: unknown tooltip / class / menu / sprite reference (with "did you mean" over workspace names), required template params missing, recursive templates or tooltips (`From` cycles), and definitions nothing uses (info).
+- The problems pane gains a scope switch: active tab or whole workspace.
+
+### 18.6 Steps
+
+1. `Workspace` model + per-tab history in the store; tab strip; existing single-document flow becomes a one-tab workspace (no behaviour change).
+2. Resolver; layout / validation take it; owner template tabs; workspace import of a `content.json`.
+3. Named tooltip tabs with the block editor; tooltip hover preview; `RichTooltip.From` picker.
+4. Go to definition, Used by, rename across tabs; menu links in actions.
+5. Workspace export (`content.json`, `ImportData`), `.uifw.json` save / open, autosave.
+
+### 18.7 Risks
+
+| Risk | Mitigation |
+|---|---|
+| References can name another owner (`OtherMod/menu`) the workspace does not hold | Resolved as "external": a labelled placeholder in the preview and an info message, never an error |
+| One history per tab vs. renames across tabs | Rename is a single workspace command that writes one entry per touched tab and undoes them together |
+| Large packs make the preview of nested templates slow | Resolver results are memoised per workspace revision; layout of other tabs is never computed |
+

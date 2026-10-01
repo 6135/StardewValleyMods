@@ -3,6 +3,7 @@
 // DataBuilder.Composite.cs CreateTemplate / BuildOutlet) over the designer document, producing the layout tree.
 import type { DesignerDocument, NodeId, TemplateDoc } from '../model/document';
 import { canonicalType, defaultOf, elementTypes } from '../model/metadata';
+import { subItemsOf, type SubItemKind } from '../model/subItems';
 import {
   LButton, LCanvas, LCheckbox, LContainer, LDataGrid, LDropdown, LElement, LForm, LGrid, LImage, LItemImage, LLabel, LListView,
   LPanel, LPlaceholder, LScrollView, LSlider, LSpacer, LStack, LTextBox, type ElementInfo, type GridColumn,
@@ -16,7 +17,7 @@ import {
 } from './values';
 
 // ---------------------------------------------------------------------------------------------------------------------
-//  Source nodes: document nodes and raw definitions (RowTemplate, Cell, Fields …) behind one shape
+//  Source nodes: document nodes and raw definitions (a List's RowTemplate and what it holds) behind one shape
 // ---------------------------------------------------------------------------------------------------------------------
 
 export interface Src {
@@ -47,6 +48,8 @@ export function fromNode(doc: DesignerDocument, id: NodeId): Src | null {
 const scalarText = (v: unknown): string | undefined =>
   typeof v === 'string' ? v : typeof v === 'number' || typeof v === 'boolean' ? String(v) : undefined;
 
+const isRecord = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
+
 /** A raw element definition (JSON) as a source node; shorthands expanded like DataValidator.NormalizeType. */
 export function fromRaw(raw: unknown, holder: NodeId): Src | null {
   if (typeof raw === 'string') {
@@ -73,15 +76,42 @@ export function fromRaw(raw: unknown, holder: NodeId): Src | null {
     : fields.Label !== undefined ? 'Label'
     : (raw as Record<string, unknown>).Children !== undefined ? 'Stack'
     : fields.Outlet !== undefined ? 'Outlet' : 'Stack');
-  const children = (raw as Record<string, unknown>).Children;
+  // a Form's Fields / a DataGrid's Columns are its children, as on a document node
+  const items = subItemsOf(canonicalType(type) ?? type);
+  const children = (raw as Record<string, unknown>)[items?.member ?? 'Children'];
   return {
     id: holder,
     raw: true,
     type,
     fields,
     extra,
-    children: () => rawList(children, holder)
+    children: () => (items !== undefined ? rawSubItems(children, items, holder) : rawList(children, holder))
   };
+}
+
+/** Raw sub-items (model/subItems.ts) as source nodes; a bare string item sets the kind's valueMember. */
+function rawSubItems(value: unknown, kind: SubItemKind, holder: NodeId): Src[] {
+  const out: Src[] = [];
+  for (const item of Array.isArray(value) ? value : []) {
+    const text = scalarText(item);
+    if (text !== undefined && kind.valueMember !== undefined) {
+      out.push({ id: holder, raw: true, type: kind.type, fields: { [kind.valueMember]: text }, extra: {}, children: () => [] });
+    } else if (item && typeof item === 'object' && !Array.isArray(item)) {
+      const fields: Record<string, string> = {};
+      const extra: Record<string, unknown> = {};
+      for (const [k, v] of Object.entries(item as Record<string, unknown>)) {
+        const s = scalarText(v);
+        if (s !== undefined) {
+          fields[k] = s;
+        } else {
+          extra[k] = v;
+        }
+      }
+      const elements = kind.elements !== undefined ? (item as Record<string, unknown>)[kind.elements] : undefined;
+      out.push({ id: holder, raw: true, type: kind.type, fields, extra, children: () => rawList(elements, holder) });
+    }
+  }
+  return out;
 }
 
 /** A raw definition or list of them (RowTemplate / Cell accept both). */
@@ -102,6 +132,10 @@ interface Outlets {
 
 interface Scope {
   args: Record<string, string> | null;
+  /** Row locals (RowScope.For: row, index, the As alias and <alias>Index) as JSON values, for nested sources. */
+  locals: Record<string, unknown>;
+  /** `locals` flattened to the dotted scalar names the evaluator reads (row.price, season.name …). */
+  vars: Record<string, string>;
   instance: number;
   ownerId?: NodeId;
   hidden: boolean;
@@ -169,12 +203,24 @@ function argLiteral(value: string): string {
   return `'${value.replace(/\\/g, '\\\\').replace(/'/g, '\\\'')}'`;
 }
 
+/** An argument by name: exact first, then case-insensitively (CompositeArgs.TryGetRaw). */
+function argValue(args: Record<string, string>, name: string): string | undefined {
+  if (name in args) {
+    return args[name];
+  }
+  const key = Object.keys(args).find(k => k.toLowerCase() === name.toLowerCase());
+  return key === undefined ? undefined : args[key];
+}
+
 /** Template arguments: `${args.x}` segments become the argument text, `args.x` inside expressions a literal. */
 function substituteArgs(raw: string, args: Record<string, string> | null, bare: boolean): string {
   if (!args || !raw.includes('args.')) {
     return raw;
   }
-  const inExpr = (expr: string): string => expr.replace(argPattern, (m, name: string) => (name in args ? argLiteral(args[name]!) : m));
+  const inExpr = (expr: string): string => expr.replace(argPattern, (m, name: string) => {
+    const value = argValue(args, name);
+    return value === undefined ? m : argLiteral(value);
+  });
   if (!hasTemplate(raw)) {
     return bare ? inExpr(raw) : raw;
   }
@@ -183,8 +229,9 @@ function substituteArgs(raw: string, args: Record<string, string> | null, bare: 
       return s.text.split('${').join('$${');
     }
     const whole = /^args\.([A-Za-z_][A-Za-z0-9_]*)$/.exec(s.expr);
-    if (whole && whole[1]! in args) {
-      return args[whole[1]!]!.split('${').join('$${');
+    const value = whole ? argValue(args, whole[1]!) : undefined;
+    if (value !== undefined) {
+      return value.split('${').join('$${');
     }
     return '${' + inExpr(s.expr) + '}';
   }).join('');
@@ -209,8 +256,8 @@ const truthy = (v: string): boolean => parseBool(v) ?? (v.length > 0 && parseNum
 class Values {
   constructor(private readonly opts: LayoutOptions) {}
 
-  private evaluate(expr: string): string | undefined {
-    return this.opts.evaluate?.(expr);
+  evaluate(expr: string, scope: Scope): string | undefined {
+    return this.opts.evaluate?.(expr, scope.vars);
   }
 
   /**
@@ -228,7 +275,7 @@ class Values {
         return literal;
       }
     }
-    const v = this.evaluate(r);
+    const v = this.evaluate(r, scope);
     return v === undefined ? undefined : parse(v);
   }
 
@@ -243,7 +290,7 @@ class Values {
         return literal;
       }
     }
-    const v = this.evaluate(r);
+    const v = this.evaluate(r, scope);
     return v === undefined ? undefined : truthy(v);
   }
 
@@ -272,7 +319,7 @@ class Values {
     if (!hasTemplate(r) && parseBool(r) !== undefined) {
       return parseBool(r) === false;
     }
-    return this.evaluate(r)?.trim().toLowerCase() === 'false';
+    return this.evaluate(r, scope)?.trim().toLowerCase() === 'false';
   }
 
   /** A text field as drawn: evaluated when possible, else literal text with token / expression chips. */
@@ -283,7 +330,7 @@ class Values {
     const r = substituteArgs(raw, scope.args, false);
     let out: string;
     if (hasTemplate(r)) {
-      const v = this.evaluate(r);
+      const v = this.evaluate(r, scope);
       out = v !== undefined
         ? chipTokens(v)
         : scanTemplate(r).map(s => ('text' in s ? chipTokens(s.text) : CHIP_EXPR + 'ƒ ' + s.expr + CHIP_END)).join('');
@@ -346,7 +393,7 @@ export class Builder {
   }
 
   rootScope(): Scope {
-    return { args: null, instance: 0, hidden: false, outlets: null, depth: 0 };
+    return { args: null, locals: {}, vars: {}, instance: 0, hidden: false, outlets: null, depth: 0 };
   }
 
   private findTemplate(name: string): TemplateDoc | undefined {
@@ -538,8 +585,9 @@ export class Builder {
         const stack = new LStack(ctx, info(f.Repeat ?? stringOf(src.extra.Repeat ?? '')), defBool(type, 'Horizontal', false), defNum(type, 'Spacing', 0));
         this.applyStack(stack, src, scope);
         const template = src.children();
-        for (let i = 0; i < Math.max(0, this.opts.repeatCount); i++) {
-          this.buildChildren(stack, template, { ...scope, instance: i });
+        const rows = this.inlineRows(f.Repeat ?? src.extra.Repeat, scope);
+        for (let i = 0; i < (rows?.length ?? Math.max(0, this.opts.repeatCount)); i++) {
+          this.buildChildren(stack, template, this.rowScope(scope, rows, i, f.As));
         }
         return stack;
       }
@@ -732,7 +780,7 @@ export class Builder {
   private selectPage(src: Src, scope: Scope): Src | undefined {
     const pages = src.children();
     const key = (!src.raw ? this.opts.switchCases?.[src.id] : undefined)
-      ?? (src.fields.Switch !== undefined ? this.opts.evaluate?.(substituteArgs(src.fields.Switch, scope.args, true)) : undefined);
+      ?? (src.fields.Switch !== undefined ? this.values.evaluate(substituteArgs(src.fields.Switch, scope.args, true), scope) : undefined);
     if (key !== undefined) {
       let fallback: Src | undefined;
       for (const page of pages) {
@@ -771,27 +819,30 @@ export class Builder {
     if (scope.depth >= MAX_BODY_DEPTH) {
       return host;
     }
+    // TemplateArgs.TryGet: the instance's argument (any case), else the parameter's Default; an argument is stored
+    // under its parameter's name so it replaces that default
     const args: Record<string, string> = {};
+    const params = Object.keys(template.params);
     for (const [param, def] of Object.entries(template.params)) {
-      const d = def && typeof def === 'object' ? (def as Record<string, unknown>).Default : undefined;
+      const d = isRecord(def) ? def.Default : undefined;
       if (d !== undefined && d !== null) {
         args[param] = stringOf(d);
       }
     }
-    const explicit = src.extra.Args;
+    // DataValidator.ExpandTag: every member but the common ones (and Type, Children …) is an argument, then Args
     const given: Record<string, unknown> = {};
-    for (const [k, value] of Object.entries(src.fields)) {
+    for (const [k, value] of [...Object.entries(src.fields), ...Object.entries(src.extra)]) {
       if (!common.has(k.toLowerCase()) && !notArgs.has(k.toLowerCase())) {
         given[k] = value;
       }
     }
-    if (explicit && typeof explicit === 'object' && !Array.isArray(explicit)) {
-      Object.assign(given, explicit);
+    if (isRecord(src.extra.Args)) {
+      Object.assign(given, src.extra.Args);
     }
     for (const [k, value] of Object.entries(given)) {
-      const text = stringOf(value);
+      const name = params.find(p => p.toLowerCase() === k.trim().toLowerCase()) ?? k.trim();
       // an argument is evaluated in the instance's scope (DataArgument)
-      args[k.trim()] = substituteArgs(text, scope.args, false);
+      args[name] = substituteArgs(stringOf(value), scope.args, false);
     }
     const routes = new Map<string, Src[]>();
     for (const child of src.children()) {
@@ -804,6 +855,8 @@ export class Builder {
     const body = fromNode(this.doc, template.root);
     const bodyScope: Scope = {
       args,
+      locals: scope.locals,
+      vars: scope.vars,
       instance: scope.instance,
       ownerId: scope.ownerId ?? src.id,
       hidden: scope.hidden,
@@ -839,6 +892,50 @@ export class Builder {
   //  Collections and forms
   // ------------------------------------------------------------------------------------------------------------------
 
+  /**
+   * The rows of a collection source when the preview has them (SourceBinding): a Sources entry or inline definition
+   * with Rows, an inline array, or a row local holding an array (`${season.crops}`); null otherwise.
+   */
+  private inlineRows(source: unknown, scope: Scope): unknown[] | null {
+    if (Array.isArray(source)) {
+      return source;
+    }
+    if (isRecord(source)) {
+      return Array.isArray(source.Rows) ? source.Rows : null;
+    }
+    if (typeof source !== 'string') {
+      return null;
+    }
+    const text = source.trim();
+    const name = (/^\$\{([\s\S]*)\}$/.exec(text)?.[1] ?? text).trim();
+    const sources = this.doc.menuExtra.Sources;
+    const key = isRecord(sources) ? Object.keys(sources).find(k => k.trim().toLowerCase() === name.toLowerCase()) : undefined;
+    if (key !== undefined) {
+      const def = (sources as Record<string, unknown>)[key];
+      return isRecord(def) && Array.isArray(def.Rows) ? def.Rows : null;
+    }
+    let value: unknown = scope.locals;
+    for (const part of name.split('.')) {
+      value = isRecord(value) ? value[part] : undefined;
+    }
+    return Array.isArray(value) ? value : null;
+  }
+
+  /** RowScope.For: row `index` of `rows` as row, index, the As alias and <alias>Index (only the instance without rows). */
+  private rowScope(scope: Scope, rows: unknown[] | null, index: number, as: string | undefined): Scope {
+    if (rows === null) {
+      return { ...scope, instance: index };
+    }
+    const row = rows[index];
+    const locals: Record<string, unknown> = { ...scope.locals, row, index };
+    const alias = as?.trim();
+    if (alias) {
+      locals[alias] = row;
+      locals[`${alias}Index`] = index;
+    }
+    return { ...scope, instance: index, locals, vars: flattenLocals(locals) };
+  }
+
   private rowTemplate(src: Src): Src[] {
     const own = src.children();
     return own.length > 0 ? own : rawList(src.extra.RowTemplate, src.id);
@@ -851,10 +948,11 @@ export class Builder {
     const visibleRows = Math.max(1, v.int(src.fields.VisibleRows, scope) ?? defNum('List', 'VisibleRows', 1));
     const list = new LListView(this.ctx, info, rowHeight, visibleRows);
     const template = this.rowTemplate(src);
+    const rows = this.inlineRows(src.fields.Source ?? src.extra.Source, scope);
     for (let i = 0; i < visibleRows; i++) {
-      const rowScope: Scope = { ...scope, instance: i, ownerId: scope.ownerId ?? (src.raw ? undefined : src.id) };
+      const rowScope: Scope = { ...this.rowScope(scope, rows, i, src.fields.As), ownerId: scope.ownerId ?? (src.raw ? undefined : src.id) };
       const row = new LPanel(this.ctx, this.synthetic(src.id, 'List.row', rowScope), false, 0);
-      row.visible = i < this.opts.repeatCount;
+      row.visible = i < (rows?.length ?? this.opts.repeatCount);
       if (row.visible) {
         this.buildChildren(row, template, rowScope);
       }
@@ -863,44 +961,43 @@ export class Builder {
     return list;
   }
 
-  /** DataBuilder.CreateDataGrid / DataGridColumn (Width "*", MinWidth 0, Sortable false by default). */
+  /** DataBuilder.CreateDataGrid / DataGridColumn (Width "*", MinWidth 0, Sortable false by default) over its Column items. */
   private createDataGrid(src: Src, scope: Scope, info: ElementInfo): LElement {
     const v = this.values;
     const rowHeight = Math.max(1, v.int(src.fields.RowHeight, scope) ?? defNum('DataGrid', 'RowHeight', 1));
     const visibleRows = Math.max(1, v.int(src.fields.VisibleRows, scope) ?? defNum('DataGrid', 'VisibleRows', 1));
     const grid = new LDataGrid(this.ctx, info, rowHeight, visibleRows);
-    const rows = Math.min(Math.max(0, this.opts.repeatCount), visibleRows);
-    const raw = src.extra.Columns ?? src.fields.Columns;
-    const defs: Record<string, unknown>[] = Array.isArray(raw)
-      ? raw.map(c => (c && typeof c === 'object' ? c as Record<string, unknown> : { Width: stringOf(c) }))
-      : typeof raw === 'string' ? raw.split(',').map(w => ({ Width: w.trim() })) : [];
-    for (let i = 0; i < rows; i++) {
-      grid.rows.push(new LPanel(this.ctx, this.synthetic(src.id, 'DataGrid.row', { ...scope, instance: i }), false, 0));
+    const source = this.inlineRows(src.fields.Source ?? src.extra.Source, scope);
+    const rowScopes = Array.from({ length: Math.min(source?.length ?? Math.max(0, this.opts.repeatCount), visibleRows) },
+      (_, i) => this.rowScope(scope, source, i, src.fields.As));
+    for (const rowScope of rowScopes) {
+      grid.rows.push(new LPanel(this.ctx, this.synthetic(src.id, 'DataGrid.row', rowScope), false, 0));
     }
-    for (const def of defs) {
+    for (const col of src.children()) {
+      const def = col.fields;
       const header = new LLabel(this.ctx, null);
-      header.text = v.text(scalarText(def.Header) ?? scalarText(def.Id) ?? '', scope);
-      header.info = this.synthetic(src.id, 'DataGrid.header', scope, header.text);
+      header.text = v.text(def.Header ?? def.Id ?? '', scope);
+      header.info = this.synthetic(col.id, 'DataGrid.header', scope, header.text);
       header.info.detail = {};
       const column: GridColumn = {
-        track: parseTracks(scalarText(def.Width) ?? '*')[0] ?? { type: 'star', value: 1 },
-        minWidth: Math.max(0, parseInt32(scalarText(def.MinWidth) ?? '0') ?? 0),
-        sortable: parseBool(scalarText(def.Sortable) ?? 'false') ?? false,
+        track: parseTracks(def.Width ?? '*')[0] ?? { type: 'star', value: 1 },
+        minWidth: Math.max(0, parseInt32(def.MinWidth ?? '0') ?? 0),
+        sortable: parseBool(def.Sortable ?? 'false') ?? false,
         header,
         cells: []
       };
-      for (let i = 0; i < rows; i++) {
-        const rowScope: Scope = { ...scope, instance: i, ownerId: scope.ownerId ?? (src.raw ? undefined : src.id) };
-        const cellDefs = rawList(def.Cell, src.id);
+      const cellDefs = col.children();
+      for (const rowScope of rowScopes) {
         if (cellDefs.length > 0) {
+          // a cell's elements belong to the column: clicking one selects it
           const panel = new LPanel(this.ctx, null, false, 0);
-          this.buildChildren(panel, cellDefs, rowScope);
+          this.buildChildren(panel, cellDefs, { ...rowScope, ownerId: scope.ownerId ?? (col.raw ? undefined : col.id) });
           column.cells.push(panel);
         } else {
           const label = new LLabel(this.ctx, null);
-          label.text = v.text(scalarText(def.Text) ?? '', rowScope);
+          label.text = v.text(def.Text ?? '', rowScope);
           label.verticalAlign = 'center';
-          label.info = this.synthetic(src.id, 'DataGrid.cell', rowScope, label.text);
+          label.info = this.synthetic(col.id, 'DataGrid.cell', rowScope, label.text);
           label.info.detail = {};
           column.cells.push(label);
         }
@@ -918,7 +1015,7 @@ export class Builder {
     return grid;
   }
 
-  /** Core/AutoForm.cs over a data Form's Fields (AutoFormField: caption, control; DataBuilder.Form kinds). */
+  /** Core/AutoForm.cs over a data Form's FormField items (AutoFormField: caption, control; DataBuilder.Form kinds). */
   private createForm(src: Src, scope: Scope, info: ElementInfo): LElement {
     const v = this.values;
     const ctx = this.ctx;
@@ -927,15 +1024,10 @@ export class Builder {
     grid.columnSpacing = 24;
     grid.rowSpacing = 12;
     grid.horizontalAlign = 'stretch';
-    const fields = Array.isArray(src.extra.Fields) ? src.extra.Fields as unknown[] : [];
     let row = 0;
-    fields.forEach((raw, index) => {
-      if (!raw || typeof raw !== 'object') {
-        return;
-      }
-      const def = raw as Record<string, unknown>;
-      const section = scalarText(def.Section);
-      if (section !== undefined) {
+    src.children().forEach((field, index) => {
+      const def = field.fields;
+      if (def.Section !== undefined) {
         if (row > 0) {
           const gap = new LSpacer(ctx, null);
           gap.height = 8;
@@ -944,39 +1036,39 @@ export class Builder {
           grid.add(gap);
         }
         const header = new LLabel(ctx, null);
-        header.text = v.text(section, scope);
+        header.text = v.text(def.Section, scope);
         header.font = 'dialogue';
         header.wrap = true;
         header.row = row++;
         header.columnSpan = 2;
-        header.info = this.synthetic(src.id, 'Form.section', scope, header.text);
+        header.info = this.synthetic(field.id, 'Form.section', scope, header.text);
         header.info.detail = {};
         grid.add(header);
       }
       const caption = new LLabel(ctx, null);
-      caption.text = v.text(scalarText(def.Label) ?? scalarText(def.Id) ?? `field ${index + 1}`, scope);
+      caption.text = v.text(def.Label ?? def.Id ?? `field ${index + 1}`, scope);
       caption.verticalAlign = 'center';
       caption.row = row;
-      caption.info = this.synthetic(src.id, 'Form.label', scope, caption.text);
+      caption.info = this.synthetic(field.id, 'Form.label', scope, caption.text);
       caption.info.detail = {};
       const cell = new LStack(ctx, null, false, 4);
       cell.row = row;
       cell.column = 1;
-      const choices = Array.isArray(def.Choices) ? def.Choices.map(stringOf) : [];
-      const kind = (scalarText(def.Kind) ?? (choices.length > 0 ? 'Dropdown' : 'Text')).trim().toLowerCase();
+      const choices = this.stringList(field, 'Choices');
+      const kind = (def.Kind ?? (choices.length > 0 ? 'Dropdown' : 'Text')).trim().toLowerCase();
       let control: LElement;
       if (kind === 'checkbox') {
-        control = new LCheckbox(ctx, this.synthetic(src.id, 'Checkbox', scope));
+        control = new LCheckbox(ctx, this.synthetic(field.id, 'Checkbox', scope));
         control.info!.detail = { checked: false };
       } else if (kind === 'dropdown') {
         const dropdown = new LDropdown(ctx, null);
         dropdown.labels = choices.map(c => v.text(c, scope));
-        dropdown.info = this.synthetic(src.id, 'Dropdown', scope, dropdown.labels[0]);
+        dropdown.info = this.synthetic(field.id, 'Dropdown', scope, dropdown.labels[0]);
         dropdown.info.detail = { value: dropdown.labels[0] ?? '' };
         control = dropdown;
       } else {
-        control = new LTextBox(ctx, this.synthetic(src.id, kind === 'number' || kind === 'integer' ? 'NumberInput' : 'TextInput', scope));
-        control.info!.detail = { value: scalarText(def.Value) ?? '' };
+        control = new LTextBox(ctx, this.synthetic(field.id, kind === 'number' || kind === 'integer' ? 'NumberInput' : 'TextInput', scope));
+        control.info!.detail = { value: def.Value ?? '' };
       }
       cell.add(control);
       grid.add(caption);
@@ -996,6 +1088,25 @@ export class Builder {
     form.add(buttons);
     return form;
   }
+}
+
+/** Row locals as the dotted scalar names the evaluator reads: { row: { price: 35 } } → row.price = "35". */
+function flattenLocals(locals: Record<string, unknown>): Record<string, string> {
+  const out: Record<string, string> = {};
+  const walk = (name: string, value: unknown): void => {
+    const text = scalarText(value);
+    if (text !== undefined) {
+      out[name] = text;
+    } else if (isRecord(value)) {
+      for (const [k, v] of Object.entries(value)) {
+        walk(`${name}.${k}`, v);
+      }
+    }
+  };
+  for (const [k, v] of Object.entries(locals)) {
+    walk(k, v);
+  }
+  return out;
 }
 
 /** OutletBinding.Normalize: trimmed, "default" = the unnamed outlet. */
