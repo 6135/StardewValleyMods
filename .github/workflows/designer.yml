@@ -1,0 +1,53 @@
+name: Deploy Designer
+
+# builds the UI Framework Designer (UIFrameworkDesigner/) and publishes it to the gh-pages branch,
+# served at https://6135.github.io/StardewValleyMods/designer/
+on:
+  push:
+    branches: [ "master" ]
+    paths:
+      - 'UIFrameworkDesigner/**'
+      - '.github/workflows/designer.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: designer-pages
+  cancel-in-progress: true
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write  # push to gh-pages
+
+    defaults:
+      run:
+        working-directory: UIFrameworkDesigner
+
+    steps:
+    - uses: actions/checkout@v5
+
+    - name: Use Node.js
+      uses: actions/setup-node@v5
+      with:
+        node-version: '22.x'
+        cache: 'npm'
+        cache-dependency-path: UIFrameworkDesigner/package-lock.json
+
+    - name: Install dependencies
+      run: npm ci
+
+    # builds from the committed metadata bundle (src/generated); the game is not needed
+    - name: Build project
+      run: npm run build
+
+    - name: Deploy to GitHub Pages
+      uses: peaceiris/actions-gh-pages@v4
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        publish_dir: ./UIFrameworkDesigner/dist
+        publish_branch: gh-pages
+        destination_dir: designer
+        user_name: 'github-actions[bot]'
+        user_email: 'github-actions[bot]@users.noreply.github.com'

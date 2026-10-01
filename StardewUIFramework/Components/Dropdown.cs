@@ -339,6 +339,10 @@ namespace UIFramework.Components
             int selected = SelectedIndex;
             highlightIndex = selected;
             ActivePosition = selected;
+            if (Game1.options.SnappyMenus)
+            {
+                SnapCursorToHighlight(); // gamepad: A picks the row under the cursor, so start on the selected one
+            }
         }
 
         /// <summary>Close the list (plays the close sound when it was open).</summary>
@@ -365,6 +369,11 @@ namespace UIFramework.Components
         {
             IsOpen = false;
             highlightIndex = -1;
+            if (Game1.options.SnappyMenus)
+            {
+                OwnerMenu?.Host?.snapCursorToCurrentSnappedComponent(); // gamepad: back onto the dropdown box
+            }
+
             if (openedByMouse)
             {
                 openedByMouse = false;
@@ -711,6 +720,40 @@ namespace UIFramework.Components
             {
                 // highlight already visible: keep the scroll position
             }
+        }
+
+        /// <summary>
+        /// Gamepad d-pad while the list is open: move the highlight and keep the cursor on it, so A (a click at the cursor)
+        /// picks it, like the vanilla <c>OptionsDropDown</c>. The list keeps the d-pad until it closes.
+        /// </summary>
+        protected internal override bool HandleGamepadDirection(int dx, int dy)
+        {
+            if (!IsOpen)
+            {
+                return false;
+            }
+
+            if (dy != 0)
+            {
+                MoveHighlight(dy);
+                SnapCursorToHighlight();
+            }
+
+            return true;
+        }
+
+        /// <summary>Put the cursor on the highlighted row (it is always visible: <see cref="MoveHighlight"/> scrolls to it).</summary>
+        private void SnapCursorToHighlight()
+        {
+            int index = highlightIndex >= 0 ? highlightIndex : SelectedIndex;
+            if (index < ActivePosition || index >= ActivePosition + maxVisible)
+            {
+                return;
+            }
+
+            Rectangle list = ListBounds;
+            int reserved = HasOverflow ? IndicatorWidth + IndicatorGap : 0;
+            Game1.setMousePosition(list.X + ((list.Width - reserved) / 2), list.Y + ((index - ActivePosition) * RowHeight) + (RowHeight / 2));
         }
 
         /// <summary>Choice index of the list row under the point, or -1.</summary>

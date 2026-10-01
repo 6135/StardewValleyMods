@@ -623,6 +623,7 @@ namespace UIFramework.Core
             }
 
             Focus.Validate();
+            Focus.Tick();
             Root.Update(elapsedMs);
             AnnounceRestingHover();
             if (OnUpdate != null)
@@ -636,9 +637,10 @@ namespace UIFramework.Core
             }
         }
 
+        /// <summary>Draw the window and its content; the host then draws its window buttons and <see cref="DrawTop"/>.</summary>
         internal void Draw(SpriteBatch b)
         {
-            using PerfCounters.Scope perf = PerfCounters.Begin(this, PerfCounters.Phase.Draw, endsFrame: true);
+            using PerfCounters.Scope perf = PerfCounters.Begin(this, PerfCounters.Phase.Draw);
             if (LayoutDirty)
             {
                 Relayout();
@@ -671,13 +673,22 @@ namespace UIFramework.Core
                 }
             }
 
+            if (!View.Collapsed)
+            {
+                Viewport.Draw(b);
+            }
+        }
+
+        /// <summary>Draw what floats above the window and its buttons: popups, the tooltip and the inspector.</summary>
+        internal void DrawTop(SpriteBatch b)
+        {
+            using PerfCounters.Scope perf = PerfCounters.Begin(this, PerfCounters.Phase.Draw, endsFrame: true);
             if (View.Collapsed)
             {
                 Overlay.DiscardFrame();
             }
             else
             {
-                Viewport.Draw(b);
                 InspectorRenderer.Draw(this, b);
                 Overlay.Draw(b);
                 DrawTooltip(b);
@@ -882,6 +893,20 @@ namespace UIFramework.Core
             }
 
             Focus.UpdateSubscription(); // an input focused before the menu opened takes the keyboard now
+            Host?.SnapForGamepad();
+        }
+
+        /// <summary>Close the menu because the player asked to (a hotkey, Escape, gamepad B...): with the vanilla close sound.</summary>
+        internal void CloseByPlayer()
+        {
+            MenuHost? host = Host;
+            if (host == null)
+            {
+                return;
+            }
+
+            host.PlayCloseSound();
+            Close();
         }
 
         public void Close()

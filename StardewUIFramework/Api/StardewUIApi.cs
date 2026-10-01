@@ -266,7 +266,7 @@ namespace UIFramework.Api
 
                 if (current.IsOpen)
                 {
-                    current.Close();
+                    current.CloseByPlayer();
                 }
                 else
                 {

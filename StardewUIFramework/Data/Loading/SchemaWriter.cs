@@ -36,7 +36,7 @@ namespace UIFramework.Data.Loading
 
             var written = new List<string>
             {
-                WriteFile(directory, "menu.schema.json", Root("UI Framework data menu (a Menus entry or a standalone From file)", definitions, new JObject { ["$ref"] = "#/definitions/MenuDefinition" })),
+                WriteFile(directory, "menu.schema.json", MenuSchema(definitions)),
                 WriteFile(directory, "menus.schema.json", Root($"UI Framework {DataAssets.Menus} asset", definitions, new JObject
                 {
                     ["type"] = "object",
@@ -69,6 +69,14 @@ namespace UIFramework.Data.Loading
                 }))
             };
             return written.ToArray();
+        }
+
+        /// <summary>The schema <c>menu.schema.json</c> holds (also read by the designer's metadata generator).</summary>
+        internal static JObject MenuSchema() => MenuSchema(BuildDefinitions(LoadDocs()));
+
+        private static JObject MenuSchema(JObject definitions)
+        {
+            return Root("UI Framework data menu (a Menus entry or a standalone From file)", definitions, new JObject { ["$ref"] = "#/definitions/MenuDefinition" });
         }
 
         private static JObject Root(string title, JObject definitions, JObject body)

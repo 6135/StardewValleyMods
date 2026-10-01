@@ -34,25 +34,37 @@ namespace UIFramework.Core.Export
             "using", "virtual", "void", "volatile", "while"
         };
 
-        /// <summary>Properties each kind writes as constructor arguments (or not at all), so they are skipped in the setter pass.</summary>
-        private static readonly Dictionary<string, string[]> Consumed = new(StringComparer.Ordinal)
+        /// <summary>
+        /// How the emitter creates an element of one kind: the variable's interface, the <c>IStardewUIApi.Add*</c> method,
+        /// and the properties written as its constructor arguments (or not at all), which the setter pass skips.
+        /// </summary>
+        internal sealed record KindCall(string Interface, string Method, IReadOnlyList<string> Consumed);
+
+        /// <summary>How each kind is created (also read by the designer's metadata generator).</summary>
+        internal static readonly IReadOnlyDictionary<string, KindCall> Calls = new Dictionary<string, KindCall>(StringComparer.Ordinal)
         {
-            [TreeKinds.Stack] = new[] { "Horizontal", "Spacing" },
-            [TreeKinds.Grid] = new[] { "Columns", "Rows" },
-            [TreeKinds.Panel] = new[] { "DrawBox", "Padding" },
-            [TreeKinds.ScrollView] = new[] { "ViewportHeight" },
-            [TreeKinds.List] = new[] { "RowHeight", "VisibleRows", "ItemCount" },
-            [TreeKinds.DataGrid] = new[] { "RowHeight", "VisibleRows", "RowCount", "SortColumn", "SortDescending" },
-            [TreeKinds.Label] = new[] { "Text" },
-            [TreeKinds.Image] = new[] { "Texture", "Source", "Scale" },
-            [TreeKinds.ItemImage] = new[] { "Item", "Quality", "Count", "Scale" },
-            [TreeKinds.Button] = new[] { "Text", "OnClick" },
-            [TreeKinds.Checkbox] = new[] { "Value" },
-            [TreeKinds.TextInput] = new[] { "Value" },
-            [TreeKinds.NumberInput] = new[] { "Value", "Min", "Max", "Step", "Clamp" },
-            [TreeKinds.Dropdown] = new[] { "Choices", "Labels", "Value" },
-            [TreeKinds.Slider] = new[] { "Value", "Min", "Max" },
-            [TreeKinds.Spacer] = new[] { "Width", "Height" }
+            [TreeKinds.Stack] = new("IUIStack", "AddStack", new[] { "Horizontal", "Spacing" }),
+            [TreeKinds.Grid] = new("IUIGrid", "AddGrid", new[] { "Columns", "Rows" }),
+            [TreeKinds.Panel] = new("IUIPanel", "AddPanel", new[] { "DrawBox", "Padding" }),
+            [TreeKinds.Canvas] = new("IUICanvas", "AddCanvas", Array.Empty<string>()),
+            [TreeKinds.ScrollView] = new("IUIScrollView", "AddScrollView", new[] { "ViewportHeight" }),
+            [TreeKinds.List] = new("IUIList", "AddList", new[] { "RowHeight", "VisibleRows", "ItemCount" }),
+            [TreeKinds.Slot] = new("IUISlot", "AddSlot", Array.Empty<string>()),
+            [TreeKinds.Composite] = new("IUIComposite", "AddComposite", Array.Empty<string>()),
+            [TreeKinds.CustomHost] = new("IUIElement", "AddCustom", Array.Empty<string>()),
+            [TreeKinds.Custom] = new("IUIElement", "AddCustom", Array.Empty<string>()),
+            [TreeKinds.DataGrid] = new("IUIDataGrid", "AddDataGrid", new[] { "RowHeight", "VisibleRows", "RowCount", "SortColumn", "SortDescending" }),
+            [TreeKinds.Form] = new("IUIForm", "AddForm", Array.Empty<string>()),
+            [TreeKinds.Label] = new("IUILabel", "AddLabel", new[] { "Text" }),
+            [TreeKinds.Image] = new("IUIImage", "AddImage", new[] { "Texture", "Source", "Scale" }),
+            [TreeKinds.ItemImage] = new("IUIItemImage", "AddItemImage", new[] { "Item", "Quality", "Count", "Scale" }),
+            [TreeKinds.Button] = new("IUIButton", "AddButton", new[] { "Text", "OnClick" }),
+            [TreeKinds.Checkbox] = new("IUICheckbox", "AddCheckbox", new[] { "Value" }),
+            [TreeKinds.TextInput] = new("IUITextInput", "AddTextInput", new[] { "Value" }),
+            [TreeKinds.NumberInput] = new("IUINumberInput", "AddNumberInput", new[] { "Value", "Min", "Max", "Step", "Clamp" }),
+            [TreeKinds.Dropdown] = new("IUIDropdown", "AddDropdown", new[] { "Choices", "Labels", "Value" }),
+            [TreeKinds.Slider] = new("IUISlider", "AddSlider", new[] { "Value", "Min", "Max" }),
+            [TreeKinds.Spacer] = new("IUISpacer", "AddSpacer", new[] { "Width", "Height" })
         };
 
         private readonly StringBuilder sb = new();
@@ -160,25 +172,23 @@ namespace UIFramework.Core.Export
             switch (n.Kind)
             {
                 case TreeKinds.Stack:
-                    Line($"IUIStack {v} = api.AddStack({p}, {id}, {Bool(n.Get<bool>("Horizontal"))}, {n.Get<int>("Spacing")});");
+                    Create(n, v, p, id, $"{Bool(n.Get<bool>("Horizontal"))}, {n.Get<int>("Spacing")}");
                     break;
                 case TreeKinds.Grid:
-                    Line($"IUIGrid {v} = api.AddGrid({p}, {id}, {Str(n.Get<string>("Columns"))}, {Str(n.Get<string>("Rows"))});");
+                    Create(n, v, p, id, $"{Str(n.Get<string>("Columns"))}, {Str(n.Get<string>("Rows"))}");
                     break;
                 case TreeKinds.Panel:
-                    Line($"IUIPanel {v} = api.AddPanel({p}, {id}, {Bool(n.Get<bool>("DrawBox"))}, {n.Get<int>("Padding")});");
+                    Create(n, v, p, id, $"{Bool(n.Get<bool>("DrawBox"))}, {n.Get<int>("Padding")}");
                     break;
                 case TreeKinds.Canvas:
-                    Line($"IUICanvas {v} = api.AddCanvas({p}, {id});");
+                case TreeKinds.Slot:
+                    Create(n, v, p, id);
                     break;
                 case TreeKinds.ScrollView:
-                    Line($"IUIScrollView {v} = api.AddScrollView({p}, {id}, {n.Get<int>("ViewportHeight")});");
+                    Create(n, v, p, id, $"{n.Get<int>("ViewportHeight")}");
                     break;
                 case TreeKinds.List:
-                    Line($"IUIList {v} = api.AddList({p}, {id}, {n.Get<int>("RowHeight")}, {n.Get<int>("VisibleRows")}, () => {n.Get<int>("ItemCount")} {Todo}, (index, row) => {{ {Todo} }});");
-                    break;
-                case TreeKinds.Slot:
-                    Line($"IUISlot {v} = api.AddSlot({p}, {id});");
+                    Create(n, v, p, id, $"{n.Get<int>("RowHeight")}, {n.Get<int>("VisibleRows")}, () => {n.Get<int>("ItemCount")} {Todo}, (index, row) => {{ {Todo} }}");
                     break;
                 case TreeKinds.Composite:
                     DescribeComposite(n, v, p);
@@ -190,10 +200,10 @@ namespace UIFramework.Core.Export
                     DescribeDataGrid(n, v, p);
                     break;
                 case TreeKinds.Form:
-                    Line($"IUIForm {v} = api.AddForm({p}, {id}, null {TodoComment($"your model (a {n.ModelType})")});");
+                    Create(n, v, p, id, $"null {TodoComment($"your model (a {n.ModelType})")}");
                     break;
                 case TreeKinds.Custom:
-                    Line($"IUIElement {v} = api.AddCustom({p}, {id}, null {TodoComment("your IUICustomComponent")});");
+                    Create(n, v, p, id, $"null {TodoComment("your IUICustomComponent")}");
                     break;
                 default:
                     DescribeLeaf(n, v, p, id);
@@ -206,43 +216,50 @@ namespace UIFramework.Core.Export
             switch (n.Kind)
             {
                 case TreeKinds.Label:
-                    Line($"IUILabel {v} = api.AddLabel({p}, {id}, () => {Str(n.Get<string>("Text"))} {Todo});");
+                    Create(n, v, p, id, $"() => {Str(n.Get<string>("Text"))} {Todo}");
                     break;
                 case TreeKinds.Image:
                     Rectangle? src = n.Get<Rectangle?>("Source");
                     string source = src.HasValue ? RectLiteral(src.Value) : "null";
-                    Line($"IUIImage {v} = api.AddImage({p}, {id}, null {TodoComment("texture")}, {source}, {Float(n.Get<float>("Scale"))});");
+                    Create(n, v, p, id, $"null {TodoComment("texture")}, {source}, {Float(n.Get<float>("Scale"))}");
                     break;
                 case TreeKinds.ItemImage:
-                    Line($"IUIItemImage {v} = api.AddItemImage({p}, {id}, () => null {TodoComment("item")}, {Float(n.Get<float>("Scale"))});");
+                    Create(n, v, p, id, $"() => null {TodoComment("item")}, {Float(n.Get<float>("Scale"))}");
                     break;
                 case TreeKinds.Button:
-                    Line($"IUIButton {v} = api.AddButton({p}, {id}, () => {Str(n.Get<string>("Text"))} {Todo}, e => {{ {Todo} }});");
+                    Create(n, v, p, id, $"() => {Str(n.Get<string>("Text"))} {Todo}, e => {{ {Todo} }}");
                     break;
                 case TreeKinds.Checkbox:
-                    Line($"IUICheckbox {v} = api.AddCheckbox({p}, {id}, () => {Bool(n.Get<bool>("Value"))} {Todo}, value => {{ {Todo} }});");
+                    Create(n, v, p, id, $"() => {Bool(n.Get<bool>("Value"))} {Todo}, value => {{ {Todo} }}");
                     break;
                 case TreeKinds.TextInput:
-                    Line($"IUITextInput {v} = api.AddTextInput({p}, {id}, () => {Str(n.Get<string>("Value"))} {Todo}, value => {{ {Todo} }});");
+                    Create(n, v, p, id, $"() => {Str(n.Get<string>("Value"))} {Todo}, value => {{ {Todo} }}");
                     break;
                 case TreeKinds.NumberInput:
-                    Line($"IUINumberInput {v} = api.AddNumberInput({p}, {id}, () => {Double(n.Get<double>("Value"))} {Todo}, value => {{ {Todo} }}, {Double(n.Get<double>("Min"))}, {Double(n.Get<double>("Max"))}, {Double(n.Get<double>("Step"))}, {Bool(n.Get<bool>("Clamp"))});");
+                    Create(n, v, p, id, $"() => {Double(n.Get<double>("Value"))} {Todo}, value => {{ {Todo} }}, {Double(n.Get<double>("Min"))}, {Double(n.Get<double>("Max"))}, {Double(n.Get<double>("Step"))}, {Bool(n.Get<bool>("Clamp"))}");
                     break;
                 case TreeKinds.Dropdown:
                     string choices = string.Join(", ", n.Get<string[]>("Choices").Select(Str));
                     string labels = string.Join(", ", n.Get<string[]>("Labels").Select(Str));
-                    Line($"IUIDropdown {v} = api.AddDropdown({p}, {id}, () => new[] {{ {choices} }} {Todo}, () => new[] {{ {labels} }} {Todo}, () => {Str(n.Get<string>("Value"))} {Todo}, value => {{ {Todo} }});");
+                    Create(n, v, p, id, $"() => new[] {{ {choices} }} {Todo}, () => new[] {{ {labels} }} {Todo}, () => {Str(n.Get<string>("Value"))} {Todo}, value => {{ {Todo} }}");
                     break;
                 case TreeKinds.Slider:
-                    Line($"IUISlider {v} = api.AddSlider({p}, {id}, () => {Double(n.Get<double>("Value"))} {Todo}, value => {{ {Todo} }}, {Double(n.Get<double>("Min"))}, {Double(n.Get<double>("Max"))});");
+                    Create(n, v, p, id, $"() => {Double(n.Get<double>("Value"))} {Todo}, value => {{ {Todo} }}, {Double(n.Get<double>("Min"))}, {Double(n.Get<double>("Max"))}");
                     break;
                 case TreeKinds.Spacer:
-                    Line($"IUISpacer {v} = api.AddSpacer({p}, {id}, {n.Get<int?>("Width") ?? 0}, {n.Get<int?>("Height") ?? 0});");
+                    Create(n, v, p, id, $"{n.Get<int?>("Width") ?? 0}, {n.Get<int?>("Height") ?? 0}");
                     break;
                 default:
                     Line($"// TODO: element '{n.Id}' is a {n.ClrType}, which this exporter does not know.");
                     break;
             }
+        }
+
+        /// <summary>The creation line <c>{Interface} v = api.{Method}(p, id, args);</c> of <paramref name="n"/>'s kind.</summary>
+        private void Create(TreeNode n, string v, string p, string id, string args = "")
+        {
+            KindCall call = Calls[n.Kind];
+            Line($"{call.Interface} {v} = api.{call.Method}({p}, {id}{(args.Length > 0 ? ", " + args : string.Empty)});");
         }
 
         private void DescribeComposite(TreeNode n, string v, string p)
@@ -270,7 +287,7 @@ namespace UIFramework.Core.Export
                 }
             }
 
-            Line($"IUIComposite {v} = api.AddComposite({p}, {Str(n.Id)}, {Str(n.CompositeName)}, {args});");
+            Create(n, v, p, Str(n.Id), $"{Str(n.CompositeName)}, {args}");
         }
 
         private static string LiteralSetter(TreeValueKind kind)
@@ -287,7 +304,8 @@ namespace UIFramework.Core.Export
         private void DescribeCustomHost(TreeNode n, string v, string p)
         {
             string host = Unique(v + "Host");
-            Line($"IUIElement {v} = api.AddCustom({p}, {Str(n.Id)}, null {TodoComment("your IUICustomComponent")}, {host} =>");
+            KindCall call = Calls[n.Kind];
+            Line($"{call.Interface} {v} = api.{call.Method}({p}, {Str(n.Id)}, null {TodoComment("your IUICustomComponent")}, {host} =>");
             Line("{");
             indent++;
             VisitChildren(n, host);
@@ -297,7 +315,7 @@ namespace UIFramework.Core.Export
 
         private void DescribeDataGrid(TreeNode n, string v, string p)
         {
-            Line($"IUIDataGrid {v} = api.AddDataGrid({p}, {Str(n.Id)}, {n.Get<int>("RowHeight")}, {n.Get<int>("VisibleRows")}, () => {n.Get<int>("RowCount")} {Todo});");
+            Create(n, v, p, Str(n.Id), $"{n.Get<int>("RowHeight")}, {n.Get<int>("VisibleRows")}, () => {n.Get<int>("RowCount")} {Todo}");
             foreach (TreeColumn c in n.Columns)
             {
                 string cv = Unique(v + Pascal(c.Id));
@@ -319,10 +337,10 @@ namespace UIFramework.Core.Export
         /// <summary>The non-default properties that are not constructor arguments, in the reader's order.</summary>
         private void EmitRest(TreeNode n, string v)
         {
-            Consumed.TryGetValue(n.Kind, out string[]? consumed);
+            IReadOnlyList<string> consumed = Calls.TryGetValue(n.Kind, out KindCall? call) ? call.Consumed : Array.Empty<string>();
             foreach (TreeProperty p in n.Properties)
             {
-                if (consumed == null || Array.IndexOf(consumed, p.Name) < 0)
+                if (!consumed.Contains(p.Name))
                 {
                     EmitProperty(v, p);
                 }

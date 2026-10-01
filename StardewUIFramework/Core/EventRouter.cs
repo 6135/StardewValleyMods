@@ -183,7 +183,7 @@ namespace UIFramework.Core
 
         /// <summary>
         /// Key press: focused element first, bubbling up; then menu <c>OnKey</c>; then built-in bindings
-        /// (Tab traversal, arrows, Enter → default button, Escape → cancel / close). Returns true if consumed.
+        /// (Tab traversal, arrows, Enter → default button, Escape → close a popup / drop focus / cancel button). Returns true if consumed.
         /// </summary>
         internal bool KeyPress(Keys key, bool shift, bool ctrl, bool alt)
         {
@@ -214,7 +214,7 @@ namespace UIFramework.Core
             return HandleBuiltInKey(key, shift, focused);
         }
 
-        /// <summary>Menu-level bindings: Tab / arrows move focus, Enter / Space activate, Escape closes popups, focus, cancel button or the menu.</summary>
+        /// <summary>Menu-level bindings: Tab / arrows move focus, Enter / Space activate, Escape backs out (see <see cref="BackOut"/>).</summary>
         private bool HandleBuiltInKey(Keys key, bool shift, UIElement? focused)
         {
             switch (key)
@@ -233,7 +233,7 @@ namespace UIFramework.Core
                 case Keys.Space:
                     return Activate(key, focused);
                 case Keys.Escape:
-                    return Escape(focused);
+                    return BackOut();
                 default:
                     return false;
             }
@@ -261,8 +261,11 @@ namespace UIFramework.Core
             return false;
         }
 
-        /// <summary>Escape: close an open popup, else drop focus, else the cancel button, else the menu.</summary>
-        private bool Escape(UIElement? focused)
+        /// <summary>
+        /// Escape / the menu button (gamepad B): close an open popup, else drop focus, else press the cancel button. Returns
+        /// false when there is nothing left to back out of, so the host closes the menu (with the vanilla close sound).
+        /// </summary>
+        internal bool BackOut()
         {
             if (menu.Overlay.HasPopups)
             {
@@ -270,7 +273,7 @@ namespace UIFramework.Core
                 return true;
             }
 
-            if (focused != null)
+            if (menu.Focus.Focused != null)
             {
                 menu.Focus.ClearFocus();
                 return true;
@@ -279,12 +282,6 @@ namespace UIFramework.Core
             if (menu.CancelButtonElement != null && menu.CancelButtonElement.OwnerMenu == menu)
             {
                 menu.CancelButtonElement.HandleActivate();
-                return true;
-            }
-
-            if (menu.CloseOnEscape)
-            {
-                menu.Close();
                 return true;
             }
 

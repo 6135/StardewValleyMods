@@ -617,6 +617,12 @@ namespace UIFramework.Core
         /// <summary>Whether the element wants <see cref="StardewValley.IKeyboardSubscriber"/> text input while focused.</summary>
         internal virtual bool WantsTextInput => false;
 
+        /// <summary>
+        /// The text being edited, shown by the game's on-screen keyboard (<see cref="StardewValley.Menus.TextEntryMenu"/>) while
+        /// a gamepad player types into this element. Only read for elements that <see cref="WantsTextInput"/>.
+        /// </summary>
+        internal virtual string TextEntryText => string.Empty;
+
         /// <summary>Whether this element acts as the target for keyboard "activate" (Enter / gamepad A) — buttons do.</summary>
         internal virtual bool ActivateOnEnter => false;
 
@@ -698,6 +704,33 @@ namespace UIFramework.Core
 
         /// <summary>Enter / gamepad A while focused. Return true if consumed.</summary>
         protected internal virtual bool HandleActivate()
+        {
+            return false;
+        }
+
+        /// <summary>
+        /// A gamepad direction (the d-pad or left stick in the game's snappy menus) while the cursor is snapped to this
+        /// element, or while its popup is open. Return true to consume it instead of moving the cursor to the next element,
+        /// like the vanilla <c>OptionsSlider</c> and <c>OptionsDropDown</c> do. <paramref name="dx"/> / <paramref name="dy"/>
+        /// are -1, 0 or 1.
+        /// </summary>
+        protected internal virtual bool HandleGamepadDirection(int dx, int dy)
+        {
+            return false;
+        }
+
+        /// <summary>
+        /// The gamepad snap targets that stand in for this focusable element (the visible rows of a list, like the slots of a
+        /// vanilla inventory), or null to snap to the element itself.
+        /// </summary>
+        internal virtual IEnumerable<UIElement>? GamepadTargets => null;
+
+        /// <summary>
+        /// A gamepad direction from one of this element's <see cref="GamepadTargets"/> that the target itself declined, before
+        /// the cursor moves on: return true to consume it (a list scrolls by one row at its first / last visible row, and the
+        /// cursor stays over the row that scrolled in).
+        /// </summary>
+        protected internal virtual bool HandleGamepadTargetDirection(UIElement target, int dx, int dy)
         {
             return false;
         }

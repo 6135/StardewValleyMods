@@ -1,0 +1,438 @@
+{
+  "common": [
+    "Type",
+    "Id",
+    "Condition",
+    "Visible",
+    "Enabled",
+    "Tooltip",
+    "TooltipTitle",
+    "Tag",
+    "Sealed",
+    "AccessibleName",
+    "Margin",
+    "MarginLeft",
+    "MarginTop",
+    "MarginRight",
+    "MarginBottom",
+    "Width",
+    "Height",
+    "MinWidth",
+    "MaxWidth",
+    "HorizontalAlign",
+    "VerticalAlign",
+    "X",
+    "Y",
+    "Row",
+    "Column",
+    "RowSpan",
+    "ColumnSpan",
+    "Cell",
+    "Span",
+    "Style",
+    "OnClick",
+    "OnRightClick",
+    "OnHover",
+    "OnHoverEnd",
+    "OnFocus",
+    "OnBlur",
+    "If",
+    "Case",
+    "With",
+    "Out",
+    "Class",
+    "Keys",
+    "RichTooltip",
+    "DrawExtra",
+    "DrawOverlay",
+    "Outlet"
+  ],
+  "outKeys": [
+    "IsHovered",
+    "IsFocused",
+    "Visible",
+    "ScrollOffset",
+    "MaxScroll",
+    "SelectedIndex",
+    "SelectedValue",
+    "SelectedRow",
+    "Value",
+    "Text",
+    "IsOpen",
+    "X",
+    "Y",
+    "Width",
+    "Height"
+  ],
+  "types": [
+    {
+      "name": "Stack",
+      "members": [
+        "Children",
+        "Horizontal",
+        "Spacing",
+        "Alignment",
+        "Wrap"
+      ],
+      "container": true,
+      "leafStyle": null
+    },
+    {
+      "name": "Grid",
+      "members": [
+        "Children",
+        "Columns",
+        "Rows",
+        "ColumnSpacing",
+        "RowSpacing"
+      ],
+      "container": true,
+      "leafStyle": null
+    },
+    {
+      "name": "Panel",
+      "members": [
+        "Children",
+        "DrawBox",
+        "Padding"
+      ],
+      "container": true,
+      "leafStyle": null
+    },
+    {
+      "name": "Canvas",
+      "members": [
+        "Children"
+      ],
+      "container": true,
+      "leafStyle": null
+    },
+    {
+      "name": "ScrollView",
+      "members": [
+        "Children",
+        "ViewportHeight",
+        "ScrollStep",
+        "ShowScrollbar",
+        "OnScroll"
+      ],
+      "container": true,
+      "leafStyle": null
+    },
+    {
+      "name": "Slot",
+      "members": [
+        "Horizontal",
+        "MaxHeight",
+        "MaxContributions",
+        "Wrap"
+      ],
+      "container": false,
+      "leafStyle": null
+    },
+    {
+      "name": "Spacer",
+      "members": [
+        "Line"
+      ],
+      "container": false,
+      "leafStyle": [
+        "TextColor"
+      ]
+    },
+    {
+      "name": "Label",
+      "members": [
+        "Text",
+        "Label",
+        "Font",
+        "Color",
+        "Shadow",
+        "Wrap",
+        "TextAlign",
+        "Scale",
+        "RichText",
+        "OnLink",
+        "Shrink"
+      ],
+      "container": false,
+      "leafStyle": [
+        "Font",
+        "TextColor",
+        "TextShadow"
+      ]
+    },
+    {
+      "name": "Button",
+      "members": [
+        "Text",
+        "Button",
+        "Font",
+        "Icon",
+        "IconScale",
+        "ClickSound",
+        "HoverSound",
+        "DrawBox",
+        "RichText",
+        "Shrink"
+      ],
+      "container": false,
+      "leafStyle": [
+        "Font",
+        "TextColor",
+        "HoverColor",
+        "TextShadow",
+        "BoxTexture",
+        "BoxSource",
+        "BoxScale",
+        "ClickSound",
+        "HoverSound"
+      ]
+    },
+    {
+      "name": "Image",
+      "members": [
+        "Sprite",
+        "Image",
+        "Source",
+        "Scale",
+        "Tint"
+      ],
+      "container": false,
+      "leafStyle": []
+    },
+    {
+      "name": "ItemImage",
+      "members": [
+        "Item",
+        "Quality",
+        "Count",
+        "Scale",
+        "Stack",
+        "DrawShadow",
+        "Alpha",
+        "Tint"
+      ],
+      "container": false,
+      "leafStyle": []
+    },
+    {
+      "name": "Checkbox",
+      "members": [
+        "Label",
+        "Checkbox",
+        "Text",
+        "Value",
+        "Bind",
+        "ClickSound",
+        "OnValueChanged",
+        "Shrink"
+      ],
+      "container": false,
+      "leafStyle": [
+        "Font",
+        "TextColor",
+        "HoverColor",
+        "TextShadow",
+        "ClickSound"
+      ]
+    },
+    {
+      "name": "TextInput",
+      "members": [
+        "Value",
+        "Bind",
+        "Placeholder",
+        "MaxLength",
+        "Texture",
+        "Validate",
+        "OnInvalid",
+        "OnValueChanged",
+        "OnSubmit"
+      ],
+      "container": false,
+      "leafStyle": [
+        "Font",
+        "TextColor",
+        "TextShadow"
+      ]
+    },
+    {
+      "name": "NumberInput",
+      "members": [
+        "Value",
+        "Bind",
+        "Min",
+        "Max",
+        "Step",
+        "Clamp",
+        "Decimals",
+        "Texture",
+        "Validate",
+        "OnInvalid",
+        "OnValueChanged",
+        "OnSubmit"
+      ],
+      "container": false,
+      "leafStyle": [
+        "Font",
+        "TextColor",
+        "TextShadow"
+      ]
+    },
+    {
+      "name": "Dropdown",
+      "members": [
+        "Value",
+        "Bind",
+        "Choices",
+        "Labels",
+        "MaxVisible",
+        "ChoicesSource",
+        "ChoiceValue",
+        "ChoiceLabel",
+        "OnValueChanged",
+        "OnScroll",
+        "Shrink"
+      ],
+      "container": false,
+      "leafStyle": [
+        "Font",
+        "TextColor",
+        "HoverColor",
+        "TextShadow",
+        "ClickSound",
+        "HoverSound"
+      ]
+    },
+    {
+      "name": "Slider",
+      "members": [
+        "Value",
+        "Bind",
+        "Min",
+        "Max",
+        "Step",
+        "OnValueChanged"
+      ],
+      "container": false,
+      "leafStyle": [
+        "HoverColor"
+      ]
+    },
+    {
+      "name": "Switch",
+      "members": [
+        "Children",
+        "Switch"
+      ],
+      "container": true,
+      "leafStyle": null
+    },
+    {
+      "name": "Repeat",
+      "members": [
+        "Children",
+        "Repeat",
+        "As",
+        "Horizontal",
+        "Spacing",
+        "Alignment",
+        "Wrap"
+      ],
+      "container": false,
+      "leafStyle": null
+    },
+    {
+      "name": "List",
+      "members": [
+        "Source",
+        "As",
+        "RowTemplate",
+        "RowHeight",
+        "VisibleRows",
+        "Selectable",
+        "BindSelected",
+        "OnValueChanged",
+        "OnScroll"
+      ],
+      "container": false,
+      "leafStyle": null
+    },
+    {
+      "name": "DataGrid",
+      "members": [
+        "Source",
+        "As",
+        "Columns",
+        "RowHeight",
+        "VisibleRows",
+        "Selectable",
+        "MultiSelect",
+        "BindSelected",
+        "BindSelection",
+        "Sort",
+        "SortDescending",
+        "Filter",
+        "RowTooltip",
+        "OnRowClick",
+        "OnRowActivated",
+        "OnColumnResized",
+        "OnValueChanged",
+        "OnScroll",
+        "ScrollSound",
+        "SelectSound",
+        "SortSound"
+      ],
+      "container": false,
+      "leafStyle": null
+    },
+    {
+      "name": "Form",
+      "members": [
+        "Fields",
+        "Model",
+        "ShowButtons",
+        "OnSaved",
+        "OnCancelled",
+        "OnChanged"
+      ],
+      "container": false,
+      "leafStyle": null
+    },
+    {
+      "name": "Composite",
+      "members": [
+        "Children",
+        "Composite",
+        "Args",
+        "ContentTarget",
+        "On"
+      ],
+      "container": true,
+      "leafStyle": null
+    },
+    {
+      "name": "Template",
+      "members": [
+        "Children",
+        "Template",
+        "Args"
+      ],
+      "container": true,
+      "leafStyle": null
+    },
+    {
+      "name": "Outlet",
+      "members": [
+        "Children",
+        "Horizontal",
+        "Spacing",
+        "Alignment",
+        "Wrap"
+      ],
+      "container": true,
+      "leafStyle": null
+    }
+  ]
+}

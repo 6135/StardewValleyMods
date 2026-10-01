@@ -390,6 +390,34 @@ namespace UIFramework.Components
         //  Rows
         // ---------------------------------------------------------------------------------------------------------
 
+        /// <summary>Gamepad: the rows showing an item are the snap targets, so the cursor moves row by row and shows each row's tooltip.</summary>
+        internal override IEnumerable<UIElement>? GamepadTargets
+        {
+            get
+            {
+                foreach (DataGridRow row in rows)
+                {
+                    if (row.Item >= 0 && row.Visible)
+                    {
+                        yield return row;
+                    }
+                }
+            }
+        }
+
+        /// <summary>Gamepad up / down at the first / last visible row scroll the grid by one row (the cursor stays in place).</summary>
+        protected internal override bool HandleGamepadTargetDirection(UIElement target, int dx, int dy)
+        {
+            int slot = target is DataGridRow row ? rows.IndexOf(row) : -1;
+            if (slot < 0 || dy == 0)
+            {
+                return false;
+            }
+
+            bool atEdge = dy > 0 ? slot == visibleRows - 1 : slot == 0;
+            return atEdge && SetFirstVisible(firstVisible + dy);
+        }
+
         /// <summary>Largest valid <see cref="FirstVisibleIndex"/> for the cached order.</summary>
         private int MaxFirstIndex => Math.Max(0, order.Length - visibleRows);
 
