@@ -1,0 +1,708 @@
+{
+  "Stack": {
+    "method": "AddStack",
+    "interface": "IUIStack",
+    "ctorArgs": [
+      "Horizontal",
+      "Spacing"
+    ],
+    "parameters": [
+      {
+        "name": "parent",
+        "type": "IUIContainer",
+        "optional": false,
+        "default": null
+      },
+      {
+        "name": "id",
+        "type": "string",
+        "optional": false,
+        "default": null
+      },
+      {
+        "name": "horizontal",
+        "type": "bool",
+        "optional": false,
+        "default": null
+      },
+      {
+        "name": "spacing",
+        "type": "int",
+        "optional": false,
+        "default": null
+      }
+    ]
+  },
+  "Grid": {
+    "method": "AddGrid",
+    "interface": "IUIGrid",
+    "ctorArgs": [
+      "Columns",
+      "Rows"
+    ],
+    "parameters": [
+      {
+        "name": "parent",
+        "type": "IUIContainer",
+        "optional": false,
+        "default": null
+      },
+      {
+        "name": "id",
+        "type": "string",
+        "optional": false,
+        "default": null
+      },
+      {
+        "name": "columns",
+        "type": "string",
+        "optional": false,
+        "default": null
+      },
+      {
+        "name": "rows",
+        "type": "string",
+        "optional": false,
+        "default": null
+      }
+    ]
+  },
+  "Panel": {
+    "method": "AddPanel",
+    "interface": "IUIPanel",
+    "ctorArgs": [
+      "DrawBox",
+      "Padding"
+    ],
+    "parameters": [
+      {
+        "name": "parent",
+        "type": "IUIContainer",
+        "optional": false,
+        "default": null
+      },
+      {
+        "name": "id",
+        "type": "string",
+        "optional": false,
+        "default": null
+      },
+      {
+        "name": "drawBox",
+        "type": "bool",
+        "optional": false,
+        "default": null
+      },
+      {
+        "name": "padding",
+        "type": "int",
+        "optional": false,
+        "default": null
+      }
+    ]
+  },
+  "Canvas": {
+    "method": "AddCanvas",
+    "interface": "IUICanvas",
+    "ctorArgs": [],
+    "parameters": [
+      {
+        "name": "parent",
+        "type": "IUIContainer",
+        "optional": false,
+        "default": null
+      },
+      {
+        "name": "id",
+        "type": "string",
+        "optional": false,
+        "default": null
+      }
+    ]
+  },
+  "ScrollView": {
+    "method": "AddScrollView",
+    "interface": "IUIScrollView",
+    "ctorArgs": [
+      "ViewportHeight"
+    ],
+    "parameters": [
+      {
+        "name": "parent",
+        "type": "IUIContainer",
+        "optional": false,
+        "default": null
+      },
+      {
+        "name": "id",
+        "type": "string",
+        "optional": false,
+        "default": null
+      },
+      {
+        "name": "viewportHeight",
+        "type": "int",
+        "optional": false,
+        "default": null
+      }
+    ]
+  },
+  "Slot": {
+    "method": "AddSlot",
+    "interface": "IUISlot",
+    "ctorArgs": [],
+    "parameters": [
+      {
+        "name": "parent",
+        "type": "IUIContainer",
+        "optional": false,
+        "default": null
+      },
+      {
+        "name": "id",
+        "type": "string",
+        "optional": false,
+        "default": null
+      }
+    ]
+  },
+  "Spacer": {
+    "method": "AddSpacer",
+    "interface": "IUISpacer",
+    "ctorArgs": [
+      "Width",
+      "Height"
+    ],
+    "parameters": [
+      {
+        "name": "parent",
+        "type": "IUIContainer",
+        "optional": false,
+        "default": null
+      },
+      {
+        "name": "id",
+        "type": "string",
+        "optional": false,
+        "default": null
+      },
+      {
+        "name": "width",
+        "type": "int",
+        "optional": false,
+        "default": null
+      },
+      {
+        "name": "height",
+        "type": "int",
+        "optional": false,
+        "default": null
+      }
+    ]
+  },
+  "Label": {
+    "method": "AddLabel",
+    "interface": "IUILabel",
+    "ctorArgs": [
+      "Text"
+    ],
+    "parameters": [
+      {
+        "name": "parent",
+        "type": "IUIContainer",
+        "optional": false,
+        "default": null
+      },
+      {
+        "name": "id",
+        "type": "string",
+        "optional": false,
+        "default": null
+      },
+      {
+        "name": "text",
+        "type": "Func<string>",
+        "optional": false,
+        "default": null
+      }
+    ]
+  },
+  "Button": {
+    "method": "AddButton",
+    "interface": "IUIButton",
+    "ctorArgs": [
+      "Text",
+      "OnClick"
+    ],
+    "parameters": [
+      {
+        "name": "parent",
+        "type": "IUIContainer",
+        "optional": false,
+        "default": null
+      },
+      {
+        "name": "id",
+        "type": "string",
+        "optional": false,
+        "default": null
+      },
+      {
+        "name": "text",
+        "type": "Func<string>",
+        "optional": false,
+        "default": null
+      },
+      {
+        "name": "onClick",
+        "type": "Action<IUIClickEvent>",
+        "optional": false,
+        "default": null
+      }
+    ]
+  },
+  "Image": {
+    "method": "AddImage",
+    "interface": "IUIImage",
+    "ctorArgs": [
+      "Texture",
+      "Source",
+      "Scale"
+    ],
+    "parameters": [
+      {
+        "name": "parent",
+        "type": "IUIContainer",
+        "optional": false,
+        "default": null
+      },
+      {
+        "name": "id",
+        "type": "string",
+        "optional": false,
+        "default": null
+      },
+      {
+        "name": "texture",
+        "type": "Texture2D",
+        "optional": false,
+        "default": null
+      },
+      {
+        "name": "source",
+        "type": "Rectangle?",
+        "optional": false,
+        "default": null
+      },
+      {
+        "name": "scale",
+        "type": "float",
+        "optional": false,
+        "default": null
+      }
+    ]
+  },
+  "ItemImage": {
+    "method": "AddItemImage",
+    "interface": "IUIItemImage",
+    "ctorArgs": [
+      "Item",
+      "Quality",
+      "Count",
+      "Scale"
+    ],
+    "parameters": [
+      {
+        "name": "parent",
+        "type": "IUIContainer",
+        "optional": false,
+        "default": null
+      },
+      {
+        "name": "id",
+        "type": "string",
+        "optional": false,
+        "default": null
+      },
+      {
+        "name": "item",
+        "type": "Func<Item>",
+        "optional": false,
+        "default": null
+      },
+      {
+        "name": "scale",
+        "type": "float",
+        "optional": false,
+        "default": null
+      }
+    ]
+  },
+  "Checkbox": {
+    "method": "AddCheckbox",
+    "interface": "IUICheckbox",
+    "ctorArgs": [
+      "Value"
+    ],
+    "parameters": [
+      {
+        "name": "parent",
+        "type": "IUIContainer",
+        "optional": false,
+        "default": null
+      },
+      {
+        "name": "id",
+        "type": "string",
+        "optional": false,
+        "default": null
+      },
+      {
+        "name": "get",
+        "type": "Func<bool>",
+        "optional": false,
+        "default": null
+      },
+      {
+        "name": "set",
+        "type": "Action<bool>",
+        "optional": false,
+        "default": null
+      }
+    ]
+  },
+  "TextInput": {
+    "method": "AddTextInput",
+    "interface": "IUITextInput",
+    "ctorArgs": [
+      "Value"
+    ],
+    "parameters": [
+      {
+        "name": "parent",
+        "type": "IUIContainer",
+        "optional": false,
+        "default": null
+      },
+      {
+        "name": "id",
+        "type": "string",
+        "optional": false,
+        "default": null
+      },
+      {
+        "name": "get",
+        "type": "Func<string>",
+        "optional": false,
+        "default": null
+      },
+      {
+        "name": "set",
+        "type": "Action<string>",
+        "optional": false,
+        "default": null
+      }
+    ]
+  },
+  "NumberInput": {
+    "method": "AddNumberInput",
+    "interface": "IUINumberInput",
+    "ctorArgs": [
+      "Value",
+      "Min",
+      "Max",
+      "Step",
+      "Clamp"
+    ],
+    "parameters": [
+      {
+        "name": "parent",
+        "type": "IUIContainer",
+        "optional": false,
+        "default": null
+      },
+      {
+        "name": "id",
+        "type": "string",
+        "optional": false,
+        "default": null
+      },
+      {
+        "name": "get",
+        "type": "Func<double>",
+        "optional": false,
+        "default": null
+      },
+      {
+        "name": "set",
+        "type": "Action<double>",
+        "optional": false,
+        "default": null
+      },
+      {
+        "name": "min",
+        "type": "double",
+        "optional": false,
+        "default": null
+      },
+      {
+        "name": "max",
+        "type": "double",
+        "optional": false,
+        "default": null
+      },
+      {
+        "name": "step",
+        "type": "double",
+        "optional": false,
+        "default": null
+      },
+      {
+        "name": "clamp",
+        "type": "bool",
+        "optional": false,
+        "default": null
+      }
+    ]
+  },
+  "Dropdown": {
+    "method": "AddDropdown",
+    "interface": "IUIDropdown",
+    "ctorArgs": [
+      "Choices",
+      "Labels",
+      "Value"
+    ],
+    "parameters": [
+      {
+        "name": "parent",
+        "type": "IUIContainer",
+        "optional": false,
+        "default": null
+      },
+      {
+        "name": "id",
+        "type": "string",
+        "optional": false,
+        "default": null
+      },
+      {
+        "name": "choices",
+        "type": "Func<string[]>",
+        "optional": false,
+        "default": null
+      },
+      {
+        "name": "labels",
+        "type": "Func<string[]>",
+        "optional": false,
+        "default": null
+      },
+      {
+        "name": "get",
+        "type": "Func<string>",
+        "optional": false,
+        "default": null
+      },
+      {
+        "name": "set",
+        "type": "Action<string>",
+        "optional": false,
+        "default": null
+      }
+    ]
+  },
+  "Slider": {
+    "method": "AddSlider",
+    "interface": "IUISlider",
+    "ctorArgs": [
+      "Value",
+      "Min",
+      "Max"
+    ],
+    "parameters": [
+      {
+        "name": "parent",
+        "type": "IUIContainer",
+        "optional": false,
+        "default": null
+      },
+      {
+        "name": "id",
+        "type": "string",
+        "optional": false,
+        "default": null
+      },
+      {
+        "name": "get",
+        "type": "Func<double>",
+        "optional": false,
+        "default": null
+      },
+      {
+        "name": "set",
+        "type": "Action<double>",
+        "optional": false,
+        "default": null
+      },
+      {
+        "name": "min",
+        "type": "double",
+        "optional": false,
+        "default": null
+      },
+      {
+        "name": "max",
+        "type": "double",
+        "optional": false,
+        "default": null
+      }
+    ]
+  },
+  "List": {
+    "method": "AddList",
+    "interface": "IUIList",
+    "ctorArgs": [
+      "RowHeight",
+      "VisibleRows",
+      "ItemCount"
+    ],
+    "parameters": [
+      {
+        "name": "parent",
+        "type": "IUIContainer",
+        "optional": false,
+        "default": null
+      },
+      {
+        "name": "id",
+        "type": "string",
+        "optional": false,
+        "default": null
+      },
+      {
+        "name": "rowHeight",
+        "type": "int",
+        "optional": false,
+        "default": null
+      },
+      {
+        "name": "visibleRows",
+        "type": "int",
+        "optional": false,
+        "default": null
+      },
+      {
+        "name": "itemCount",
+        "type": "Func<int>",
+        "optional": false,
+        "default": null
+      },
+      {
+        "name": "buildRow",
+        "type": "Action<int, IUIContainer>",
+        "optional": false,
+        "default": null
+      }
+    ]
+  },
+  "DataGrid": {
+    "method": "AddDataGrid",
+    "interface": "IUIDataGrid",
+    "ctorArgs": [
+      "RowHeight",
+      "VisibleRows",
+      "RowCount",
+      "SortColumn",
+      "SortDescending"
+    ],
+    "parameters": [
+      {
+        "name": "parent",
+        "type": "IUIContainer",
+        "optional": false,
+        "default": null
+      },
+      {
+        "name": "id",
+        "type": "string",
+        "optional": false,
+        "default": null
+      },
+      {
+        "name": "rowHeight",
+        "type": "int",
+        "optional": false,
+        "default": null
+      },
+      {
+        "name": "visibleRows",
+        "type": "int",
+        "optional": false,
+        "default": null
+      },
+      {
+        "name": "rowCount",
+        "type": "Func<int>",
+        "optional": false,
+        "default": null
+      }
+    ]
+  },
+  "Form": {
+    "method": "AddForm",
+    "interface": "IUIForm",
+    "ctorArgs": [],
+    "parameters": [
+      {
+        "name": "parent",
+        "type": "IUIContainer",
+        "optional": false,
+        "default": null
+      },
+      {
+        "name": "id",
+        "type": "string",
+        "optional": false,
+        "default": null
+      },
+      {
+        "name": "model",
+        "type": "object",
+        "optional": false,
+        "default": null
+      }
+    ]
+  },
+  "Composite": {
+    "method": "AddComposite",
+    "interface": "IUIComposite",
+    "ctorArgs": [],
+    "parameters": [
+      {
+        "name": "parent",
+        "type": "IUIContainer",
+        "optional": false,
+        "default": null
+      },
+      {
+        "name": "id",
+        "type": "string",
+        "optional": false,
+        "default": null
+      },
+      {
+        "name": "compositeName",
+        "type": "string",
+        "optional": false,
+        "default": null
+      },
+      {
+        "name": "args",
+        "type": "IUICompositeArgs",
+        "optional": false,
+        "default": null
+      }
+    ]
+  }
+}

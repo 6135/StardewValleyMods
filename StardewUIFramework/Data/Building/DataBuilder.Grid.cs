@@ -26,8 +26,8 @@ namespace UIFramework.Data.Building
         private IUIElement CreateDataGrid(BuildContext ctx, IUIContainer parent, ElementDefinition def, DataScope scope, DataPath path)
         {
             PropertyApplier a = ctx.Applier;
-            int rowHeight = Math.Max(1, a.Initial(def.RowHeight, ValueParsers.Int, DefaultRowHeight, scope, path.Field("RowHeight")));
-            int visibleRows = Math.Max(1, a.Initial(def.VisibleRows, ValueParsers.Int, DefaultVisibleRows, scope, path.Field("VisibleRows")));
+            int rowHeight = Math.Max(1, a.Initial(def.RowHeight, ValueParsers.Int, DataDefaults.DataGrid.RowHeight, scope, path.Field("RowHeight")));
+            int visibleRows = Math.Max(1, a.Initial(def.VisibleRows, ValueParsers.Int, DataDefaults.DataGrid.VisibleRows, scope, path.Field("VisibleRows")));
             SourceBinding? source = CreateSource(ctx, def.Source, scope, def.As, path.Field("Source"), "a DataGrid");
             source?.Update(opening: true);
             IUIDataGrid grid = ctx.Api.AddDataGrid(parent, ctx.IdOf(def), rowHeight, visibleRows, () => source?.Count ?? 0);
@@ -60,7 +60,7 @@ namespace UIFramework.Data.Building
             if (!string.IsNullOrWhiteSpace(def.Sort))
             {
                 string[] parts = def.Sort.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-                bool descending = a.Initial(def.SortDescending, ValueParsers.Bool, false, scope, path.Field("SortDescending"))
+                bool descending = a.Initial(def.SortDescending, ValueParsers.Bool, DataDefaults.DataGrid.SortDescending, scope, path.Field("SortDescending"))
                     || (parts.Length > 1 && parts[1].Equals("desc", StringComparison.OrdinalIgnoreCase));
                 if (grid.FindColumn(parts[0]) == null)
                 {

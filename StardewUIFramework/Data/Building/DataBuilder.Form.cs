@@ -179,7 +179,7 @@ namespace UIFramework.Data.Building
 
             if (fieldKind == FormFieldKind.Number)
             {
-                (double typeMin, double typeMax) = type == typeof(int) ? (int.MinValue, int.MaxValue) : (-DefaultNumberMax, DefaultNumberMax);
+                (double typeMin, double typeMax) = type == typeof(int) ? (int.MinValue, int.MaxValue) : (-DataDefaults.NumberInput.Max, DataDefaults.NumberInput.Max);
                 property.Min = a.Initial(def.Min, ValueParsers.Number, typeMin, scope, path.Field("Min"));
                 property.Max = a.Initial(def.Max, ValueParsers.Number, typeMax, scope, path.Field("Max"));
                 if (property.Max < property.Min)

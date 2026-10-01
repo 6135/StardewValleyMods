@@ -102,6 +102,12 @@ namespace UIFramework.Data.Model
         /// <summary>Every type name, in documentation order.</summary>
         internal static IReadOnlyCollection<string> All => Specific.Keys;
 
+        /// <summary>The type-specific members of <paramref name="type"/> (empty for an unknown type).</summary>
+        internal static IReadOnlyList<string> Members(string type) => Specific.TryGetValue(type, out string[]? members) ? members : Array.Empty<string>();
+
+        /// <summary>The style fields leaf type <paramref name="type"/> draws with, or null when it holds children (every field applies).</summary>
+        internal static IReadOnlyList<string>? LeafStyleFields(string type) => LeafStyle.TryGetValue(type, out string[]? fields) ? fields : null;
+
         /// <summary>The canonical spelling of <paramref name="type"/>, or null when it is not a known type.</summary>
         internal static string? Canonical(string? type)
         {

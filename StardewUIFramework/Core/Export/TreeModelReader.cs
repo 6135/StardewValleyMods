@@ -5,6 +5,7 @@ using Microsoft.Xna.Framework.Graphics;
 using StardewValley;
 using UIFramework.Api;
 using UIFramework.Components;
+using UIFramework.Data.Model;
 using UIFramework.Rendering;
 
 namespace UIFramework.Core.Export
@@ -15,20 +16,12 @@ namespace UIFramework.Core.Export
     /// the others are recorded as set / not set. Properties are added in a fixed order per element kind
     /// (type-specific members, then the common ones), which is the order the C# emitter writes them in.
     /// <para>
-    /// Defaults are those of the data format (<c>DataBuilder</c>) where they differ from the C# constructors' free
+    /// Defaults are those of the data format (<see cref="DataDefaults"/>) where they differ from the C# constructors' free
     /// arguments; the C# emitter always writes constructor arguments, so this only affects the JSON output.
     /// </para>
     /// </summary>
     internal sealed class TreeModelReader
     {
-        // data-format defaults (see Data/Building/DataBuilder.cs)
-        private const int DefaultSpacing = 8;
-        private const int DefaultPanelPadding = 16;
-        private const int DefaultViewportHeight = 300;
-        private const float DefaultImageScale = 4f;
-        private const double DefaultNumberMax = 999999;
-        private const double DefaultSliderMax = 100;
-
         private readonly UIMenu menu;
         private readonly Dictionary<UIElement, TreeNode> nodes = new();
 
@@ -49,9 +42,9 @@ namespace UIFramework.Core.Export
             Stack root = menu.Root;
             var rootNode = new TreeNode(TreeKinds.Stack, root.Id, root.GetType().Name);
             nodes[root] = rootNode;
-            rootNode.Properties.Add(Bool("Horizontal", root.Horizontal, false));
-            rootNode.Properties.Add(Int("Spacing", root.Spacing, DefaultSpacing));
-            rootNode.Properties.Add(Enum("Alignment", root.Alignment, root.Alignment == UIAlign.Start));
+            rootNode.Properties.Add(Bool("Horizontal", root.Horizontal, DataDefaults.Menu.Horizontal));
+            rootNode.Properties.Add(Int("Spacing", root.Spacing, DataDefaults.Menu.Spacing));
+            rootNode.Properties.Add(Enum("Alignment", root.Alignment, root.Alignment == DataDefaults.Menu.Alignment));
             rootNode.Properties.Add(Bool("Wrap", root.Wrap, false));
             rootNode.Properties.Add(Margin(root));
             rootNode.Properties.Add(OptionalInt("Width", root.Width));
@@ -62,17 +55,17 @@ namespace UIFramework.Core.Export
             o.Add(Text("Title", menu.Id, "Export.Title", menu.TitleFunc));
             o.Add(OptionalInt("Width", menu.Width));
             o.Add(OptionalInt("Height", menu.Height));
-            o.Add(Bool("ShowCloseButton", menu.ShowCloseButton, true));
-            o.Add(Bool("Modal", menu.Modal, true));
-            o.Add(Bool("DimBackground", menu.DimBackground, true));
-            o.Add(Enum("Anchor", menu.Anchor, menu.Anchor == UIAnchor.Center));
-            o.Add(Int("X", menu.X, 0));
-            o.Add(Int("Y", menu.Y, 0));
-            o.Add(Bool("DrawBox", menu.DrawBox, true));
-            o.Add(Int("Padding", menu.Padding, 0));
-            o.Add(Bool("CloseOnEscape", menu.CloseOnEscape, true));
-            o.Add(Bool("PlayerLayout", menu.PlayerLayout, true));
-            o.Add(Bool("Resizable", menu.Resizable, false));
+            o.Add(Bool("ShowCloseButton", menu.ShowCloseButton, DataDefaults.Menu.ShowCloseButton));
+            o.Add(Bool("Modal", menu.Modal, DataDefaults.Menu.Modal));
+            o.Add(Bool("DimBackground", menu.DimBackground, DataDefaults.Menu.DimBackground));
+            o.Add(Enum("Anchor", menu.Anchor, menu.Anchor == DataDefaults.Menu.Anchor));
+            o.Add(Int("X", menu.X, DataDefaults.Menu.X));
+            o.Add(Int("Y", menu.Y, DataDefaults.Menu.Y));
+            o.Add(Bool("DrawBox", menu.DrawBox, DataDefaults.Menu.DrawBox));
+            o.Add(Int("Padding", menu.Padding, DataDefaults.Menu.Padding));
+            o.Add(Bool("CloseOnEscape", menu.CloseOnEscape, DataDefaults.Menu.CloseOnEscape));
+            o.Add(Bool("PlayerLayout", menu.PlayerLayout, DataDefaults.Menu.PlayerLayout));
+            o.Add(Bool("Resizable", menu.Resizable, DataDefaults.Menu.Resizable));
 
             List<TreeProperty> ev = model.Events;
             ev.Add(Todo("OnOpen", menu.OnOpen));
@@ -215,23 +208,23 @@ namespace UIFramework.Core.Export
                     ReadArgs(composite, node);
                     break;
                 case Stack stack:
-                    p.Add(Bool("Horizontal", stack.Horizontal, false));
-                    p.Add(Int("Spacing", stack.Spacing, DefaultSpacing));
+                    p.Add(Bool("Horizontal", stack.Horizontal, DataDefaults.Stack.Horizontal));
+                    p.Add(Int("Spacing", stack.Spacing, DataDefaults.Stack.Spacing));
                     p.Add(Enum("Alignment", stack.Alignment, stack.Alignment == UIAlign.Start));
                     p.Add(Bool("Wrap", stack.Wrap, false));
                     break;
                 case Grid grid:
-                    p.Add(TreeProperty.Literal("Columns", TreeValueKind.String, grid.Columns, grid.Columns == "*"));
-                    p.Add(TreeProperty.Literal("Rows", TreeValueKind.String, grid.Rows, grid.Rows == "auto"));
+                    p.Add(TreeProperty.Literal("Columns", TreeValueKind.String, grid.Columns, grid.Columns == DataDefaults.Grid.Columns));
+                    p.Add(TreeProperty.Literal("Rows", TreeValueKind.String, grid.Rows, grid.Rows == DataDefaults.Grid.Rows));
                     p.Add(Int("ColumnSpacing", grid.ColumnSpacing, 0));
                     p.Add(Int("RowSpacing", grid.RowSpacing, 0));
                     break;
                 case Panel panel:
-                    p.Add(Bool("DrawBox", panel.DrawBox, true));
-                    p.Add(Int("Padding", panel.Padding, DefaultPanelPadding));
+                    p.Add(Bool("DrawBox", panel.DrawBox, DataDefaults.Panel.DrawBox));
+                    p.Add(Int("Padding", panel.Padding, DataDefaults.Panel.Padding));
                     break;
                 case ScrollView scroll:
-                    p.Add(Int("ViewportHeight", scroll.ViewportHeight, DefaultViewportHeight));
+                    p.Add(Int("ViewportHeight", scroll.ViewportHeight, DataDefaults.ScrollView.ViewportHeight));
                     p.Add(Int("ScrollStep", scroll.ScrollStep, 64));
                     p.Add(Bool("ShowScrollbar", scroll.ShowScrollbar, true));
                     p.Add(Todo("OnScroll", scroll.OnScroll));
@@ -279,7 +272,7 @@ namespace UIFramework.Core.Export
                 case Image i:
                     p.Add(Todo("Texture", i.Texture, TextureName(i.Texture), "guessed from the texture's asset name"));
                     p.Add(TreeProperty.Literal("Source", TreeValueKind.Rect, i.Source, !i.Source.HasValue));
-                    p.Add(Float("Scale", i.Scale, DefaultImageScale));
+                    p.Add(Float("Scale", i.Scale, DataDefaults.Image.Scale));
                     p.Add(Color("Tint", i.Tint, Microsoft.Xna.Framework.Color.White));
                     break;
                 case ItemImage i:
@@ -314,10 +307,10 @@ namespace UIFramework.Core.Export
                     break;
                 case NumberInput n:
                     p.Add(TreeProperty.Evaluated("Value", TreeValueKind.Double, n.Value, true));
-                    p.Add(Double("Min", n.Min, 0));
-                    p.Add(Double("Max", n.Max, DefaultNumberMax));
-                    p.Add(Double("Step", n.Step, 1));
-                    p.Add(Bool("Clamp", n.Clamp, true));
+                    p.Add(Double("Min", n.Min, DataDefaults.NumberInput.Min));
+                    p.Add(Double("Max", n.Max, DataDefaults.NumberInput.Max));
+                    p.Add(Double("Step", n.Step, DataDefaults.NumberInput.Step));
+                    p.Add(Bool("Clamp", n.Clamp, DataDefaults.NumberInput.Clamp));
                     p.Add(Int("Decimals", n.Decimals, 0));
                     p.Add(Todo("Validate", n.ValidateFunc));
                     p.Add(Todo("Texture", n.Texture, TextureName(n.Texture), "guessed from the texture's asset name"));
@@ -329,8 +322,8 @@ namespace UIFramework.Core.Export
                     break;
                 case Slider s:
                     p.Add(TreeProperty.Evaluated("Value", TreeValueKind.Double, s.Value, true));
-                    p.Add(Double("Min", s.Min, 0));
-                    p.Add(Double("Max", s.Max, DefaultSliderMax));
+                    p.Add(Double("Min", s.Min, DataDefaults.Slider.Min));
+                    p.Add(Double("Max", s.Max, DataDefaults.Slider.Max));
                     p.Add(TreeProperty.Literal("Step", TreeValueKind.Double, s.Step, !(s.Step > 0)));
                     p.Add(Todo("OnValueChanged", s.OnValueChanged));
                     break;
@@ -351,7 +344,7 @@ namespace UIFramework.Core.Export
             p.Add(TreeProperty.Evaluated("Item", TreeValueKind.String, item?.QualifiedItemId, true));
             p.Add(TreeProperty.Evaluated("Quality", TreeValueKind.Int, item?.Quality ?? 0, (item?.Quality ?? 0) != 0));
             p.Add(TreeProperty.Evaluated("Count", TreeValueKind.Int, item?.Stack ?? 1, (item?.Stack ?? 1) > 1));
-            p.Add(Float("Scale", i.Scale, DefaultImageScale));
+            p.Add(Float("Scale", i.Scale, DataDefaults.ItemImage.Scale));
             p.Add(Enum("Stack", i.Stack, i.Stack == UIItemStack.Hide));
             p.Add(Bool("DrawShadow", i.DrawShadow, false));
             p.Add(Float("Alpha", i.Alpha, 1f));
