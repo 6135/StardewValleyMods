@@ -304,8 +304,6 @@ body.drop-refused, body.drop-refused * {
 
 .field.json .control {
   grid-column: 2 / 4;
-  font-family: monospace;
-  font-size: 12px;
   color: inherit;
   resize: vertical;
   margin: 0;
