@@ -5,7 +5,7 @@ import type { DesignerDocument, NodeId, TemplateDoc } from '../model/document';
 import { canonicalType, defaultOf, elementTypes } from '../model/metadata';
 import { subItemsOf, type SubItemKind } from '../model/subItems';
 import {
-  LButton, LCanvas, LCheckbox, LContainer, LDataGrid, LDropdown, LElement, LForm, LGrid, LImage, LItemImage, LLabel, LListView,
+  clampOffset, LButton, LCanvas, LCheckbox, LContainer, LDataGrid, LDropdown, LElement, LForm, LGrid, LImage, LItemImage, LLabel, LListView,
   LPanel, LPlaceholder, LScrollView, LSlider, LSpacer, LStack, LTextBox, type ElementInfo, type GridColumn,
   type LayoutContext
 } from './elements';
@@ -677,11 +677,15 @@ export class Builder {
         return canvas;
       }
       case 'ScrollView': {
-        const scroll = new LScrollView(ctx, info(f.Id), defNum(type, 'ViewportHeight', 0));
+        const scrollInfo = info(f.Id);
+        const scroll = new LScrollView(ctx, scrollInfo, defNum(type, 'ViewportHeight', 0));
         const vh = v.int(f.ViewportHeight, scope);
         if (vh !== undefined) scroll.viewportHeight = vh;
         const show = v.bool(f.ShowScrollbar, scope);
         if (show !== undefined) scroll.showScrollbar = show;
+        const step = v.int(f.ScrollStep, scope);
+        if (step !== undefined) scroll.scrollStep = Math.max(1, step);
+        scroll.scrollOffset = this.opts.scrollOffsets?.[scrollInfo.nodeId] ?? 0;
         this.buildChildren(scroll, src.children(), scope);
         return scroll;
       }
@@ -1033,10 +1037,13 @@ export class Builder {
     const list = new LListView(this.ctx, info, rowHeight, visibleRows);
     const template = this.rowTemplate(src);
     const rows = this.inlineRows(src.fields.Source ?? src.extra.Source, scope);
+    list.count = rows?.length ?? Math.max(0, this.opts.repeatCount);
+    list.first = clampOffset(this.opts.scrollOffsets?.[info.nodeId] ?? 0, list.count - visibleRows);
     for (let i = 0; i < visibleRows; i++) {
-      const rowScope: Scope = { ...this.rowScope(scope, rows, i, src.fields.As), ownerId: scope.ownerId ?? (src.raw ? undefined : src.id) };
+      const index = list.first + i;
+      const rowScope: Scope = { ...this.rowScope(scope, rows, index, src.fields.As), ownerId: scope.ownerId ?? (src.raw ? undefined : src.id) };
       const row = new LPanel(this.ctx, this.synthetic(src.id, 'List.row', rowScope), false, 0);
-      row.visible = i < (rows?.length ?? this.opts.repeatCount);
+      row.visible = index < list.count;
       if (row.visible) {
         this.buildChildren(row, template, rowScope);
       }
@@ -1052,8 +1059,10 @@ export class Builder {
     const visibleRows = Math.max(1, v.int(src.fields.VisibleRows, scope) ?? defNum('DataGrid', 'VisibleRows', 1));
     const grid = new LDataGrid(this.ctx, info, rowHeight, visibleRows);
     const source = this.inlineRows(src.fields.Source ?? src.extra.Source, scope);
-    const rowScopes = Array.from({ length: Math.min(source?.length ?? Math.max(0, this.opts.repeatCount), visibleRows) },
-      (_, i) => this.rowScope(scope, source, i, src.fields.As));
+    grid.count = source?.length ?? Math.max(0, this.opts.repeatCount);
+    grid.first = clampOffset(this.opts.scrollOffsets?.[info.nodeId] ?? 0, grid.count - visibleRows);
+    const rowScopes = Array.from({ length: Math.min(grid.count - grid.first, visibleRows) },
+      (_, i) => this.rowScope(scope, source, grid.first + i, src.fields.As));
     for (const rowScope of rowScopes) {
       grid.rows.push(new LPanel(this.ctx, this.synthetic(src.id, 'DataGrid.row', rowScope), false, 0));
     }

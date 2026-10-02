@@ -7,7 +7,7 @@ import {
   type Align, type GridTrack, alignOffset, distributeWidth, parseTracks, resolveTracks, roundEven, spanSize, toInt,
   trackOffset, unbounded
 } from './engine';
-import { CHIP_MARKS, type BoxDetail, type FontName, type Rect, type TextMeasurer } from './types';
+import { CHIP_MARKS, type BoxDetail, type FontName, type Rect, type ScrollbarParts, type Scroller, type TextMeasurer } from './types';
 
 export interface Vec { x: number; y: number }
 
@@ -185,7 +185,15 @@ export abstract class LElement {
   finishDetail(): void {
     // leaves with live geometry override this
   }
+
+  /** After arrange: how the element scrolls, when its content overflows (ScrollView, List, DataGrid); else null. */
+  scrollState(): ScrollState | null {
+    return null;
+  }
 }
+
+/** A scroller as the element knows it; the menu adds the area and the ancestors' clip. */
+export type ScrollState = Omit<Scroller, 'area' | 'clip'>;
 
 // ---------------------------------------------------------------------------------------------------------------------
 //  UIContainer
@@ -977,18 +985,63 @@ export class LCanvas extends LContainer {
 export const SCROLLBAR_RESERVED = 48;
 /** ScrollbarGadget.Width. */
 export const SCROLLBAR_WIDTH = 44;
+/** ScrollbarGadget ArrowHeight, TrackWidth, TrackInset, TrackGap, ThumbHeight. */
+const SCROLL_ARROW_HEIGHT = 48;
+const SCROLL_TRACK_WIDTH = 24;
+const SCROLL_TRACK_INSET = 12;
+const SCROLL_TRACK_GAP = 4;
+const SCROLL_THUMB_HEIGHT = 40;
 
-/** Components/ScrollView.cs (scroll offset 0: the preview shows the top of the content). */
+/** ScrollbarGadget.Layout / SetFraction: the column at (x, y), `height` tall, the thumb at `fraction` of the track. */
+export function scrollbarParts(x: number, y: number, height: number, fraction: number): ScrollbarParts {
+  const h = Math.max(0, height);
+  const bounds: Rect = { x, y, width: SCROLLBAR_WIDTH, height: h };
+  let track: Rect = { x: x + SCROLL_TRACK_INSET, y, width: SCROLL_TRACK_WIDTH, height: h };
+  let arrows: Pick<ScrollbarParts, 'up' | 'down'> = {};
+  if (h >= 2 * SCROLL_ARROW_HEIGHT) {
+    const up: Rect = { x, y, width: SCROLLBAR_WIDTH, height: SCROLL_ARROW_HEIGHT };
+    const down: Rect = { x, y: y + h - SCROLL_ARROW_HEIGHT, width: SCROLLBAR_WIDTH, height: SCROLL_ARROW_HEIGHT };
+    const trackY = up.y + up.height + SCROLL_TRACK_GAP;
+    track = { x: x + SCROLL_TRACK_INSET, y: trackY, width: SCROLL_TRACK_WIDTH, height: Math.max(0, down.y - SCROLL_TRACK_GAP - trackY) };
+    arrows = { up, down };
+  }
+  const f = Number.isNaN(fraction) ? 0 : Math.min(1, Math.max(0, fraction));
+  const range = Math.max(0, track.height - SCROLL_THUMB_HEIGHT);
+  const thumb: Rect = { x: track.x, y: track.y + roundEven(range * f), width: SCROLL_TRACK_WIDTH, height: SCROLL_THUMB_HEIGHT };
+  return { bounds, ...arrows, track, thumb };
+}
+
+/** The offset a thumb drag / track click at `y` gives (ScrollbarGadget.FractionFromY × max, rounded like the owners). */
+export function scrollOffsetAt(scroller: Scroller, y: number): number {
+  const track = scroller.bar?.track;
+  const range = track ? track.height - SCROLL_THUMB_HEIGHT : 0;
+  if (!track || range <= 0) {
+    return 0;
+  }
+  const fraction = Math.min(1, Math.max(0, (y - track.y - (SCROLL_THUMB_HEIGHT / 2)) / range));
+  return roundEven(fraction * scroller.max);
+}
+
+/** An asked offset clamped to [0, max] like the framework's setters. */
+export const clampOffset = (offset: number, max: number): number => Math.min(Math.max(0, Math.trunc(offset) || 0), Math.max(0, max));
+
+/** Components/ScrollView.cs. */
 export class LScrollView extends LContainer {
   private viewportHeightValue: number;
   showScrollbar = true;
   fitContent = false;
+  /** ScrollOffset as asked (LayoutOptions.scrollOffsets); arrange clamps it to MaxScroll. */
+  scrollOffset = 0;
+  scrollStep = 64;
+  /** Scroller.key: the node id, or MENU_SCROLL_KEY for the menu viewport. */
+  scrollKey: string | null;
   private overflowing = false;
   private contentHeight = 0;
 
   constructor(ctx: LayoutContext, info: ElementInfo | null, viewportHeight: number) {
     super(ctx, info);
     this.viewportHeightValue = Math.max(0, viewportHeight);
+    this.scrollKey = info?.nodeId ?? null;
   }
 
   get viewportHeight(): number { return this.viewportHeightValue; }
@@ -998,10 +1051,9 @@ export class LScrollView extends LContainer {
     return this.showScrollbar && (!this.fitContent || this.overflowing) ? SCROLLBAR_RESERVED : 0;
   }
 
-  /** MaxScroll > 0: the content is taller than the viewport, so the scrollbar draws. */
-  get scrollbarVisible(): boolean {
-    const viewport = this.bounds.height > 0 ? this.bounds.height : this.height ?? this.viewportHeightValue;
-    return this.showScrollbar && this.contentHeight - viewport > 0;
+  /** ScrollView.MaxScroll (after arrange). */
+  private get maxScroll(): number {
+    return Math.max(0, this.contentHeight - this.bounds.height);
   }
 
   private viewportRect(): Rect {
@@ -1046,8 +1098,10 @@ export class LScrollView extends LContainer {
   }
 
   protected override arrangeCore(): void {
+    // the final height is known now; keep the offset valid before positioning anything
+    this.scrollOffset = clampOffset(this.scrollOffset, this.maxScroll);
     const viewport = this.viewportRect();
-    let y = viewport.y;
+    let y = viewport.y - this.scrollOffset;
     for (const child of this.children) {
       if (!child.visible) {
         child.arrange(zeroRect(viewport.x, viewport.y));
@@ -1063,10 +1117,17 @@ export class LScrollView extends LContainer {
     return this.viewportRect();
   }
 
-  override finishDetail(): void {
-    if (this.info) {
-      this.info.detail = { ...this.info.detail, scrollbar: this.scrollbarVisible ? SCROLLBAR_WIDTH : 0 };
+  override scrollState(): ScrollState | null {
+    const max = this.maxScroll;
+    if (this.scrollKey === null || max <= 0) {
+      return null;
     }
+    const b = this.bounds;
+    const state: ScrollState = { key: this.scrollKey, offset: this.scrollOffset, max, step: this.scrollStep };
+    if (this.showScrollbar) {
+      state.bar = scrollbarParts(b.x + b.width - SCROLLBAR_WIDTH, b.y, b.height, this.scrollOffset / max);
+    }
+    return state;
   }
 }
 
@@ -1322,6 +1383,15 @@ export class LPlaceholder extends LElement {
 //  Collections
 // ---------------------------------------------------------------------------------------------------------------------
 
+/** The scroll state of a List / DataGrid: `first` of `count` items shown, VisibleRows at a time, one row per step. */
+function rowScrollState(key: string | undefined, first: number, count: number, visibleRows: number, right: number, y: number, height: number): ScrollState | null {
+  const max = Math.max(0, count - visibleRows);
+  if (key === undefined || max <= 0) {
+    return null;
+  }
+  return { key, offset: first, max, step: 1, bar: scrollbarParts(right - SCROLLBAR_WIDTH, y, height, first / max) };
+}
+
 /**
  * Components/ListView.cs: VisibleRows row panels (no box, no padding) of RowHeight, a scrollbar column always reserved,
  * and as wide as offered. Rows past the item count are hidden.
@@ -1329,6 +1399,9 @@ export class LPlaceholder extends LElement {
 export class LListView extends LContainer {
   rowHeight: number;
   visibleRows: number;
+  /** Item count and the item in the first row (FirstVisibleIndex, clamped by the builder). */
+  count = 0;
+  first = 0;
 
   constructor(ctx: LayoutContext, info: ElementInfo | null, rowHeight: number, visibleRows: number) {
     super(ctx, info);
@@ -1368,10 +1441,9 @@ export class LListView extends LContainer {
     return this.contentRect();
   }
 
-  override finishDetail(): void {
-    if (this.info) {
-      this.info.detail = { ...this.info.detail, scrollbar: SCROLLBAR_WIDTH };
-    }
+  override scrollState(): ScrollState | null {
+    const b = this.bounds;
+    return rowScrollState(this.info?.nodeId, this.first, this.count, this.visibleRows, b.x + b.width, b.y, b.height);
   }
 }
 
@@ -1397,6 +1469,9 @@ export class LDataGrid extends LContainer {
   columns: GridColumn[] = [];
   /** Row containers (synthetic), one per rendered row. */
   rows: LElement[] = [];
+  /** Item count and the item in the first row (FirstVisibleIndex, clamped by the builder). */
+  count = 0;
+  first = 0;
   private headerHeight = 0;
   private widths: number[] = [];
 
@@ -1492,10 +1567,10 @@ export class LDataGrid extends LContainer {
     return { x: b.x, y: b.y, width: Math.max(0, b.width - SCROLLBAR_RESERVED), height: b.height };
   }
 
-  override finishDetail(): void {
-    if (this.info) {
-      this.info.detail = { ...this.info.detail, scrollbar: SCROLLBAR_WIDTH };
-    }
+  override scrollState(): ScrollState | null {
+    const b = this.bounds;
+    return rowScrollState(this.info?.nodeId, this.first, this.count, this.visibleRows, b.x + b.width, b.y + this.headerHeight,
+      Math.max(0, b.height - this.headerHeight));
   }
 }
 
