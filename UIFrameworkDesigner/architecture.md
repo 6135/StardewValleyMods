@@ -25,7 +25,7 @@ Progress against §14. Update this table when a phase changes; §14 stays the pl
 | 4 — C# export | Not started | |
 | 5 — Data features, sharing, polish | Built, unverified in the browser | Preview state, Repeat / Switch / templates, i18n, theme; autosave + Recent (`io/autosave.ts`), workspace share links (`io/share.ts`, `#w=`), raw JSON view (center pane), phone-width read-only layout. Open: `ui_dump` layout fixtures (need the game) |
 | 6 — Optional: game-art preview, live in-game loop | Built, unverified in game | Game-art skin (`preview/gameArt.ts`); live save to a picked file from the export dialog (`io/liveSave.ts`, Chromium only) |
-| 7 — Workspace tabs and cross-references (§18) | Built, unverified in the browser | Steps 1–5 (autosave with phase 5); preview settings are per tab, OpenMenu actions show a link badge that opens the menu's tab; the example content.json round-trips (Menus and Owners equal) and opens with no problems |
+| 7 — Workspace tabs and cross-references (§18) | Built, unverified in the browser | Steps 1–5 (autosave with phase 5); preview settings are per tab, OpenMenu actions show a link badge that opens the menu's tab; menu-level templates open and edit in tabs of their own (`menu › name`, written back into the menu); the example content.json round-trips (Menus and Owners equal) and opens with no problems |
 
 ---
 
@@ -227,7 +227,7 @@ The preview is drawn with DOM elements (absolute positioned), not a `<canvas>`, 
 
 ## 8. Validation
 
-1. **Schema:** Ajv with the generated `menu.schema.json`.
+1. **Schema:** Ajv with the generated `menu.schema.json`, in its own chunk loaded on first use (the ported rules report at once; the schema problems join when it arrives). Build chunks: React, the app, and lazily the schema pass, the game-art skin and the i18n loader.
 2. **Ported rules:** unknown type (with "did you mean"), field not read by this type (`ElementTypes.Uses`), style field ignored by this leaf (`UsesStyle`), duplicate sibling ids, `Out` keys outside `OutKeys`, children under a non-container, missing required template params.
 3. **Messages use the framework's path format** (`Children[2].Children[0].Spacing`) so they match `ui_validate` output, and clicking one selects the node.
 
@@ -407,7 +407,7 @@ interface Workspace {
 
 type WorkspaceTab =                      // every tab's `doc` is its unit of editing and undo
   | { id: TabId; kind: 'menu'; doc: DesignerDocument; patch?: PatchMembers }
-  | { id: TabId; kind: 'template'; owner: string; name: string; doc: OwnerTemplateDoc }   // TemplateDoc + nodes + previewState
+  | { id: TabId; kind: 'template'; owner: string; name: string; doc: OwnerTemplateDoc; menu?: TabId }   // TemplateDoc + nodes + previewState; menu: a menu template
   | { id: TabId; kind: 'tooltip'; owner: string; name: string; doc: TooltipDoc }          // "Tooltip" root, block nodes
   | { id: TabId; kind: 'owner'; owner: string; doc: OwnerDoc; patch?: PatchMembers };   // delay, classes, hotkeys, style, shared state
 ```
@@ -415,6 +415,7 @@ type WorkspaceTab =                      // every tab's `doc` is its unit of edi
 The workspace also keeps, verbatim, the imported content.json's other root members (`content`) and the changes it does not edit (`otherChanges`: Sprites, Composites, other assets). `patch` holds the EditData members an entry came with (LogName, When …) so export re-creates one change per asset and patch.
 
 - Menus, owner templates and tooltips are all `NodeTree`s (`root` + `nodes`), so the tree, palette, inspector and `model/ops.ts` edit every kind. The store (`model/store.ts`, zundo removed) keeps per tab a history of the tab's previous snapshots, so undo never jumps tabs; selection and collapsed nodes are per-tab UI state. The existing node / menu actions keep their names and act on the active tab.
+- A **menu template** (`DesignerDocument.templates`) opens in a template tab with `menu` set (shown `menu › name`): a view of the menu, which keeps holding it. The tab's doc is the template with its body nodes and the menu's preview state, identified by its root node (stable across renames). `linkMenuTemplates` (`model/workspace.ts`) keeps both in step on every store change: the tab's edits are its own undo steps written into the menu; a menu change refreshes the tab (name, owner, body) or closes it when the template is gone; a menu undo / redo keeps what open template tabs hold. The resolver files the body's references under the template tab, resolves its references with the menu's templates first, and lists no owner-level definition for it; its problems are the menu's messages about its body. Rename updates that menu only; export, saves and share links write the menu (the tab is not saved). The menu inspector lists the templates and adds new ones.
 - `TooltipDoc` is a block tree (`TooltipBlockDefinition`): block nodes have the block kind as type (the schema's Type enum is the palette), `When`, `Color` … are ordinary fields; a tooltip written as a bare array / string is written back that way.
 - The **resolver** (`src/model/resolve.ts`, pure, memoised on the tab list) indexes every definition and reference: `resolve(kind, owner, name, fromTab)` (menu templates first, then the owner's), `usages`, `names` (pickers, did-you-mean), `knows` (whether the workspace holds that owner's entry; otherwise the answer is `'external'`). Validation passes the owner templates to the ported rules; the preview gets `previewDocument(ws, tab)`: the tab as one self-contained document with the owner templates it can instantiate added after its own (DataBuilder's lookup order), so `layout/build.ts` expands them unchanged. A template tab previews its body; a tooltip tab previews the tooltip itself, centred, with the preview state (and first sample row) of the element that uses it. The usage scan covers every member that can reference a definition: RichTooltip / RowTooltip and a tooltip's own From, element definitions inside raw members (RowTemplate, column Cell, Children: Type / Template, Class), and menu-opening actions in any string.
 - Per the framework (`DataBuilder.CompileTooltip`), only an element's `RichTooltip.From` is followed, one level: a named tooltip's own `From` is not read (validation warns), so tooltips cannot form cycles.

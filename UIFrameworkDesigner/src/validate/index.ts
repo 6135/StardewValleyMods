@@ -2,22 +2,35 @@ import type { DesignerDocument, NodeId, NodeTree, Problem } from '../model/docum
 import { isTooltipBlock, tooltipBlockTypes } from '../model/metadata';
 import { preorder } from '../model/ops';
 import { resolverOf, templateUse, type Definition, type RefKind, type Resolver } from '../model/resolve';
-import { tabName, tabOwner, treeOf, type TabId, type Workspace, type WorkspaceTab } from '../model/workspace';
+import { nodeTab, tabName, tabOwner, treeOf, type MenuTab, type TabId, type Workspace, type WorkspaceTab } from '../model/workspace';
 import { buildMenuObject } from '../io/export';
-import { canonicalMember, didYouMean, modelMembers, type Model } from '../io/dataFormat';
+import { canonicalMember, didYouMean, modelMembers, type JsonObject, type Model } from '../io/dataFormat';
 import { checkMenu, type OwnerTemplates, type RawProblem } from './rules';
-import { checkSchema } from './schema';
 
 // validate(doc) (architecture.md §8): the ported DataValidator rules and the schema pass, both over the exported
 // MenuDefinition, with paths in the framework's format and the node each message is about. validateTab adds the
 // workspace checks (§18.5): references the workspace cannot resolve (with "did you mean"), recursive templates, and
-// owner-level definitions nothing uses.
+// owner-level definitions nothing uses. A menu template open in its own tab has the messages about its body (its menu
+// is validated as a whole). The schema pass (Ajv) is its own chunk: until loadSchemaPass resolves, only the
+// ported rules run, and the memoised results are recomputed once it arrives.
+
+let checkSchema: ((menu: JsonObject) => RawProblem[]) | null = null;
+let schemaLoad: Promise<void> | null = null;
+
+/** Load the schema pass once; resolves when validateTab includes its problems. */
+export function loadSchemaPass(): Promise<void> {
+  schemaLoad ??= import('./schema').then(m => { checkSchema = m.checkSchema; });
+  return schemaLoad;
+}
+
+/** Whether the schema pass has loaded. */
+export const schemaPassLoaded = (): boolean => checkSchema !== null;
 
 export function validate(doc: DesignerDocument, ownerTemplates: OwnerTemplates | null = null): Problem[] {
   const { value, nodeAt } = buildMenuObject(doc, { collapseShorthands: false, omitDefaults: false });
   const ported = checkMenu(value, ownerTemplates);
   const seen = new Set(ported.map(p => p.path));
-  const schema = checkSchema(value).filter(p => !seen.has(p.path) && (seen.add(p.path), true));
+  const schema = (checkSchema?.(value) ?? []).filter(p => !seen.has(p.path) && (seen.add(p.path), true));
   return [...ported, ...schema].map(p => toProblem(p, nodeAt));
 }
 
@@ -44,18 +57,19 @@ function nearestNode(pointer: string, nodeAt: Map<string, NodeId>): NodeId | und
 //  Workspace
 // ---------------------------------------------------------------------------------------------------------------------
 
-const cache = new WeakMap<WorkspaceTab, { resolver: Resolver; problems: Problem[] }>();
+const cache = new WeakMap<WorkspaceTab, { resolver: Resolver; schema: boolean; problems: Problem[] }>();
 
-/** The problems of one tab in its workspace (memoised per tab and workspace revision). */
+/** The problems of one tab in its workspace (memoised per tab, workspace revision and schema pass availability). */
 export function validateTab(ws: Workspace, tab: WorkspaceTab): Problem[] {
   const resolver = resolverOf(ws);
+  const schema = schemaPassLoaded();
   const hit = cache.get(tab);
-  if (hit && hit.resolver === resolver) {
+  if (hit && hit.resolver === resolver && hit.schema === schema) {
     return hit.problems;
   }
 
-  const problems = [...definitionProblems(tab, resolver), ...referenceProblems(tab, resolver), ...cycleProblems(tab, resolver), ...unusedProblems(tab, resolver)];
-  cache.set(tab, { resolver, problems });
+  const problems = [...definitionProblems(ws, tab, resolver), ...referenceProblems(tab, resolver), ...cycleProblems(ws, tab, resolver), ...unusedProblems(tab, resolver)];
+  cache.set(tab, { resolver, schema, problems });
   return problems;
 }
 
@@ -75,13 +89,33 @@ function ownerTemplates(resolver: Resolver, owner: string): OwnerTemplates | nul
   };
 }
 
-function definitionProblems(tab: WorkspaceTab, resolver: Resolver): Problem[] {
+const menuCache = new WeakMap<MenuTab, { resolver: Resolver; schema: boolean; problems: Problem[] }>();
+
+/** The problems of a menu document as a whole, Templates included (memoised like validateTab). */
+function menuProblems(tab: MenuTab, resolver: Resolver): Problem[] {
+  const schema = schemaPassLoaded();
+  const hit = menuCache.get(tab);
+  if (hit && hit.resolver === resolver && hit.schema === schema) {
+    return hit.problems;
+  }
+
+  const problems = validate(tab.doc, ownerTemplates(resolver, tab.doc.owner));
+  menuCache.set(tab, { resolver, schema, problems });
+  return problems;
+}
+
+function definitionProblems(ws: Workspace, tab: WorkspaceTab, resolver: Resolver): Problem[] {
   const owner = tabOwner(tab);
   switch (tab.kind) {
     case 'menu':
-      return validate(tab.doc, ownerTemplates(resolver, owner));
+      return menuProblems(tab, resolver).filter(p => nodeTab(ws.tabs, tab.id, p.nodeId) === tab.id);
     case 'template': {
-      // the template checked as the only template of an empty menu (paths read Templates.<name>…)
+      const menu = tab.menu !== undefined ? resolver.tab(tab.menu) : undefined;
+      if (menu?.kind === 'menu') {
+        return menuProblems(menu, resolver).filter(p => nodeTab(ws.tabs, menu.id, p.nodeId) === tab.id);
+      }
+
+      // an owner template checked as the only template of an empty menu (paths read Templates.<name>…)
       const doc: DesignerDocument = {
         owner, menuId: tab.name, menu: {}, menuExtra: {}, root: '', nodes: tab.doc.nodes, templates: { [tab.name]: tab.doc }, previewState: {}
       };
@@ -173,7 +207,7 @@ function templateEdges(resolver: Resolver) {
 }
 
 /** Instances that make a template expand itself (directly or through others). */
-function cycleProblems(tab: WorkspaceTab, resolver: Resolver): Problem[] {
+function cycleProblems(ws: Workspace, tab: WorkspaceTab, resolver: Resolver): Problem[] {
   const edges = templateEdges(resolver);
   /** A path of definitions from `start` to `goal`, or null. */
   const pathTo = (start: Definition, goal: Definition): Definition[] | null => {
@@ -200,7 +234,7 @@ function cycleProblems(tab: WorkspaceTab, resolver: Resolver): Problem[] {
     return walk(start);
   };
 
-  return edges.filter(e => e.tabId === tab.id).flatMap(e => {
+  return edges.filter(e => nodeTab(ws.tabs, e.tabId, e.nodeId) === tab.id).flatMap(e => {
     const back = pathTo(e.to, e.from);
     return back ? [{
       severity: 'warning' as const,

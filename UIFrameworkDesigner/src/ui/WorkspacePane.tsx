@@ -2,7 +2,7 @@ import { useState, type DragEvent } from 'react';
 import type { NodeId } from '../model/document';
 import { resolverOf, type Definition, type RefKind, type Resolver } from '../model/resolve';
 import { activeTab, useDesigner } from '../model/store';
-import { tabKindLabels, tabName, tabOwner, treeOf, type TabKind } from '../model/workspace';
+import { isMenuTemplate, tabKindLabels, tabName, tabOwner, treeOf, type TabKind, type WorkspaceTab } from '../model/workspace';
 import { refListId, TextWidget } from './fields/widgets';
 
 // Workspace UI (architecture.md §18.3): the tab strip, the definitions pane above the tree, the pickers' name lists,
@@ -13,11 +13,28 @@ export function useResolver(): Resolver {
   return useDesigner(s => resolverOf(s.workspace));
 }
 
-/** Open the tab that defines `def` with nothing selected (the inspector shows the definition). */
+/** Open the tab that defines `def` with nothing selected (the inspector shows the definition); a menu template in its own tab. */
 export function revealDefinition(def: Definition): void {
-  if (def.tabId !== null) {
+  if (def.tabId !== null && def.nodeId !== undefined) {
+    useDesigner.getState().openMenuTemplate(def.tabId, def.nodeId);
+  } else if (def.tabId !== null) {
     useDesigner.getState().reveal(def.tabId, null);
   }
+}
+
+/** Whether `tab` is the tab that shows `def` (a menu template's own tab for a menu template). */
+export function showsDefinition(tab: WorkspaceTab, def: Definition): boolean {
+  return def.nodeId !== undefined ? isMenuTemplate(tab) && tab.menu === def.tabId && tab.doc.root === def.nodeId : tab.id === def.tabId;
+}
+
+/** A tab's label: a menu template's reads `menu › name`. */
+function tabLabel(tabs: readonly WorkspaceTab[], tab: WorkspaceTab): string {
+  if (!isMenuTemplate(tab)) {
+    return tabName(tab);
+  }
+
+  const menu = tabs.find(t => t.id === tab.menu);
+  return menu ? `${tabName(menu)} › ${tab.name}` : tab.name;
 }
 
 /** The definition a reference names when the workspace holds it, else undefined. */
@@ -56,11 +73,11 @@ export function TabStrip({ readOnly = false }: { readOnly?: boolean }) {
         const active = tab.id === workspace.activeTab;
         return (
           <div key={tab.id} role="tab" aria-selected={active} tabIndex={active ? 0 : -1} draggable={!readOnly} className={active ? 'tab active' : 'tab'}
-            title={`${tabKindLabels[tab.kind]} ${tabOwner(tab)}/${tabName(tab)}`} onClick={() => openTab(tab.id)}
+            title={`${isMenuTemplate(tab) ? 'Menu template' : tabKindLabels[tab.kind]} ${tabOwner(tab)}/${tabLabel(workspace.tabs, tab)}`} onClick={() => openTab(tab.id)}
             onKeyDown={e => { if (e.key === 'Enter') { openTab(tab.id); } }}
             onDragStart={() => setDragged(tab.id)} onDragOver={e => e.preventDefault()} onDrop={e => { e.stopPropagation(); drop(e, i); }}>
             <span className={`tab-kind ${tab.kind}`}>{kindBadges[tab.kind]}</span>
-            <span className="tab-name">{tabName(tab)}</span>
+            <span className="tab-name">{tabLabel(workspace.tabs, tab)}</span>
             {dirty && <span className="tab-dirty" title="Changed since the workspace was opened or saved">●</span>}
             {workspace.tabs.length > 1 && !readOnly && (
               <button type="button" className="icon tab-close" title="Close the tab" onClick={e => { e.stopPropagation(); close(tab.id, dirty); }}>×</button>
@@ -90,7 +107,7 @@ const sections: { kind: RefKind; title: string }[] = [
 /** Every definition of the workspace by kind, with its usage count; a click opens it. */
 export function WorkspacePane() {
   const resolver = useResolver();
-  const activeId = useDesigner(s => s.workspace.activeTab);
+  const active = useDesigner(activeTab);
 
   return (
     <details className="workspace-pane" open>
@@ -102,7 +119,7 @@ export function WorkspacePane() {
             <div key={kind} className="ws-group">
               <div className="palette-group-name">{title}</div>
               {defs.map((d, i) => (
-                <button key={i} type="button" className={d.tabId === activeId && d.nodeId === undefined && kind !== 'class' ? 'ws-item active' : 'ws-item'}
+                <button key={i} type="button" className={showsDefinition(active, d) && kind !== 'class' ? 'ws-item active' : 'ws-item'}
                   disabled={d.tabId === null} title={`${d.owner}/${d.name}${d.nodeId !== undefined ? ' (menu template)' : ''}`} onClick={() => revealDefinition(d)}>
                   <span className="ws-name">{d.name}</span>
                   <span className="ws-count" title="Uses in the workspace">{resolver.usages(d).length}</span>

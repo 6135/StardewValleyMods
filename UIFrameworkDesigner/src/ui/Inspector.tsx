@@ -4,11 +4,11 @@ import { defaultOf, elementTypes, isTooltipBlock, typeInfo, usesMember } from '.
 import { templateUse, type Definition } from '../model/resolve';
 import { activeTab, activeUi, useDesigner } from '../model/store';
 import { subItemKind, subItemsOf, type SubItemKind } from '../model/subItems';
-import { tabOwner, treeOf, type OwnerTab, type TemplateTab, type TooltipTab, type WorkspaceTab } from '../model/workspace';
+import { tabName, tabOwner, treeOf, type OwnerTab, type TemplateTab, type TooltipTab, type WorkspaceTab } from '../model/workspace';
 import { allowsString, describe, schemaProperties, shapeOf } from '../fieldShapes';
 import { FieldRow, JsonRow } from './fields/FieldRow';
 import { refListId, TextWidget } from './fields/widgets';
-import { definitionOf, RenameRow, revealDefinition, UsedBy, useNodeTargets, useResolver } from './WorkspacePane';
+import { definitionOf, RenameRow, revealDefinition, showsDefinition, UsedBy, useNodeTargets, useResolver } from './WorkspacePane';
 
 // The inspector (architecture.md §6.2, §18.3): menu fields for a menu's root, the type's fields for an element, the
 // schema definition's fields for a sub-item (a Form field, a DataGrid column) or a tooltip block; the members of a
@@ -113,19 +113,22 @@ function useModelEntries(model: string, fields: Record<string, string>, extra: R
 }
 
 function TemplateInspector({ tab }: { tab: TemplateTab }) {
-  const def = useTabDefinition('template', tab.id);
+  const resolver = useResolver();
+  const def = resolver.definitions.find(d => d.kind === 'template' && showsDefinition(tab, d));
+  const menu = tab.menu !== undefined ? resolver.tab(tab.menu) : undefined;
   const setTabExtra = useDesigner(s => s.setTabExtra);
   const entries = useModelEntries('TemplateDefinition', tab.doc.fields, tab.doc.extra, new Set(['Params', 'Children']), 'template');
   return (
     <>
       <div className="inspector-head">
-        <span className="type">Owner template</span>
+        <span className="type">{menu ? 'Menu template' : 'Owner template'}</span>
         <span className="muted">instances: "Type": "{tab.name}"</span>
       </div>
       <details className="group" open>
         <summary>Definition</summary>
         {def && <RenameRow def={def} label="Name" id="template-name" />}
-        <OwnerRow owner={tab.owner} id="template-owner" title="The Owners entry the template belongs to; every UI of that owner can use it." />
+        {menu ? <p className="note">In the Templates of menu {tabName(menu)}: only that menu can use it, before an owner template of the same name.</p>
+          : <OwnerRow owner={tab.owner} id="template-owner" title="The Owners entry the template belongs to; every UI of that owner can use it." />}
         <JsonRow name="Params" value={tab.doc.params} description={describe('TemplateDefinition', 'Params')} commit={v => setTabExtra('Params', v)} />
       </details>
       <GroupedFields scope="template" groups={[{ name: 'Body stack', open: true }]} entries={entries} />
@@ -376,6 +379,7 @@ function AddArgument({ onAdd }: { onAdd(name: string): void }) {
 function MenuInspector({ doc, tabId }: { doc: DesignerDocument; tabId: string }) {
   const setMenuField = useDesigner(s => s.setMenuField);
   const setMenuExtra = useDesigner(s => s.setMenuExtra);
+  const { openMenuTemplate, addMenuTemplate } = useDesigner.getState();
   const def = useTabDefinition('menu', tabId);
   const props = schemaProperties('MenuDefinition');
   const skip = new Set(['Children', 'Templates', '$schema']);
@@ -397,7 +401,6 @@ function MenuInspector({ doc, tabId }: { doc: DesignerDocument; tabId: string })
     }
   }
 
-  const templates = Object.keys(doc.templates);
   return (
     <>
       <div className="inspector-head">
@@ -410,7 +413,15 @@ function MenuInspector({ doc, tabId }: { doc: DesignerDocument; tabId: string })
         {def && <RenameRow def={def} label="Menu id" id="menu-id" />}
       </details>
       <GroupedFields scope="menu" groups={menuGroups} entries={entries} />
-      {templates.length > 0 && <p className="note">Templates (read-only in this version): {templates.join(', ')}.</p>}
+      <details className="group" open={Object.keys(doc.templates).length > 0}>
+        <summary>Templates</summary>
+        <ul className="used-by">
+          {Object.entries(doc.templates).map(([name, t]) => (
+            <li key={t.root}><button type="button" className="link" title="Open the template in its own tab" onClick={() => openMenuTemplate(tabId, t.root)}>{name}</button></li>
+          ))}
+        </ul>
+        <button type="button" className="small" title="Add a template only this menu uses and open it" onClick={addMenuTemplate}>New menu template</button>
+      </details>
       {def && <UsedBy def={def} />}
     </>
   );

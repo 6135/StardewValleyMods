@@ -1,9 +1,10 @@
 import type { DesignerDocument, DesignerNode, NodeId, NodeTree, TemplateDoc } from './document';
 import { createEmptyDocument, createNode, newNodeId } from './factory';
+import { preorder } from './ops';
 
 // The workspace (architecture.md §18.2): the open tabs, each a menu or one of the owner-level definitions menus share
-// (an owner template, a named tooltip, the rest of an Owners entry). Every tab's `doc` is its unit of editing and undo;
-// cross-tab references are answered by model/resolve.ts.
+// (an owner template, a named tooltip, the rest of an Owners entry), or a menu template open in its own tab. Every
+// tab's `doc` is its unit of editing and undo; cross-tab references are answered by model/resolve.ts.
 
 export type TabId = string;
 
@@ -36,7 +37,13 @@ export interface OwnerDoc {
 }
 
 export interface MenuTab { id: TabId; kind: 'menu'; doc: DesignerDocument; patch?: PatchMembers }
-export interface TemplateTab { id: TabId; kind: 'template'; owner: string; name: string; doc: OwnerTemplateDoc }
+/**
+ * An owner template, or with `menu` a template of that menu tab's Templates: then owner and name mirror the menu's
+ * owner and the Templates key, and doc the template with its body (identified by its root node, stable across renames)
+ * and the menu's preview state. The menu document holds it; the store writes the tab's edits back and refreshes the
+ * tab from the menu (menuTemplateDoc, withMenuTemplate).
+ */
+export interface TemplateTab { id: TabId; kind: 'template'; owner: string; name: string; doc: OwnerTemplateDoc; menu?: TabId }
 export interface TooltipTab { id: TabId; kind: 'tooltip'; owner: string; name: string; doc: TooltipDoc }
 export interface OwnerTab { id: TabId; kind: 'owner'; owner: string; doc: OwnerDoc; patch?: PatchMembers }
 
@@ -83,6 +90,112 @@ export function sameName(a: string, b: string): boolean {
   return a.trim().toLowerCase() === b.trim().toLowerCase();
 }
 
+/** A menu template's tab (a template tab scoped to a menu). */
+export function isMenuTemplate(tab: WorkspaceTab): tab is TemplateTab & { menu: TabId } {
+  return tab.kind === 'template' && tab.menu !== undefined;
+}
+
+/** The tab whose definitions a tab sees first: a menu template's menu, else the tab itself. */
+export function scopeOf(tab: WorkspaceTab): TabId {
+  return tab.kind === 'template' && tab.menu !== undefined ? tab.menu : tab.id;
+}
+
+/** The menu templates of a menu tab that are open in tabs of their own. */
+export function menuTemplateTabs(tabs: readonly WorkspaceTab[], menu: TabId): (TemplateTab & { menu: TabId })[] {
+  return tabs.filter((t): t is TemplateTab & { menu: TabId } => isMenuTemplate(t) && t.menu === menu);
+}
+
+/** The Templates key of the menu template whose body starts at `root`, or undefined. */
+function templateKey(menu: DesignerDocument, root: NodeId): string | undefined {
+  return Object.keys(menu.templates).find(k => menu.templates[k]!.root === root);
+}
+
+/** The menu template whose body starts at `root`, as a template tab's name and doc; null when the menu has none. */
+export function menuTemplateDoc(menu: DesignerDocument, root: NodeId): { name: string; doc: OwnerTemplateDoc } | null {
+  const name = templateKey(menu, root);
+  if (name === undefined) {
+    return null;
+  }
+
+  const { params, fields, extra } = menu.templates[name]!;
+  const nodes = Object.fromEntries(preorder(menu, root).map(id => [id, menu.nodes[id]!]));
+  return { name, doc: { params, fields, extra, root, nodes, previewState: menu.previewState } };
+}
+
+/** `menu` with the template whose body started at `root` replaced by `doc` (its key kept); unchanged when it has none. */
+export function withMenuTemplate(menu: DesignerDocument, root: NodeId, doc: OwnerTemplateDoc): DesignerDocument {
+  const name = templateKey(menu, root);
+  if (name === undefined) {
+    return menu;
+  }
+
+  const nodes = { ...menu.nodes };
+  for (const id of preorder(menu, root)) {
+    delete nodes[id];
+  }
+
+  const { params, fields, extra } = doc;
+  return { ...menu, nodes: { ...nodes, ...doc.nodes }, templates: { ...menu.templates, [name]: { params, fields, extra, root: doc.root } }, previewState: doc.previewState };
+}
+
+/** Whether two template docs hold the same values (by reference); keeps an unchanged menu template tab as it is. */
+function sameTemplateDoc(a: OwnerTemplateDoc, b: OwnerTemplateDoc): boolean {
+  const ids = Object.keys(a.nodes);
+  return a.root === b.root && a.params === b.params && a.fields === b.fields && a.extra === b.extra && a.previewState === b.previewState
+    && ids.length === Object.keys(b.nodes).length && ids.every(id => a.nodes[id] === b.nodes[id]);
+}
+
+/**
+ * The tabs with the menu templates open in tabs of their own in step with their menus, after the tabs `changed` were
+ * replaced: a changed menu first takes the content of its open templates when `keepOpen` (an undo / redo restoring
+ * older menu content keeps what those tabs hold), then each changed menu template tab is written into its menu, and
+ * every menu template tab of a changed menu is refreshed from it (name, owner, doc), or left out when the menu no
+ * longer has that template.
+ */
+export function linkMenuTemplates(tabs: readonly WorkspaceTab[], changed: readonly TabId[], keepOpen: boolean): WorkspaceTab[] {
+  const out = [...tabs];
+  const at = (id: TabId) => out.findIndex(t => t.id === id);
+  const menus = new Set<TabId>();
+  for (const id of changed) {
+    const tab = out[at(id)];
+    if (tab?.kind === 'menu') {
+      const doc = keepOpen ? menuTemplateTabs(out, id).reduce((d, t) => withMenuTemplate(d, t.doc.root, t.doc), tab.doc) : tab.doc;
+      out[at(id)] = doc === tab.doc ? tab : { ...tab, doc };
+      menus.add(id);
+    }
+  }
+
+  for (const id of changed) {
+    const tab = out[at(id)];
+    const i = tab && isMenuTemplate(tab) ? at(tab.menu) : -1;
+    const menu = out[i];
+    if (tab && isMenuTemplate(tab) && menu?.kind === 'menu') {
+      out[i] = { ...menu, doc: withMenuTemplate(menu.doc, tab.doc.root, tab.doc) };
+      menus.add(menu.id);
+    }
+  }
+
+  return out.flatMap((t): WorkspaceTab[] => {
+    if (!isMenuTemplate(t) || !menus.has(t.menu)) {
+      return [t];
+    }
+
+    const menu = out[at(t.menu)];
+    const found = menu?.kind === 'menu' ? menuTemplateDoc(menu.doc, t.doc.root) : null;
+    if (!found || menu?.kind !== 'menu') {
+      return [];
+    }
+
+    const owner = menu.doc.owner;
+    return [found.name === t.name && owner === t.owner && sameTemplateDoc(t.doc, found.doc) ? t : { ...t, owner, name: found.name, doc: found.doc }];
+  });
+}
+
+/** The tab that shows node `nodeId` of tab `tabId`: a menu template open in its own tab shows its body's nodes. */
+export function nodeTab(tabs: readonly WorkspaceTab[], tabId: TabId, nodeId: NodeId | undefined): TabId {
+  return (nodeId !== undefined ? menuTemplateTabs(tabs, tabId).find(t => nodeId in t.doc.nodes)?.id : undefined) ?? tabId;
+}
+
 export function tabOwner(tab: WorkspaceTab): string {
   return tab.kind === 'menu' ? tab.doc.owner : tab.owner;
 }
@@ -124,10 +237,13 @@ export function emptyTooltip(): TooltipDoc {
   return { root: root.id, nodes: { [root.id]: root, [title.id]: title }, fields: {}, extra: {} };
 }
 
+/** The base name of a new template ("template" is the built-in Template type, not a template name). */
+export const NewTemplateName = 'myTemplate';
+
 /** A new tab of `kind` for `owner`, named so it does not clash with the workspace's definitions of that kind. */
 export function createTab(ws: Workspace, kind: TabKind, owner = ws.owner): WorkspaceTab {
   const taken = ws.tabs.filter(t => t.kind === kind && sameName(tabOwner(t), owner)).map(tabName);
-  const base = kind === 'owner' ? owner : kind;
+  const base = kind === 'owner' ? owner : kind === 'template' ? NewTemplateName : kind;
   let name = base;
   for (let n = 2; taken.some(t => sameName(t, name)); n++) {
     name = `${base}${n}`;

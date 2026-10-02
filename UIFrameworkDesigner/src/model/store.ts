@@ -2,15 +2,20 @@ import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
 import { produce, type Draft } from 'immer';
 import type { DesignerDocument, NodeId, NodeTree } from './document';
-import { newNodeId } from './factory';
+import { createNode, newNodeId } from './factory';
 import * as ops from './ops';
 import { renameEdits, renameRefusal, resolverOf, type Definition, type TabEdit } from './resolve';
 import type { PreviewSettings } from '../preview/PreviewPane';
-import { createTab, createWorkspace, menuTab, treeOf, type PreviewFunction, type TabId, type TabKind, type Workspace, type WorkspaceTab } from './workspace';
+import {
+  createTab, createWorkspace, isMenuTemplate, linkMenuTemplates, menuTab, menuTemplateDoc, menuTemplateTabs, NewTemplateName, sameName, treeOf,
+  type PreviewFunction, type TabId, type TabKind, type TemplateTab, type Workspace, type WorkspaceTab
+} from './workspace';
 
 // The workspace store (architecture.md §5, §18.2): the only editable state. Each tab has its own undo history (an edit
 // records the tab's previous content), so undo never jumps tabs; a rename across tabs records one entry per touched
-// tab under one group and undoes them together. Selection, collapsed tree nodes and preview settings are per-tab UI
+// tab under one group and undoes them together. A menu template open in its own tab is kept in step with its menu
+// (linkMenuTemplates): its edits are its own undo steps written into the menu, and an undo / redo in the menu keeps
+// what the template tab holds. Selection, collapsed tree nodes and preview settings are per-tab UI
 // state outside the history (and never exported). The node / menu actions keep their single-document names and act on the active tab.
 
 export interface TabUi {
@@ -57,6 +62,10 @@ export interface DesignerState {
   moveTab(id: TabId, index: number): void;
   /** Add a new tab of `kind` (named not to clash) after the active one and open it. */
   addTab(kind: TabKind): TabId;
+  /** Open the template of a menu tab whose body starts at `root` in its own tab (the one already open, else a new one). */
+  openMenuTemplate(menu: TabId, root: NodeId): void;
+  /** Add a template to the active menu's Templates (named not to clash) and open it. */
+  addMenuTemplate(): void;
   /** Open a tab and select a node in it. */
   reveal(tabId: TabId, nodeId?: NodeId | null): void;
   /** Rename a definition and every reference to it (one undoable step per touched tab, undone together); the refusal or null. */
@@ -123,7 +132,8 @@ export const useDesigner = create<DesignerState>()(
      * apply `after` (selection, collapsed) in the same update. False when nothing changed.
      */
     const commit = (tabId: TabId, edit: TabEdit | WorkspaceTab, group?: number, after?: (s: Draft<DesignerState>) => void): boolean => {
-      const tab = get().workspace.tabs.find(t => t.id === tabId);
+      const { tabs } = get().workspace;
+      const tab = tabs.find(t => t.id === tabId);
       if (!tab) {
         return false;
       }
@@ -133,9 +143,9 @@ export const useDesigner = create<DesignerState>()(
         return false;
       }
 
+      const linked = linkMenuTemplates(tabs.map(t => (t.id === tabId ? next : t)), [tabId], false);
       set(s => {
-        const i = s.workspace.tabs.findIndex(t => t.id === tabId);
-        s.workspace.tabs[i] = next as Draft<WorkspaceTab>;
+        place(s, linked);
         const h = (s.history[tabId] ??= { past: [], future: [] });
         h.past.push(group !== undefined ? { tab: tab as Draft<WorkspaceTab>, group } : { tab: tab as Draft<WorkspaceTab> });
         if (h.past.length > HistoryLimit) {
@@ -163,6 +173,23 @@ export const useDesigner = create<DesignerState>()(
         }
       });
 
+    /** Put the linked tabs in place, dropping the history, UI and saved state of menu template tabs they left out. */
+    const place = (s: Draft<DesignerState>, tabs: WorkspaceTab[]) => {
+      const kept = new Set(tabs.map(t => t.id));
+      for (const t of s.workspace.tabs) {
+        if (!kept.has(t.id)) {
+          delete s.history[t.id];
+          delete s.ui[t.id];
+          delete s.saved[t.id];
+          if (s.workspace.activeTab === t.id && t.kind === 'template' && t.menu !== undefined) {
+            s.workspace.activeTab = t.menu;
+          }
+        }
+      }
+
+      s.workspace.tabs = tabs as Draft<WorkspaceTab>[];
+    };
+
     const ui = (s: Draft<DesignerState>): Draft<TabUi> => (s.ui[s.workspace.activeTab] ??= { selection: null, collapsed: {} });
 
     /** Undo (from past to future) or redo the active tab's last entry, with the other entries of its group. */
@@ -176,18 +203,19 @@ export const useDesigner = create<DesignerState>()(
 
       const ids = top.group === undefined ? [workspace.activeTab]
         : Object.keys(history).filter(id => history[id]![from].at(-1)?.group === top.group);
+      const tabs = [...workspace.tabs];
       set(s => {
         for (const id of ids) {
           const entry = history[id]![from].at(-1)!;
-          const current = workspace.tabs.find(t => t.id === id);
+          const i = tabs.findIndex(t => t.id === id);
           const h = s.history[id]!;
           h[from].pop();
-          if (!current) {
+          if (i < 0) {
             continue;
           }
 
-          h[to].push(entry.group !== undefined ? { tab: current as Draft<WorkspaceTab>, group: entry.group } : { tab: current as Draft<WorkspaceTab> });
-          s.workspace.tabs[s.workspace.tabs.findIndex(t => t.id === id)] = entry.tab as Draft<WorkspaceTab>;
+          h[to].push(entry.group !== undefined ? { tab: tabs[i] as Draft<WorkspaceTab>, group: entry.group } : { tab: tabs[i] as Draft<WorkspaceTab> });
+          tabs[i] = entry.tab;
           // drop a selection the step removed
           const tabUi = s.ui[id];
           const tree = treeOf(entry.tab);
@@ -195,6 +223,8 @@ export const useDesigner = create<DesignerState>()(
             tabUi.selection = null;
           }
         }
+
+        place(s, linkMenuTemplates(tabs, ids, true));
       });
     };
 
@@ -222,18 +252,23 @@ export const useDesigner = create<DesignerState>()(
       }),
 
       closeTab: id => set(s => {
+        // a menu closes with its templates that are open in tabs of their own
+        const closing = new Set([id, ...menuTemplateTabs(s.workspace.tabs, id).map(t => t.id)]);
         const tabs = s.workspace.tabs;
         const i = tabs.findIndex(t => t.id === id);
-        if (i < 0 || tabs.length === 1) {
+        if (i < 0 || tabs.length === closing.size) {
           return;
         }
 
-        tabs.splice(i, 1);
-        delete s.history[id];
-        delete s.ui[id];
-        delete s.saved[id];
-        if (s.workspace.activeTab === id) {
-          s.workspace.activeTab = (tabs[i] ?? tabs[i - 1])!.id;
+        if (closing.has(s.workspace.activeTab)) {
+          s.workspace.activeTab = (tabs.slice(i).find(t => !closing.has(t.id)) ?? tabs.filter(t => !closing.has(t.id)).at(-1))!.id;
+        }
+
+        s.workspace.tabs = tabs.filter(t => !closing.has(t.id));
+        for (const c of closing) {
+          delete s.history[c];
+          delete s.ui[c];
+          delete s.saved[c];
         }
       }),
 
@@ -254,6 +289,49 @@ export const useDesigner = create<DesignerState>()(
           s.workspace.activeTab = tab.id;
         });
         return tab.id;
+      },
+
+      openMenuTemplate: (menu, root) => {
+        const { tabs } = get().workspace;
+        const open = menuTemplateTabs(tabs, menu).find(t => t.doc.root === root);
+        const owning = tabs.find(t => t.id === menu);
+        const found = owning?.kind === 'menu' ? menuTemplateDoc(owning.doc, root) : null;
+        const tab: TemplateTab | undefined = open
+          ?? (found && owning?.kind === 'menu' ? { id: newNodeId(), kind: 'template', owner: owning.doc.owner, name: found.name, doc: found.doc, menu } : undefined);
+        if (!tab) {
+          return;
+        }
+
+        set(s => {
+          if (!open) {
+            s.workspace.tabs.splice(s.workspace.tabs.findIndex(t => t.id === menu) + 1, 0, tab as Draft<WorkspaceTab>);
+            s.saved[tab.id] = tab as Draft<WorkspaceTab>;
+          }
+          s.workspace.activeTab = tab.id;
+        });
+      },
+
+      addMenuTemplate: () => {
+        const tab = activeTab(get());
+        if (tab.kind !== 'menu') {
+          return;
+        }
+
+        // not shadowing an owner template either (a menu's own template wins over the owner's of the same name)
+        const taken = resolverOf(get().workspace).names('template', tab.doc.owner, tab.id);
+        let name = NewTemplateName;
+        for (let n = 2; taken.some(t => sameName(t, name)); n++) {
+          name = `${NewTemplateName}${n}`;
+        }
+
+        const root = createNode('Template');
+        commit(tab.id, t => {
+          if (t.kind === 'menu') {
+            t.doc.templates[name] = { params: {}, fields: {}, extra: {}, root: root.id };
+            t.doc.nodes[root.id] = root;
+          }
+        });
+        get().openMenuTemplate(tab.id, root.id);
       },
 
       reveal: (tabId, nodeId) => set(s => {
@@ -360,7 +438,7 @@ export const useDesigner = create<DesignerState>()(
 
           if (tab.kind === 'menu' && tab.doc.owner !== owner) {
             tab.doc.owner = owner;
-          } else if (tab.kind !== 'menu' && tab.owner !== owner) {
+          } else if (tab.kind !== 'menu' && !isMenuTemplate(tab as WorkspaceTab) && tab.owner !== owner) {
             tab.owner = owner;
           }
         });
