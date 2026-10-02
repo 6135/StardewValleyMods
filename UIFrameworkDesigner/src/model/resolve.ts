@@ -2,7 +2,7 @@ import type { Draft } from 'immer';
 import type { DesignerDocument, DesignerNode, NodeId, TemplateDoc } from './document';
 import { canonicalType, isCustomTag, isTooltipBlock } from './metadata';
 import { subItemKind } from './subItems';
-import { sameName, tabOwner, treeOf, type TabId, type Workspace, type WorkspaceTab } from './workspace';
+import { isMenuTemplate, menuTemplateTabs, sameName, scopeOf, tabOwner, treeOf, type TabId, type Workspace, type WorkspaceTab } from './workspace';
 
 // The resolver (architecture.md §18.2): what a reference in one tab means in the workspace. Pure; one instance per
 // workspace revision (memoised on the tab list), so layout, validation and the UI share its indexes.
@@ -17,7 +17,7 @@ export interface Definition {
   name: string;
   /** The tab that defines it; null for a sprite (kept with the changes the workspace does not edit). */
   tabId: TabId | null;
-  /** A menu-level template: its root node in the menu tab. */
+  /** A menu-level template: its root node in the menu tab (also when it is open in a tab of its own). */
   nodeId?: NodeId;
 }
 
@@ -39,7 +39,7 @@ export type Resolution = Definition | 'external' | null;
 export interface Resolver {
   readonly definitions: readonly Definition[];
   readonly references: readonly Reference[];
-  /** Menu templates of `fromTab` first (templates), then the owner's. */
+  /** Menu templates of `fromTab` (of its menu for a menu template's tab) first (templates), then the owner's. */
   resolve(kind: RefKind, owner: string, name: string, fromTab?: TabId): Resolution;
   /** The references that resolve to `def`. */
   usages(def: Definition): Reference[];
@@ -119,7 +119,10 @@ function collectDefinitions(ws: Workspace): Definition[] {
         break;
       case 'template':
       case 'tooltip':
-        defs.push({ kind: tab.kind, owner: tab.owner, name: tab.name, tabId: tab.id });
+        // a menu template's tab shows a definition of its menu (above)
+        if (!isMenuTemplate(tab)) {
+          defs.push({ kind: tab.kind, owner: tab.owner, name: tab.name, tabId: tab.id });
+        }
         break;
       case 'owner': {
         const classes = tab.doc.extra['Classes'];
@@ -255,7 +258,9 @@ function collectReferences(ws: Workspace): Reference[] {
     };
 
     const tree = treeOf(tab);
-    for (const node of tree ? Object.values(tree.nodes) : []) {
+    // the body of a menu template open in its own tab is that tab's
+    const shown = new Set(menuTemplateTabs(ws.tabs, tab.id).flatMap(t => Object.keys(t.doc.nodes)));
+    for (const node of tree ? Object.values(tree.nodes).filter(n => !shown.has(n.id)) : []) {
       const use = node.id !== tree!.root ? templateUse(node) : null;
       if (use) {
         refs.push({ kind: 'template', owner, name: use.name, tabId: tab.id, nodeId: node.id, field: use.field });
@@ -312,13 +317,15 @@ function createResolver(ws: Workspace): Resolver {
   const tabs = new Map(ws.tabs.map(t => [t.id, t]));
   // owners whose Owners entry (owner, template or tooltip tab) / named sprites the workspace holds: references to
   // other owners cannot be checked here
-  const entryOwners = ws.tabs.filter(t => t.kind !== 'menu').map(tabOwner);
+  const entryOwners = ws.tabs.filter(t => t.kind !== 'menu' && !isMenuTemplate(t)).map(tabOwner);
   const spriteOwners = definitions.filter(d => d.kind === 'sprite').map(d => d.owner);
   const known = (kind: RefKind, owner: string) => (kind === 'sprite' ? spriteOwners : entryOwners).some(o => sameName(o, owner));
 
   const candidates = (kind: RefKind, owner: string, fromTab?: TabId): Definition[] => {
     const own = definitions.filter(d => d.kind === kind && sameName(d.owner, owner) && d.nodeId === undefined);
-    return kind === 'template' ? [...definitions.filter(d => d.kind === kind && d.nodeId !== undefined && d.tabId === fromTab), ...own] : own;
+    const from = fromTab !== undefined ? tabs.get(fromTab) : undefined;
+    const scope = from ? scopeOf(from) : fromTab;
+    return kind === 'template' ? [...definitions.filter(d => d.kind === kind && d.nodeId !== undefined && d.tabId === scope), ...own] : own;
   };
 
   const resolve = (kind: RefKind, owner: string, name: string, fromTab?: TabId): Resolution =>
@@ -370,7 +377,7 @@ function buildPreviewDocument(ws: Workspace, tab: WorkspaceTab): DesignerDocumen
   const owner = tabOwner(tab);
   const withOwnerTemplates = (doc: DesignerDocument): DesignerDocument => {
     const extra = ws.tabs.filter((t): t is Extract<WorkspaceTab, { kind: 'template' }> =>
-      t.kind === 'template' && t.id !== tab.id && sameName(t.owner, owner) && localTemplate(doc, t.name) === undefined);
+      t.kind === 'template' && !isMenuTemplate(t) && t.id !== tab.id && sameName(t.owner, owner) && localTemplate(doc, t.name) === undefined);
     if (extra.length === 0) {
       return doc;
     }
@@ -397,7 +404,11 @@ function buildPreviewDocument(ws: Workspace, tab: WorkspaceTab): DesignerDocumen
         }
       }
 
-      return withOwnerTemplates({ owner, menuId: tab.name, menu, menuExtra: {}, root, nodes, templates: {}, previewState });
+      // a menu template sees the other templates of its menu first
+      const scope = tab.menu !== undefined ? ws.tabs.find(t => t.id === tab.menu) : undefined;
+      const local = scope?.kind === 'menu' ? scope.doc : undefined;
+      const templates = local ? Object.fromEntries(Object.entries(local.templates).filter(([, t]) => t.root !== root)) : {};
+      return withOwnerTemplates({ owner, menuId: tab.name, menu, menuExtra: {}, root, nodes: local ? { ...local.nodes, ...nodes } : nodes, templates, previewState });
     }
     case 'tooltip':
     case 'owner':

@@ -1,6 +1,6 @@
 import type { JsonExportOptions, Problem } from '../model/document';
 import {
-  sameName, tabKindLabels, tabName, tabOwner, type OwnerTab, type PatchMembers, type PreviewData, type PreviewFunction, type TemplateTab, type TooltipTab, type Workspace, type WorkspaceTab
+  isMenuTemplate, sameName, scopeOf, tabKindLabels, tabName, tabOwner, type OwnerTab, type PatchMembers, type PreviewData, type PreviewFunction, type TemplateTab, type TooltipTab, type Workspace, type WorkspaceTab
 } from '../model/workspace';
 import { isObject, type JsonObject } from './dataFormat';
 import { buildMenuObject, buildOwnerObject, buildTemplateObject, buildTooltipObject, exportJson, menuKey, printJson } from './export';
@@ -28,13 +28,13 @@ interface Entry {
 function ownerEntries(ws: Workspace, options: Pick<JsonExportOptions, 'collapseShorthands' | 'omitDefaults'>): Entry[] {
   const owners: string[] = [];
   for (const tab of ws.tabs) {
-    if (tab.kind !== 'menu' && !owners.some(o => sameName(o, tab.owner))) {
+    if (tab.kind !== 'menu' && !isMenuTemplate(tab) && !owners.some(o => sameName(o, tab.owner))) {
       owners.push(tab.owner);
     }
   }
 
   return owners.map(owner => {
-    const mine = ws.tabs.filter(t => t.kind !== 'menu' && sameName(t.owner, owner));
+    const mine = ws.tabs.filter(t => t.kind !== 'menu' && !isMenuTemplate(t) && sameName(t.owner, owner));
     const ownerTab = mine.find((t): t is OwnerTab => t.kind === 'owner');
     const templates = mine.filter((t): t is TemplateTab => t.kind === 'template');
     const tooltips = mine.filter((t): t is TooltipTab => t.kind === 'tooltip');
@@ -123,11 +123,14 @@ function tabKey(tab: WorkspaceTab): string {
  * Autosave and share links use it too (share links unindented).
  */
 export function serializeWorkspace(ws: Workspace, indent = 2): string {
-  const tabs: DesignerTab[] = ws.tabs.map(t => {
+  // a menu template's tab is a view of its menu: not saved
+  const saved = ws.tabs.filter(t => !isMenuTemplate(t));
+  const tabs: DesignerTab[] = saved.map(t => {
     const state = t.kind === 'menu' || t.kind === 'template' ? t.doc.previewState : {};
     return Object.keys(state).length > 0 ? { kind: t.kind, key: tabKey(t), previewState: state } : { kind: t.kind, key: tabKey(t) };
   });
-  const active = ws.tabs.findIndex(t => t.id === ws.activeTab);
+  const activeTab = ws.tabs.find(t => t.id === ws.activeTab);
+  const active = saved.findIndex(t => t.id === (activeTab ? scopeOf(activeTab) : ws.activeTab));
   const data = ws.previewData;
   const preview = {
     ...(data && Object.keys(data.functions).length > 0 ? { functions: data.functions } : {}),
@@ -222,7 +225,7 @@ export function rawTab(tab: WorkspaceTab): string {
 function workspaceTemplates(ws: Workspace): Map<string, Set<string>> {
   const map = new Map<string, Set<string>>();
   for (const tab of ws.tabs) {
-    if (tab.kind === 'template') {
+    if (tab.kind === 'template' && !isMenuTemplate(tab)) {
       const key = tab.owner.trim().toLowerCase();
       map.set(key, (map.get(key) ?? new Set()).add(tab.name));
     }
@@ -247,5 +250,12 @@ export function parseRawTab(ws: Workspace, tab: WorkspaceTab, text: string): { t
   const patch = tab.kind === 'menu' || tab.kind === 'owner' ? tab.patch : undefined;
   const doc = (found.kind === 'menu' || found.kind === 'template') && (tab.kind === 'menu' || tab.kind === 'template')
     ? { ...found.doc, previewState: tab.doc.previewState } : found.doc;
+  if (isMenuTemplate(tab) && found.kind === 'template') {
+    // a menu template keeps its menu and its root node (what identifies it in the menu's Templates)
+    const { [found.doc.root]: root, ...nodes } = found.doc.nodes;
+    const body = { ...found.doc, previewState: tab.doc.previewState, root: tab.doc.root, nodes: { ...nodes, [tab.doc.root]: { ...root!, id: tab.doc.root } } };
+    return { tab: { ...found, doc: body, id: tab.id, menu: tab.menu }, problems: result.problems };
+  }
+
   return { tab: { ...found, doc, id: tab.id, ...(patch ? { patch } : {}) } as WorkspaceTab, problems: result.problems };
 }

@@ -7,7 +7,7 @@ import type { DesignerDocument, NodeId } from '../model/document';
 import { canvasTextMeasurer, CHIP_MARKS, layoutDocument, scrollOffsetAt, type LayoutBox, type Rect, type Scroller } from '../layout';
 import { subItemKind } from '../model/subItems';
 import { createEvaluator, previewValues, unknownNames, type ExternalFunctions } from './evaluate';
-import { gameArtSupported, pickGameArt, releaseGameArt, type GameArt } from './gameArt';
+import type { GameArt } from './gameArt';
 import { objectIndex } from './gameData';
 import { fontStyle, renderText } from './text';
 import { ItemSprite, TooltipBox } from './Tooltip';
@@ -96,6 +96,12 @@ function normalizeSettings(saved: PreviewSettings): PreviewSettings {
 const WheelNotch = 40;
 
 type Skin = 'default' | 'dark' | 'art';
+
+/** Whether the browser can pick a folder (Chromium); the game-art option is hidden elsewhere. */
+const gameArtSupported = (): boolean => typeof window !== 'undefined' && 'showDirectoryPicker' in window;
+
+/** The game-art skin is its own chunk, loaded when the user first picks a Content folder. */
+const pickGameArt = (): Promise<GameArt | undefined> => import('./gameArt').then(m => m.pickGameArt());
 
 interface BoxProps { box: LayoutBox; i18n: Record<string, string> | undefined; art: GameArt | undefined }
 
@@ -267,7 +273,11 @@ export function PreviewPane(props: PreviewPaneProps): ReactNode {
   const [tipNode, setTipNode] = useState<NodeId | null>(null);
   const worldRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => () => releaseGameArt(art), [art]);
+  useEffect(() => () => {
+    if (art) {
+      void import('./gameArt').then(m => m.releaseGameArt(art));
+    }
+  }, [art]);
 
   const chooseSkin = async (value: Skin): Promise<void> => {
     if (value === 'art' && !art) {

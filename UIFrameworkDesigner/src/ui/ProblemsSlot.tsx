@@ -1,11 +1,11 @@
-import { useDeferredValue, useMemo, useState } from 'react';
+import { useDeferredValue, useEffect, useMemo, useState } from 'react';
 import type { Problem } from '../model/document';
 import { useDesigner } from '../model/store';
 import { tabName, type TabId } from '../model/workspace';
-import { validateTab } from '../validate';
+import { loadSchemaPass, schemaPassLoaded, validateTab } from '../validate';
 
 // The problems pane (architecture.md §8, §18.5): validation messages of the active tab or of the whole workspace;
-// clicking one opens its tab and selects its node.
+// clicking one opens its tab and selects its node. The schema pass loads lazily; its problems join the list when it does.
 
 type Scope = 'tab' | 'workspace';
 
@@ -13,10 +13,16 @@ export function ProblemsSlot() {
   const workspace = useDeferredValue(useDesigner(s => s.workspace));
   const reveal = useDesigner(s => s.reveal);
   const [scope, setScope] = useState<Scope>('tab');
+  const [schemaReady, setSchemaReady] = useState(schemaPassLoaded);
+  useEffect(() => {
+    let live = true;
+    void loadSchemaPass().then(() => { if (live) setSchemaReady(true); });
+    return () => { live = false; };
+  }, []);
   const problems = useMemo(() => {
     const tabs = scope === 'tab' ? workspace.tabs.filter(t => t.id === workspace.activeTab) : workspace.tabs;
     return tabs.flatMap(tab => validateTab(workspace, tab).map((problem): { tabId: TabId; tab: string; problem: Problem } => ({ tabId: tab.id, tab: tabName(tab), problem })));
-  }, [workspace, scope]);
+  }, [workspace, scope, schemaReady]);
 
   return (
     <section className="pane problems" data-pane="problems" aria-label="Problems">

@@ -29,9 +29,6 @@ interface DirectoryPickerWindow {
   showDirectoryPicker(options?: { id?: string; mode?: 'read' }): Promise<FileSystemDirectoryHandle>;
 }
 
-/** Whether the browser can pick a folder (Chromium); the option is hidden elsewhere. */
-export const gameArtSupported = (): boolean => typeof window !== 'undefined' && 'showDirectoryPicker' in window;
-
 async function openFile(root: FileSystemDirectoryHandle, path: string): Promise<File | undefined> {
   const parts = path.split('/');
   try {

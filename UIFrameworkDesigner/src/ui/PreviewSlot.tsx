@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState, type PointerEvent, type ReactNode } from 'react';
+import { lazy, Suspense, useCallback, useMemo, useRef, useState, type PointerEvent, type ReactNode } from 'react';
 import type { DesignerDocument, NodeId, Problem } from '../model/document';
 import { buildTooltipObject } from '../io/export';
 import { parseRawTab, rawTab } from '../io/workspace';
@@ -7,7 +7,6 @@ import { previewDocument, resolverOf } from '../model/resolve';
 import { activeTab, activeUi, useDesigner } from '../model/store';
 import { tabOwner, type PreviewData, type TabId, type TooltipTab, type Workspace, type WorkspaceTab } from '../model/workspace';
 import { previewValues, type ExternalFunctions } from '../preview/evaluate';
-import { I18nLoader } from '../preview/I18nLoader';
 import { defaultPreviewSettings, PreviewPane, type TooltipContent } from '../preview/PreviewPane';
 import { externalFunctions, findPreviewFunctions, findSampleSources } from '../preview/previewData';
 import { PreviewStatePanel } from '../preview/PreviewStatePanel';
@@ -83,12 +82,15 @@ function Preview({ readOnly }: { readOnly: boolean }) {
         <PreviewDrawer open={drawer.open} height={drawer.height} onChange={setDrawer}>
           <PreviewStatePanel {...(doc ? { doc } : {})} onChange={setPreviewState} functions={uses} sources={sources} data={data}
             i18nLoaded={i18n !== null} onFunction={setPreviewFunction} onRows={setSampleRows} needed={needed.names} focus={needed.focus} />
-          <I18nLoader onLoad={setI18n} />
+          <Suspense fallback={null}><I18nLoader onLoad={setI18n} /></Suspense>
         </PreviewDrawer>
       )}
     </>
   );
 }
+
+/** The i18n loader is its own chunk (it is in the drawer, rarely used). */
+const I18nLoader = lazy(() => import('../preview/I18nLoader'));
 
 /** The canvas keeps at least this much height when the drawer is dragged up (CSS pixels). */
 const MinCanvas = 180;
