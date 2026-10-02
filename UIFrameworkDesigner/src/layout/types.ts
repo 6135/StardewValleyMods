@@ -40,6 +40,43 @@ export interface LayoutOptions {
   switchCases?: Record<NodeId, string>;
   /** Designer addition: lay out elements hidden by Visible / If / Condition as if visible (their boxes get `hidden`). */
   showHidden?: boolean;
+  /**
+   * Scroll offsets by scroll key (Scroller.key): pixels for a ScrollView and the menu viewport, the first shown row for
+   * a List / DataGrid; 0 when absent. The layout clamps them like the framework.
+   */
+  scrollOffsets?: Record<string, number>;
+  /** Designer addition: lay the window out as if the screen were tall enough for it (no viewport clamp). */
+  fullHeight?: boolean;
+}
+
+/** The scroll key of the menu viewport (UIMenu.Viewport); a ScrollView / List / DataGrid uses its node id. */
+export const MENU_SCROLL_KEY = '$menu';
+
+/** Components/ScrollbarGadget.cs geometry: arrows (absent when the column is too short), track and thumb. */
+export interface ScrollbarParts {
+  bounds: Rect;
+  up?: Rect;
+  down?: Rect;
+  track: Rect;
+  /** Drawn only when the track is at least as tall as the thumb. */
+  thumb: Rect;
+}
+
+/** Something the player can scroll: the menu viewport, a ScrollView, List or DataGrid whose content overflows. */
+export interface Scroller {
+  /** MENU_SCROLL_KEY or the element's node id (LayoutOptions.scrollOffsets). */
+  key: string;
+  /** Where the wheel scrolls it: its bounds, cut by the ancestors' clip. */
+  area: Rect;
+  /** The ancestors' clip of its scrollbar, if any. */
+  clip?: Rect;
+  /** The clamped offset in effect and its maximum (> 0). */
+  offset: number;
+  max: number;
+  /** Offset change per wheel notch or arrow click: ScrollView.ScrollStep pixels, one row for List / DataGrid. */
+  step: number;
+  /** The scrollbar the framework draws; absent for a ScrollView with ShowScrollbar false. */
+  bar?: ScrollbarParts;
 }
 
 export interface LayoutResult {
@@ -55,6 +92,8 @@ export interface LayoutResult {
   drawBox: boolean;
   /** Every placed element, parents before children (draw order). */
   boxes: LayoutBox[];
+  /** The scrollable areas, parents before children. */
+  scrollers: Scroller[];
   /**
    * The layout-affecting expressions (menu Width / Height / X / Y / Padding, element Row, Column, spans, Cell, size,
    * margins, Visible / If / Condition, Switch) the preview could not evaluate, in build order (repeats possible).
@@ -75,8 +114,6 @@ export interface BoxDetail {
   /** Panel / Button DrawBox, Spacer Line. */
   drawBox?: boolean;
   line?: boolean;
-  /** ScrollView / List / DataGrid reserve a scrollbar column on the right of this width. */
-  scrollbar?: number;
   /** Image / ItemImage / Button icon reference. */
   sprite?: string;
   placeholder?: string;

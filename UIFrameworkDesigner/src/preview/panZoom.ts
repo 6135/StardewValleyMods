@@ -1,5 +1,5 @@
 // The preview's pan / zoom canvas (architecture.md §7.1), like a diagram viewer: the wheel (and a trackpad pinch,
-// ctrl + wheel) zooms around the cursor, a drag pans (left button once past a few pixels, so clicks still select;
+// ctrl + wheel) zooms around the cursor unless the content takes it (a scrollable box; never with ctrl), a drag pans (left button once past a few pixels, so clicks still select;
 // middle button or space + drag at once), one finger pans and two pinch on touch, a double click on empty canvas fits.
 import { useEffect, useLayoutEffect, useRef, useState, type MouseEvent, type PointerEvent, type RefObject } from 'react';
 import type { Rect } from '../layout';
@@ -60,11 +60,16 @@ interface Gesture {
   pinch?: { distance: number; view: CanvasView };
 }
 
+/** Offered a wheel event (without ctrl) at screen point (x, y), `deltaY` in CSS pixels; true when it took it. */
+export type WheelHandler = (x: number, y: number, deltaY: number) => boolean;
+
 /**
  * Pan / zoom state for a viewport showing `bounds` (screen coordinates); `view` undefined means fit, which follows the
- * viewport's size. `itemSelector` matches the clickable content (a double click there is not a fit).
+ * viewport's size. `itemSelector` matches the clickable content (a double click there is not a fit). `onWheel` sees
+ * a plain wheel first (scrolling content); what it does not take zooms.
  */
-export function usePanZoom(bounds: Rect, view: CanvasView | undefined, onView: (view: CanvasView | undefined) => void, itemSelector: string): PanZoom {
+export function usePanZoom(bounds: Rect, view: CanvasView | undefined, onView: (view: CanvasView | undefined) => void, itemSelector: string,
+  onWheel?: WheelHandler): PanZoom {
   const viewportRef = useRef<HTMLDivElement | null>(null);
   const [size, setSize] = useState({ width: 800, height: 600 });
   const [space, setSpace] = useState(false);
@@ -90,8 +95,8 @@ export function usePanZoom(bounds: Rect, view: CanvasView | undefined, onView: (
 
   const current = view ?? fitView(bounds, size);
   // the native wheel listener (non-passive, to keep the page from scrolling) reads the latest view through a ref
-  const latest = useRef({ current, onView });
-  latest.current = { current, onView };
+  const latest = useRef({ current, onView, onWheel });
+  latest.current = { current, onView, onWheel };
 
   useEffect(() => {
     const el = viewportRef.current;
@@ -102,10 +107,15 @@ export function usePanZoom(bounds: Rect, view: CanvasView | undefined, onView: (
       e.preventDefault();
       const r = el.getBoundingClientRect();
       const lines = e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? r.height : 1;
+      const { current: v, onView: set, onWheel: content } = latest.current;
+      const px = e.clientX - r.left;
+      const py = e.clientY - r.top;
+      if (!e.ctrlKey && content?.((px - v.x) / v.zoom, (py - v.y) / v.zoom, e.deltaY * lines)) {
+        return;
+      }
       // a trackpad pinch arrives as ctrl + wheel with small deltas: zoom faster per pixel
       const factor = Math.exp(-e.deltaY * lines * (e.ctrlKey ? 0.01 : 0.0015));
-      const { current: v, onView: set } = latest.current;
-      set(zoomAt(v, v.zoom * factor, e.clientX - r.left, e.clientY - r.top));
+      set(zoomAt(v, v.zoom * factor, px, py));
     };
     el.addEventListener('wheel', onWheel, { passive: false });
     return () => el.removeEventListener('wheel', onWheel);

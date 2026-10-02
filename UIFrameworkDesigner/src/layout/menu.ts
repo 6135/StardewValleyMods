@@ -4,8 +4,8 @@ import type { DesignerDocument } from '../model/document';
 import { defaultOf } from '../model/metadata';
 import { Builder, fromNode } from './build';
 import { LScrollView, LStack, type LElement } from './elements';
-import type { LayoutBox, LayoutOptions, LayoutResult, Rect } from './types';
-import { CHIP_MARKS } from './types';
+import type { LayoutBox, LayoutOptions, LayoutResult, Rect, Scroller } from './types';
+import { CHIP_MARKS, MENU_SCROLL_KEY } from './types';
 import { type Anchor, parseAlign, parseAnchor, parseBool, parseInt32 } from './values';
 
 /** UIMenu.BoxInsetSide / BoxInsetTop / BoxInsetBottom: IClickableMenu.spaceToClearSideBorder + borderWidth. */
@@ -28,7 +28,7 @@ function intersect(a: Rect, b: Rect): Rect {
 const inside = (r: Rect, clip: Rect): boolean =>
   r.x >= clip.x && r.y >= clip.y && r.x + r.width <= clip.x + clip.width && r.y + r.height <= clip.y + clip.height;
 
-function emit(element: LElement, clip: Rect | null, depth: number, boxes: LayoutBox[]): void {
+function emit(element: LElement, clip: Rect | null, depth: number, out: { boxes: LayoutBox[]; scrollers: Scroller[] }): void {
   if (!element.visible) {
     return;
   }
@@ -44,13 +44,17 @@ function emit(element: LElement, clip: Rect | null, depth: number, boxes: Layout
     if (info.synthetic) box.synthetic = true;
     if (info.unresolved) box.unresolved = true;
     if (info.detail) box.detail = info.detail;
-    boxes.push(box);
+    out.boxes.push(box);
     childDepth = depth + 1;
+  }
+  const scroll = element.scrollState();
+  if (scroll) {
+    out.scrollers.push({ ...scroll, area: clip ? intersect(element.bounds, clip) : { ...element.bounds }, ...(clip ? { clip } : {}) });
   }
   const own = element.childClip();
   const childClip = own ? (clip ? intersect(clip, own) : own) : clip;
   for (const child of element.childElements) {
-    emit(child, childClip, childDepth, boxes);
+    emit(child, childClip, childDepth, out);
   }
 }
 
@@ -83,6 +87,8 @@ export function layoutDocument(doc: DesignerDocument, opts: LayoutOptions): Layo
   root.verticalAlign = 'stretch';
   const viewport = new LScrollView(ctx, null, 0);
   viewport.fitContent = true;
+  viewport.scrollKey = MENU_SCROLL_KEY;
+  viewport.scrollOffset = opts.scrollOffsets?.[MENU_SCROLL_KEY] ?? 0;
   viewport.horizontalAlign = 'stretch';
   viewport.verticalAlign = 'stretch';
   viewport.add(root);
@@ -95,7 +101,8 @@ export function layoutDocument(doc: DesignerDocument, opts: LayoutOptions): Layo
   const insetW = 2 * inset;
   const insetH = 2 * inset;
   const banner = hasTitle && drawBox ? TITLE_RESERVE : 0;
-  const maxH = Math.max(1, vp.y - banner);
+  // full height (designer): no clamp to the screen, so the viewport never overflows
+  const maxH = opts.fullHeight ? Number.POSITIVE_INFINITY : Math.max(1, vp.y - banner);
   const availW = (width ?? vp.x) - insetW;
   const availH = Math.min(height ?? maxH, maxH) - insetH;
   viewport.measure({ x: Math.max(0, availW), y: Math.max(0, availH) });
@@ -120,10 +127,10 @@ export function layoutDocument(doc: DesignerDocument, opts: LayoutOptions): Layo
   const content: Rect = { x: px + inset, y: py + inset, width: Math.max(0, w - insetW), height: Math.max(0, h - insetH) };
   viewport.arrange(content);
 
-  const boxes: LayoutBox[] = [];
-  emit(viewport, null, 0, boxes);
+  const out = { boxes: [] as LayoutBox[], scrollers: [] as Scroller[] };
+  emit(viewport, null, 0, out);
 
-  const result: LayoutResult = { window, content, drawBox, boxes, unresolved: builder.unresolved };
+  const result: LayoutResult = { window, content, drawBox, ...out, unresolved: builder.unresolved };
   if (titleText !== undefined && titleText.replace(CHIP_MARKS, '').length > 0) {
     result.titleText = titleText;
     // SpriteText's width is approximated with the dialogue font

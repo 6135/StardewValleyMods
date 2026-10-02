@@ -1,9 +1,10 @@
 // Schematic preview (architecture.md §7): the layout port's boxes drawn as absolutely positioned DOM elements, in the
 // schematic skin or, when the user picks their Content folder, the game-art skin (gameArt.ts), on a pan / zoom canvas
-// (panZoom.ts) around the game screen. A tooltip tab shows its tooltip on the same canvas, its blocks selectable.
-import { useEffect, useMemo, useRef, useState, type CSSProperties, type MouseEvent, type ReactNode } from 'react';
+// (panZoom.ts) around the game screen. Scrollable boxes (the menu viewport, ScrollView, List, DataGrid) scroll like in
+// game: wheel, scrollbar arrows, thumb drag. A tooltip tab shows its tooltip on the same canvas, its blocks selectable.
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type MouseEvent, type PointerEvent, type ReactNode } from 'react';
 import type { DesignerDocument, NodeId } from '../model/document';
-import { canvasTextMeasurer, CHIP_MARKS, layoutDocument, type LayoutBox, type Rect } from '../layout';
+import { canvasTextMeasurer, CHIP_MARKS, layoutDocument, scrollOffsetAt, type LayoutBox, type Rect, type Scroller } from '../layout';
 import { subItemKind } from '../model/subItems';
 import { createEvaluator, previewValues, unknownNames, type ExternalFunctions } from './evaluate';
 import { gameArtSupported, pickGameArt, releaseGameArt, type GameArt } from './gameArt';
@@ -54,12 +55,24 @@ export interface PreviewPaneProps {
   onShowState?(names: string[]): void;
 }
 
-const screens = { '1280×720': [1280, 720], '1920×1080': [1920, 1080] } as const;
-type ScreenKey = keyof typeof screens | 'custom';
+/** Game window sizes; the menu is laid out on the UI viewport, the window ÷ the UI scale. */
+const windowSizes = {
+  '1280×720': [1280, 720], '1366×768': [1366, 768], '1600×900': [1600, 900], '1920×1080': [1920, 1080], '2560×1440': [2560, 1440]
+} as const;
+type ScreenKey = keyof typeof windowSizes | 'custom';
+/** The game's UI scale option (Game1.options.uiScale), in percent. */
+const uiScales = [75, 100, 125, 150] as const;
 
 export interface PreviewSettings {
+  /** The game window size. */
   screen: ScreenKey;
   custom: { width: number; height: number };
+  /** UI scale in percent. */
+  uiScale: number;
+  /** Lay the window out as if the screen were tall enough for it (LayoutOptions.fullHeight). */
+  fullHeight: boolean;
+  /** Scroll offsets by scroll key (LayoutOptions.scrollOffsets). */
+  scroll?: Record<string, number>;
   /** The canvas pan / zoom; absent: fit the screen and the content. */
   view?: CanvasView;
   /** Rows rendered by Repeat, List and DataGrid. */
@@ -67,7 +80,20 @@ export interface PreviewSettings {
   showHidden: boolean;
 }
 
-export const defaultPreviewSettings: PreviewSettings = { screen: '1280×720', custom: { width: 1600, height: 900 }, repeatCount: 3, showHidden: false };
+export const defaultPreviewSettings: PreviewSettings = {
+  screen: '1920×1080', custom: { width: 1600, height: 900 }, uiScale: 100, fullHeight: false, repeatCount: 3, showHidden: false
+};
+
+/** Settings saved before a member existed take its default; a screen or scale no longer offered, the default one. */
+function normalizeSettings(saved: PreviewSettings): PreviewSettings {
+  const s = { ...defaultPreviewSettings, ...saved };
+  if (s.screen !== 'custom' && !(s.screen in windowSizes)) s.screen = defaultPreviewSettings.screen;
+  if (!(uiScales as readonly number[]).includes(s.uiScale)) s.uiScale = defaultPreviewSettings.uiScale;
+  return s;
+}
+
+/** Wheel movement (CSS pixels) that makes one notch: a mouse wheel notch is ~100, a trackpad sends small deltas. */
+const WheelNotch = 40;
 
 type Skin = 'default' | 'dark' | 'art';
 
@@ -151,10 +177,61 @@ function BoxContent(props: BoxProps): ReactNode {
   }
 }
 
-const inside = (box: LayoutBox, x: number, y: number): boolean => {
-  const r = box.clipped ?? box.rect;
-  return x >= r.x && y >= r.y && x < r.x + r.width && y < r.y + r.height;
-};
+const within = (r: Rect, x: number, y: number): boolean => x >= r.x && y >= r.y && x < r.x + r.width && y < r.y + r.height;
+const inside = (box: LayoutBox, x: number, y: number): boolean => within(box.clipped ?? box.rect, x, y);
+
+/** A CSS clip-path showing the part `c` of the element drawn at `r`. */
+const clipInset = (r: Rect, c: Rect): string =>
+  `inset(${c.y - r.y}px ${r.x + r.width - (c.x + c.width)}px ${r.y + r.height - (c.y + c.height)}px ${c.x - r.x}px)`;
+
+interface ScrollbarProps {
+  scroller: Scroller;
+  /** A pointer position in screen (UI) pixels. */
+  toScreen(e: { clientX: number; clientY: number }): { x: number; y: number };
+  onScroll(scroller: Scroller, offset: number): void;
+}
+
+/** Components/ScrollbarGadget.cs drawn and clicked: arrows step, the thumb drags, the track jumps and drags. */
+function Scrollbar({ scroller, toScreen, onScroll }: ScrollbarProps): ReactNode {
+  const bar = scroller.bar!;
+  const b = bar.bounds;
+  const dragging = useRef(false);
+  const at = (r: Rect): CSSProperties => ({ left: r.x - b.x, top: r.y - b.y, width: r.width, height: r.height });
+  const style: CSSProperties = { left: b.x, top: b.y, width: b.width, height: b.height };
+  if (scroller.clip) style.clipPath = clipInset(b, scroller.clip);
+
+  const down = (e: PointerEvent): void => {
+    e.stopPropagation();
+    if (e.button !== 0) return;
+    const p = toScreen(e);
+    if (bar.up && within(bar.up, p.x, p.y)) {
+      onScroll(scroller, scroller.offset - scroller.step);
+    } else if (bar.down && within(bar.down, p.x, p.y)) {
+      onScroll(scroller, scroller.offset + scroller.step);
+    } else if (p.y >= bar.track.y && p.y < bar.track.y + bar.track.height) {
+      // ScrollbarGadget.HitTest: the strip beside the track is track; a track click jumps, then both drag
+      dragging.current = true;
+      e.currentTarget.setPointerCapture(e.pointerId);
+      if (!within(bar.thumb, p.x, p.y)) onScroll(scroller, scrollOffsetAt(scroller, p.y));
+    }
+  };
+  const move = (e: PointerEvent): void => {
+    if (dragging.current) onScroll(scroller, scrollOffsetAt(scroller, toScreen(e).y));
+  };
+  const up = (): void => {
+    dragging.current = false;
+  };
+  const stop = (e: MouseEvent): void => e.stopPropagation();
+  return (
+    <div className="pv-sb" style={style} onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={up}
+      onClick={stop} onDoubleClick={stop}>
+      {bar.up ? <div className="pv-sb-arrow" style={at(bar.up)}>▲</div> : null}
+      {bar.down ? <div className="pv-sb-arrow" style={at(bar.down)}>▼</div> : null}
+      {bar.track.height > 0 ? <div className="pv-sb-track" style={at(bar.track)} /> : null}
+      {bar.track.height >= bar.thumb.height ? <div className="pv-sb-thumb" style={at(bar.thumb)} /> : null}
+    </div>
+  );
+}
 
 function union(a: Rect, b: Rect): Rect {
   const x = Math.min(a.x, b.x);
@@ -169,8 +246,8 @@ export function PreviewPane(props: PreviewPaneProps): ReactNode {
   const { doc, tooltip, selection, onSelect, switchCases, i18n, resolveTooltip, resolveMenuLink, onOpenMenu, functions, sampleRows, onShowState } = props;
   const [ownSettings, setOwnSettings] = useState(defaultPreviewSettings);
   // settings saved before a member existed take its default
-  const settings: PreviewSettings = { ...defaultPreviewSettings, ...(props.settings ?? ownSettings) };
-  const { screen, custom, repeatCount, showHidden } = settings;
+  const settings = normalizeSettings(props.settings ?? ownSettings);
+  const { screen, custom, uiScale, fullHeight, scroll, repeatCount, showHidden } = settings;
   const emit = (next: PreviewSettings): void => {
     if (props.onSettingsChange) {
       props.onSettingsChange(next);
@@ -203,7 +280,10 @@ export function PreviewPane(props: PreviewPaneProps): ReactNode {
     setSkin(value);
   };
 
-  const [screenW, screenH] = screen === 'custom' ? [custom.width, custom.height] : screens[screen];
+  // the UI viewport (Game1.uiViewport, UIServices.ViewportSize): the window size ÷ options.uiScale, rounded up
+  const [windowW, windowH] = screen === 'custom' ? [custom.width, custom.height] : windowSizes[screen];
+  const screenW = Math.ceil(windowW * 100 / uiScale);
+  const screenH = Math.ceil(windowH * 100 / uiScale);
   const measureText = useMemo(() => canvasTextMeasurer(i18n), [i18n]);
   const layout = useMemo(() => (doc ? layoutDocument(doc, {
     screenWidth: screenW,
@@ -212,9 +292,11 @@ export function PreviewPane(props: PreviewPaneProps): ReactNode {
     measureText,
     evaluate: createEvaluator(doc, functions),
     showHidden,
+    fullHeight,
+    ...(scroll ? { scrollOffsets: scroll } : {}),
     ...(switchCases ? { switchCases } : {}),
     ...(sampleRows ? { sampleRows } : {})
-  }) : null), [doc, screenW, screenH, repeatCount, measureText, showHidden, switchCases, functions, sampleRows]);
+  }) : null), [doc, screenW, screenH, repeatCount, measureText, showHidden, fullHeight, scroll, switchCases, functions, sampleRows]);
   const values = useMemo(() => (doc ? previewValues(doc, functions) : {}), [doc, functions]);
   const unknown = useMemo(() => (doc && layout ? unknownNames(layout.unresolved, doc, functions) : []), [doc, layout, functions]);
 
@@ -224,12 +306,45 @@ export function PreviewPane(props: PreviewPaneProps): ReactNode {
     if (layout) {
       b = union(b, layout.window);
       if (layout.title) b = union(b, layout.title);
-      for (const box of layout.boxes) b = union(b, box.clipped ?? box.rect);
+      for (const box of layout.boxes) {
+        // a box scrolled or clipped out of sight is not drawn and does not count
+        const r = box.clipped ?? box.rect;
+        if (!box.clipped || (r.width > 0 && r.height > 0)) b = union(b, r);
+      }
     }
     return b;
   }, [layout, screenW, screenH]);
-  const canvas = usePanZoom(bounds, settings.view, setView, itemSelector);
+  const scrollTo = (scroller: Scroller, offset: number): void => {
+    const next = Math.min(Math.max(0, Math.round(offset)), scroller.max);
+    if (next !== scroller.offset) change({ scroll: { ...scroll, [scroller.key]: next } });
+  };
+
+  // the wheel over a scrollable box scrolls it (one step per notch); at its end it falls through to the box around it
+  // (HandleScroll unhandled), and over none it zooms the canvas
+  const wheelRest = useRef(0);
+  const onWheel = (x: number, y: number, deltaY: number): boolean => {
+    const under = (layout?.scrollers ?? []).filter(sc => within(sc.area, x, y));
+    if (under.length === 0) {
+      wheelRest.current = 0;
+      return false;
+    }
+    wheelRest.current += deltaY;
+    if (Math.abs(wheelRest.current) < WheelNotch) {
+      return true;
+    }
+    const down = wheelRest.current > 0;
+    wheelRest.current = 0;
+    const target = [...under].reverse().find(sc => (down ? sc.offset < sc.max : sc.offset > 0));
+    if (target) scrollTo(target, target.offset + (down ? target.step : -target.step));
+    return true;
+  };
+
+  const canvas = usePanZoom(bounds, settings.view, setView, itemSelector, onWheel);
   const { x: viewX, y: viewY, zoom: scale } = canvas.view;
+  const toScreen = (e: { clientX: number; clientY: number }): { x: number; y: number } => {
+    const r = worldRef.current?.getBoundingClientRect();
+    return r ? { x: (e.clientX - r.left) / scale, y: (e.clientY - r.top) / scale } : { x: 0, y: 0 };
+  };
 
   const pick = (box: LayoutBox, alt: boolean): NodeId => (alt ? box.nodeId : box.ownerId ?? box.nodeId);
   const artOn = skin === 'art' && art !== undefined;
@@ -309,14 +424,12 @@ export function PreviewPane(props: PreviewPaneProps): ReactNode {
     const link = !box.synthetic && box.instance === 0 && onOpenMenu ? resolveMenuLink?.(box.nodeId) : undefined;
     const style: CSSProperties = { left: r.x, top: r.y, width: r.width, height: r.height };
     if (box.clipped) {
-      const c = box.clipped;
-      style.clipPath = `inset(${c.y - r.y}px ${r.x + r.width - (c.x + c.width)}px ${r.y + r.height - (c.y + c.height)}px ${c.x - r.x}px)`;
+      style.clipPath = clipInset(r, box.clipped);
     }
     return (
       <div key={i} data-box={i} className={classes.join(' ')} style={style}
         title={`${box.kind}${box.instance > 0 ? ` #${box.instance}` : ''}${box.unresolved ? ' (position depends on unknown values)' : ''}`}>
         <BoxContent box={box} i18n={i18n} art={shownArt} />
-        {box.detail?.scrollbar ? <div className="pv-scrollbar" style={{ width: box.detail.scrollbar }} /> : null}
         {box.kind === 'Template' ? <span className="pv-tag">{renderText(box.label ?? '', i18n)}</span> : null}
         {link !== undefined ? (
           <button type="button" className="pv-link" style={{ transform: `scale(${1 / scale})` }} title={`Open ${link}`}
@@ -333,21 +446,29 @@ export function PreviewPane(props: PreviewPaneProps): ReactNode {
   return (
     <div className="pv-pane">
       <div className="pv-toolbar">
-        <label>Screen{' '}
+        <label title="The game window size">Screen{' '}
           <select value={screen} onChange={e => change({ screen: e.target.value as ScreenKey })}>
-            {Object.keys(screens).map(k => <option key={k} value={k}>{k}</option>)}
+            {Object.keys(windowSizes).map(k => <option key={k} value={k}>{k}</option>)}
             <option value="custom">Custom</option>
           </select>
         </label>
         {screen === 'custom' ? (
           <span className="pv-custom">
-            <input type="number" min={320} max={7680} value={custom.width} aria-label="Screen width"
+            <input type="number" min={320} max={7680} value={custom.width} aria-label="Window width"
               onChange={e => change({ custom: { ...custom, width: Math.max(320, Number(e.target.value) || 320) } })} />
             ×
-            <input type="number" min={240} max={4320} value={custom.height} aria-label="Screen height"
+            <input type="number" min={240} max={4320} value={custom.height} aria-label="Window height"
               onChange={e => change({ custom: { ...custom, height: Math.max(240, Number(e.target.value) || 240) } })} />
           </span>
         ) : null}
+        <label title={`The game's UI scale option: menus are laid out on the window size ÷ the UI scale (${screenW}×${screenH} UI pixels)`}>UI{' '}
+          <select value={uiScale} onChange={e => change({ uiScale: Number(e.target.value) })}>
+            {uiScales.map(p => <option key={p} value={p}>{p}%</option>)}
+          </select>
+        </label>
+        <label title="Lay the window out as if the screen were tall enough for all of it; a line marks where the screen ends and the window would scroll">
+          <input type="checkbox" checked={fullHeight} disabled={!doc} onChange={e => change({ fullHeight: e.target.checked })} /> Full height
+        </label>
         <span className="pv-zoom" role="group" aria-label="Zoom">
           <button type="button" onClick={canvas.fit} title="Fit the screen and the content (double-click empty canvas)">Fit</button>
           <button type="button" onClick={canvas.actualSize} title="Actual size">100%</button>
@@ -394,6 +515,12 @@ export function PreviewPane(props: PreviewPaneProps): ReactNode {
                 </div>
               ) : null}
               {boxes}
+              {layout.scrollers.map((sc, i) => (sc.bar ? <Scrollbar key={`${sc.key}:${i}`} scroller={sc} toScreen={toScreen} onScroll={scrollTo} /> : null))}
+              {fullHeight && layout.window.y + layout.window.height > screenH ? (
+                <div className="pv-cut" style={{ left: layout.window.x, top: screenH, width: layout.window.width }}>
+                  <span style={{ transform: `scale(${1 / scale})` }}>Screen height {screenH} px: in game the window ends here and scrolls</span>
+                </div>
+              ) : null}
             </>
           ) : null}
           {tooltip ? (
