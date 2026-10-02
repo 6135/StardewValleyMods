@@ -3,7 +3,8 @@
   <PropertyGroup>
     <AssemblyName>Adjustable_Fertilizer</AssemblyName>
     <RootNamespace>Adjustable_Fertilizer</RootNamespace>
-    <Version>1.0.0</Version>
+    <Version>1.2.0</Version>
+    <ModFolderName>[CP] Adjustable Fertilizer</ModFolderName>
     <TargetFramework>net6.0</TargetFramework>
     <EnableHarmony>true</EnableHarmony>
     <IgnoreModFilePatterns>\.dll$, \.pdb$</IgnoreModFilePatterns>
