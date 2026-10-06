@@ -6,7 +6,7 @@
   "UniqueID": "6135.HolidaySales",
   "EntryDll": "HolidaySalesContinued.dll",
   "MinimumApiVersion": "4.0.0",
-  "UpdateKeys": [],
+  "UpdateKeys": [ "Nexus:53521" ],
   "Dependencies": [
     {
       "UniqueID": "spacechase0.GenericModConfigMenu",
