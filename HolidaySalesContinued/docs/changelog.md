@@ -1,6 +1,9 @@
 Changelog
 ===========
 
+### Holiday Sales Continued 1.0.1
+* Added the Nexus update key so SMAPI can show update alerts.
+
 ### Holiday Sales Continued 1.0.0
 * Continuation by 6135 for Stardew Valley 1.6.15, no longer requires AtraCore.
 * Store closing is now a prefix on `AreStoresClosedForFestival`, which also covers locked doors and the phone.
