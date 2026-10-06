@@ -25,6 +25,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tools", "tools", "{07C2787E
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DesignerMetadata", "tools\DesignerMetadata\DesignerMetadata.csproj", "{4C299069-FB51-4038-9326-E1BFB483252D}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HolidaySalesContinued", "HolidaySalesContinued\HolidaySalesContinued.csproj", "{3100B943-09B6-4BE1-AEB0-C2AC153CEF58}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -175,6 +177,22 @@ Global
 		{4C299069-FB51-4038-9326-E1BFB483252D}.Release|x86.Build.0 = Release|Any CPU
 		{4C299069-FB51-4038-9326-E1BFB483252D}.Release|x64.ActiveCfg = Release|Any CPU
 		{4C299069-FB51-4038-9326-E1BFB483252D}.Release|x64.Build.0 = Release|Any CPU
+		{3100B943-09B6-4BE1-AEB0-C2AC153CEF58}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3100B943-09B6-4BE1-AEB0-C2AC153CEF58}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3100B943-09B6-4BE1-AEB0-C2AC153CEF58}.Debug|Any CPY.ActiveCfg = Debug|Any CPU
+		{3100B943-09B6-4BE1-AEB0-C2AC153CEF58}.Debug|Any CPY.Build.0 = Debug|Any CPU
+		{3100B943-09B6-4BE1-AEB0-C2AC153CEF58}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{3100B943-09B6-4BE1-AEB0-C2AC153CEF58}.Debug|x86.Build.0 = Debug|Any CPU
+		{3100B943-09B6-4BE1-AEB0-C2AC153CEF58}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{3100B943-09B6-4BE1-AEB0-C2AC153CEF58}.Debug|x64.Build.0 = Debug|Any CPU
+		{3100B943-09B6-4BE1-AEB0-C2AC153CEF58}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3100B943-09B6-4BE1-AEB0-C2AC153CEF58}.Release|Any CPU.Build.0 = Release|Any CPU
+		{3100B943-09B6-4BE1-AEB0-C2AC153CEF58}.Release|Any CPY.ActiveCfg = Release|Any CPU
+		{3100B943-09B6-4BE1-AEB0-C2AC153CEF58}.Release|Any CPY.Build.0 = Release|Any CPU
+		{3100B943-09B6-4BE1-AEB0-C2AC153CEF58}.Release|x86.ActiveCfg = Release|Any CPU
+		{3100B943-09B6-4BE1-AEB0-C2AC153CEF58}.Release|x86.Build.0 = Release|Any CPU
+		{3100B943-09B6-4BE1-AEB0-C2AC153CEF58}.Release|x64.ActiveCfg = Release|Any CPU
+		{3100B943-09B6-4BE1-AEB0-C2AC153CEF58}.Release|x64.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

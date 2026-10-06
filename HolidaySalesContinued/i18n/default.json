@@ -1,0 +1,10 @@
+{
+  "IllFormatedConfig": "Config file seems ill-formated, using default. Please use Generic Mod Config Menu to configure.",
+
+  "StoreFestivalBehavior.title": "Store Festival Behavior",
+  "StoreFestivalBehavior.description": "Should stores be closed for festivals?",
+
+  "config.FestivalsShopBehavior.Open": "Open",
+  "config.FestivalsShopBehavior.Closed": "Closed",
+  "config.FestivalsShopBehavior.MapDependent": "Map Dependent"
+}

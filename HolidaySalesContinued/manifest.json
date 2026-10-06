@@ -1,0 +1,16 @@
+{
+  "Name": "Holiday Sales Continued",
+  "Author": "atravita, 6135",
+  "Version": "%ProjectVersion%",
+  "Description": "Makes merchants stay open on festival days if the festival is out of town (configurable). Continuation of atravita's Holiday Sales, without AtraCore.",
+  "UniqueID": "6135.HolidaySales",
+  "EntryDll": "HolidaySalesContinued.dll",
+  "MinimumApiVersion": "4.0.0",
+  "UpdateKeys": [],
+  "Dependencies": [
+    {
+      "UniqueID": "spacechase0.GenericModConfigMenu",
+      "IsRequired": false
+    }
+  ]
+}
