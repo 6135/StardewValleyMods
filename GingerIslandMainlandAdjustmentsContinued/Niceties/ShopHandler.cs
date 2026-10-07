@@ -1,0 +1,143 @@
+using Microsoft.Xna.Framework;
+
+using StardewModdingAPI.Events;
+using StardewModdingAPI.Utilities;
+
+using StardewValley.Locations;
+
+
+namespace GingerIslandMainlandAdjustments.Niceties;
+
+/// <summary>
+/// Handles shops of NPCs at resort.
+/// </summary>
+internal static class ShopHandler
+{
+    /// <summary>
+    /// True if I'm already handling a shop.
+    /// </summary>
+    private static readonly PerScreen<bool> HandlingShop = new(createNewState: () => false);
+
+    /// <summary>
+    /// Handles running Sandy's shop if she's not there.
+    /// </summary>
+    /// <param name="e">Button pressed event arguments.</param>
+    internal static void HandleSandyShop(ButtonPressedEventArgs e)
+    {
+        if (HandlingShop.Value || Game1.currentLocation?.Name != "SandyHouse")
+        {
+            return;
+        }
+        GameLocation sandyHouse = Game1.currentLocation;
+        if (!Game1.IsVisitingIslandToday("Sandy") || sandyHouse.getCharacterFromName("Sandy") is not null // Sandy has not left the building.
+            || !IsNearShopTile(sandyHouse, Globals.Helper.Input.GetCursorPosition().GrabTile))
+        {
+            return;
+        }
+
+        HandlingShop.Value = true; // Do not want to intercept any more clicks until shop menu is finished.
+        Globals.InputHelper.Suppress(e.Button);
+        Game1.player.FacingDirection = Game1.up;
+        Game1.drawObjectDialogue(I18n.SandyAwayShopMessage());
+        Game1.afterDialogues = () =>
+        {
+            Utility.TryOpenShopMenu("Sandy", sandyHouse, forceOpen: true);
+            HandlingShop.Value = false;
+        };
+    }
+
+    /// <summary>
+    /// Handles running Willy's shop if he's not there.
+    /// </summary>
+    /// <param name="e">Button pressed event arguments.</param>
+    internal static void HandleWillyShop(ButtonPressedEventArgs e)
+    {
+        if (HandlingShop.Value || Game1.currentLocation is not FishShop fishShop
+            || !Game1.IsVisitingIslandToday("Willy") || fishShop.getCharacterFromName("Willy") is not null)
+        {
+            return;
+        }
+        Vector2 cursorTile = Globals.Helper.Input.GetCursorPosition().GrabTile;
+        if (!fishShop.doesTileHaveProperty((int)cursorTile.X, (int)cursorTile.Y, "Action", "Buildings")?.Contains("Buy") == true)
+        {
+            return;
+        }
+        HandlingShop.Value = true; // Do not want to intercept any more clicks until shop menu is finished.
+        Globals.InputHelper.Suppress(e.Button);
+        Game1.player.FacingDirection = Game1.up;
+        Game1.drawObjectDialogue(I18n.WillyAwayShopMessage());
+        Game1.afterDialogues = () =>
+        {
+            Utility.TryOpenShopMenu("FishShop", fishShop, forceOpen: true);
+            HandlingShop.Value = false;
+        };
+    }
+
+    /// <summary>
+    /// Handles adding a box to Sandy's shop if she's gone.
+    /// </summary>
+    /// <param name="e">On Warped event arguments.</param>
+    internal static void AddBoxToShop(WarpedEventArgs e)
+    {
+        if ((Game1.IsVisitingIslandToday("Sandy") && e.NewLocation.Name.Equals("SandyHouse", StringComparison.OrdinalIgnoreCase)
+            && e.NewLocation.getCharacterFromName("Sandy") is null) // Sandy has left already
+            || (e.NewLocation is FishShop fishShop && Game1.IsVisitingIslandToday("Willy") && fishShop.getCharacterFromName("Willy") is null))
+        {
+            Vector2 tile = e.NewLocation is FishShop ? new Vector2(5f, 5f) : new Vector2(2f, 6f); // default location of shop.
+            if (FindShopTile(e.NewLocation) is Vector2 found)
+            { // a mod may have moved the shop tile.
+                tile = found;
+            }
+
+            // add box
+            e.NewLocation.temporarySprites.Add(new TemporaryAnimatedSprite
+            {
+                texture = Game1.mouseCursors2,
+                sourceRect = new Rectangle(129, 210, 13, 16),
+                animationLength = 1,
+                sourceRectStartingPos = new Vector2(129f, 210f),
+                interval = 50000f,
+                totalNumberOfLoops = 9999,
+                position = (new Vector2(tile.X, tile.Y - 1) * Game1.tileSize) + new Vector2(12f, 0f),
+                scale = 4f,
+                layerDepth = MathF.BitIncrement(((tile.Y - 0.5f) * Game1.tileSize / 10000f) + 0.01f), // a little offset so it doesn't show up on the floor.
+                id = 777,
+            });
+        }
+    }
+
+    private static bool IsShopTile(GameLocation location, int x, int y)
+        => location.doesTileHaveProperty(x, y, "Action", "Buildings")?.Contains("Buy") == true;
+
+    private static bool IsNearShopTile(GameLocation location, Vector2 tile)
+    {
+        for (int x = (int)tile.X - 1; x <= tile.X + 1; x++)
+        {
+            for (int y = (int)tile.Y - 1; y <= tile.Y + 1; y++)
+            {
+                if (IsShopTile(location, x, y))
+                {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    private static Vector2? FindShopTile(GameLocation location)
+    {
+        int width = location.map.Layers[0].LayerWidth;
+        int height = location.map.Layers[0].LayerHeight;
+        for (int x = 0; x < width; x++)
+        {
+            for (int y = 0; y < height; y++)
+            {
+                if (IsShopTile(location, x, y))
+                {
+                    return new Vector2(x, y);
+                }
+            }
+        }
+        return null;
+    }
+}

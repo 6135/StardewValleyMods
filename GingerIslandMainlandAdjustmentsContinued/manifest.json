@@ -1,0 +1,14 @@
+{
+  "Name": "Ginger Island Mainland Adjustments Continued",
+  "Author": "atravita, 6135",
+  "Version": "%ProjectVersion%",
+  "Description": "Dialogue keys for NPCs headed to or away from Ginger Island, post-Ginger Island schedules, and an optional group-based island scheduler. Continuation of atravita's mod, without AtraCore.",
+  "UniqueID": "6135.GingerIslandMainlandAdjustments",
+  "EntryDll": "GingerIslandMainlandAdjustmentsContinued.dll",
+  "MinimumApiVersion": "4.0.0",
+  "UpdateKeys": [],
+  "Dependencies": [
+    { "UniqueID": "spacechase0.GenericModConfigMenu", "IsRequired": false },
+    { "UniqueID": "Pathoschild.ContentPatcher", "IsRequired": false }
+  ]
+}
