@@ -11,7 +11,6 @@ namespace GingerIslandMainlandAdjustments.AssetManagers;
 /// <param name="contentHelper">SMAPI's game content helper.</param>
 internal sealed class IslandSouthWatcher(IGameContentHelper contentHelper)
 {
-
     /// <summary>
     /// Called when the resort is fixed.
     /// </summary>

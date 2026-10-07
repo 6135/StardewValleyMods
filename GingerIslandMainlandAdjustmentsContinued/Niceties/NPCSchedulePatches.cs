@@ -1,6 +1,5 @@
 namespace GingerIslandMainlandAdjustments.Niceties;
 
-
 using HarmonyLib;
 
 /// <summary>

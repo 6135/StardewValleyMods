@@ -1,8 +1,6 @@
 namespace GingerIslandMainlandAdjustments.Niceties;
 
-
 using HarmonyLib;
-
 
 using Microsoft.Xna.Framework;
 

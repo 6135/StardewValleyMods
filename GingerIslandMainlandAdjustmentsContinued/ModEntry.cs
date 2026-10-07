@@ -1,7 +1,5 @@
 namespace GingerIslandMainlandAdjustments;
 
-
-
 using GingerIslandMainlandAdjustments.AssetManagers;
 using GingerIslandMainlandAdjustments.CustomConsoleCommands;
 using GingerIslandMainlandAdjustments.DialogueChanges;
@@ -11,7 +9,6 @@ using GingerIslandMainlandAdjustments.Niceties;
 using GingerIslandMainlandAdjustments.ScheduleManager;
 
 using HarmonyLib;
-
 
 using StardewModdingAPI.Events;
 

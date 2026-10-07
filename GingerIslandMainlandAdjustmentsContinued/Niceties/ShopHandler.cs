@@ -5,7 +5,6 @@ using StardewModdingAPI.Utilities;
 
 using StardewValley.Locations;
 
-
 namespace GingerIslandMainlandAdjustments.Niceties;
 
 /// <summary>
