@@ -4,6 +4,9 @@
 [← back to readme](../../README.md)
 
 
+#### Continued 1.2.1
+* Added the Nexus update key.
+
 #### Continued 1.2.0 (port by 6135)
 * Updated for Stardew Valley 1.6.15; removed the AtraCore dependency.
 * New mod IDs (`6135.*`); CP tokens are now under `6135.GingerIslandMainlandAdjustments`.

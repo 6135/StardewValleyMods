@@ -4,7 +4,7 @@
     <TargetFramework>net6.0</TargetFramework>
     <AssemblyName>GingerIslandMainlandAdjustmentsContinued</AssemblyName>
     <RootNamespace>GingerIslandMainlandAdjustments</RootNamespace>
-    <Version>1.2.0</Version>
+    <Version>1.2.1</Version>
     <EnableHarmony>true</EnableHarmony>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
