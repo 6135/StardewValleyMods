@@ -1,12 +1,9 @@
 namespace GingerIslandMainlandAdjustments.Niceties;
 
-
-
 using GingerIslandMainlandAdjustments.AssetManagers;
 using GingerIslandMainlandAdjustments.MultiplayerHandler;
 
 using Microsoft.Xna.Framework.Graphics;
-
 
 using StardewValley.Objects;
 
@@ -15,7 +12,6 @@ using StardewValley.Objects;
 /// </summary>
 internal sealed class PamPhoneHandler : IPhoneHandler
 {
-
     /// <inheritdoc />
     public string? CheckForIncomingCall(Random random) => null;
 

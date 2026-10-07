@@ -1,6 +1,5 @@
 // Ignore Spelling: Npcs
 
-
 namespace GingerIslandMainlandAdjustments.Configuration;
 
 #pragma warning disable SA1201 // Elements should appear in the correct order. Fields appear close to their properties for this class.

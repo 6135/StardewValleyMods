@@ -5,7 +5,6 @@ using GingerIslandMainlandAdjustments.AssetManagers;
 
 using HarmonyLib;
 
-
 using StardewModdingAPI.Events;
 using StardewModdingAPI.Utilities;
 
@@ -18,7 +17,6 @@ namespace GingerIslandMainlandAdjustments.MultiplayerHandler;
 public static class MultiplayerSharedState
 {
     private const string SCHEDULEMESSAGE = "GIMAScheduleUpdateMessage";
-
 
     /// <summary>
     /// Gets Pam's current schedule string.
