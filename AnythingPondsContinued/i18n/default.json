@@ -1,0 +1,12 @@
+{
+  "IllFormatedConfig": "Config file seems ill-formated, using default. Please use Generic Mod Config Menu to configure.",
+
+  "EnableAlgaePonds.title": "Algae Ponds",
+  "EnableAlgaePonds.description": "Adds pond data so seaweed, green algae and white algae can live in fish ponds.",
+  "EnableGenericPonds.title": "Generic Ponds",
+  "EnableGenericPonds.description": "Lets any item without its own pond data go into a pond. It never multiplies and rarely produces anything.",
+  "EmptyPondsBecomeAlgae.title": "Empty Ponds Grow Algae",
+  "EmptyPondsBecomeAlgae.description": "Empty ponds turn into a random seaweed or algae pond after some days.",
+  "DaysUntilAlgae.title": "Days Until Algae",
+  "DaysUntilAlgae.description": "How many days a pond must stay empty before algae appears."
+}
