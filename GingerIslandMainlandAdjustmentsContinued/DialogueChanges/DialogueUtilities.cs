@@ -1,7 +1,5 @@
 using StardewModdingAPI.Utilities;
 
-
-
 namespace GingerIslandMainlandAdjustments.DialogueChanges;
 
 /// <summary>

@@ -2,7 +2,6 @@ using System.Text;
 
 using Microsoft.Xna.Framework;
 
-
 using StardewModdingAPI.Utilities;
 
 using StardewValley.Pathfinding;

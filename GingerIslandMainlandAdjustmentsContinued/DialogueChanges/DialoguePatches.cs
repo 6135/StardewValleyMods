@@ -1,10 +1,8 @@
 namespace GingerIslandMainlandAdjustments.DialogueChanges;
 
-
 using GingerIslandMainlandAdjustments.ScheduleManager;
 
 using HarmonyLib;
-
 
 using StardewModdingAPI.Utilities;
 

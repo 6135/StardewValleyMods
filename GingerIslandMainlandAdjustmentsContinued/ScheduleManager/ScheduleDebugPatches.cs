@@ -1,7 +1,5 @@
 namespace GingerIslandMainlandAdjustments.ScheduleManager;
 
-
-
 using HarmonyLib;
 using Microsoft.Xna.Framework;
 
