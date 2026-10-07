@@ -5,15 +5,11 @@ using System.Runtime;
 
 using System.Text;
 
-
-
-
 using GingerIslandMainlandAdjustments.AssetManagers;
 using GingerIslandMainlandAdjustments.CustomConsoleCommands;
 using GingerIslandMainlandAdjustments.ScheduleManager.DataModels;
 
 using Microsoft.Xna.Framework;
-
 
 using StardewValley.Extensions;
 using StardewValley.Locations;

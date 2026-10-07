@@ -1,7 +1,5 @@
 using System.Runtime.CompilerServices;
 
-
-
 using HarmonyLib;
 using Microsoft.Xna.Framework;
 using StardewValley.Locations;

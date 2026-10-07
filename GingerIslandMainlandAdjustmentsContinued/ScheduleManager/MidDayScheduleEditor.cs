@@ -2,7 +2,6 @@
 
 using Microsoft.Xna.Framework;
 
-
 using StardewModdingAPI.Events;
 using StardewModdingAPI.Utilities;
 

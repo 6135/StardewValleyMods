@@ -1,9 +1,6 @@
 using System.Text;
 
-
-
 using GingerIslandMainlandAdjustments.CustomConsoleCommands;
-
 
 using Microsoft.Xna.Framework;
 
