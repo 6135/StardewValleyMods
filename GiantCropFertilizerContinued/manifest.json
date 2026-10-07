@@ -6,7 +6,7 @@
   "UniqueID": "6135.GiantCropFertilizer",
   "EntryDll": "GiantCropFertilizerContinued.dll",
   "MinimumApiVersion": "4.0.0",
-  "UpdateKeys": [],
+  "UpdateKeys": [ "Nexus:53558" ],
   "Dependencies": [
     {
       "UniqueID": "spacechase0.GenericModConfigMenu",

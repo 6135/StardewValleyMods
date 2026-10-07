@@ -17,6 +17,7 @@ internal static class AssetManager
     #region asset names
     private static IAssetName dataObjectInfo = null!;
     private static IAssetName dataShops = null!;
+    private static IAssetName dataCraftingRecipes = null!;
     private static IAssetName textureLocation = null!;
     #endregion
 
@@ -28,6 +29,7 @@ internal static class AssetManager
     {
         dataObjectInfo = parser.ParseAssetName("Data/Objects");
         dataShops = parser.ParseAssetName("Data/Shops");
+        dataCraftingRecipes = parser.ParseAssetName("Data/CraftingRecipes");
         textureLocation = parser.ParseAssetName("Mods/6135.GiantCropFertilizer/Object");
     }
 
@@ -77,10 +79,28 @@ internal static class AssetManager
 
                 shop.Items.Add(new()
                 {
+                    Id = ModEntry.GiantCropFertilizerID,
                     ItemId = ModEntry.QualifiedGiantCropFertilizerID,
                     TradeItemId = "(O)858",
                     TradeItemAmount = 5,
                 });
+                shop.Items.Add(new()
+                {
+                    Id = $"{ModEntry.GiantCropFertilizerID}_Recipe",
+                    ItemId = ModEntry.QualifiedGiantCropFertilizerID,
+                    IsRecipe = true,
+                    TradeItemId = "(O)858",
+                    TradeItemAmount = 100,
+                });
+            });
+        }
+        else if (e.NameWithoutLocale.IsEquivalentTo(dataCraftingRecipes))
+        {
+            e.Edit(static (asset) =>
+            {
+                // 1 iridium bar + 3 quality fertilizer -> 1, learned at Farming 10 or by buying the recipe from Qi. The key must match the item's internal name.
+                asset.AsDictionary<string, string>().Data["Giant Crop Fertilizer"] =
+                    $"337 1 369 3/Field/{ModEntry.GiantCropFertilizerID}/false/s Farming 10/{ModEntry.I18n.Get("giant-crop-fertilizer.name")}";
             });
         }
     }
