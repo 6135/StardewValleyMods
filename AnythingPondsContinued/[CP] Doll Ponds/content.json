@@ -1,0 +1,41 @@
+{
+  "Format": "2.0.0",
+  "Changes": [
+    {
+      "Action": "EditData",
+      "Target": "Data/FishPondData",
+      "Entries": {
+        "6135.DollPonds_Toy": {
+          "Id": "6135.DollPonds_Toy",
+          "RequiredTags": [ "toy_item" ],
+          "SpawnTime": 4,
+          "ProducedItems": [
+            { "Id": "Hay", "RequiredPopulation": 1, "Chance": 0.80, "ItemId": "(O)178", "MinStack": 5, "MaxStack": 5 },
+            { "Id": "Roe", "RequiredPopulation": 1, "Chance": 0.50, "ItemId": "(O)812", "MinStack": 1, "MaxStack": 1 }
+          ],
+          "PopulationGates": {
+            "3": [ "(O)684 5", "(O)84 2" ],
+            "5": [ "(O)110 1" ],
+            "7": [ "(O)176 1", "(O)174 1", "(O)180 1", "(O)182 1" ]
+          }
+        },
+        "6135.DollPonds_Doll": {
+          "Id": "6135.DollPonds_Doll",
+          "RequiredTags": [ "doll_item" ],
+          "SpawnTime": 6,
+          "ProducedItems": [
+            { "Id": "Cookie", "RequiredPopulation": 1, "Chance": 0.80, "ItemId": "(O)206", "MinStack": 1, "MaxStack": 1 },
+            { "Id": "Seeds7", "RequiredPopulation": 7, "Chance": 0.50, "ItemId": "(O)809", "MinStack": 2, "MaxStack": 2 },
+            { "Id": "Seeds4", "RequiredPopulation": 4, "Chance": 0.50, "ItemId": "(O)809", "MinStack": 1, "MaxStack": 2 },
+            { "Id": "Seeds1", "RequiredPopulation": 1, "Chance": 0.50, "ItemId": "(O)809", "MinStack": 1, "MaxStack": 1 }
+          ],
+          "PopulationGates": {
+            "3": [ "(O)306 1", "(O)307 1", "(O)308 1" ],
+            "5": [ "(O)342 1", "(O)344 1" ],
+            "7": [ "(O)430 2" ]
+          }
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,16 @@
+{
+  "Name": "Giant Crop Fertilizer Continued",
+  "Author": "atravita, 6135",
+  "Version": "%ProjectVersion%",
+  "Description": "Adds a fertilizer that makes giant crops grow where it's applied. Continuation of atravita's Giant Crop Fertilizer, without AtraCore or Json Assets.",
+  "UniqueID": "6135.GiantCropFertilizer",
+  "EntryDll": "GiantCropFertilizerContinued.dll",
+  "MinimumApiVersion": "4.0.0",
+  "UpdateKeys": [],
+  "Dependencies": [
+    {
+      "UniqueID": "spacechase0.GenericModConfigMenu",
+      "IsRequired": false
+    }
+  ]
+}

@@ -1,0 +1,16 @@
+{
+  "Name": "Anything Ponds Continued",
+  "Author": "MouseyPounds, 6135",
+  "Version": "%ProjectVersion%",
+  "Description": "Lets seaweed, algae and other non-fish items live in fish ponds, and empty ponds slowly turn into algae ponds. Continuation of MouseyPounds' Anything Ponds.",
+  "UniqueID": "6135.AnythingPonds",
+  "EntryDll": "AnythingPondsContinued.dll",
+  "MinimumApiVersion": "4.0.0",
+  "UpdateKeys": [],
+  "Dependencies": [
+    {
+      "UniqueID": "spacechase0.GenericModConfigMenu",
+      "IsRequired": false
+    }
+  ]
+}
