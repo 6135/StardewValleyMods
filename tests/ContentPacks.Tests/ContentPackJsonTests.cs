@@ -44,7 +44,9 @@ public class ContentPackJsonTests
         for (var dir = new DirectoryInfo(AppContext.BaseDirectory); dir != null; dir = dir.Parent)
         {
             if (File.Exists(Path.Combine(dir.FullName, "Stardew Mods.sln")))
+            {
                 return dir.FullName;
+            }
         }
         throw new InvalidOperationException("Could not find 'Stardew Mods.sln' above " + AppContext.BaseDirectory);
     }
