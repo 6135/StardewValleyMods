@@ -18,6 +18,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <InternalsVisibleTo Include="CapstoneProfessionsContinued.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Using Include="StardewValley" />
     <Using Include="StardewModdingAPI" />
   </ItemGroup>
