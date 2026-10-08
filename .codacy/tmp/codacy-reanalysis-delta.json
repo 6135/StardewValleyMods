@@ -1,0 +1,300 @@
+{
+  "durationMs": 169187,
+  "durationHuman": "2m 49s",
+  "totals": {
+    "before": 657,
+    "after": 352,
+    "net": -305
+  },
+  "deltas": {
+    "byPattern": [
+      {
+        "key": "ESLint8_security_detect-object-injection",
+        "label": "Detect Object Injection",
+        "delta": -231
+      },
+      {
+        "key": "ESLint8_no-unused-vars",
+        "label": "Disallow Unused Variables",
+        "delta": -102
+      },
+      {
+        "key": "Stylelint_declaration-block-single-line-max-declarations",
+        "label": "Limit Declarations in Single-Line Declaration Block",
+        "delta": 64
+      },
+      {
+        "key": "Lizard_ccn-medium",
+        "label": "Limit Function Cyclomatic Complexity (Medium)",
+        "delta": 34
+      },
+      {
+        "key": "SonarCSharp_S131",
+        "label": "Enforce default case in switch/select statements",
+        "delta": -26
+      },
+      {
+        "key": "Semgrep_typescript.react.best-practice.react-props-spreading.react-props-spreading",
+        "label": "Avoid React Props Spreading",
+        "delta": 25
+      },
+      {
+        "key": "SonarCSharp_S3218",
+        "label": "Avoid Inner Class Members Shadowing Outer Class Static or Type Members",
+        "delta": -23
+      },
+      {
+        "key": "Lizard_nloc-medium",
+        "label": "Limit Function Length (Medium)",
+        "delta": 22
+      },
+      {
+        "key": "SonarCSharp_S3257",
+        "label": "Enforce Concise Declarations and Initializations",
+        "delta": -21
+      },
+      {
+        "key": "SonarCSharp_S2360",
+        "label": "Avoid Using Optional Parameters",
+        "delta": 17
+      },
+      {
+        "key": "SonarCSharp_S1172",
+        "label": "Remove Unused Method Parameters",
+        "delta": -17
+      },
+      {
+        "key": "ESLint8_security_detect-unsafe-regex",
+        "label": "Detect Unsafe Regular Expressions",
+        "delta": -15
+      },
+      {
+        "key": "SonarCSharp_S2333",
+        "label": "Avoid Redundant Modifiers",
+        "delta": -12
+      },
+      {
+        "key": "Lizard_file-nloc-medium",
+        "label": "Limit File Length (Medium)",
+        "delta": 11
+      },
+      {
+        "key": "ESLint8_@typescript-eslint_no-dynamic-delete",
+        "label": "Disallow Dynamic Delete Operator Usage",
+        "delta": -10
+      },
+      {
+        "key": "Semgrep_json.npm.security.package-dependencies-check.package-dependencies-check",
+        "label": "Avoid Variant Package Dependency Versions",
+        "delta": 9
+      },
+      {
+        "key": "Lizard_parameter-count-medium",
+        "label": "Limit Function Parameter Count (Medium)",
+        "delta": 9
+      },
+      {
+        "key": "SonarCSharp_S3872",
+        "label": "Avoid Parameter Names Duplicating Method Names",
+        "delta": -8
+      },
+      {
+        "key": "SonarCSharp_S1301",
+        "label": "Avoid \"switch\" statements with fewer than 3 \"case\" clauses",
+        "delta": -7
+      },
+      {
+        "key": "ESLint8_xss_no-mixed-html",
+        "label": "Disallow Mixed HTML and Unencoded Input to Prevent XSS",
+        "delta": -6
+      },
+      {
+        "key": "SonarCSharp_S3052",
+        "label": "Avoid Initializing Members to Default Values",
+        "delta": -5
+      },
+      {
+        "key": "ESLint8_@typescript-eslint_no-unused-vars",
+        "label": "Disallow Unused Variables",
+        "delta": -5
+      },
+      {
+        "key": "jackson_parse-error",
+        "label": "Prohibit Invalid JSON Files",
+        "delta": -5
+      },
+      {
+        "key": "ESLint8_@typescript-eslint_array-type",
+        "label": "Enforce Consistent Array Type Syntax",
+        "delta": -4
+      },
+      {
+        "key": "Semgrep_csharp_crypto_rule-WeakRNG",
+        "label": "Avoid Using Weak Random Number Generators",
+        "delta": 3
+      },
+      {
+        "key": "ESLint8_@typescript-eslint_prefer-nullish-coalescing",
+        "label": "Enforce Prefer Nullish Coalescing Operator",
+        "delta": -3
+      },
+      {
+        "key": "Semgrep_typescript.react.best-practice.react-props-in-state.react-props-in-state",
+        "label": "Avoid Copying React Props into State",
+        "delta": 2
+      },
+      {
+        "key": "ESLint8_security-node_non-literal-reg-expr",
+        "label": "Avoid Non-Literal Regular Expressions",
+        "delta": -2
+      },
+      {
+        "key": "ESLint8_security_detect-non-literal-regexp",
+        "label": "Detect Non-Literal Regular Expressions",
+        "delta": -2
+      },
+      {
+        "key": "ESLint8_@typescript-eslint_no-misused-promises",
+        "label": "Disallow Misused Promises",
+        "delta": -2
+      },
+      {
+        "key": "ESLint8_@typescript-eslint_no-redundant-type-constituents",
+        "label": "Disallow Redundant Type Constituents in Unions and Intersections",
+        "delta": -2
+      },
+      {
+        "key": "Semgrep_rules_lgpl_javascript_dos_rule-regex-dos",
+        "label": "Ensure Regex Safety to Prevent Regular Expression Denial of Service (ReDoS)",
+        "delta": 2
+      },
+      {
+        "key": "Checkov_CKV2_GHA_1",
+        "label": "Ensure top-level permissions are not set to write-all",
+        "delta": 2
+      },
+      {
+        "key": "Semgrep_javascript.lang.security.audit.detect-non-literal-regexp.detect-non-literal-regexp",
+        "label": "Avoid Non-Literal RegExp Usage",
+        "delta": 1
+      },
+      {
+        "key": "Semgrep_javascript.ajv.security.audit.ajv-allerrors-true.ajv-allerrors-true",
+        "label": "Avoid Setting allErrors to true in Ajv",
+        "delta": 1
+      },
+      {
+        "key": "Semgrep_rules_lgpl_javascript_crypto_rule-node-timing-attack",
+        "label": "Avoid Timing Attack Vulnerabilities in String Comparisons",
+        "delta": 1
+      },
+      {
+        "key": "Semgrep_javascript_timing_rule-possible-timing-attacks",
+        "label": "Avoid Timing Attacks by Using Constant-Time String Comparison",
+        "delta": 1
+      },
+      {
+        "key": "Semgrep_javascript_dos_rule-non-literal-regexp",
+        "label": "Avoid Using Non-Literal Values in RegExp Constructor",
+        "delta": 1
+      },
+      {
+        "key": "Semgrep_javascript.lang.security.audit.unsafe-dynamic-method.unsafe-dynamic-method",
+        "label": "Avoid Using Unsafe Dynamic Method Calls",
+        "delta": 1
+      },
+      {
+        "key": "ESLint8_security_detect-possible-timing-attacks",
+        "label": "Detect Possible Timing Attacks",
+        "delta": -1
+      },
+      {
+        "key": "ESLint8_security-node_detect-possible-timing-attacks",
+        "label": "Detect Possible Timing Attacks",
+        "delta": -1
+      },
+      {
+        "key": "Semgrep_javascript.lang.security.audit.prototype-pollution.prototype-pollution-loop.prototype-pollution-loop",
+        "label": "Detect Prototype Pollution via Loop",
+        "delta": 1
+      },
+      {
+        "key": "ESLint8_security-node_detect-unhandled-async-errors",
+        "label": "Detect Unhandled Async Errors",
+        "delta": -1
+      },
+      {
+        "key": "ESLint8_no-useless-escape",
+        "label": "Disallow Useless Escape Characters",
+        "delta": -1
+      },
+      {
+        "key": "ESLint8_@typescript-eslint_prefer-optional-chain",
+        "label": "Enforce Prefer Optional Chain",
+        "delta": -1
+      },
+      {
+        "key": "Lizard_nloc-critical",
+        "label": "Limit Function Length (Critical)",
+        "delta": 1
+      }
+    ],
+    "bySeverity": [
+      {
+        "key": "High",
+        "label": "High",
+        "delta": -270,
+        "severity": "High"
+      },
+      {
+        "key": "Warning",
+        "label": "Medium",
+        "delta": -18,
+        "severity": "Warning"
+      },
+      {
+        "key": "Info",
+        "label": "Minor",
+        "delta": -17,
+        "severity": "Info"
+      }
+    ],
+    "byCategory": [
+      {
+        "key": "Security",
+        "label": "Security",
+        "delta": -238
+      },
+      {
+        "key": "UnusedCode",
+        "label": "UnusedCode",
+        "delta": -107
+      },
+      {
+        "key": "Complexity",
+        "label": "Complexity",
+        "delta": 77
+      },
+      {
+        "key": "ErrorProne",
+        "label": "ErrorProne",
+        "delta": -41
+      },
+      {
+        "key": "CodeStyle",
+        "label": "CodeStyle",
+        "delta": 14
+      },
+      {
+        "key": "Comprehensibility",
+        "label": "Comprehensibility",
+        "delta": -8
+      },
+      {
+        "key": "BestPractice",
+        "label": "BestPractice",
+        "delta": -2
+      }
+    ]
+  }
+}

@@ -1,0 +1,407 @@
+{
+  "overview": {
+    "categories": [
+      {
+        "name": "BestPractice",
+        "total": 54
+      },
+      {
+        "name": "UnusedCode",
+        "total": 2
+      },
+      {
+        "name": "CodeStyle",
+        "total": 154
+      },
+      {
+        "name": "Performance",
+        "total": 15
+      },
+      {
+        "name": "Security",
+        "total": 25
+      },
+      {
+        "name": "ErrorProne",
+        "total": 25
+      },
+      {
+        "name": "Complexity",
+        "total": 77
+      }
+    ],
+    "levels": [
+      {
+        "name": "High",
+        "total": 39
+      },
+      {
+        "name": "Warning",
+        "total": 147
+      },
+      {
+        "name": "Error",
+        "total": 8
+      },
+      {
+        "name": "Info",
+        "total": 158
+      }
+    ],
+    "languages": [
+      {
+        "name": "TypeScript",
+        "total": 66
+      },
+      {
+        "name": "CSharp",
+        "total": 154
+      },
+      {
+        "name": "CSS",
+        "total": 126
+      },
+      {
+        "name": "YAML",
+        "total": 6
+      }
+    ],
+    "tags": [
+      {
+        "name": "security",
+        "total": 16
+      },
+      {
+        "name": "fwk:react",
+        "total": 27
+      },
+      {
+        "name": "audit",
+        "total": 1
+      },
+      {
+        "name": "prototypepollution",
+        "total": 1
+      },
+      {
+        "name": "npm",
+        "total": 9
+      },
+      {
+        "name": "ajv",
+        "total": 1
+      },
+      {
+        "name": "fwk:github-actions",
+        "total": 6
+      }
+    ],
+    "patterns": [
+      {
+        "id": "SonarCSharp_S2184",
+        "title": "Avoid assigning integer division results to floating point variables",
+        "total": 1
+      },
+      {
+        "id": "SonarCSharp_S2197",
+        "title": "Avoid Checking Modulus Results for Direct Equality",
+        "total": 2
+      },
+      {
+        "id": "SonarCSharp_S1994",
+        "title": "Enforce for Loop Increment Clauses to Modify Loop Counters",
+        "total": 3
+      },
+      {
+        "id": "SonarCSharp_S1116",
+        "title": "Remove Empty Statements",
+        "total": 1
+      },
+      {
+        "id": "SonarCSharp_S2696",
+        "title": "Avoid Writing to Static Fields from Instance Members",
+        "total": 2
+      },
+      {
+        "id": "Stylelint_value-keyword-case",
+        "title": "Enforce case for keyword values",
+        "total": 2
+      },
+      {
+        "id": "Semgrep_typescript.react.best-practice.react-props-spreading.react-props-spreading",
+        "title": "Avoid React Props Spreading",
+        "total": 25
+      },
+      {
+        "id": "SonarCSharp_S3440",
+        "title": "Avoid Checking Variables Against Values to Be Assigned",
+        "total": 1
+      },
+      {
+        "id": "SonarCSharp_S1121",
+        "title": "Avoid Assignments Within Sub-expressions",
+        "total": 11
+      },
+      {
+        "id": "SonarCSharp_S3264",
+        "title": "Invoke Events",
+        "total": 2
+      },
+      {
+        "id": "SonarCSharp_S2933",
+        "title": "Mark Fields Assigned Only in Constructor as readonly",
+        "total": 1
+      },
+      {
+        "id": "Stylelint_comment-empty-line-before",
+        "title": "Require or Disallow Empty Line Before Comments",
+        "total": 3
+      },
+      {
+        "id": "SonarCSharp_S1449",
+        "title": "Specify Culture for String Operations",
+        "total": 1
+      },
+      {
+        "id": "Stylelint_declaration-block-no-redundant-longhand-properties",
+        "title": "Disallow redundant longhand properties within declaration block",
+        "total": 3
+      },
+      {
+        "id": "Semgrep_javascript.lang.security.audit.unsafe-dynamic-method.unsafe-dynamic-method",
+        "title": "Avoid Using Unsafe Dynamic Method Calls",
+        "total": 1
+      },
+      {
+        "id": "Lizard_nloc-medium",
+        "title": "Limit Function Length (Medium)",
+        "total": 22
+      },
+      {
+        "id": "Lizard_ccn-medium",
+        "title": "Limit Function Cyclomatic Complexity (Medium)",
+        "total": 34
+      },
+      {
+        "id": "SonarCSharp_S3898",
+        "title": "Implement IEquatable<T> on Value Types",
+        "total": 9
+      },
+      {
+        "id": "Stylelint_color-function-notation",
+        "title": "Enforce color-function notation style",
+        "total": 16
+      },
+      {
+        "id": "Lizard_nloc-critical",
+        "title": "Limit Function Length (Critical)",
+        "total": 1
+      },
+      {
+        "id": "Semgrep_yaml.github-actions.security.third-party-action-not-pinned-to-commit-sha.third-party-action-not-pinned-to-commit-sha",
+        "title": "Enforce Pinning of Third-Party GitHub Actions to Full Commit SHA",
+        "total": 4
+      },
+      {
+        "id": "SonarCSharp_S127",
+        "title": "Ensure for Loop Stop Conditions Are Invariant",
+        "total": 4
+      },
+      {
+        "id": "Semgrep_typescript.react.best-practice.react-props-in-state.react-props-in-state",
+        "title": "Avoid Copying React Props into State",
+        "total": 2
+      },
+      {
+        "id": "Semgrep_javascript.ajv.security.audit.ajv-allerrors-true.ajv-allerrors-true",
+        "title": "Avoid Setting allErrors to true in Ajv",
+        "total": 1
+      },
+      {
+        "id": "Semgrep_javascript.lang.security.audit.prototype-pollution.prototype-pollution-loop.prototype-pollution-loop",
+        "title": "Detect Prototype Pollution via Loop",
+        "total": 1
+      },
+      {
+        "id": "Lizard_file-nloc-medium",
+        "title": "Limit File Length (Medium)",
+        "total": 11
+      },
+      {
+        "id": "SonarCSharp_S3532",
+        "title": "Remove Empty \"default\" Clauses in switch Statements",
+        "total": 1
+      },
+      {
+        "id": "SonarCSharp_S1117",
+        "title": "Avoid Local Variables Shadowing Class Fields or Properties",
+        "total": 5
+      },
+      {
+        "id": "Lizard_parameter-count-medium",
+        "title": "Limit Function Parameter Count (Medium)",
+        "total": 9
+      },
+      {
+        "id": "SonarCSharp_S1940",
+        "title": "Avoid Inverting Boolean Checks",
+        "total": 2
+      },
+      {
+        "id": "SonarCSharp_S3217",
+        "title": "Avoid explicit conversions in foreach loops",
+        "total": 1
+      },
+      {
+        "id": "SonarCSharp_S3871",
+        "title": "Enforce public accessibility for custom exception types",
+        "total": 3
+      },
+      {
+        "id": "Semgrep_rules_lgpl_javascript_crypto_rule-node-timing-attack",
+        "title": "Avoid Timing Attack Vulnerabilities in String Comparisons",
+        "total": 1
+      },
+      {
+        "id": "Semgrep_rules_lgpl_javascript_dos_rule-regex-dos",
+        "title": "Ensure Regex Safety to Prevent Regular Expression Denial of Service (ReDoS)",
+        "total": 2
+      },
+      {
+        "id": "Stylelint_alpha-value-notation",
+        "title": "Enforce Alpha-Value Notation",
+        "total": 17
+      },
+      {
+        "id": "SonarCSharp_S1244",
+        "title": "Avoid Testing Floating Point Numbers for Equality",
+        "total": 14
+      },
+      {
+        "id": "Checkov_CKV2_GHA_1",
+        "title": "Ensure top-level permissions are not set to write-all",
+        "total": 2
+      },
+      {
+        "id": "SonarCSharp_S3253",
+        "title": "Avoid Redundant Constructor and Destructor Declarations",
+        "total": 2
+      },
+      {
+        "id": "SonarCSharp_S3010",
+        "title": "Avoid Updating Static Fields in Constructors",
+        "total": 1
+      },
+      {
+        "id": "Stylelint_rule-empty-line-before",
+        "title": "Enforce Empty Line Before Rules",
+        "total": 11
+      },
+      {
+        "id": "Stylelint_declaration-empty-line-before",
+        "title": "Require or Disallow an Empty Line Before Declarations",
+        "total": 3
+      },
+      {
+        "id": "Semgrep_javascript_dos_rule-non-literal-regexp",
+        "title": "Avoid Using Non-Literal Values in RegExp Constructor",
+        "total": 1
+      },
+      {
+        "id": "SonarCSharp_S2339",
+        "title": "Avoid Using Public Constant Members",
+        "total": 1
+      },
+      {
+        "id": "SonarCSharp_S1118",
+        "title": "Avoid Public Constructors in Utility Classes",
+        "total": 2
+      },
+      {
+        "id": "SonarCSharp_S3453",
+        "title": "Avoid Classes with Only Private Constructors",
+        "total": 1
+      },
+      {
+        "id": "Stylelint_selector-class-pattern",
+        "title": "Enforce Pattern for Class Selectors",
+        "total": 3
+      },
+      {
+        "id": "Semgrep_javascript.lang.security.audit.detect-non-literal-regexp.detect-non-literal-regexp",
+        "title": "Avoid Non-Literal RegExp Usage",
+        "total": 1
+      },
+      {
+        "id": "Stylelint_color-hex-length",
+        "title": "Enforce Short or Long Notation for Hex Colors",
+        "total": 3
+      },
+      {
+        "id": "SonarCSharp_S2360",
+        "title": "Avoid Using Optional Parameters",
+        "total": 17
+      },
+      {
+        "id": "Stylelint_media-feature-range-notation",
+        "title": "Enforce consistent media feature range notation",
+        "total": 1
+      },
+      {
+        "id": "Semgrep_csharp_crypto_rule-WeakRNG",
+        "title": "Avoid Using Weak Random Number Generators",
+        "total": 3
+      },
+      {
+        "id": "SonarCSharp_S3241",
+        "title": "Avoid Returning Unused Values from Methods",
+        "total": 1
+      },
+      {
+        "id": "Stylelint_declaration-block-single-line-max-declarations",
+        "title": "Limit Declarations in Single-Line Declaration Block",
+        "total": 64
+      },
+      {
+        "id": "Semgrep_json.npm.security.package-dependencies-check.package-dependencies-check",
+        "title": "Avoid Variant Package Dependency Versions",
+        "total": 9
+      },
+      {
+        "id": "SonarCSharp_S125",
+        "title": "Avoid Commenting Out Sections of Code",
+        "total": 4
+      },
+      {
+        "id": "SonarCSharp_S108",
+        "title": "Avoid Leaving Nested Code Blocks Empty",
+        "total": 2
+      },
+      {
+        "id": "Semgrep_javascript_timing_rule-possible-timing-attacks",
+        "title": "Avoid Timing Attacks by Using Constant-Time String Comparison",
+        "total": 1
+      }
+    ],
+    "authors": [
+      {
+        "name": "12702456+6135@users.noreply.github.com",
+        "total": 288
+      },
+      {
+        "name": "support@codefactor.io",
+        "total": 63
+      }
+    ],
+    "potentialFalsePositives": [
+      {
+        "name": "equalOrAboveThreshold",
+        "total": 0
+      },
+      {
+        "name": "belowThreshold",
+        "total": 352
+      }
+    ]
+  }
+}

@@ -1,0 +1,421 @@
+{
+  "overview": {
+    "categories": [
+      {
+        "name": "Comprehensibility",
+        "total": 8
+      },
+      {
+        "name": "BestPractice",
+        "total": 56
+      },
+      {
+        "name": "UnusedCode",
+        "total": 109
+      },
+      {
+        "name": "CodeStyle",
+        "total": 140
+      },
+      {
+        "name": "Performance",
+        "total": 15
+      },
+      {
+        "name": "Security",
+        "total": 263
+      },
+      {
+        "name": "ErrorProne",
+        "total": 66
+      }
+    ],
+    "levels": [
+      {
+        "name": "High",
+        "total": 309
+      },
+      {
+        "name": "Warning",
+        "total": 165
+      },
+      {
+        "name": "Error",
+        "total": 8
+      },
+      {
+        "name": "Info",
+        "total": 175
+      }
+    ],
+    "languages": [
+      {
+        "name": "TypeScript",
+        "total": 389
+      },
+      {
+        "name": "CSharp",
+        "total": 197
+      },
+      {
+        "name": "CSS",
+        "total": 62
+      },
+      {
+        "name": "JSON",
+        "total": 5
+      },
+      {
+        "name": "YAML",
+        "total": 4
+      }
+    ],
+    "tags": [
+      {
+        "name": "security",
+        "total": 4
+      },
+      {
+        "name": "fwk:github-actions",
+        "total": 4
+      }
+    ],
+    "patterns": [
+      {
+        "id": "SonarCSharp_S2184",
+        "title": "Avoid assigning integer division results to floating point variables",
+        "total": 1
+      },
+      {
+        "id": "SonarCSharp_S2197",
+        "title": "Avoid Checking Modulus Results for Direct Equality",
+        "total": 2
+      },
+      {
+        "id": "SonarCSharp_S1994",
+        "title": "Enforce for Loop Increment Clauses to Modify Loop Counters",
+        "total": 3
+      },
+      {
+        "id": "SonarCSharp_S1116",
+        "title": "Remove Empty Statements",
+        "total": 1
+      },
+      {
+        "id": "SonarCSharp_S2696",
+        "title": "Avoid Writing to Static Fields from Instance Members",
+        "total": 2
+      },
+      {
+        "id": "Stylelint_value-keyword-case",
+        "title": "Enforce case for keyword values",
+        "total": 2
+      },
+      {
+        "id": "ESLint8_@typescript-eslint_no-unused-vars",
+        "title": "Disallow Unused Variables",
+        "total": 5
+      },
+      {
+        "id": "SonarCSharp_S3440",
+        "title": "Avoid Checking Variables Against Values to Be Assigned",
+        "total": 1
+      },
+      {
+        "id": "SonarCSharp_S1121",
+        "title": "Avoid Assignments Within Sub-expressions",
+        "total": 11
+      },
+      {
+        "id": "SonarCSharp_S3264",
+        "title": "Invoke Events",
+        "total": 2
+      },
+      {
+        "id": "SonarCSharp_S2933",
+        "title": "Mark Fields Assigned Only in Constructor as readonly",
+        "total": 1
+      },
+      {
+        "id": "ESLint8_@typescript-eslint_prefer-nullish-coalescing",
+        "title": "Enforce Prefer Nullish Coalescing Operator",
+        "total": 3
+      },
+      {
+        "id": "ESLint8_@typescript-eslint_prefer-optional-chain",
+        "title": "Enforce Prefer Optional Chain",
+        "total": 1
+      },
+      {
+        "id": "Stylelint_comment-empty-line-before",
+        "title": "Require or Disallow Empty Line Before Comments",
+        "total": 3
+      },
+      {
+        "id": "SonarCSharp_S1449",
+        "title": "Specify Culture for String Operations",
+        "total": 1
+      },
+      {
+        "id": "ESLint8_security-node_non-literal-reg-expr",
+        "title": "Avoid Non-Literal Regular Expressions",
+        "total": 2
+      },
+      {
+        "id": "Stylelint_declaration-block-no-redundant-longhand-properties",
+        "title": "Disallow redundant longhand properties within declaration block",
+        "total": 3
+      },
+      {
+        "id": "SonarCSharp_S3218",
+        "title": "Avoid Inner Class Members Shadowing Outer Class Static or Type Members",
+        "total": 23
+      },
+      {
+        "id": "SonarCSharp_S3898",
+        "title": "Implement IEquatable<T> on Value Types",
+        "total": 9
+      },
+      {
+        "id": "Stylelint_color-function-notation",
+        "title": "Enforce color-function notation style",
+        "total": 16
+      },
+      {
+        "id": "ESLint8_@typescript-eslint_no-dynamic-delete",
+        "title": "Disallow Dynamic Delete Operator Usage",
+        "total": 10
+      },
+      {
+        "id": "Semgrep_yaml.github-actions.security.third-party-action-not-pinned-to-commit-sha.third-party-action-not-pinned-to-commit-sha",
+        "title": "Enforce Pinning of Third-Party GitHub Actions to Full Commit SHA",
+        "total": 4
+      },
+      {
+        "id": "SonarCSharp_S127",
+        "title": "Ensure for Loop Stop Conditions Are Invariant",
+        "total": 4
+      },
+      {
+        "id": "SonarCSharp_S131",
+        "title": "Enforce default case in switch/select statements",
+        "total": 26
+      },
+      {
+        "id": "ESLint8_security_detect-object-injection",
+        "title": "Detect Object Injection",
+        "total": 231
+      },
+      {
+        "id": "SonarCSharp_S3532",
+        "title": "Remove Empty \"default\" Clauses in switch Statements",
+        "total": 1
+      },
+      {
+        "id": "SonarCSharp_S1117",
+        "title": "Avoid Local Variables Shadowing Class Fields or Properties",
+        "total": 5
+      },
+      {
+        "id": "ESLint8_security-node_detect-unhandled-async-errors",
+        "title": "Detect Unhandled Async Errors",
+        "total": 1
+      },
+      {
+        "id": "ESLint8_xss_no-mixed-html",
+        "title": "Disallow Mixed HTML and Unencoded Input to Prevent XSS",
+        "total": 6
+      },
+      {
+        "id": "SonarCSharp_S3052",
+        "title": "Avoid Initializing Members to Default Values",
+        "total": 5
+      },
+      {
+        "id": "SonarCSharp_S1940",
+        "title": "Avoid Inverting Boolean Checks",
+        "total": 2
+      },
+      {
+        "id": "SonarCSharp_S2333",
+        "title": "Avoid Redundant Modifiers",
+        "total": 12
+      },
+      {
+        "id": "ESLint8_@typescript-eslint_no-misused-promises",
+        "title": "Disallow Misused Promises",
+        "total": 2
+      },
+      {
+        "id": "ESLint8_security_detect-non-literal-regexp",
+        "title": "Detect Non-Literal Regular Expressions",
+        "total": 2
+      },
+      {
+        "id": "SonarCSharp_S3257",
+        "title": "Enforce Concise Declarations and Initializations",
+        "total": 21
+      },
+      {
+        "id": "SonarCSharp_S3217",
+        "title": "Avoid explicit conversions in foreach loops",
+        "total": 1
+      },
+      {
+        "id": "SonarCSharp_S3871",
+        "title": "Enforce public accessibility for custom exception types",
+        "total": 3
+      },
+      {
+        "id": "SonarCSharp_S3872",
+        "title": "Avoid Parameter Names Duplicating Method Names",
+        "total": 8
+      },
+      {
+        "id": "ESLint8_security_detect-unsafe-regex",
+        "title": "Detect Unsafe Regular Expressions",
+        "total": 15
+      },
+      {
+        "id": "ESLint8_@typescript-eslint_no-redundant-type-constituents",
+        "title": "Disallow Redundant Type Constituents in Unions and Intersections",
+        "total": 2
+      },
+      {
+        "id": "Stylelint_alpha-value-notation",
+        "title": "Enforce Alpha-Value Notation",
+        "total": 17
+      },
+      {
+        "id": "jackson_parse-error",
+        "title": "Prohibit Invalid JSON Files",
+        "total": 5
+      },
+      {
+        "id": "SonarCSharp_S1244",
+        "title": "Avoid Testing Floating Point Numbers for Equality",
+        "total": 14
+      },
+      {
+        "id": "ESLint8_@typescript-eslint_array-type",
+        "title": "Enforce Consistent Array Type Syntax",
+        "total": 4
+      },
+      {
+        "id": "SonarCSharp_S3253",
+        "title": "Avoid Redundant Constructor and Destructor Declarations",
+        "total": 2
+      },
+      {
+        "id": "SonarCSharp_S1301",
+        "title": "Avoid \"switch\" statements with fewer than 3 \"case\" clauses",
+        "total": 7
+      },
+      {
+        "id": "SonarCSharp_S3010",
+        "title": "Avoid Updating Static Fields in Constructors",
+        "total": 1
+      },
+      {
+        "id": "Stylelint_rule-empty-line-before",
+        "title": "Enforce Empty Line Before Rules",
+        "total": 11
+      },
+      {
+        "id": "Stylelint_declaration-empty-line-before",
+        "title": "Require or Disallow an Empty Line Before Declarations",
+        "total": 3
+      },
+      {
+        "id": "SonarCSharp_S2339",
+        "title": "Avoid Using Public Constant Members",
+        "total": 1
+      },
+      {
+        "id": "SonarCSharp_S1118",
+        "title": "Avoid Public Constructors in Utility Classes",
+        "total": 2
+      },
+      {
+        "id": "SonarCSharp_S3453",
+        "title": "Avoid Classes with Only Private Constructors",
+        "total": 1
+      },
+      {
+        "id": "ESLint8_no-unused-vars",
+        "title": "Disallow Unused Variables",
+        "total": 102
+      },
+      {
+        "id": "Stylelint_selector-class-pattern",
+        "title": "Enforce Pattern for Class Selectors",
+        "total": 3
+      },
+      {
+        "id": "Stylelint_color-hex-length",
+        "title": "Enforce Short or Long Notation for Hex Colors",
+        "total": 3
+      },
+      {
+        "id": "Stylelint_media-feature-range-notation",
+        "title": "Enforce consistent media feature range notation",
+        "total": 1
+      },
+      {
+        "id": "SonarCSharp_S3241",
+        "title": "Avoid Returning Unused Values from Methods",
+        "total": 1
+      },
+      {
+        "id": "ESLint8_no-useless-escape",
+        "title": "Disallow Useless Escape Characters",
+        "total": 1
+      },
+      {
+        "id": "SonarCSharp_S1172",
+        "title": "Remove Unused Method Parameters",
+        "total": 17
+      },
+      {
+        "id": "SonarCSharp_S125",
+        "title": "Avoid Commenting Out Sections of Code",
+        "total": 4
+      },
+      {
+        "id": "SonarCSharp_S108",
+        "title": "Avoid Leaving Nested Code Blocks Empty",
+        "total": 2
+      },
+      {
+        "id": "ESLint8_security_detect-possible-timing-attacks",
+        "title": "Detect Possible Timing Attacks",
+        "total": 1
+      },
+      {
+        "id": "ESLint8_security-node_detect-possible-timing-attacks",
+        "title": "Detect Possible Timing Attacks",
+        "total": 1
+      }
+    ],
+    "authors": [
+      {
+        "name": "12702456+6135@users.noreply.github.com",
+        "total": 553
+      },
+      {
+        "name": "support@codefactor.io",
+        "total": 102
+      }
+    ],
+    "potentialFalsePositives": [
+      {
+        "name": "equalOrAboveThreshold",
+        "total": 0
+      },
+      {
+        "name": "belowThreshold",
+        "total": 657
+      }
+    ]
+  }
+}

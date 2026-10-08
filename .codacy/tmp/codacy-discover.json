@@ -1,0 +1,128 @@
+{
+  "filePatterns": [
+    "*.cs",
+    "*.csproj",
+    "*.css",
+    "*.gif",
+    "*.html",
+    "*.jpg",
+    "*.json",
+    "*.md",
+    "*.png",
+    "*.ps1",
+    "*.py",
+    "*.sln",
+    "*.svg",
+    "*.ts",
+    "*.tsx",
+    "*.txt",
+    "*.webp",
+    "*.yml"
+  ],
+  "notableFiles": [
+    ".github/workflows/build.yml",
+    ".github/workflows/designer.yml",
+    ".github/workflows/publish.yml",
+    "Adjustable Fertilizer/Adjustable Fertilizer.csproj",
+    "AnythingPondsContinued/AnythingPondsContinued.csproj",
+    "CapstoneProfessionsContinued/CapstoneProfessionsContinued.csproj",
+    "CombatLevelDamageScalerContinued/CombatLevelDamageScalerContinued.csproj",
+    "GiantCropFertilizerContinued/GiantCropFertilizerContinued.csproj",
+    "GingerIslandMainlandAdjustmentsContinued/GingerIslandMainlandAdjustmentsContinued.csproj",
+    "HolidaySalesContinued/HolidaySalesContinued.csproj",
+    "ProfitCalculator/ProfitCalculator.csproj",
+    "README.md",
+    "SmapiTemplates/SmapiTemplates.csproj",
+    "SmapiTemplates/content/ContentPack/ContentPack.csproj",
+    "SmapiTemplates/content/ItemExtensionsPack/ItemExtensionsPack.csproj",
+    "SmapiTemplates/content/SmapiMod/SmapiMod.csproj",
+    "Stardew Mods.sln",
+    "StardewUIFramework/UIFramework.csproj",
+    "UIFrameworkExample/UIFrameworkExample.csproj",
+    "[CP] Pizza Nodes/[CP] Pizza Nodes.csproj",
+    "[CP] Sweet Mines/[CP] Sweet Mines.csproj",
+    "[CP] UI Framework Example/[CP] UI Framework Example.csproj",
+    "[CP] Various Coal Ores + Extras/[CP] Various Coal Ores + Extras.csproj",
+    "tools/DesignerMetadata/DesignerMetadata.csproj"
+  ],
+  "languages": [
+    "CSS",
+    "CSharp",
+    "HTML",
+    "JSON",
+    "Javascript",
+    "Markdown",
+    "Powershell",
+    "Python",
+    "TypeScript",
+    "YAML"
+  ],
+  "frameworks": [
+    {
+      "name": ".github/workflows",
+      "key": "github-actions",
+      "displayName": "GitHub Actions",
+      "kind": "framework",
+      "source": "file",
+      "manifestFile": ".github/workflows/build.yml"
+    },
+    {
+      "name": "react",
+      "key": "react",
+      "displayName": "React",
+      "kind": "framework",
+      "source": "manifest",
+      "manifestFile": "UIFrameworkDesigner/package.json",
+      "version": "^19.3.0",
+      "ecosystem": "npm"
+    },
+    {
+      "name": "react-dom",
+      "key": "react-dom",
+      "displayName": "React DOM",
+      "kind": "framework",
+      "source": "manifest",
+      "manifestFile": "UIFrameworkDesigner/package.json",
+      "version": "^19.3.0",
+      "ecosystem": "npm"
+    }
+  ],
+  "libraries": [
+    {
+      "name": "typescript",
+      "key": "typescript",
+      "displayName": "TypeScript",
+      "kind": "tool",
+      "source": "manifest",
+      "manifestFile": "UIFrameworkDesigner/package.json",
+      "version": "^7.0.2",
+      "ecosystem": "npm"
+    },
+    {
+      "name": "vite",
+      "key": "vite",
+      "displayName": "Vite",
+      "kind": "tool",
+      "source": "manifest",
+      "manifestFile": "UIFrameworkDesigner/package.json",
+      "version": "^8.3.2",
+      "ecosystem": "npm"
+    },
+    {
+      "name": "zustand",
+      "key": "zustand",
+      "displayName": "Zustand",
+      "kind": "library",
+      "source": "manifest",
+      "manifestFile": "UIFrameworkDesigner/package.json",
+      "version": "^5.0.15",
+      "ecosystem": "npm"
+    }
+  ],
+  "metadata": {
+    "repositoryRoot": "C:\\Users\\Gui\\Documents\\GitHub\\StardewValleyMods",
+    "totalFiles": 593,
+    "scannedAt": "2026-10-08T16:23:19.107Z",
+    "excludedFiles": 9
+  }
+}
