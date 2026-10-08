@@ -273,7 +273,8 @@ namespace UIFramework.Data.State
             {
                 if (!Context.HasScreenId(screen))
                 {
-                    (dead ??= new List<int>()).Add(screen);
+                    dead ??= new List<int>();
+                    dead.Add(screen);
                 }
             }
 

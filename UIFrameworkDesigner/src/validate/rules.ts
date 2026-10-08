@@ -1,5 +1,6 @@
 import type { Problem } from '../model/document';
 import { canonicalType, elementTypes, isContainer, usesMember, usesStyle } from '../model/metadata';
+import { countDefaultOutlets, expandShorthand, expandTag, isIdentifier, isTrue, memberKey, stringList } from './ruleHelpers';
 import {
   builtInTypes,
   canonicalMember,
@@ -30,9 +31,6 @@ export interface RawProblem extends Problem {
 }
 
 const ParamTypes = ['string', 'number', 'bool', 'any'];
-
-/** Members ExpandTag leaves on a custom tag / template instance (the rest become its arguments). */
-const TagKeeps = new Set(['Type', 'Children', 'Composite', 'Args', 'ContentTarget', 'On', 'Template']);
 
 /**
  * The owner-level templates a menu's instances can expand (from the workspace resolver, model/resolve.ts): their names
@@ -163,29 +161,48 @@ class Checker {
 
   private element(def: JsonObject, path: string, ptr: string, types: Map<string, string>): void {
     const n = this.normalize(def, path, ptr);
-    const id = scalarText(n?.members.get('Id') ?? getMember(def, 'Id'))?.trim();
-    if (id) {
-      if (types.has(id)) {
-        this.addField('warning', path, ptr, 'Id', `id '${id}' is used more than once in this menu; lookups by id return the first one.`);
-      } else {
-        types.set(id, n?.type ?? '');
-      }
-    }
-
+    this.registerId(scalarText(n?.members.get('Id') ?? getMember(def, 'Id'))?.trim(), n?.type ?? '', path, ptr, types);
     if (n === null) {
       return;
     }
 
     const { type, members } = n;
-    const get = (m: string) => members.get(m);
-    const set = (m: string) => get(m) !== undefined && get(m) !== null;
+    this.unusedMembers(type, members, path, ptr);
+    this.typeChecks(n, path, ptr);
+    this.collection(def, type, members, path, ptr);
+    this.styleChecks(type, members.get('Style'), path, ptr);
+    this.valueChecks(type, members, path, ptr);
+    if (isContainer(type)) {
+      this.children(members.get('Children'), path, ptr, types);
+    }
+  }
 
+  /** Records the element's id and type in the menu's id table; a repeated id is reported. */
+  private registerId(id: string | undefined, type: string, path: string, ptr: string, types: Map<string, string>): void {
+    if (!id) {
+      return;
+    }
+
+    if (types.has(id)) {
+      this.addField('warning', path, ptr, 'Id', `id '${id}' is used more than once in this menu; lookups by id return the first one.`);
+    } else {
+      types.set(id, type);
+    }
+  }
+
+  /** Members the type does not use. */
+  private unusedMembers(type: string, members: Map<string, unknown>, path: string, ptr: string): void {
     for (const [member, value] of members) {
       if (value !== undefined && value !== null && canonicalMember('ElementDefinition', member) !== null && !usesMember(type, member)) {
         this.addField('warning', path, ptr, member, `${member} is not used by a ${type}; it is ignored.`);
       }
     }
+  }
 
+  /** A Composite's name, a template instance's arguments, an Outlet outside a body, unknown Out keys, a Switch's pages. */
+  private typeChecks(n: Normalized, path: string, ptr: string): void {
+    const { type, members } = n;
+    const get = (m: string) => members.get(m);
     if (type === 'Composite' && !scalarText(get('Composite'))?.trim()) {
       this.addField('error', path, ptr, 'Composite', 'a Composite needs the name of a composite defined in C# or the Composites asset ("Composite": "ModId.Name"); nothing is built.');
     }
@@ -211,10 +228,10 @@ class Checker {
     if (type === 'Switch' && (!Array.isArray(children) || children.length === 0)) {
       this.addField('warning', path, ptr, 'Children', 'a Switch needs pages (children with a Case).');
     }
+  }
 
-    this.collection(def, type, members, path, ptr);
-
-    const style = get('Style');
+  /** Unknown Style fields and the ones the type does not use. */
+  private styleChecks(type: string, style: unknown, path: string, ptr: string): void {
     if (isObject(style)) {
       const stylePath = fieldPath(path, 'Style');
       this.unknown(style, 'StyleDefinition', stylePath, ptr);
@@ -225,7 +242,12 @@ class Checker {
         }
       }
     }
+  }
 
+  /** An Image's Source, a Dropdown's Choices / ChoicesSource, and Labels matching the Choices. */
+  private valueChecks(type: string, members: Map<string, unknown>, path: string, ptr: string): void {
+    const get = (m: string) => members.get(m);
+    const set = (m: string) => get(m) !== undefined && get(m) !== null;
     if (type === 'Image' && set('Source') && typeof get('Source') !== 'string') {
       this.addField('warning', path, ptr, 'Source', "an Image's Source is a rectangle 'x,y,width,height'; it is ignored.");
     }
@@ -246,10 +268,6 @@ class Checker {
       if (labels !== choices) {
         this.addField('warning', path, ptr, 'Labels', `${labels} label(s) for ${choices} choice(s); missing labels show the value.`);
       }
-    }
-
-    if (isContainer(type)) {
-      this.children(children, path, ptr, types);
     }
   }
 
@@ -272,44 +290,7 @@ class Checker {
     const hasTemplate = set('Template');
 
     if (hasTemplate || kind === 'template' || kind === 'customTag' || kind === 'unknown') {
-      if (kind === 'unknown' && !hasTemplate) {
-        const suggestion = suggest(typeText!, builtInTypes());
-        if (suggestion !== null) {
-          this.addField('error', path, ptr, 'Type', `unknown element type '${typeText}' (did you mean '${suggestion}'?); the element is skipped.`);
-          return null;
-        }
-
-        if (this.ownerTemplates === null) {
-          // most likely a template of the owner's Owners entry, which the workspace does not hold
-          this.addField('info', path, ptr, 'Type', `'${typeText}' is not a built-in type or a template of this menu; it must be a template of the owner's Owners entry, otherwise the element is skipped.`);
-        } else {
-          this.addField('warning', path, ptr, 'Type', `${this.missingTemplate(typeText!)} or a built-in type; the element is skipped.`);
-        }
-      }
-
-      const isComposite = kind === 'customTag' && !hasTemplate;
-      const name = isComposite ? typeText! : scalarText(members.get('Template')) ?? typeText!;
-      this.expandTag(members, unknownNames);
-      if (isComposite) {
-        if (!set('Composite')) {
-          members.set('Composite', name);
-        }
-
-        members.set('Type', 'Composite');
-        return { type: 'Composite', members };
-      }
-
-      members.set('Template', name.trim());
-      members.set('Type', 'Template');
-      if (hasTemplate && !this.isKnownTemplate(name)) {
-        if (this.ownerTemplates === null) {
-          this.addField('info', path, ptr, 'Template', `'${name}' is not a template of this menu; it must be a template of the owner's Owners entry, otherwise the instance is empty.`);
-        } else {
-          this.addField('warning', path, ptr, 'Template', `${this.missingTemplate(name)}; the instance is empty.`);
-        }
-      }
-
-      return { type: 'Template', members, template: name.trim() };
+      return this.normalizeInstance(members, unknownNames, typeText, kind, path, ptr);
     }
 
     for (const name of unknownNames) {
@@ -331,68 +312,62 @@ class Checker {
       type = inferred.type;
     }
 
-    const take = (m: string) => {
-      const v = members.get(m);
-      members.delete(m);
-      return v;
-    };
-    const fill = (m: string, v: unknown) => {
-      if (!set(m) && v !== undefined && v !== null) {
-        members.set(m, v);
-      }
-    };
-    switch (type) {
-      case 'Label':
-        fill('Text', take('Label'));
-        break;
-      case 'Button':
-        fill('Text', take('Button'));
-        break;
-      case 'Checkbox': {
-        const checkbox = take('Checkbox');
-        const text = take('Text');
-        fill('Label', checkbox ?? text);
-        break;
-      }
-      case 'Image':
-        fill('Sprite', take('Image'));
-        break;
-    }
-
+    expandShorthand(type, members);
     members.set('Type', type);
     return { type, members };
   }
 
-  /** ExpandTag: every member that is not common to all elements (nor kept) moves into Args; explicit Args win. */
-  private expandTag(members: Map<string, unknown>, unknownNames: string[]): void {
-    const args: JsonObject = {};
-    const common = new Set(elementTypes.common.map(c => c.toLowerCase()));
-    for (const [member, value] of [...members]) {
-      const known = !unknownNames.includes(member);
-      if (known && (TagKeeps.has(member) || common.has(member.toLowerCase()))) {
-        continue;
-      }
-
-      if (!known && member.startsWith('$')) {
-        members.delete(member);
-        continue;
-      }
-
-      if (value !== undefined && value !== null) {
-        args[member] = value;
-      }
-
-      members.delete(member);
+  /**
+   * NormalizeType for a template instance or custom tag (of `kind`, the Type's): Template / Composite set, other
+   * members moved into Args; null (reported) when the type is unknown but close to a built-in one.
+   */
+  private normalizeInstance(members: Map<string, unknown>, unknownNames: string[], typeText: string | null, kind: ReturnType<typeof typeKind> | null, path: string, ptr: string): Normalized | null {
+    const hasTemplate = members.get('Template') !== undefined && members.get('Template') !== null;
+    if (kind === 'unknown' && !hasTemplate && !this.unknownType(typeText!, path, ptr)) {
+      return null;
     }
 
-    const explicit = members.get('Args');
-    if (isObject(explicit)) {
-      Object.assign(args, explicit);
+    const isComposite = kind === 'customTag' && !hasTemplate;
+    const name = isComposite ? typeText! : scalarText(members.get('Template')) ?? typeText!;
+    expandTag(members, unknownNames);
+    if (isComposite) {
+      if (members.get('Composite') === undefined || members.get('Composite') === null) {
+        members.set('Composite', name);
+      }
+
+      members.set('Type', 'Composite');
+      return { type: 'Composite', members };
     }
 
-    if (Object.keys(args).length > 0) {
-      members.set('Args', args);
+    members.set('Template', name.trim());
+    members.set('Type', 'Template');
+    if (hasTemplate && !this.isKnownTemplate(name)) {
+      if (this.ownerTemplates === null) {
+        this.addField('info', path, ptr, 'Template', `'${name}' is not a template of this menu; it must be a template of the owner's Owners entry, otherwise the instance is empty.`);
+      } else {
+        this.addField('warning', path, ptr, 'Template', `${this.missingTemplate(name)}; the instance is empty.`);
+      }
     }
+
+    return { type: 'Template', members, template: name.trim() };
+  }
+
+  /** Reports a type that is neither built in nor a known template; false when the element is skipped (a near built-in name). */
+  private unknownType(typeText: string, path: string, ptr: string): boolean {
+    const suggestion = suggest(typeText, builtInTypes());
+    if (suggestion !== null) {
+      this.addField('error', path, ptr, 'Type', `unknown element type '${typeText}' (did you mean '${suggestion}'?); the element is skipped.`);
+      return false;
+    }
+
+    if (this.ownerTemplates === null) {
+      // most likely a template of the owner's Owners entry, which the workspace does not hold
+      this.addField('info', path, ptr, 'Type', `'${typeText}' is not a built-in type or a template of this menu; it must be a template of the owner's Owners entry, otherwise the element is skipped.`);
+    } else {
+      this.addField('warning', path, ptr, 'Type', `${this.missingTemplate(typeText)} or a built-in type; the element is skipped.`);
+    }
+
+    return true;
   }
 
   /** CheckArgs: required parameters present, arguments that are no parameter reported. */
@@ -656,51 +631,4 @@ class Checker {
       this.add('warning', member, '', `'${id}' is a ${type}, not a Button.`, member);
     }
   }
-}
-
-/** The key a member is written with in `obj` (its own spelling), for JSON pointers. */
-function memberKey(obj: JsonObject, member: string): string {
-  return Object.keys(obj).find(k => k.toLowerCase() === member.toLowerCase()) ?? member;
-}
-
-/** StringListConverter: an array, or one comma-separated string. */
-function stringList(value: unknown): string[] {
-  if (Array.isArray(value)) {
-    return value.map(v => scalarText(v) ?? '');
-  }
-
-  const text = scalarText(value);
-  return text === undefined ? [] : text.split(',').map(s => s.trim()).filter(s => s.length > 0);
-}
-
-function isTrue(value: unknown): boolean {
-  return scalarText(value)?.trim().toLowerCase() === 'true';
-}
-
-function isIdentifier(text: string): boolean {
-  return /^[\p{L}_][\p{L}\p{N}_]*$/u.test(text);
-}
-
-/** CountOutlets(children, ""): default Outlets of a body, not looking into nested instances. */
-function countDefaultOutlets(children: unknown[]): number {
-  let count = 0;
-  for (const child of children) {
-    if (!isObject(child)) {
-      continue;
-    }
-
-    const typeText = scalarText(getMember(child, 'Type'));
-    const type = typeText !== undefined ? canonicalType(typeText) : inferType(m => getMember(child, m) != null)?.type ?? null;
-    const outlet = (scalarText(getMember(child, 'Outlet')) ?? '').trim();
-    if (type === 'Outlet' && (outlet === '' || outlet.toLowerCase() === 'default')) {
-      count++;
-    }
-
-    const nested = getMember(child, 'Children');
-    if (type !== 'Template' && type !== 'Composite' && type !== null && Array.isArray(nested)) {
-      count += countDefaultOutlets(nested);
-    }
-  }
-
-  return count;
 }

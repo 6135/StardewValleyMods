@@ -145,8 +145,7 @@ namespace DesignerMetadata
                 {
                     bool b => b ? "true" : "false",
                     IFormattable f and not Enum => f.ToString(null, CultureInfo.InvariantCulture),
-                    object v => v.ToString(),
-                    null => null
+                    var v => v?.ToString()
                 };
             }
 

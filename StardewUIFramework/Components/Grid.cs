@@ -316,8 +316,8 @@ namespace UIFramework.Components
             // pass 2: star / spanning children at their final cell width, then the rows from the final heights
             RemeasureAtCellWidths(colSizes, available.Y);
             ComputeRowSizes();
-            float[] rowSizes = LayoutEngine.ResolveTracks(effectiveRows, rowAuto, available.Y - rowSpacingTotal);
-            return new Vector2(Sum(colSizes) + colSpacingTotal, Sum(rowSizes) + rowSpacingTotal);
+            float[] measuredRowSizes = LayoutEngine.ResolveTracks(effectiveRows, rowAuto, available.Y - rowSpacingTotal);
+            return new Vector2(Sum(colSizes) + colSpacingTotal, Sum(measuredRowSizes) + rowSpacingTotal);
         }
 
         /// <summary>Step 1: the explicit tracks, extended with implicit auto tracks for children placed beyond them; pixel tracks pre-fill their auto size.</summary>
@@ -626,7 +626,7 @@ namespace UIFramework.Components
 
                 float cellW = LayoutEngine.SpanSize(colSizes, col, colSpan, ColSpace);
                 float measured = measuredWidth[k];
-                if (cellW == measured || (float.IsInfinity(measured) && cellW >= child.DesiredSize.X))
+                if (cellW.Equals(measured) || (float.IsInfinity(measured) && cellW >= child.DesiredSize.X))
                 {
                     continue;
                 }
@@ -709,9 +709,9 @@ namespace UIFramework.Components
             float colSpacingTotal = ColSpace * Math.Max(0, colCount - 1);
             float rowSpacingTotal = RowSpace * Math.Max(0, rowCount - 1);
             float[] colSizes = LayoutEngine.ResolveTracks(effectiveColumns, columnAuto, Bounds.Width - colSpacingTotal);
-            float[] rowSizes = LayoutEngine.ResolveTracks(effectiveRows, rowAuto, Bounds.Height - rowSpacingTotal);
+            float[] resolvedRowSizes = LayoutEngine.ResolveTracks(effectiveRows, rowAuto, Bounds.Height - rowSpacingTotal);
             columnSizes = colSizes;
-            this.rowSizes = rowSizes;
+            rowSizes = resolvedRowSizes;
 
             foreach (UIElement child in Children)
             {

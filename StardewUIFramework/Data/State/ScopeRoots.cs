@@ -74,16 +74,8 @@ namespace UIFramework.Data.State
                     return scope.Element != null && Walk(scope, RefOf(scope.Element, scope.Runtime), path, 1, ref value, ref isVolatile);
 
                 case "el":
-                {
                     isVolatile = true;
-                    if (path.Count < 2)
-                    {
-                        return false;
-                    }
-
-                    UIElement? element = FindElement(scope, path[1].Key);
-                    return element != null && Walk(scope, RefOf(element, scope.Runtime), path, 2, ref value, ref isVolatile);
-                }
+                    return TryResolveElement(scope, path, ref value, ref isVolatile);
 
                 case "game":
                     isVolatile = true;
@@ -94,53 +86,77 @@ namespace UIFramework.Data.State
                     return path.Count > 1 && TryUi(path[1].Key, out start) && Walk(scope, start, path, 2, ref value, ref isVolatile);
 
                 case "ctx":
-                {
                     isVolatile = true;
-                    ScreenExposures? exposures = scope.Menu != null ? Exposures?.Invoke(scope.Menu) : null;
-                    if (exposures == null || path.Count < 2)
-                    {
-                        return false;
-                    }
-
-                    string key = path[1].Key;
-                    if (!exposures.HasValue(key))
-                    {
-                        return false;
-                    }
-
-                    start = exposures.GetString(key) is { } text ? StateAddress.Infer(text) : DataValue.Null;
-                    return Walk(scope, start, path, 2, ref value, ref isVolatile);
-                }
+                    return TryResolveExposure(scope, path, ref value, ref isVolatile);
 
                 case "model":
-                {
-                    // model.<name>.<path> (the scope owner's) or model[owner/name].<path>: objects exposed from C# (v1.6)
-                    if (path.Count < 2 || Core.UIServices.Hooks is not { } hooks)
-                    {
-                        return false;
-                    }
-
-                    object? model = hooks.ModelOf(HookRegistry.Qualify(path[1].Key, scope.Owner));
-                    if (model == null)
-                    {
-                        return false;
-                    }
-
-                    isVolatile = !Bridge.ModelAccessor.Watch(model);
-                    return Walk(scope, Bridge.ModelAccessor.ToValue(model), path, 2, ref value, ref isVolatile);
-                }
+                    return TryResolveModel(scope, path, ref value, ref isVolatile);
 
                 default:
-                    // @owner/name (v1.6): a signal, computed, model or rows exposed from C#; args.* without locals (v1.7)
-                    if (root.StartsWith('@') && Core.UIServices.Hooks is { } exposed
-                        && exposed.TryReadValue(HookRegistry.Qualify(root, scope.Owner), out start, out bool exposedVolatile))
-                    {
-                        isVolatile = exposedVolatile;
-                        return Walk(scope, start, path, 1, ref value, ref isVolatile);
-                    }
-
-                    return false;
+                    return TryResolveExposed(scope, root, path, ref value, ref isVolatile);
             }
+        }
+
+        /// <summary><c>el[id].*</c>: an element of the scope's menu.</summary>
+        private static bool TryResolveElement(DataScope scope, IReadOnlyList<PathSegment> path, ref DataValue value, ref bool isVolatile)
+        {
+            if (path.Count < 2)
+            {
+                return false;
+            }
+
+            UIElement? element = FindElement(scope, path[1].Key);
+            return element != null && Walk(scope, RefOf(element, scope.Runtime), path, 2, ref value, ref isVolatile);
+        }
+
+        /// <summary><c>ctx.*</c>: a value the menu's owner exposed from C#.</summary>
+        private static bool TryResolveExposure(DataScope scope, IReadOnlyList<PathSegment> path, ref DataValue value, ref bool isVolatile)
+        {
+            ScreenExposures? exposures = scope.Menu != null ? Exposures?.Invoke(scope.Menu) : null;
+            if (exposures == null || path.Count < 2)
+            {
+                return false;
+            }
+
+            string key = path[1].Key;
+            if (!exposures.HasValue(key))
+            {
+                return false;
+            }
+
+            DataValue start = exposures.GetString(key) is { } text ? StateAddress.Infer(text) : DataValue.Null;
+            return Walk(scope, start, path, 2, ref value, ref isVolatile);
+        }
+
+        /// <summary><c>model.&lt;name&gt;.&lt;path&gt;</c> (the scope owner's) or <c>model[owner/name].&lt;path&gt;</c>: objects exposed from C# (v1.6).</summary>
+        private static bool TryResolveModel(DataScope scope, IReadOnlyList<PathSegment> path, ref DataValue value, ref bool isVolatile)
+        {
+            if (path.Count < 2 || Core.UIServices.Hooks is not { } hooks)
+            {
+                return false;
+            }
+
+            object? model = hooks.ModelOf(HookRegistry.Qualify(path[1].Key, scope.Owner));
+            if (model == null)
+            {
+                return false;
+            }
+
+            isVolatile = !Bridge.ModelAccessor.Watch(model);
+            return Walk(scope, Bridge.ModelAccessor.ToValue(model), path, 2, ref value, ref isVolatile);
+        }
+
+        /// <summary><c>@owner/name</c> (v1.6): a signal, computed, model or rows exposed from C#; args.* without locals (v1.7).</summary>
+        private static bool TryResolveExposed(DataScope scope, string root, IReadOnlyList<PathSegment> path, ref DataValue value, ref bool isVolatile)
+        {
+            if (root.StartsWith('@') && Core.UIServices.Hooks is { } exposed
+                && exposed.TryReadValue(HookRegistry.Qualify(root, scope.Owner), out DataValue start, out bool exposedVolatile))
+            {
+                isVolatile = exposedVolatile;
+                return Walk(scope, start, path, 1, ref value, ref isVolatile);
+            }
+
+            return false;
         }
 
         internal static bool TryGetMember(DataScope scope, DataValue target, PathSegment member, out DataValue value, out bool isVolatile)

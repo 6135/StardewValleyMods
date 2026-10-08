@@ -38,8 +38,7 @@ namespace UIFramework.Data.Building
             }
 
             var log = new DataMessageLog();
-            var applier = new PropertyApplier(resolver, group, log);
-            DataScope scope = DataScope.ForRuntime(runtime, menu);
+            var ctx = new DecorationContext(runtime, menu, api, contributor, undo, new PropertyApplier(resolver, group, log), DataScope.ForRuntime(runtime, menu));
             for (int i = 0; i < ops.Count; i++)
             {
                 DecorationOp? op = ops[i];
@@ -52,7 +51,7 @@ namespace UIFramework.Data.Building
                 DataPath path = runtime.Path.Field("Decorate").Index(i, op.Target);
                 try
                 {
-                    ApplyOne(kind, op, runtime, menu, api, contributor, undo, applier, scope, path);
+                    ApplyOne(kind, op, ctx, path);
                 }
                 catch (InvalidOperationException ex)
                 {
@@ -79,17 +78,20 @@ namespace UIFramework.Data.Building
             }
         }
 
-        private void ApplyOne(string kind, DecorationOp op, DataContributionRuntime runtime, UIMenu menu, StardewUIApi api, ConsumerContext contributor, List<Action> undo, PropertyApplier applier, DataScope scope, DataPath path)
+        /// <summary>What every operation of one decoration pass works with.</summary>
+        private sealed record DecorationContext(DataContributionRuntime Runtime, UIMenu Menu, StardewUIApi Api, ConsumerContext Contributor, List<Action> Undo, PropertyApplier Applier, DataScope Scope);
+
+        private void ApplyOne(string kind, DecorationOp op, DecorationContext ctx, DataPath path)
         {
-            UIElement? target = Find(menu, op.Target);
+            UIElement? target = Find(ctx.Menu, op.Target);
             if (target == null)
             {
-                Report(runtime, path, $"{menu} has no element '{op.Target}'; {kind} is skipped.", LogLevel.Warn);
+                Report(ctx.Runtime, path, $"{ctx.Menu} has no element '{op.Target}'; {kind} is skipped.", LogLevel.Warn);
                 return;
             }
 
             // sealed subtrees refuse everything (the owner of the menu is never restricted)
-            Sealing.RequireWriteAccess(target, contributor, isDecorator: true);
+            Sealing.RequireWriteAccess(target, ctx.Contributor, isDecorator: true);
             IUIElement pub = target;
             switch (kind)
             {
@@ -98,30 +100,14 @@ namespace UIFramework.Data.Building
                 {
                     bool old = pub.Visible;
                     pub.Visible = kind == DecorationOps.Show;
-                    undo.Add(() => pub.Visible = old);
+                    ctx.Undo.Add(() => pub.Visible = old);
                     break;
                 }
 
                 case DecorationOps.Set:
                     if (op.Fields != null)
                     {
-                        foreach ((string field, string? raw) in op.Fields)
-                        {
-                            if (raw == null)
-                            {
-                                continue;
-                            }
-
-                            Action? restore = SetField(target, field?.Trim() ?? string.Empty, raw, scope, path.Field("Fields").Field(field ?? "?"), applier);
-                            if (restore == null)
-                            {
-                                Report(runtime, path.Field("Fields").Field(field ?? "?"), $"'{field}' cannot be set on '{target.Id}' ({target.GetType().Name}); Set accepts {string.Join(", ", DecorationOps.SetFields)}.", LogLevel.Warn);
-                            }
-                            else
-                            {
-                                undo.Add(restore);
-                            }
-                        }
+                        SetFields(target, op.Fields, ctx, path);
                     }
 
                     break;
@@ -130,9 +116,9 @@ namespace UIFramework.Data.Building
                 case DecorationOps.InsertAfter:
                 {
                     UIContainer parent = target.ParentElement ?? throw new InvalidOperationException($"'{target.Id}' has no parent to insert into.");
-                    Sealing.RequireWriteAccess(parent, contributor, isDecorator: true);
+                    Sealing.RequireWriteAccess(parent, ctx.Contributor, isDecorator: true);
                     int index = IndexOf(parent, target) + (kind == DecorationOps.InsertAfter ? 1 : 0);
-                    Insert(runtime, api, contributor, parent, index, op, applier, scope, path, undo);
+                    Insert(ctx, parent, index, op, path);
                     break;
                 }
 
@@ -143,33 +129,58 @@ namespace UIFramework.Data.Building
                         throw new InvalidOperationException($"'{target.Id}' is not a container.");
                     }
 
-                    Insert(runtime, api, contributor, container, container.Children.Count, op, applier, scope, path, undo);
+                    Insert(ctx, container, container.Children.Count, op, path);
                     break;
                 }
 
                 case DecorationOps.Replace:
                 {
-                    UIContainer parent = target.ParentElement ?? throw new InvalidOperationException($"'{target.Id}' has no parent.");
-                    int index = IndexOf(parent, target);
-                    parent.Remove(target);
-                    undo.Add(() => parent.Insert(index, target));
-                    Insert(runtime, api, contributor, parent, index, op, applier, scope, path, undo);
+                    int index = RemoveFromParent(target, ctx.Undo, out UIContainer parent);
+                    Insert(ctx, parent, index, op, path);
                     break;
                 }
 
                 case DecorationOps.Remove:
-                {
-                    UIContainer parent = target.ParentElement ?? throw new InvalidOperationException($"'{target.Id}' has no parent.");
-                    int index = IndexOf(parent, target);
-                    parent.Remove(target);
-                    undo.Add(() => parent.Insert(index, target));
+                    RemoveFromParent(target, ctx.Undo, out _);
                     break;
-                }
 
                 case DecorationOps.Move:
-                    Move(menu, target, op, contributor, undo);
+                    Move(ctx.Menu, target, op, ctx.Contributor, ctx.Undo);
                     break;
             }
+        }
+
+        /// <summary>Apply a <c>Set</c> operation's fields to <paramref name="target"/>, recording how to restore each.</summary>
+        private static void SetFields(UIElement target, Dictionary<string, string> fields, DecorationContext ctx, DataPath path)
+        {
+            foreach ((string field, string? raw) in fields)
+            {
+                if (raw == null)
+                {
+                    continue;
+                }
+
+                Action? restore = SetField(target, field?.Trim() ?? string.Empty, raw, ctx.Scope, path.Field("Fields").Field(field ?? "?"), ctx.Applier);
+                if (restore == null)
+                {
+                    Report(ctx.Runtime, path.Field("Fields").Field(field ?? "?"), $"'{field}' cannot be set on '{target.Id}' ({target.GetType().Name}); Set accepts {string.Join(", ", DecorationOps.SetFields)}.", LogLevel.Warn);
+                }
+                else
+                {
+                    ctx.Undo.Add(restore);
+                }
+            }
+        }
+
+        /// <summary>Remove <paramref name="target"/> from its parent (recording how to put it back); returns its former index.</summary>
+        private static int RemoveFromParent(UIElement target, List<Action> undo, out UIContainer parent)
+        {
+            UIContainer from = target.ParentElement ?? throw new InvalidOperationException($"'{target.Id}' has no parent.");
+            int index = IndexOf(from, target);
+            from.Remove(target);
+            undo.Add(() => from.Insert(index, target));
+            parent = from;
+            return index;
         }
 
         /// <summary>Move <paramref name="target"/> before / after another element or to the end of a container.</summary>
@@ -195,7 +206,7 @@ namespace UIFramework.Data.Building
         }
 
         /// <summary>Build the operation's children through the contributor's facade and place them at <paramref name="index"/> of <paramref name="parent"/>.</summary>
-        private void Insert(DataContributionRuntime runtime, StardewUIApi api, ConsumerContext contributor, UIContainer parent, int index, DecorationOp op, PropertyApplier applier, DataScope scope, DataPath path, List<Action> undo)
+        private void Insert(DecorationContext ctx, UIContainer parent, int index, DecorationOp op, DataPath path)
         {
             if (op.Children is not { Count: > 0 })
             {
@@ -203,16 +214,16 @@ namespace UIFramework.Data.Building
             }
 
             int before = parent.Children.Count;
-            builder.BuildTree(api, runtime, applier, parent, op.Children, scope, path.Field("Children"));
+            builder.BuildTree(ctx.Api, ctx.Runtime, ctx.Applier, parent, op.Children, ctx.Scope, path.Field("Children"));
             List<UIElement> created = parent.Children.Skip(before).ToList();
             for (int k = 0; k < created.Count; k++)
             {
                 UIElement element = created[k];
-                element.Contributor = contributor; // the contributor's own subtree (its guard, its edits)
+                element.Contributor = ctx.Contributor; // the contributor's own subtree (its guard, its edits)
                 parent.Insert(index + k, element);
             }
 
-            undo.Add(() =>
+            ctx.Undo.Add(() =>
             {
                 foreach (UIElement element in created)
                 {
@@ -228,6 +239,77 @@ namespace UIFramework.Data.Building
             string? canonical = DecorationOps.SetFields.FirstOrDefault(f => string.Equals(f, field, StringComparison.OrdinalIgnoreCase));
             switch (canonical)
             {
+                case "Text":
+                    return SetText(e, raw, scope, path, a);
+                case "Color":
+                case "Font":
+                    return SetTextStyle(e, canonical, raw, scope, path, a);
+                default:
+                    return SetCommonField(pub, canonical, raw, scope, path, a);
+            }
+        }
+
+        /// <summary>Set the text of a label or button; null for other elements (or text that cannot be read).</summary>
+        private static Action? SetText(UIElement e, string raw, DataScope scope, DataPath path, PropertyApplier a)
+        {
+            Func<string>? text = a.Text(raw, scope, path);
+            switch (e)
+            {
+                case IUILabel label when text != null:
+                {
+                    Func<string> old = label.Text;
+                    label.Text = text;
+                    return () => label.Text = old;
+                }
+
+                case IUIButton button when text != null:
+                {
+                    Func<string> old = button.Text;
+                    button.Text = text;
+                    return () => button.Text = old;
+                }
+
+                default:
+                    return null;
+            }
+        }
+
+        /// <summary>Set the color / font of a label or the font of a button; null for other elements.</summary>
+        private static Action? SetTextStyle(UIElement e, string canonical, string raw, DataScope scope, DataPath path, PropertyApplier a)
+        {
+            switch (canonical)
+            {
+                case "Color" when e is IUILabel label:
+                {
+                    Color? old = label.Color;
+                    a.Apply(raw, ValueParsers.ColorValue, scope, path, v => label.Color = v);
+                    return () => label.Color = old;
+                }
+
+                case "Font" when e is IUILabel label:
+                {
+                    UIFont old = label.Font;
+                    a.Apply(raw, ValueParsers.Font, scope, path, v => label.Font = v);
+                    return () => label.Font = old;
+                }
+
+                case "Font" when e is IUIButton button:
+                {
+                    UIFont old = button.Font;
+                    a.Apply(raw, ValueParsers.Font, scope, path, v => button.Font = v);
+                    return () => button.Font = old;
+                }
+
+                default:
+                    return null;
+            }
+        }
+
+        /// <summary>Set a member every element has; null when <paramref name="canonical"/> names none.</summary>
+        private static Action? SetCommonField(IUIElement pub, string? canonical, string raw, DataScope scope, DataPath path, PropertyApplier a)
+        {
+            switch (canonical)
+            {
                 case "Visible":
                 {
                     bool old = pub.Visible;
@@ -240,30 +322,6 @@ namespace UIFramework.Data.Building
                     bool old = pub.Enabled;
                     a.Apply(raw, ValueParsers.Bool, scope, path, v => pub.Enabled = v);
                     return () => pub.Enabled = old;
-                }
-
-                case "Text":
-                {
-                    Func<string>? text = a.Text(raw, scope, path);
-                    switch (e)
-                    {
-                        case IUILabel label when text != null:
-                        {
-                            Func<string> old = label.Text;
-                            label.Text = text;
-                            return () => label.Text = old;
-                        }
-
-                        case IUIButton button when text != null:
-                        {
-                            Func<string> old = button.Text;
-                            button.Text = text;
-                            return () => button.Text = old;
-                        }
-
-                        default:
-                            return null;
-                    }
                 }
 
                 case "Tooltip":
@@ -322,27 +380,6 @@ namespace UIFramework.Data.Building
                     UIAlign old = pub.VerticalAlign;
                     a.Apply(raw, ValueParsers.Align, scope, path, v => pub.VerticalAlign = v);
                     return () => pub.VerticalAlign = old;
-                }
-
-                case "Color" when e is IUILabel label:
-                {
-                    Color? old = label.Color;
-                    a.Apply(raw, ValueParsers.ColorValue, scope, path, v => label.Color = v);
-                    return () => label.Color = old;
-                }
-
-                case "Font" when e is IUILabel label:
-                {
-                    UIFont old = label.Font;
-                    a.Apply(raw, ValueParsers.Font, scope, path, v => label.Font = v);
-                    return () => label.Font = old;
-                }
-
-                case "Font" when e is IUIButton button:
-                {
-                    UIFont old = button.Font;
-                    a.Apply(raw, ValueParsers.Font, scope, path, v => button.Font = v);
-                    return () => button.Font = old;
                 }
 
                 default:

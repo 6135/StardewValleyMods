@@ -47,7 +47,7 @@ namespace CapstoneProfessions.Framework
 
         private List<string> rightProfessionDescription = new();
 
-        private Rectangle sourceRectForLevelIcon;
+        private readonly Rectangle sourceRectForLevelIcon;
 
         private Texture2D? modFarmIcon;
 
@@ -159,6 +159,7 @@ namespace CapstoneProfessions.Framework
 
         public override void receiveLeftClick(int x, int y, bool playSound = true)
         {
+            // Intentionally empty: this menu has no interactive behavior here.
         }
 
         public List<string> getExtraInfoForLevel()
@@ -171,10 +172,12 @@ namespace CapstoneProfessions.Framework
 
         public override void receiveRightClick(int x, int y, bool playSound = true)
         {
+            // Intentionally empty: this menu has no interactive behavior here.
         }
 
         public override void performHoverAction(int x, int y)
         {
+            // Intentionally empty: this menu has no interactive behavior here.
         }
 
         public override void update(GameTime time)
@@ -184,14 +187,53 @@ namespace CapstoneProfessions.Framework
                 this.exitThisMenu();
                 return;
             }
-            if (!this.hasUpdatedProfessions)
+            this.EnsureProfessionsLoaded();
+            this.UpdateLittleStars(time);
+            if (this.timerBeforeStart > 0)
             {
-                this.professionsToChoose.Add(ModEntry.ProfessionTime);
-                this.professionsToChoose.Add(ModEntry.ProfessionProfit);
-                this.leftProfessionDescription = new List<string>(new string[] { ModEntry.Translations.Get("profession.time.name").ToString(), ModEntry.Translations.Get("profession.time.description").ToString() });
-                this.rightProfessionDescription = new List<string>(new string[] { ModEntry.Translations.Get("profession.profit.name").ToString(), ModEntry.Translations.Get("profession.profit.description").ToString() });
-                this.hasUpdatedProfessions = true;
+                this.timerBeforeStart -= time.ElapsedGameTime.Milliseconds;
+                if (this.timerBeforeStart <= 0 && Game1.options.SnappyMenus)
+                {
+                    this.populateClickableComponentList();
+                    this.snapToDefaultClickableComponent();
+                }
+                return;
             }
+            if (this.isActive)
+            {
+                this.UpdateProfessionSelection();
+            }
+            this.oldMouseState = Game1.input.GetMouseState();
+            if (this.isActive && !this.informationUp && this.starIcon != null)
+            {
+                this.starIcon.sourceRect.X = this.starIcon.containsPoint(Game1.getOldMouseX(), Game1.getOldMouseY())
+                    ? 294
+                    : 310;
+            }
+            if (!this.isActive || !this.informationUp)
+            {
+                return;
+            }
+            Game1.player.completelyStopAnimatingOrDoingAction();
+            this.okButton.scale = Math.Max(1f, this.okButton.scale - 0.05f);
+            Game1.player.freezePause = 100;
+        }
+
+        private void EnsureProfessionsLoaded()
+        {
+            if (this.hasUpdatedProfessions)
+            {
+                return;
+            }
+            this.professionsToChoose.Add(ModEntry.ProfessionTime);
+            this.professionsToChoose.Add(ModEntry.ProfessionProfit);
+            this.leftProfessionDescription = new List<string>(new string[] { ModEntry.Translations.Get("profession.time.name").ToString(), ModEntry.Translations.Get("profession.time.description").ToString() });
+            this.rightProfessionDescription = new List<string>(new string[] { ModEntry.Translations.Get("profession.profit.name").ToString(), ModEntry.Translations.Get("profession.profit.description").ToString() });
+            this.hasUpdatedProfessions = true;
+        }
+
+        private void UpdateLittleStars(GameTime time)
+        {
             for (int i = this.littleStars.Count - 1; i >= 0; i--)
             {
                 if (this.littleStars[i].update(time))
@@ -217,61 +259,38 @@ namespace CapstoneProfessions.Framework
                     local = true
                 });
             }
-            if (this.timerBeforeStart > 0)
-            {
-                this.timerBeforeStart -= time.ElapsedGameTime.Milliseconds;
-                if (this.timerBeforeStart <= 0 && Game1.options.SnappyMenus)
-                {
-                    this.populateClickableComponentList();
-                    this.snapToDefaultClickableComponent();
-                }
-                return;
-            }
-            if (this.isActive)
-            {
-                this.leftProfessionColor = Game1.textColor;
-                this.rightProfessionColor = Game1.textColor;
-                Game1.player.completelyStopAnimatingOrDoingAction();
-                Game1.player.freezePause = 100;
-                if (Game1.getMouseY() > this.yPositionOnScreen + 192 && Game1.getMouseY() < this.yPositionOnScreen + this.height)
-                {
-                    if (Game1.getMouseX() > this.xPositionOnScreen && Game1.getMouseX() < this.xPositionOnScreen + (this.width / 2))
-                    {
-                        this.leftProfessionColor = Color.Green;
-                        if (Game1.didPlayerJustLeftClick() && this.readyToClose())
-                        {
-                            Game1.player.professions.Add(this.professionsToChoose[0]);
-                            this.isActive = false;
-                            this.informationUp = false;
-                        }
-                    }
-                    else if (Game1.getMouseX() > this.xPositionOnScreen + (this.width / 2) && Game1.getMouseX() < this.xPositionOnScreen + this.width)
-                    {
-                        this.rightProfessionColor = Color.Green;
-                        if (Game1.didPlayerJustLeftClick() && this.readyToClose())
-                        {
-                            Game1.player.professions.Add(this.professionsToChoose[1]);
-                            this.isActive = false;
-                            this.informationUp = false;
-                        }
-                    }
-                }
-                this.height = 512;
-            }
-            this.oldMouseState = Game1.input.GetMouseState();
-            if (this.isActive && !this.informationUp && this.starIcon != null)
-            {
-                this.starIcon.sourceRect.X = this.starIcon.containsPoint(Game1.getOldMouseX(), Game1.getOldMouseY())
-                    ? 294
-                    : 310;
-            }
-            if (!this.isActive || !this.informationUp)
-            {
-                return;
-            }
+        }
+
+        private void UpdateProfessionSelection()
+        {
+            this.leftProfessionColor = Game1.textColor;
+            this.rightProfessionColor = Game1.textColor;
             Game1.player.completelyStopAnimatingOrDoingAction();
-            this.okButton.scale = Math.Max(1f, this.okButton.scale - 0.05f);
             Game1.player.freezePause = 100;
+            if (Game1.getMouseY() > this.yPositionOnScreen + 192 && Game1.getMouseY() < this.yPositionOnScreen + this.height)
+            {
+                if (Game1.getMouseX() > this.xPositionOnScreen && Game1.getMouseX() < this.xPositionOnScreen + (this.width / 2))
+                {
+                    this.leftProfessionColor = Color.Green;
+                    this.TryChooseProfession(0);
+                }
+                else if (Game1.getMouseX() > this.xPositionOnScreen + (this.width / 2) && Game1.getMouseX() < this.xPositionOnScreen + this.width)
+                {
+                    this.rightProfessionColor = Color.Green;
+                    this.TryChooseProfession(1);
+                }
+            }
+            this.height = 512;
+        }
+
+        private void TryChooseProfession(int index)
+        {
+            if (Game1.didPlayerJustLeftClick() && this.readyToClose())
+            {
+                Game1.player.professions.Add(this.professionsToChoose[index]);
+                this.isActive = false;
+                this.informationUp = false;
+            }
         }
 
         public void okButtonClicked()

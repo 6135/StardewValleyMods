@@ -215,10 +215,10 @@ internal static class GIScheduler
             }
             CurrentAdventureGroup = kvp.Key;
 
-            List<string> explorerGroups = ExplorerGroups.Keys.ToList();
-            if (explorerGroups.Count > 0)
+            List<string> groupNames = ExplorerGroups.Keys.ToList();
+            if (groupNames.Count > 0)
             {
-                CurrentAdventureGroup = explorerGroups[random.Next(explorerGroups.Count)];
+                CurrentAdventureGroup = groupNames[random.Next(groupNames.Count)];
                 CurrentAdventurers = ExplorerGroups[CurrentAdventureGroup].Where(IslandSouth.CanVisitIslandToday).Take(3).ToHashSet();
                 return (CurrentAdventurers, CurrentAdventureGroup);
             }
@@ -242,66 +242,13 @@ internal static class GIScheduler
         CurrentAdventurers = null;
 
         List<NPC> visitors = new(capacity);
-        HashSet<NPC> valid_visitors = new(64); // this is probably an undercount, but better than 4.
+        HashSet<NPC> valid_visitors = CollectValidVisitors(explorers);
 
-        // For some reason, Utility.GetAllCharacters searches the farm too.
-        foreach (NPC npc in Extensions.GetVillagers())
-        {
-            if (npc is not null && IslandSouth.CanVisitIslandToday(npc) && explorers?.Contains(npc) != true)
-            {
-                valid_visitors.Add(npc);
-            }
-        }
-
-        if (Globals.SaveDataModel is not null)
-        {
-            foreach (string npcname in Globals.SaveDataModel.NPCsForTomorrow)
-            {
-                NPC? npc = Game1.getCharacterFromName(npcname);
-                if (npc is null)
-                {
-                    Globals.ModMonitor.Log($"{npcname} could not be located.", LogLevel.Warn);
-                    continue;
-                }
-
-                visitors.Add(npc);
-                if (!valid_visitors.Contains(npc))
-                {
-                    Globals.ModMonitor.Log($"{npcname} queued for Island DESPITE exclusion!", LogLevel.Warn);
-                }
-            }
-            Globals.SaveDataModel.NPCsForTomorrow.Clear();
-        }
+        AddQueuedVisitors(visitors, valid_visitors);
 
         if (random.NextBool(Globals.Config.GroupChance))
         {
-            List<string> groupkeys = new(IslandGroups.Count);
-            foreach (string key in IslandGroups.Keys)
-            {
-                // Filter out groups where one member can't make it or are too big
-                // Except for spouses, we'll just randomly pick until we hit the capacity later.
-                if ((IslandGroups[key].Count <= capacity - visitors.Count || key == "allSpouses")
-                    && IslandGroups[key].All(valid_visitors.Contains))
-                {
-                    groupkeys.Add(key);
-                }
-            }
-
-            if (groupkeys.Count > 0)
-            {
-                CurrentGroup = random.ChooseFrom(groupkeys);
-                Globals.ModMonitor.DebugOnlyLog($"Group {CurrentGroup} headed to Island.", LogLevel.Debug);
-
-                HashSet<NPC>? group = IslandGroups[CurrentGroup];
-                if (CurrentGroup == "allSpouses" && group.Count > capacity)
-                {
-                    group = group.OrderBy((_) => Random.Shared.Next()).Take(capacity).ToHashSet();
-                }
-
-                visitors.AddRange(group);
-                CurrentVisitingGroup = group;
-                valid_visitors.ExceptWith(visitors);
-            }
+            TryAddVisitingGroup(random, capacity, visitors, valid_visitors);
         }
 
         // Add Gus (even if we go over capacity, he has a specific standing spot).
@@ -314,7 +261,118 @@ internal static class GIScheduler
             valid_visitors.Remove(gus);
         }
 
-        // Prevent children and anyone with the neveralone exclusion from going alone.
+        RemoveVisitorsWhoCannotGoAlone(valid_visitors);
+
+        if (visitors.Count < capacity)
+        {
+            Globals.ModMonitor.DebugOnlyLog($"{capacity} not yet reached, attempting to add more.", LogLevel.Debug);
+            visitors.AddRange(valid_visitors.OrderBy(a => random.Next()).Take(capacity - visitors.Count));
+        }
+
+        AddEvelynIfGeorgeVisits(visitors);
+        SetVisitorScheduleDelays(visitors);
+
+        Globals.ModMonitor.DebugOnlyLog($"{visitors.Count} visitors: {string.Join(", ", visitors.Select((NPC npc) => npc.Name))}");
+        IslandSouthPatches.ClearCache();
+
+        return visitors;
+    }
+
+    /// <summary>
+    /// Collects the villagers who can visit the island today and are not explorers.
+    /// </summary>
+    /// <param name="explorers">Hashset of explorers.</param>
+    /// <returns>Set of valid visitors.</returns>
+    private static HashSet<NPC> CollectValidVisitors(HashSet<NPC>? explorers)
+    {
+        HashSet<NPC> valid_visitors = new(64); // this is probably an undercount, but better than 4.
+
+        // For some reason, Utility.GetAllCharacters searches the farm too.
+        foreach (NPC npc in Extensions.GetVillagers())
+        {
+            if (npc is not null && IslandSouth.CanVisitIslandToday(npc) && explorers?.Contains(npc) != true)
+            {
+                valid_visitors.Add(npc);
+            }
+        }
+        return valid_visitors;
+    }
+
+    /// <summary>
+    /// Adds NPCs queued via console command to the visitor list, then clears the queue.
+    /// </summary>
+    /// <param name="visitors">Visitor list.</param>
+    /// <param name="valid_visitors">Set of valid visitors.</param>
+    private static void AddQueuedVisitors(List<NPC> visitors, HashSet<NPC> valid_visitors)
+    {
+        if (Globals.SaveDataModel is null)
+        {
+            return;
+        }
+        foreach (string npcname in Globals.SaveDataModel.NPCsForTomorrow)
+        {
+            NPC? npc = Game1.getCharacterFromName(npcname);
+            if (npc is null)
+            {
+                Globals.ModMonitor.Log($"{npcname} could not be located.", LogLevel.Warn);
+                continue;
+            }
+
+            visitors.Add(npc);
+            if (!valid_visitors.Contains(npc))
+            {
+                Globals.ModMonitor.Log($"{npcname} queued for Island DESPITE exclusion!", LogLevel.Warn);
+            }
+        }
+        Globals.SaveDataModel.NPCsForTomorrow.Clear();
+    }
+
+    /// <summary>
+    /// Picks a random eligible group and adds it to the visitors.
+    /// </summary>
+    /// <param name="random">Random to use to select.</param>
+    /// <param name="capacity">Maximum number of people to allow on the island.</param>
+    /// <param name="visitors">Visitor list.</param>
+    /// <param name="valid_visitors">Set of valid visitors.</param>
+    private static void TryAddVisitingGroup(Random random, int capacity, List<NPC> visitors, HashSet<NPC> valid_visitors)
+    {
+        List<string> groupkeys = new(IslandGroups.Count);
+        foreach (string key in IslandGroups.Keys)
+        {
+            // Filter out groups where one member can't make it or are too big
+            // Except for spouses, we'll just randomly pick until we hit the capacity later.
+            if ((IslandGroups[key].Count <= capacity - visitors.Count || key == "allSpouses")
+                && IslandGroups[key].All(valid_visitors.Contains))
+            {
+                groupkeys.Add(key);
+            }
+        }
+
+        if (groupkeys.Count == 0)
+        {
+            return;
+        }
+
+        CurrentGroup = random.ChooseFrom(groupkeys);
+        Globals.ModMonitor.DebugOnlyLog($"Group {CurrentGroup} headed to Island.", LogLevel.Debug);
+
+        HashSet<NPC>? group = IslandGroups[CurrentGroup];
+        if (CurrentGroup == "allSpouses" && group.Count > capacity)
+        {
+            group = group.OrderBy((_) => Random.Shared.Next()).Take(capacity).ToHashSet();
+        }
+
+        visitors.AddRange(group);
+        CurrentVisitingGroup = group;
+        valid_visitors.ExceptWith(visitors);
+    }
+
+    /// <summary>
+    /// Prevent children and anyone with the neveralone exclusion from going alone.
+    /// </summary>
+    /// <param name="valid_visitors">Set of valid visitors.</param>
+    private static void RemoveVisitorsWhoCannotGoAlone(HashSet<NPC> valid_visitors)
+    {
         int kidsremoved = valid_visitors.RemoveWhere((NPC npc) => npc.Age == NPC.child
             && (!IslandSouthPatches.Exclusions.TryGetValue(npc, out string[]? exclusions) || !exclusions.Contains("freerange")));
         int neveralone = valid_visitors.RemoveWhere((NPC npc) => IslandSouthPatches.Exclusions.TryGetValue(npc, out string[]? exclusions)
@@ -324,51 +382,49 @@ internal static class GIScheduler
         {
             Globals.ModMonitor.Log($"Excluded {kidsremoved} kids and {neveralone} never alone villagers from the valid villagers list");
         }
+    }
 
-        if (visitors.Count < capacity)
+    /// <summary>
+    /// If George is visiting, replace one visitor with Evelyn.
+    /// </summary>
+    /// <param name="visitors">Visitor list.</param>
+    private static void AddEvelynIfGeorgeVisits(List<NPC> visitors)
+    {
+        if (visitors.Any((NPC npc) => npc.Name.Equals("George", StringComparison.OrdinalIgnoreCase))
+            && visitors.All((NPC npc) => !npc.Name.Equals("Evelyn", StringComparison.OrdinalIgnoreCase))
+            && Game1.getCharacterFromName("Evelyn") is NPC evelyn)
         {
-            Globals.ModMonitor.DebugOnlyLog($"{capacity} not yet reached, attempting to add more.", LogLevel.Debug);
-            visitors.AddRange(valid_visitors.OrderBy(a => random.Next()).Take(capacity - visitors.Count));
-        }
-
-        {
-            // If George in visitors, add Evelyn.
-            if (visitors.Any((NPC npc) => npc.Name.Equals("George", StringComparison.OrdinalIgnoreCase))
-                && visitors.All((NPC npc) => !npc.Name.Equals("Evelyn", StringComparison.OrdinalIgnoreCase))
-                && Game1.getCharacterFromName("Evelyn") is NPC evelyn)
+            // counting backwards to avoid kicking out a group member.
+            for (int i = visitors.Count - 1; i >= 0; i--)
             {
-                // counting backwards to avoid kicking out a group member.
-                for (int i = visitors.Count - 1; i >= 0; i--)
+                if (!visitors[i].Name.Equals("Gus", StringComparison.OrdinalIgnoreCase) && !visitors[i].Name.Equals("George", StringComparison.OrdinalIgnoreCase))
                 {
-                    if (!visitors[i].Name.Equals("Gus", StringComparison.OrdinalIgnoreCase) && !visitors[i].Name.Equals("George", StringComparison.OrdinalIgnoreCase))
-                    {
-                        Globals.ModMonitor.DebugOnlyLog($"Replacing one visitor {visitors[i].Name} with Evelyn");
-                        visitors[i] = evelyn;
-                        break;
-                    }
+                    Globals.ModMonitor.DebugOnlyLog($"Replacing one visitor {visitors[i].Name} with Evelyn");
+                    visitors[i] = evelyn;
+                    break;
                 }
             }
         }
+    }
 
+    /// <summary>
+    /// Staggers visitor schedule delays, and syncs George and Evelyn.
+    /// </summary>
+    /// <param name="visitors">Visitor list.</param>
+    private static void SetVisitorScheduleDelays(List<NPC> visitors)
+    {
         for (int i = 0; i < visitors.Count; i++)
         {
             visitors[i].scheduleDelaySeconds = Math.Min(i * 0.4f, 7f);
         }
 
+        // set schedule Delay for George and Evelyn so they arrive together (in theory)?
+        if (visitors.FirstOrDefault((NPC npc) => npc.Name.Equals("George", StringComparison.OrdinalIgnoreCase)) is NPC george
+            && visitors.FirstOrDefault((NPC npc) => npc.Name.Equals("Evelyn", StringComparison.OrdinalIgnoreCase)) is NPC evelyn)
         {
-            // set schedule Delay for George and Evelyn so they arrive together (in theory)?
-            if (visitors.FirstOrDefault((NPC npc) => npc.Name.Equals("George", StringComparison.OrdinalIgnoreCase)) is NPC george
-                && visitors.FirstOrDefault((NPC npc) => npc.Name.Equals("Evelyn", StringComparison.OrdinalIgnoreCase)) is NPC evelyn)
-            {
-                george.scheduleDelaySeconds = 7f;
-                evelyn.scheduleDelaySeconds = 6.8f;
-            }
+            george.scheduleDelaySeconds = 7f;
+            evelyn.scheduleDelaySeconds = 6.8f;
         }
-
-        Globals.ModMonitor.DebugOnlyLog($"{visitors.Count} visitors: {string.Join(", ", visitors.Select((NPC npc) => npc.Name))}");
-        IslandSouthPatches.ClearCache();
-
-        return visitors;
     }
 
     /// <summary>

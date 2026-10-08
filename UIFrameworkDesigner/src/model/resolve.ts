@@ -456,6 +456,59 @@ export function renameRefusal(resolver: Resolver, def: Definition, name: string)
   return taken ? `'${trimmed}' is already defined.` : null;
 }
 
+/** Rewrites the menu actions (`prefix owner/name`) in the field a menu reference sits in. */
+function renameMenuReference(tab: Draft<WorkspaceTab>, ref: Reference, renameMenu: (text: string) => string): void {
+  if (ref.nodeId !== null && tab.kind !== 'owner') {
+    const node = tab.doc.nodes[ref.nodeId];
+    if (node && ref.field in node.fields) {
+      node.fields[ref.field] = renameMenu(node.fields[ref.field]!);
+    } else if (node) {
+      node.extra[ref.field] = mapStrings(node.extra[ref.field], renameMenu);
+    }
+  } else if (tab.kind === 'menu') {
+    if (ref.field in tab.doc.menu) {
+      tab.doc.menu[ref.field] = renameMenu(tab.doc.menu[ref.field]!);
+    } else {
+      tab.doc.menuExtra[ref.field] = mapStrings(tab.doc.menuExtra[ref.field], renameMenu);
+    }
+  } else if (tab.kind === 'owner') {
+    if (ref.field in tab.doc.fields) {
+      tab.doc.fields[ref.field] = renameMenu(tab.doc.fields[ref.field]!);
+    } else {
+      tab.doc.extra[ref.field] = mapStrings(tab.doc.extra[ref.field], renameMenu);
+    }
+  }
+}
+
+/** Renames a template / tooltip / class / sprite reference to `def` as `to`. */
+function renameReference(tab: Draft<WorkspaceTab>, ref: Reference, def: Definition, to: string): void {
+  const node = ref.nodeId !== null && tab.kind !== 'owner' ? tab.doc.nodes[ref.nodeId] : undefined;
+  if (!node) {
+    // a member of the menu, owner entry or named tooltip
+    if (tab.kind === 'tooltip' && ref.field === 'From') {
+      tab.doc.fields['From'] = to;
+    } else if (tab.kind === 'menu' && ref.field in tab.doc.menuExtra) {
+      tab.doc.menuExtra[ref.field] = renameRaw(tab.doc.menuExtra[ref.field], ref.field, def.kind, def.name, to);
+    } else if ((tab.kind === 'owner' || tab.kind === 'tooltip') && ref.field in tab.doc.extra) {
+      tab.doc.extra[ref.field] = renameRaw(tab.doc.extra[ref.field], ref.field, def.kind, def.name, to);
+    }
+
+    return;
+  }
+
+  if (ref.field in node.extra) {
+    node.extra[ref.field] = renameRaw(node.extra[ref.field], ref.field, def.kind, def.name, to);
+  } else if (def.kind === 'template') {
+    if (ref.field === 'Type') {
+      node.type = to;
+    } else {
+      node.fields['Template'] = to;
+    }
+  } else if (def.kind === 'class') {
+    node.fields['Class'] = classNames(node.fields['Class'] ?? '').map(n => (sameName(n, def.name) ? to : n)).join(' ');
+  }
+}
+
 /**
  * The edits that rename `def` to `name` in every tab (the definition and each reference that resolves to it); the
  * store applies them as one undoable workspace step.
@@ -485,58 +538,7 @@ export function renameEdits(resolver: Resolver, def: Definition, name: string): 
   });
 
   for (const ref of resolver.usages(def)) {
-    add(ref.tabId, tab => {
-      if (def.kind === 'menu') {
-        if (ref.nodeId !== null && tab.kind !== 'owner') {
-          const node = tab.doc.nodes[ref.nodeId];
-          if (node && ref.field in node.fields) {
-            node.fields[ref.field] = renameMenu(node.fields[ref.field]!);
-          } else if (node) {
-            node.extra[ref.field] = mapStrings(node.extra[ref.field], renameMenu);
-          }
-        } else if (tab.kind === 'menu') {
-          if (ref.field in tab.doc.menu) {
-            tab.doc.menu[ref.field] = renameMenu(tab.doc.menu[ref.field]!);
-          } else {
-            tab.doc.menuExtra[ref.field] = mapStrings(tab.doc.menuExtra[ref.field], renameMenu);
-          }
-        } else if (tab.kind === 'owner') {
-          if (ref.field in tab.doc.fields) {
-            tab.doc.fields[ref.field] = renameMenu(tab.doc.fields[ref.field]!);
-          } else {
-            tab.doc.extra[ref.field] = mapStrings(tab.doc.extra[ref.field], renameMenu);
-          }
-        }
-
-        return;
-      }
-
-      const node = ref.nodeId !== null && tab.kind !== 'owner' ? tab.doc.nodes[ref.nodeId] : undefined;
-      if (!node) {
-        // a member of the menu, owner entry or named tooltip
-        if (tab.kind === 'tooltip' && ref.field === 'From') {
-          tab.doc.fields['From'] = to;
-        } else if (tab.kind === 'menu' && ref.field in tab.doc.menuExtra) {
-          tab.doc.menuExtra[ref.field] = renameRaw(tab.doc.menuExtra[ref.field], ref.field, def.kind, def.name, to);
-        } else if ((tab.kind === 'owner' || tab.kind === 'tooltip') && ref.field in tab.doc.extra) {
-          tab.doc.extra[ref.field] = renameRaw(tab.doc.extra[ref.field], ref.field, def.kind, def.name, to);
-        }
-
-        return;
-      }
-
-      if (ref.field in node.extra) {
-        node.extra[ref.field] = renameRaw(node.extra[ref.field], ref.field, def.kind, def.name, to);
-      } else if (def.kind === 'template') {
-        if (ref.field === 'Type') {
-          node.type = to;
-        } else {
-          node.fields['Template'] = to;
-        }
-      } else if (def.kind === 'class') {
-        node.fields['Class'] = classNames(node.fields['Class'] ?? '').map(n => (sameName(n, def.name) ? to : n)).join(' ');
-      }
-    });
+    add(ref.tabId, tab => (def.kind === 'menu' ? renameMenuReference(tab, ref, renameMenu) : renameReference(tab, ref, def, to)));
   }
 
   return edits;

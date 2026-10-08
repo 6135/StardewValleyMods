@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.Threading;
 using StardewModdingAPI;
 using UIFramework.Api;
 
@@ -41,8 +42,10 @@ namespace UIFramework.Core
         /// <summary>Start collecting the dependencies of <paramref name="computed"/>.</summary>
         internal static void BeginEvaluation(Computed computed)
         {
-            (tracking ??= new Stack<HashSet<Reactive>>()).Push(new HashSet<Reactive>());
-            (evaluating ??= new Stack<Computed>()).Push(computed);
+            tracking ??= new Stack<HashSet<Reactive>>();
+            tracking.Push(new HashSet<Reactive>());
+            evaluating ??= new Stack<Computed>();
+            evaluating.Push(computed);
         }
 
         /// <summary>Stop collecting and return what <paramref name="computed"/> read.</summary>
@@ -133,8 +136,7 @@ namespace UIFramework.Core
         protected Reactive(ConsumerContext consumer, string kind)
         {
             Consumer = consumer;
-            nextId++;
-            Id = kind + "#" + nextId.ToString(CultureInfo.InvariantCulture);
+            Id = kind + "#" + Interlocked.Increment(ref nextId).ToString(CultureInfo.InvariantCulture);
         }
 
         /// <summary>The consumer that created the value (its callback guard wraps every handler).</summary>
@@ -230,7 +232,7 @@ namespace UIFramework.Core
     }
 
     /// <summary>A stored value with string / number / flag views and typed conversions between them.</summary>
-    internal readonly struct ReactiveValue
+    internal readonly record struct ReactiveValue
     {
         internal string Text { get; }
         internal double Number { get; }

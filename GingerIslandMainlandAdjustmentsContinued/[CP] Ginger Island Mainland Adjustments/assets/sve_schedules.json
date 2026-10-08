@@ -31,7 +31,7 @@
             "Entries": {
                 "GIRemainder": "1800 Custom_JenkinsHouse 16 12 0 Olivia_Art/2200 Custom_JenkinsHouse 19 5 1 Olivia_Sleep",
                 "GIRemainder_Fri": "1800 Saloon 20 18 3 Olivia_Wine1/2130 Custom_JenkinsHouse 19 5 1 Olivia_Sleep",
-                "GIRemainder_Sat": "1800 Custom_JenkinsHouse 16 5 0/2200 Custom_JenkinsHouse 19 5 1 Olivia_Sleep",
+                "GIRemainder_Sat": "1800 Custom_JenkinsHouse 16 5 0/2200 Custom_JenkinsHouse 19 5 1 Olivia_Sleep"
             }
         },
         {
@@ -40,7 +40,7 @@
             "Entries": {
                 "GIRemainder": "1800 Custom_JenkinsHouse 30 37 0/2100 Custom_JenkinsHouse 31 5 1 Victor_Sleep",
                 "GIRemainder_Fri": "1800 Saloon 34 18 0/2100 Custom_JenkinsHouse 31 5 1 Victor_Sleep",
-                "GIRemainder_married_Fri": "1800 Saloon 34 18 0/2130 BusStop -1 23 3",
+                "GIRemainder_married_Fri": "1800 Saloon 34 18 0/2130 BusStop -1 23 3"
             }
         }
     ]

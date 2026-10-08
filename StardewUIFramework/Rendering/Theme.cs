@@ -50,22 +50,33 @@ namespace UIFramework.Rendering
         /// <summary>null = component default, empty = silent.</summary>
         internal readonly string? HoverSound;
 
+        /// <summary>Stands in for a missing consumer or element layer; never mutated.</summary>
+        private static readonly UIStyle NoStyle = new();
+
         /// <summary>Resolve each member from the first layer that sets it: <paramref name="own"/>, then <paramref name="consumer"/>, then <paramref name="theme"/> (no allocation).</summary>
         internal ResolvedStyle(UIStyle theme, UIStyle? consumer, UIStyle? own)
         {
-            Color? text = own?.TextColor ?? consumer?.TextColor ?? theme.TextColor;
-            Font = own?.Font ?? consumer?.Font ?? theme.Font ?? UIFont.Small;
+            UIStyle c = consumer ?? NoStyle;
+            UIStyle o = own ?? NoStyle;
+            Color? text = First(o.TextColor, c.TextColor, theme.TextColor);
+            Font = First(o.Font, c.Font, theme.Font) ?? UIFont.Small;
             TextColor = text ?? Theme.TextColor;
             DisabledTextColor = text.HasValue ? text.Value * 0.5f : Theme.DisabledTextColor;
-            HoverColor = own?.HoverColor ?? consumer?.HoverColor ?? theme.HoverColor ?? Theme.HoverColor;
-            BoxTexture = own?.BoxTexture ?? consumer?.BoxTexture ?? theme.BoxTexture;
-            BoxSource = own?.BoxSource ?? consumer?.BoxSource ?? theme.BoxSource;
-            BoxScale = own?.BoxScale ?? consumer?.BoxScale ?? theme.BoxScale;
-            Padding = own?.Padding ?? consumer?.Padding ?? theme.Padding;
-            TextShadow = own?.TextShadow ?? consumer?.TextShadow ?? theme.TextShadow ?? false;
-            ClickSound = own?.ClickSound ?? consumer?.ClickSound ?? theme.ClickSound;
-            HoverSound = own?.HoverSound ?? consumer?.HoverSound ?? theme.HoverSound;
+            HoverColor = First(o.HoverColor, c.HoverColor, theme.HoverColor) ?? Theme.HoverColor;
+            BoxTexture = FirstSet(o.BoxTexture, c.BoxTexture, theme.BoxTexture);
+            BoxSource = First(o.BoxSource, c.BoxSource, theme.BoxSource);
+            BoxScale = First(o.BoxScale, c.BoxScale, theme.BoxScale);
+            Padding = First(o.Padding, c.Padding, theme.Padding);
+            TextShadow = First(o.TextShadow, c.TextShadow, theme.TextShadow) ?? false;
+            ClickSound = FirstSet(o.ClickSound, c.ClickSound, theme.ClickSound);
+            HoverSound = FirstSet(o.HoverSound, c.HoverSound, theme.HoverSound);
         }
+
+        /// <summary>The first of the three layers that sets a value-type member.</summary>
+        private static T? First<T>(T? own, T? consumer, T? theme) where T : struct => own ?? consumer ?? theme;
+
+        /// <summary>The first of the three layers that sets a reference-type member.</summary>
+        private static T? FirstSet<T>(T? own, T? consumer, T? theme) where T : class => own ?? consumer ?? theme;
     }
 
     /// <summary>
@@ -218,7 +229,8 @@ namespace UIFramework.Rendering
             }
 
             // the log requester is built once per resolved theme, not on every read
-            return TextureCache.Load(assetName, textureRequester ??= $"Theme '{ActiveName}'");
+            textureRequester ??= $"Theme '{ActiveName}'";
+            return TextureCache.Load(assetName, textureRequester);
         }
 
         // ---------------------------------------------------------------------------------------------------------

@@ -1,5 +1,5 @@
 import { useSortable, SortableContext } from '@dnd-kit/sortable';
-import type { KeyboardEvent } from 'react';
+import type { KeyboardEvent, KeyboardEventHandler, PointerEventHandler } from 'react';
 import type { DesignerNode, NodeId, NodeTree } from '../model/document';
 import { acceptsChildren, parentOf } from '../model/ops';
 import { subItemKind } from '../model/subItems';
@@ -45,61 +45,78 @@ export function focusRow(id: NodeId): void {
 /** No item shifting while dragging: the tree shows the drop target instead. */
 const stayInPlace = () => null;
 
+/** The tree around the selected row, for keyboard navigation. */
+interface TreeNav {
+  rows: VisibleRow[];
+  collapsed: Record<NodeId, true>;
+  current: NodeId;
+  at: number;
+  node: DesignerNode;
+  parent: NodeId | null;
+  go(id: NodeId | undefined): void;
+  toggleCollapsed(id: NodeId, value: boolean): void;
+}
+
+/** Arrow keys move through the rows (Left / Right collapse, expand or go to the parent / first child), Home / End jump. */
+const treeKeys: Record<string, (nav: TreeNav) => void> = {
+  ArrowUp: nav => nav.go(nav.rows[nav.at - 1]?.id),
+  ArrowDown: nav => nav.go(nav.rows[nav.at + 1]?.id),
+  ArrowLeft: nav => {
+    if (nav.node.children.length > 0 && !nav.collapsed[nav.current]) {
+      nav.toggleCollapsed(nav.current, true);
+    } else {
+      nav.go(nav.parent ?? undefined);
+    }
+  },
+  ArrowRight: nav => {
+    if (nav.collapsed[nav.current]) {
+      nav.toggleCollapsed(nav.current, false);
+    } else {
+      nav.go(nav.node.children[0]);
+    }
+  },
+  Home: nav => nav.go(nav.rows[0]?.id),
+  End: nav => nav.go(nav.rows[nav.rows.length - 1]?.id)
+};
+
+/** Handles a key on the tree (Alt+Up / Down moves the selected node among its siblings); false when the key is not used. */
+function handleTreeKey(e: KeyboardEvent<HTMLDivElement>, doc: NodeTree, rows: VisibleRow[], collapsed: Record<NodeId, true>, readOnly: boolean): boolean {
+  const { select, toggleCollapsed, moveNode } = useDesigner.getState();
+  const selection = activeUi(useDesigner.getState()).selection;
+  const current = selection !== null && doc.nodes[selection] ? selection : doc.root;
+  const parent = parentOf(doc, current);
+  if (e.altKey && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) {
+    if (parent !== null && !readOnly) {
+      const index = doc.nodes[parent]!.children.indexOf(current) + (e.key === 'ArrowUp' ? -1 : 1);
+      if (index >= 0 && moveNode(current, parent, index)) {
+        focusRow(current);
+      }
+    }
+    return true;
+  }
+  const handler = Object.prototype.hasOwnProperty.call(treeKeys, e.key) ? treeKeys[e.key]! : null;
+  if (!handler) {
+    return false;
+  }
+  const go = (id: NodeId | undefined) => {
+    if (id !== undefined) {
+      select(id);
+      focusRow(id);
+    }
+  };
+  handler({ rows, collapsed, current, at: rows.findIndex(r => r.id === current), node: doc.nodes[current]!, parent, go, toggleCollapsed });
+  return true;
+}
+
 export function Tree({ tree: doc, drop, dragging, readOnly = false }: { tree: NodeTree; drop: DropTarget | null; dragging: boolean; readOnly?: boolean }) {
   const tab = useDesigner(activeTab);
   const collapsed = useDesigner(s => activeUi(s).collapsed);
   const rows = visibleRows(doc, collapsed);
 
   const onKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
-    if (dragging) {
-      return;
+    if (!dragging && handleTreeKey(e, doc, rows, collapsed, readOnly)) {
+      e.preventDefault();
     }
-
-    const { select, toggleCollapsed, moveNode } = useDesigner.getState();
-    const selection = activeUi(useDesigner.getState()).selection;
-    const current = selection !== null && doc.nodes[selection] ? selection : doc.root;
-    const at = rows.findIndex(r => r.id === current);
-    const node = doc.nodes[current]!;
-    const parent = parentOf(doc, current);
-    const go = (id: NodeId | undefined) => {
-      if (id !== undefined) {
-        select(id);
-        focusRow(id);
-      }
-    };
-
-    if (e.altKey && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) {
-      if (parent !== null && !readOnly) {
-        const index = doc.nodes[parent]!.children.indexOf(current) + (e.key === 'ArrowUp' ? -1 : 1);
-        if (index >= 0 && moveNode(current, parent, index)) {
-          focusRow(current);
-        }
-      }
-    } else if (e.key === 'ArrowUp') {
-      go(rows[at - 1]?.id);
-    } else if (e.key === 'ArrowDown') {
-      go(rows[at + 1]?.id);
-    } else if (e.key === 'ArrowLeft') {
-      if (node.children.length > 0 && !collapsed[current]) {
-        toggleCollapsed(current, true);
-      } else {
-        go(parent ?? undefined);
-      }
-    } else if (e.key === 'ArrowRight') {
-      if (collapsed[current]) {
-        toggleCollapsed(current, false);
-      } else {
-        go(node.children[0]);
-      }
-    } else if (e.key === 'Home') {
-      go(rows[0]?.id);
-    } else if (e.key === 'End') {
-      go(rows[rows.length - 1]?.id);
-    } else {
-      return;
-    }
-
-    e.preventDefault();
   };
 
   return (
@@ -146,7 +163,10 @@ function Row({ node, depth, isRoot, tab, collapsed, drop }: { node: DesignerNode
     drop && `drop-${drop.zone}`, drop?.refusal && 'drop-refused'].filter(Boolean).join(' ');
 
   return (
-    <div ref={setNodeRef} {...attributes} {...listeners} role="treeitem" aria-level={depth + 1} aria-selected={selected}
+    <div ref={setNodeRef} aria-disabled={attributes['aria-disabled']} aria-pressed={attributes['aria-pressed']}
+      aria-roledescription={attributes['aria-roledescription']} aria-describedby={attributes['aria-describedby']}
+      onPointerDown={listeners?.['onPointerDown'] as PointerEventHandler | undefined}
+      onKeyDown={listeners?.['onKeyDown'] as KeyboardEventHandler | undefined} role="treeitem" aria-level={depth + 1} aria-selected={selected}
       aria-expanded={hasChildren ? !collapsed : undefined} tabIndex={selected ? 0 : -1} data-node-id={node.id}
       className={classes} style={{ paddingLeft: `${depth * 14 + 4}px` }}
       onClick={() => select(node.id)}>

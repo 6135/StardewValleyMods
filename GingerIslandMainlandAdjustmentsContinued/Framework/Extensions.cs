@@ -58,6 +58,7 @@ internal static class Extensions
         int index = 1;
         while (npc.Dialogue.ContainsKey($"{basekey}_{++index}"))
         {
+            // Intentionally empty: the loop condition advances index to the first missing key.
         }
         int selection = random.Next(1, index);
         return selection == 1 ? basekey : $"{basekey}_{selection}";
@@ -76,7 +77,7 @@ internal static class Extensions
         if (!string.IsNullOrWhiteSpace(dialogueKey) && npc.Dialogue.TryGetValue(dialogueKey, out string? dialogue))
         {
             string endearment = npc.getTermOfSpousalEndearment();
-            dialogue = dialogue.Replace(MarriageDialogueReference.ENDEARMENT_TOKEN_LOWER, endearment.ToLower(), StringComparison.Ordinal)
+            dialogue = dialogue.Replace(MarriageDialogueReference.ENDEARMENT_TOKEN_LOWER, endearment.ToLowerInvariant(), StringComparison.Ordinal)
                                .Replace(MarriageDialogueReference.ENDEARMENT_TOKEN, endearment, StringComparison.Ordinal);
             npc.CurrentDialogue.Clear();
             npc.CurrentDialogue.Push(new Dialogue(npc, $"{npc.LoadedDialogueKey}:{dialogueKey}", dialogue) { removeOnNextMove = true });

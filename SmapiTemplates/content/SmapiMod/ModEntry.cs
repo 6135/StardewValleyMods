@@ -16,7 +16,9 @@ internal sealed class ModEntry : Mod
     private void OnButtonPressed(object? sender, ButtonPressedEventArgs e)
     {
         if (!Context.IsWorldReady || !config.ExampleOption)
+        {
             return;
+        }
 
         Monitor.Log(Helper.Translation.Get("button-pressed", new { button = e.Button }), LogLevel.Debug);
     }

@@ -37,8 +37,7 @@ internal static class FishPondDoActionPatch
 
     private static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
     {
-        // after `if (who.ActiveObject.Category == -4) goto accept;` add `if (CanThrowIn(who.ActiveObject)) goto accept;`.
-        // The vanilla check is left intact because other mods (Item Extensions) anchor their own patches on it.
+        // Inject an extra CanThrowIn check after the vanilla category check, which is left intact because other mods (Item Extensions) anchor their own patches on it.
         CodeMatcher matcher = new CodeMatcher(instructions)
             .MatchStartForward(
                 new CodeMatch(OpCodes.Callvirt, AccessTools.PropertyGetter(typeof(Farmer), nameof(Farmer.ActiveObject))),

@@ -20,21 +20,30 @@ namespace UIFramework.Data
     /// </summary>
     internal sealed class DataScope : IExpressionScope
     {
-        private DataScope(string owner, string menuId, UIMenu? menu, DataRuntime? runtime, UIElement? element, string? eventName, object? eventArgs,
-            IReadOnlyDictionary<string, DataValue>? eventFields, PathSegment[]? withPath, IReadOnlyDictionary<string, DataValue>? locals, DataScope? parent)
+        private DataScope(ScopeUi ui, UIElement? element, ScopeEvent evt, PathSegment[]? withPath, IReadOnlyDictionary<string, DataValue>? locals, DataScope? parent)
         {
-            Owner = owner;
-            MenuId = menuId;
-            Menu = menu;
-            Runtime = runtime;
+            Owner = ui.Owner;
+            MenuId = ui.MenuId;
+            Menu = ui.Menu;
+            Runtime = ui.Runtime;
             Element = element;
-            EventName = eventName;
-            EventArgs = eventArgs;
-            EventFields = eventFields;
+            EventName = evt.Name;
+            EventArgs = evt.Args;
+            EventFields = evt.Fields;
             WithPath = withPath;
             Locals = locals;
             Parent = parent;
         }
+
+        /// <summary>The UI a scope belongs to: owner, menu id, menu model and runtime.</summary>
+        private readonly record struct ScopeUi(string Owner, string MenuId, UIMenu? Menu, DataRuntime? Runtime);
+
+        /// <summary>The event a scope handles: name, arguments and extra <c>event.*</c> fields.</summary>
+        private readonly record struct ScopeEvent(string? Name, object? Args, IReadOnlyDictionary<string, DataValue>? Fields);
+
+        private ScopeUi Ui => new(Owner, MenuId, Menu, Runtime);
+
+        private ScopeEvent Event => new(EventName, EventArgs, EventFields);
 
         /// <summary>Resolves the consumer context of an owner (set by <see cref="DataService"/>).</summary>
         internal static Func<string, ConsumerContext>? ContextResolver { get; set; }
@@ -89,25 +98,25 @@ namespace UIFramework.Data
         // ---------------------------------------------------------------------------------------------------------
 
         /// <summary>A menu-level scope.</summary>
-        internal static DataScope ForMenu(string owner, string menuId, UIMenu? menu) => new(owner, menuId, menu, null, null, null, null, null, null, null, null);
+        internal static DataScope ForMenu(string owner, string menuId, UIMenu? menu) => new(new ScopeUi(owner, menuId, menu, null), null, default, null, null, null);
 
         /// <summary>The scope of a data UI (menu or HUD) built from <paramref name="runtime"/>.</summary>
-        internal static DataScope ForRuntime(DataRuntime runtime, UIMenu? menu) => new(runtime.Owner, runtime.Id, menu, runtime, null, null, null, null, null, null, null);
+        internal static DataScope ForRuntime(DataRuntime runtime, UIMenu? menu) => new(new ScopeUi(runtime.Owner, runtime.Id, menu, runtime), null, default, null, null, null);
 
         /// <summary>An owner-level scope (owner hotkeys, actions run outside any UI on behalf of an owner).</summary>
-        internal static DataScope ForOwner(string owner) => new(owner, string.Empty, null, null, null, null, null, null, null, null, null);
+        internal static DataScope ForOwner(string owner) => new(new ScopeUi(owner, string.Empty, null, null), null, default, null, null, null);
 
         /// <summary>This scope narrowed to an element.</summary>
-        internal DataScope WithElement(UIElement element) => new(Owner, MenuId, Menu, Runtime, element, null, null, null, WithPath, Locals, this);
+        internal DataScope WithElement(UIElement element) => new(Ui, element, default, WithPath, Locals, this);
 
         /// <summary>This scope while an event is handled.</summary>
         internal DataScope WithEvent(string eventName, object? args, IReadOnlyDictionary<string, DataValue>? fields = null)
         {
-            return new DataScope(Owner, MenuId, Menu, Runtime, Element, eventName, args, fields, WithPath, Locals, this);
+            return new DataScope(Ui, Element, new ScopeEvent(eventName, args, fields), WithPath, Locals, this);
         }
 
         /// <summary>This scope with <c>.name</c> relative to <paramref name="path"/> (already absolute).</summary>
-        internal DataScope WithRelative(PathSegment[] path) => new(Owner, MenuId, Menu, Runtime, Element, EventName, EventArgs, EventFields, path, Locals, this);
+        internal DataScope WithRelative(PathSegment[] path) => new(Ui, Element, Event, path, Locals, this);
 
         /// <summary>This scope with extra local variables (layered over the existing ones).</summary>
         internal DataScope WithLocals(IReadOnlyDictionary<string, DataValue> locals)
@@ -126,7 +135,7 @@ namespace UIFramework.Data
                 merged[key] = value;
             }
 
-            return new DataScope(Owner, MenuId, Menu, Runtime, Element, EventName, EventArgs, EventFields, WithPath, merged, this);
+            return new DataScope(Ui, Element, Event, WithPath, merged, this);
         }
 
         /// <summary>

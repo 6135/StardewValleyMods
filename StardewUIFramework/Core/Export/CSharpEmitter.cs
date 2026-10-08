@@ -574,9 +574,11 @@ namespace UIFramework.Core.Export
         private string Unique(string baseName)
         {
             string candidate = baseName;
-            for (int i = 2; !usedNames.Add(candidate); i++)
+            int suffix = 2;
+            while (!usedNames.Add(candidate))
             {
-                candidate = baseName + i.ToString(CultureInfo.InvariantCulture);
+                candidate = baseName + suffix.ToString(CultureInfo.InvariantCulture);
+                suffix++;
             }
 
             return candidate;

@@ -5,7 +5,7 @@ using System.Text;
 namespace UIFramework.Data.Expressions
 {
     /// <summary>One piece of a <see cref="Template"/>: literal text or an embedded expression.</summary>
-    internal readonly struct TemplateSegment
+    internal readonly record struct TemplateSegment
     {
         internal TemplateSegment(string literal)
         {
@@ -211,7 +211,8 @@ namespace UIFramework.Data.Expressions
                 int close = FindClosingBrace(text, expressionStart);
                 if (close < 0)
                 {
-                    (errors ??= new List<ParseError>()).Add(new ParseError(oneTime ? "Unterminated '$:{'." : "Unterminated '${'.", i));
+                    errors ??= new List<ParseError>();
+                    errors.Add(new ParseError(oneTime ? "Unterminated '$:{'." : "Unterminated '${'.", i));
                     literal.Append(text, i, text.Length - i);
                     break;
                 }
@@ -226,7 +227,8 @@ namespace UIFramework.Data.Expressions
                 CompiledExpression expression = CompiledExpression.Compile(source);
                 if (expression.Error != null)
                 {
-                    (errors ??= new List<ParseError>()).Add(expression.Error.WithOffset(expressionStart));
+                    errors ??= new List<ParseError>();
+                    errors.Add(expression.Error.WithOffset(expressionStart));
                 }
 
                 segments.Add(new TemplateSegment(expression, oneTime, text.Substring(i, close + 1 - i)));
@@ -247,19 +249,23 @@ namespace UIFramework.Data.Expressions
         private static int FindClosingBrace(string text, int start)
         {
             int depth = 0;
-            for (int i = start; i < text.Length; i++)
+            int i = start;
+            while (i < text.Length)
             {
                 char c = text[i];
                 switch (c)
                 {
                     case '"':
                     case '\'':
-                        for (i++; i < text.Length && text[i] != c; i++)
+                        i++;
+                        while (i < text.Length && text[i] != c)
                         {
                             if (text[i] == '\\')
                             {
                                 i++;
                             }
+
+                            i++;
                         }
 
                         if (i >= text.Length)
@@ -280,9 +286,19 @@ namespace UIFramework.Data.Expressions
                         depth--;
                         break;
                 }
+
+                i++;
             }
 
             return -1;
+        }
+
+        /// <summary>The cached builder, cleared from the cache so nested evaluations (a scope rendering another template) get their own.</summary>
+        private static StringBuilder TakeSharedBuilder()
+        {
+            StringBuilder builder = sharedBuilder ?? new StringBuilder();
+            sharedBuilder = null;
+            return builder;
         }
 
         private static string ConcatLiterals(TemplateSegment[] segments)
@@ -361,8 +377,7 @@ namespace UIFramework.Data.Expressions
                 return segments[0].Expression!.Evaluate(scope, functions);
             }
 
-            StringBuilder builder = sharedBuilder ?? new StringBuilder();
-            sharedBuilder = null; // nested evaluations (a scope rendering another template) get their own builder
+            StringBuilder builder = TakeSharedBuilder();
             try
             {
                 bool isVolatile = false;

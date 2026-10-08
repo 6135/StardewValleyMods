@@ -33,43 +33,12 @@ namespace UIFramework.Data.Building
             IUIDataGrid grid = ctx.Api.AddDataGrid(parent, ctx.IdOf(def), rowHeight, visibleRows, () => source?.Count ?? 0);
             Func<int, DataScope> rowScope = index => source?.ScopeFor(index) ?? RowScope.For(scope, DataValue.Null, index, def.As);
 
-            var cells = new List<TemplateRows>();
-            if (def.Columns == null || def.Columns.Count == 0)
-            {
-                ctx.Log.Warn(path.Field("Columns"), "a DataGrid needs Columns ([{ \"Id\": \"name\", \"Header\": \"Name\", \"Text\": \"${row.name}\" }, ...]).");
-            }
-            else
-            {
-                for (int i = 0; i < def.Columns.Count; i++)
-                {
-                    ColumnDefinition? column = def.Columns[i];
-                    if (column == null || string.IsNullOrWhiteSpace(column.Id))
-                    {
-                        continue; // reported by the validator
-                    }
-
-                    TemplateRows? cellRows = AddColumn(ctx, grid, column, scope, rowScope, source, path.Field("Columns").Index(i, column.Id));
-                    if (cellRows != null)
-                    {
-                        cells.Add(cellRows);
-                    }
-                }
-            }
+            List<TemplateRows> cells = AddColumns(ctx, grid, def, scope, rowScope, source, path);
 
             // initial sort ("profit" or "profit desc"); a rebuild keeps the player's sort (view state)
             if (!string.IsNullOrWhiteSpace(def.Sort))
             {
-                string[] parts = def.Sort.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-                bool descending = a.Initial(def.SortDescending, ValueParsers.Bool, DataDefaults.DataGrid.SortDescending, scope, path.Field("SortDescending"))
-                    || (parts.Length > 1 && parts[1].Equals("desc", StringComparison.OrdinalIgnoreCase));
-                if (grid.FindColumn(parts[0]) == null)
-                {
-                    ctx.Log.Warn(path.Field("Sort"), $"no column has the id '{parts[0]}'; the rows are not sorted.");
-                }
-                else
-                {
-                    grid.Sort(parts[0], descending);
-                }
+                ApplyInitialSort(ctx, grid, def, scope, path);
             }
 
             // filter: a row predicate (underlying indices stay stable); re-checked when the state changes
@@ -102,6 +71,50 @@ namespace UIFramework.Data.Building
             ctx.Runtime.Collections[element.Id] = collection;
             a.AddRefresher(collection);
             return grid;
+        }
+
+        /// <summary>Add the grid's columns; returns the cell template rows of the columns that have a <c>Cell</c>.</summary>
+        private List<TemplateRows> AddColumns(BuildContext ctx, IUIDataGrid grid, ElementDefinition def, DataScope scope, Func<int, DataScope> rowScope, SourceBinding? source, DataPath path)
+        {
+            var cells = new List<TemplateRows>();
+            if (def.Columns == null || def.Columns.Count == 0)
+            {
+                ctx.Log.Warn(path.Field("Columns"), "a DataGrid needs Columns ([{ \"Id\": \"name\", \"Header\": \"Name\", \"Text\": \"${row.name}\" }, ...]).");
+                return cells;
+            }
+
+            for (int i = 0; i < def.Columns.Count; i++)
+            {
+                ColumnDefinition? column = def.Columns[i];
+                if (column == null || string.IsNullOrWhiteSpace(column.Id))
+                {
+                    continue; // reported by the validator
+                }
+
+                TemplateRows? cellRows = AddColumn(ctx, grid, column, scope, rowScope, source, path.Field("Columns").Index(i, column.Id));
+                if (cellRows != null)
+                {
+                    cells.Add(cellRows);
+                }
+            }
+
+            return cells;
+        }
+
+        /// <summary>Apply the grid's initial <c>Sort</c> ("profit" or "profit desc").</summary>
+        private static void ApplyInitialSort(BuildContext ctx, IUIDataGrid grid, ElementDefinition def, DataScope scope, DataPath path)
+        {
+            string[] parts = def.Sort!.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            bool descending = ctx.Applier.Initial(def.SortDescending, ValueParsers.Bool, DataDefaults.DataGrid.SortDescending, scope, path.Field("SortDescending"))
+                || (parts.Length > 1 && parts[1].Equals("desc", StringComparison.OrdinalIgnoreCase));
+            if (grid.FindColumn(parts[0]) == null)
+            {
+                ctx.Log.Warn(path.Field("Sort"), $"no column has the id '{parts[0]}'; the rows are not sorted.");
+            }
+            else
+            {
+                grid.Sort(parts[0], descending);
+            }
         }
 
         /// <summary>Row indices from comma-separated text (invalid parts are skipped).</summary>

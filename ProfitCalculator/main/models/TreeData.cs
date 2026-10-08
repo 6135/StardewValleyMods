@@ -41,12 +41,7 @@ namespace ProfitCalculator.main.models
         /// <param name="dropInformation">Drop Information for the tree</param>
         public TreeData(FruitTreeData _cropData, Item _seed, DropInformation dropInformation)
             : base(
-                  MaturityDays,
-                  1,
-                  1,
-                  1,
-                  0f,
-                  0f,
+                  PlantGrowth.SingleDrop(MaturityDays, 1),
                   dropInformation.Drops[0].Item.DisplayName,
                   _cropData.Seasons,
                   _seed,

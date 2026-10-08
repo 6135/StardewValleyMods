@@ -8,6 +8,9 @@ namespace UIFramework.Core
         /// <summary>Tolerance under which two UI values count as the same (so floating-point noise never re-raises change events).</summary>
         private const double Epsilon = 1e-9;
 
+        /// <summary>True when <paramref name="value"/> is zero (either sign).</summary>
+        internal static bool IsZero(double value) => Math.Abs(value) < double.Epsilon;
+
         /// <summary>True when <paramref name="a"/> and <paramref name="b"/> are equal within <see cref="Epsilon"/>.</summary>
         internal static bool Same(double a, double b) => Math.Abs(a - b) < Epsilon;
     }

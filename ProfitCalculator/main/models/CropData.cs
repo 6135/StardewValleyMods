@@ -39,12 +39,7 @@ namespace ProfitCalculator.main.models
             bool _affectedByFertilizer
             ) : base
             (
-                _cropData.DaysInPhase.Sum(),
-                _cropData.RegrowDays,
-                _cropData.HarvestMinStack,
-                _cropData.HarvestMaxStack,
-                _cropData.HarvestMaxIncreasePerFarmingLevel,
-                _cropData.ExtraHarvestChance,
+                PlantGrowth.FromCrop(_cropData),
                 _dropInformation.Drops[0].Item.DisplayName,
                 _cropData.Seasons,
                 _seed,
@@ -68,12 +63,7 @@ namespace ProfitCalculator.main.models
             DropInformation _dropInformation
             ) : base
             (
-                _cropData.DaysInPhase.Sum(),
-                _cropData.RegrowDays,
-                _cropData.HarvestMinStack,
-                _cropData.HarvestMaxStack,
-                _cropData.HarvestMaxIncreasePerFarmingLevel,
-                _cropData.ExtraHarvestChance,
+                PlantGrowth.FromCrop(_cropData),
                 _dropInformation.Drops[0].Item.DisplayName,
                 _cropData.Seasons,
                 _seed,

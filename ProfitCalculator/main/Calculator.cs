@@ -115,34 +115,23 @@ namespace ProfitCalculator.main
         /// <summary>
         /// Sets the settings for the calculator to use when calculating profits.
         /// </summary>
-        /// <param name="day"><see cref="Day"/></param>
-        /// <param name="_season"><see cref="StardewValley.Season"/></param>
-        /// <param name="produceType"><see cref="ProduceType"/></param>
-        /// <param name="fertilizerQuality"> <see cref="FertilizerQuality"/></param>
-        /// <param name="payForSeeds"> <see cref="PayForSeeds"/></param>
-        /// <param name="payForFertilizer"> <see cref="PayForFertilizer"/></param>
-        /// <param name="maxMoney"> <see cref="MaxMoney"/></param>
-        /// <param name="useBaseStats"> <see cref="UseBaseStats"/></param>
-        /// <param name="crossSeason"> <see cref="CrossSeason"/></param>
-        /// <param name="years"> <see cref="Years"/>, already clamped by <see cref="ProfitCalculatorSettings.ApplyTo"/></param>
-        /// <param name="heavyTapper"> <see cref="HeavyTapper"/></param>
-        /// <param name="treeFertilizer"> <see cref="TreeFertilizer"/></param>
-        public void SetSettings(uint day, UtilsSeason _season, string produceType, FertilizerQuality fertilizerQuality, bool payForSeeds, bool payForFertilizer, uint maxMoney, bool useBaseStats, bool crossSeason, uint years, bool heavyTapper, bool treeFertilizer)
+        /// <param name="settings"> The settings to copy; <see cref="ProfitCalculatorSettings.Years"/> is clamped to its range.</param>
+        public void SetSettings(ProfitCalculatorSettings settings)
         {
             Revision++;
-            Years = years;
-            HeavyTapper = heavyTapper;
-            TreeFertilizer = treeFertilizer;
-            Day = day;
-            Season = _season;
-            ProduceType = produceType;
-            FertilizerQuality = fertilizerQuality;
-            PayForSeeds = payForSeeds;
-            PayForFertilizer = payForFertilizer;
-            MaxMoney = maxMoney;
-            UseBaseStats = useBaseStats;
-            CrossSeason = crossSeason;
-            if (useBaseStats)
+            Years = Math.Clamp(settings.Years, settings.MinYears, settings.MaxYears);
+            HeavyTapper = settings.HeavyTapper;
+            TreeFertilizer = settings.TreeFertilizer;
+            Day = settings.Day;
+            Season = settings.Season;
+            ProduceType = settings.ProduceType;
+            FertilizerQuality = settings.FertilizerQuality;
+            PayForSeeds = settings.PayForSeeds;
+            PayForFertilizer = settings.PayForFertilizer;
+            MaxMoney = settings.MaxMoney;
+            UseBaseStats = settings.UseBaseStats;
+            CrossSeason = settings.CrossSeason;
+            if (UseBaseStats)
             {
                 FarmingLevel = 0;
             }
@@ -364,7 +353,30 @@ namespace ProfitCalculator.main
             int fertilizerNeeded = crop.AppliedFertilizerQuality == FertilizerQuality.None ? 0 : crop.TotalFertilizerNeeded();
             int paybackDay = crop.PaybackDay();
 
-            return new CropInfo(crop, totalProfit, profitPerDay, totalSeedLoss, seedLossPerDay, totalFertilizerLoss, fertilizerLossPerDay, produceType, duration, totalHarvests, growthTime, regrowthTime, chanceOfNormalQuality, chanceOfSilverQuality, chanceOfGoldQuality, chanceOfIridiumQuality, produceName, produceCount, inputsPerProduct, processingDays, seedsNeeded, fertilizerNeeded, produceItem, inputItem, paybackDay);
+            return new CropInfo(crop, produceType, produceName, inputItem)
+            {
+                TotalProfit = totalProfit - totalSeedLoss - totalFertilizerLoss,
+                ProfitPerDay = profitPerDay - seedLossPerDay - fertilizerLossPerDay,
+                TotalSeedLoss = totalSeedLoss,
+                SeedLossPerDay = seedLossPerDay,
+                TotalFertilizerLoss = totalFertilizerLoss,
+                FertilizerLossPerDay = fertilizerLossPerDay,
+                Duration = duration,
+                TotalHarvests = totalHarvests,
+                GrowthTime = growthTime,
+                RegrowthTime = regrowthTime,
+                ChanceOfNormalQuality = chanceOfNormalQuality,
+                ChanceOfSilverQuality = chanceOfSilverQuality,
+                ChanceOfGoldQuality = chanceOfGoldQuality,
+                ChanceOfIridiumQuality = chanceOfIridiumQuality,
+                ProduceCount = produceCount,
+                InputsPerProduct = inputsPerProduct,
+                ProcessingDays = processingDays,
+                SeedsNeeded = seedsNeeded,
+                FertilizerNeeded = fertilizerNeeded,
+                ProduceItem = produceItem,
+                PaybackDay = paybackDay,
+            };
         }
     }
 }

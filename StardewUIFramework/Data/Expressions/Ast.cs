@@ -90,7 +90,7 @@ namespace UIFramework.Data.Expressions
     }
 
     /// <summary>One step of a <see cref="PathNode"/>: a static key, or an index expression evaluated at run time.</summary>
-    internal readonly struct PathPart
+    internal readonly record struct PathPart
     {
         internal PathPart(string key, bool isIndex)
         {

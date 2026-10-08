@@ -258,16 +258,7 @@ namespace UIFramework.Core.Export
             switch (e)
             {
                 case Label l:
-                    p.Add(TreeProperty.Evaluated("Text", TreeValueKind.String, Eval(l.Id, "Export.Text", l.TextFunc), true));
-                    p.Add(Enum("Font", l.Font, l.Font == UIFont.Small));
-                    p.Add(OptionalColor("Color", l.Color));
-                    p.Add(Bool("Shadow", l.Shadow, false));
-                    p.Add(Bool("Wrap", l.Wrap, false));
-                    p.Add(Enum("TextAlign", l.TextAlign, l.TextAlign == UIAlign.Start));
-                    p.Add(Float("Scale", l.Scale, 1f));
-                    p.Add(Bool("RichText", l.RichText, false));
-                    p.Add(Bool("Shrink", l.Shrink, false));
-                    p.Add(Todo("OnLink", l.OnLink));
+                    ReadLabel(l, p);
                     break;
                 case Image i:
                     p.Add(Todo("Texture", i.Texture, TextureName(i.Texture), "guessed from the texture's asset name"));
@@ -279,15 +270,7 @@ namespace UIFramework.Core.Export
                     ReadItemImage(i, p);
                     break;
                 case Button b:
-                    p.Add(TreeProperty.Evaluated("Text", TreeValueKind.String, Eval(b.Id, "Export.Text", b.TextFunc), true));
-                    p.Add(Enum("Font", b.Font, b.Font == UIFont.Small));
-                    TreeIcon? icon = b.Icon == null ? null : new TreeIcon { Source = b.IconSource, Scale = b.IconScale, TextureName = TextureName(b.Icon) };
-                    p.Add(TreeProperty.Literal("Icon", TreeValueKind.Icon, icon, icon == null));
-                    p.Add(Bool("DrawBox", b.DrawBox, true));
-                    p.Add(Sound("ClickSound", b.ClickSound));
-                    p.Add(Sound("HoverSound", b.HoverSound));
-                    p.Add(Bool("RichText", b.RichText, false));
-                    p.Add(Bool("Shrink", b.Shrink, false));
+                    ReadButton(b, p);
                     break;
                 case Checkbox c:
                     p.Add(TreeProperty.Evaluated("Value", TreeValueKind.Bool, c.Value, true));
@@ -297,25 +280,10 @@ namespace UIFramework.Core.Export
                     p.Add(Todo("OnValueChanged", c.OnValueChanged));
                     break;
                 case TextInput t:
-                    p.Add(TreeProperty.Evaluated("Value", TreeValueKind.String, t.Value, true));
-                    p.Add(Text("Placeholder", t.Id, "Export.Placeholder", t.PlaceholderFunc));
-                    p.Add(Int("MaxLength", t.MaxLength, 0));
-                    p.Add(Todo("Validate", t.ValidateFunc));
-                    p.Add(Todo("Texture", t.Texture, TextureName(t.Texture), "guessed from the texture's asset name"));
-                    p.Add(Todo("OnValueChanged", t.OnValueChanged));
-                    p.Add(Todo("OnSubmit", t.OnSubmit));
+                    ReadTextInput(t, p);
                     break;
                 case NumberInput n:
-                    p.Add(TreeProperty.Evaluated("Value", TreeValueKind.Double, n.Value, true));
-                    p.Add(Double("Min", n.Min, DataDefaults.NumberInput.Min));
-                    p.Add(Double("Max", n.Max, DataDefaults.NumberInput.Max));
-                    p.Add(Double("Step", n.Step, DataDefaults.NumberInput.Step));
-                    p.Add(Bool("Clamp", n.Clamp, DataDefaults.NumberInput.Clamp));
-                    p.Add(Int("Decimals", n.Decimals, 0));
-                    p.Add(Todo("Validate", n.ValidateFunc));
-                    p.Add(Todo("Texture", n.Texture, TextureName(n.Texture), "guessed from the texture's asset name"));
-                    p.Add(Todo("OnValueChanged", n.OnValueChanged));
-                    p.Add(Todo("OnSubmit", n.OnSubmit));
+                    ReadNumberInput(n, p);
                     break;
                 case Dropdown d:
                     ReadDropdown(d, p);
@@ -324,7 +292,7 @@ namespace UIFramework.Core.Export
                     p.Add(TreeProperty.Evaluated("Value", TreeValueKind.Double, s.Value, true));
                     p.Add(Double("Min", s.Min, DataDefaults.Slider.Min));
                     p.Add(Double("Max", s.Max, DataDefaults.Slider.Max));
-                    p.Add(TreeProperty.Literal("Step", TreeValueKind.Double, s.Step, !(s.Step > 0)));
+                    p.Add(TreeProperty.Literal("Step", TreeValueKind.Double, s.Step, s.Step <= 0));
                     p.Add(Todo("OnValueChanged", s.OnValueChanged));
                     break;
                 case Spacer s:
@@ -336,6 +304,58 @@ namespace UIFramework.Core.Export
                     // CustomElementAdapter: nothing beyond the common members
                     break;
             }
+        }
+
+        private void ReadLabel(Label l, List<TreeProperty> p)
+        {
+            p.Add(TreeProperty.Evaluated("Text", TreeValueKind.String, Eval(l.Id, "Export.Text", l.TextFunc), true));
+            p.Add(Enum("Font", l.Font, l.Font == UIFont.Small));
+            p.Add(OptionalColor("Color", l.Color));
+            p.Add(Bool("Shadow", l.Shadow, false));
+            p.Add(Bool("Wrap", l.Wrap, false));
+            p.Add(Enum("TextAlign", l.TextAlign, l.TextAlign == UIAlign.Start));
+            p.Add(Float("Scale", l.Scale, 1f));
+            p.Add(Bool("RichText", l.RichText, false));
+            p.Add(Bool("Shrink", l.Shrink, false));
+            p.Add(Todo("OnLink", l.OnLink));
+        }
+
+        private void ReadButton(Button b, List<TreeProperty> p)
+        {
+            p.Add(TreeProperty.Evaluated("Text", TreeValueKind.String, Eval(b.Id, "Export.Text", b.TextFunc), true));
+            p.Add(Enum("Font", b.Font, b.Font == UIFont.Small));
+            TreeIcon? icon = b.Icon == null ? null : new TreeIcon { Source = b.IconSource, Scale = b.IconScale, TextureName = TextureName(b.Icon) };
+            p.Add(TreeProperty.Literal("Icon", TreeValueKind.Icon, icon, icon == null));
+            p.Add(Bool("DrawBox", b.DrawBox, true));
+            p.Add(Sound("ClickSound", b.ClickSound));
+            p.Add(Sound("HoverSound", b.HoverSound));
+            p.Add(Bool("RichText", b.RichText, false));
+            p.Add(Bool("Shrink", b.Shrink, false));
+        }
+
+        private void ReadTextInput(TextInput t, List<TreeProperty> p)
+        {
+            p.Add(TreeProperty.Evaluated("Value", TreeValueKind.String, t.Value, true));
+            p.Add(Text("Placeholder", t.Id, "Export.Placeholder", t.PlaceholderFunc));
+            p.Add(Int("MaxLength", t.MaxLength, 0));
+            p.Add(Todo("Validate", t.ValidateFunc));
+            p.Add(Todo("Texture", t.Texture, TextureName(t.Texture), "guessed from the texture's asset name"));
+            p.Add(Todo("OnValueChanged", t.OnValueChanged));
+            p.Add(Todo("OnSubmit", t.OnSubmit));
+        }
+
+        private void ReadNumberInput(NumberInput n, List<TreeProperty> p)
+        {
+            p.Add(TreeProperty.Evaluated("Value", TreeValueKind.Double, n.Value, true));
+            p.Add(Double("Min", n.Min, DataDefaults.NumberInput.Min));
+            p.Add(Double("Max", n.Max, DataDefaults.NumberInput.Max));
+            p.Add(Double("Step", n.Step, DataDefaults.NumberInput.Step));
+            p.Add(Bool("Clamp", n.Clamp, DataDefaults.NumberInput.Clamp));
+            p.Add(Int("Decimals", n.Decimals, 0));
+            p.Add(Todo("Validate", n.ValidateFunc));
+            p.Add(Todo("Texture", n.Texture, TextureName(n.Texture), "guessed from the texture's asset name"));
+            p.Add(Todo("OnValueChanged", n.OnValueChanged));
+            p.Add(Todo("OnSubmit", n.OnSubmit));
         }
 
         private void ReadItemImage(ItemImage i, List<TreeProperty> p)

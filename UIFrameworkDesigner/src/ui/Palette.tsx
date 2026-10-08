@@ -73,7 +73,8 @@ function PaletteItem({ type, label }: { type: string; label: string }) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id: paletteDragId(type), data: { paletteType: type } });
   return (
     <button ref={setNodeRef} type="button" className={isDragging ? 'palette-item dragging' : 'palette-item'}
-      title={`Add a ${label} (click) or drag it into the tree`} {...attributes} tabIndex={0}
+      title={`Add a ${label} (click) or drag it into the tree`} role={attributes.role} aria-disabled={attributes['aria-disabled']} aria-pressed={attributes['aria-pressed']}
+      aria-roledescription={attributes['aria-roledescription']} aria-describedby={attributes['aria-describedby']} tabIndex={0}
       onPointerDown={listeners?.['onPointerDown'] as PointerEventHandler | undefined} onClick={() => addFromPalette(type)}>
       {label}
     </button>

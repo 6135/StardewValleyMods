@@ -1,4 +1,5 @@
 using System;
+using UIFramework.Core;
 using System.Collections.Generic;
 using System.Globalization;
 
@@ -160,7 +161,7 @@ namespace UIFramework.Data.Expressions
         {
             int digits = args.Length > 1 ? (int)Math.Clamp(args[1].AsNumber(), 0, 10) : 0;
             double value = Math.Round(args[0].AsNumber() * 100, digits, MidpointRounding.AwayFromZero);
-            if (value == 0)
+            if (Numbers.IsZero(value))
             {
                 value = 0; // drop negative zero
             }
@@ -250,7 +251,7 @@ namespace UIFramework.Data.Expressions
             return DataValue.FromString(text.Substring(start, length));
         }
 
-        private static int ToIndex(double value) => (int)Math.Clamp(Math.Truncate(value), int.MinValue / 2, int.MaxValue / 2);
+        private static int ToIndex(double value) => (int)Math.Clamp(Math.Truncate(value), int.MinValue / 2.0, int.MaxValue / 2.0);
 
         private static DataValue Join(ExpressionContext context, ReadOnlySpan<DataValue> args)
         {

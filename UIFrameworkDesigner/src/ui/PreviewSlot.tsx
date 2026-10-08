@@ -75,12 +75,12 @@ function Preview({ readOnly }: { readOnly: boolean }) {
 
   return (
     <>
-      <PreviewPane {...(tooltip ? { tooltip } : { doc: doc! })} selection={selection} onSelect={select} i18n={i18n ?? undefined}
+      <PreviewPane tooltip={tooltip} doc={tooltip ? undefined : doc!} selection={selection} onSelect={select} i18n={i18n ?? undefined}
         resolveTooltip={resolveTooltip} settings={settings} onSettingsChange={setPreviewSettings} resolveMenuLink={resolveMenuLink}
-        onOpenMenu={openMenu} functions={functions} {...(data ? { sampleRows: data.rows } : {})} {...(readOnly ? {} : { onShowState: showState })} />
+        onOpenMenu={openMenu} functions={functions} sampleRows={data?.rows} onShowState={readOnly ? undefined : showState} />
       {!readOnly && (
         <PreviewDrawer open={drawer.open} height={drawer.height} onChange={setDrawer}>
-          <PreviewStatePanel {...(doc ? { doc } : {})} onChange={setPreviewState} functions={uses} sources={sources} data={data}
+          <PreviewStatePanel doc={doc ?? undefined} onChange={setPreviewState} functions={uses} sources={sources} data={data}
             i18nLoaded={i18n !== null} onFunction={setPreviewFunction} onRows={setSampleRows} needed={needed.names} focus={needed.focus} />
           <Suspense fallback={null}><I18nLoader onLoad={setI18n} /></Suspense>
         </PreviewDrawer>

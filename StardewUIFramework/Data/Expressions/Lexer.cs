@@ -44,7 +44,7 @@ namespace UIFramework.Data.Expressions
     }
 
     /// <summary>One lexical token with its source position.</summary>
-    internal readonly struct Token
+    internal readonly record struct Token
     {
         internal Token(TokenKind kind, int position, string? text = null, double number = 0)
         {
@@ -81,6 +81,37 @@ namespace UIFramework.Data.Expressions
     /// </remarks>
     internal static class Lexer
     {
+        /// <summary>The punctuation tokens that are always one character.</summary>
+        private static readonly Dictionary<char, TokenKind> SingleCharTokens = new()
+        {
+            ['('] = TokenKind.LeftParen,
+            [')'] = TokenKind.RightParen,
+            ['['] = TokenKind.LeftBracket,
+            [']'] = TokenKind.RightBracket,
+            [','] = TokenKind.Comma,
+            ['.'] = TokenKind.Dot,
+            ['?'] = TokenKind.Question,
+            [':'] = TokenKind.Colon,
+            ['+'] = TokenKind.Plus,
+            ['-'] = TokenKind.Minus,
+            ['*'] = TokenKind.Star,
+            ['/'] = TokenKind.Slash,
+            ['%'] = TokenKind.Percent
+        };
+
+        /// <summary>The outcome of trying to read an operand token (number, identifier, string, reference).</summary>
+        private enum OperandScan
+        {
+            /// <summary>The character does not start an operand.</summary>
+            None,
+
+            /// <summary>An operand token was added.</summary>
+            Read,
+
+            /// <summary>The operand is invalid (the error is set).</summary>
+            Failed
+        }
+
         /// <summary>Tokenize <paramref name="source"/>; on failure returns false with a positioned error.</summary>
         internal static bool Tokenize(string source, List<Token> tokens, out ParseError? error)
         {
@@ -99,129 +130,16 @@ namespace UIFramework.Data.Expressions
                     return true;
                 }
 
-                char c = source[i];
                 int start = i;
-
-                if (char.IsDigit(c))
+                OperandScan operand = ReadOperand(source, ref i, tokens, out error);
+                if (operand == OperandScan.Read)
                 {
-                    if (!ReadNumber(source, ref i, out double number))
-                    {
-                        error = new ParseError("Invalid number.", start);
-                        return false;
-                    }
-
-                    tokens.Add(new Token(TokenKind.Number, start, source.Substring(start, i - start), number));
                     continue;
                 }
 
-                if (IsIdentifierStart(c))
+                if (operand == OperandScan.Failed || !TryReadPunctuation(source, start, out TokenKind kind, out int length, out error))
                 {
-                    while (i < source.Length && IsIdentifierPart(source[i]))
-                    {
-                        i++;
-                    }
-
-                    tokens.Add(new Token(TokenKind.Identifier, start, source.Substring(start, i - start)));
-                    continue;
-                }
-
-                if (c == '"' || c == '\'')
-                {
-                    if (!ReadString(source, ref i, out string? text, out error))
-                    {
-                        return false;
-                    }
-
-                    tokens.Add(new Token(TokenKind.String, start, text));
-                    continue;
-                }
-
-                if (c == '@')
-                {
-                    if (!ReadReference(source, ref i, out string? name))
-                    {
-                        error = new ParseError("Expected a reference name after '@' (e.g. @owner/name).", start);
-                        return false;
-                    }
-
-                    tokens.Add(new Token(TokenKind.AtReference, start, name));
-                    continue;
-                }
-
-                char next = i + 1 < source.Length ? source[i + 1] : '\0';
-                TokenKind kind;
-                int length = 1;
-                switch (c)
-                {
-                    case '(':
-                        kind = TokenKind.LeftParen;
-                        break;
-                    case ')':
-                        kind = TokenKind.RightParen;
-                        break;
-                    case '[':
-                        kind = TokenKind.LeftBracket;
-                        break;
-                    case ']':
-                        kind = TokenKind.RightBracket;
-                        break;
-                    case ',':
-                        kind = TokenKind.Comma;
-                        break;
-                    case '.':
-                        kind = TokenKind.Dot;
-                        break;
-                    case '?':
-                        kind = TokenKind.Question;
-                        break;
-                    case ':':
-                        kind = TokenKind.Colon;
-                        break;
-                    case '+':
-                        kind = TokenKind.Plus;
-                        break;
-                    case '-':
-                        kind = TokenKind.Minus;
-                        break;
-                    case '*':
-                        kind = TokenKind.Star;
-                        break;
-                    case '/':
-                        kind = TokenKind.Slash;
-                        break;
-                    case '%':
-                        kind = TokenKind.Percent;
-                        break;
-                    case '!':
-                        kind = next == '=' ? TokenKind.BangEqual : TokenKind.Bang;
-                        length = next == '=' ? 2 : 1;
-                        break;
-                    case '<':
-                        kind = next == '=' ? TokenKind.LessEqual : TokenKind.Less;
-                        length = next == '=' ? 2 : 1;
-                        break;
-                    case '>':
-                        kind = next == '=' ? TokenKind.GreaterEqual : TokenKind.Greater;
-                        length = next == '=' ? 2 : 1;
-                        break;
-                    case '=' when next == '=':
-                        kind = TokenKind.EqualEqual;
-                        length = 2;
-                        break;
-                    case '=':
-                        error = new ParseError("Assignment is not allowed in expressions; use '==' to compare.", start);
-                        return false;
-                    case '&' when next == '&':
-                        kind = TokenKind.AndAnd;
-                        length = 2;
-                        break;
-                    case '|' when next == '|':
-                        kind = TokenKind.OrOr;
-                        length = 2;
-                        break;
-                    default:
-                        error = new ParseError($"Unexpected character '{c}'.", start);
-                        return false;
+                    return false;
                 }
 
                 i += length;
@@ -231,6 +149,109 @@ namespace UIFramework.Data.Expressions
                 {
                     tokens.Add(new Token(TokenKind.RawKey, keyStart, key));
                 }
+            }
+        }
+
+        /// <summary>Read a number, identifier, string or <c>@</c> reference at <paramref name="i"/>.</summary>
+        private static OperandScan ReadOperand(string source, ref int i, List<Token> tokens, out ParseError? error)
+        {
+            error = null;
+            char c = source[i];
+            int start = i;
+
+            if (char.IsDigit(c))
+            {
+                if (!ReadNumber(source, ref i, out double number))
+                {
+                    error = new ParseError("Invalid number.", start);
+                    return OperandScan.Failed;
+                }
+
+                tokens.Add(new Token(TokenKind.Number, start, source.Substring(start, i - start), number));
+                return OperandScan.Read;
+            }
+
+            if (IsIdentifierStart(c))
+            {
+                while (i < source.Length && IsIdentifierPart(source[i]))
+                {
+                    i++;
+                }
+
+                tokens.Add(new Token(TokenKind.Identifier, start, source.Substring(start, i - start)));
+                return OperandScan.Read;
+            }
+
+            if (c == '"' || c == '\'')
+            {
+                if (!ReadString(source, ref i, out string? text, out error))
+                {
+                    return OperandScan.Failed;
+                }
+
+                tokens.Add(new Token(TokenKind.String, start, text));
+                return OperandScan.Read;
+            }
+
+            if (c == '@')
+            {
+                if (!ReadReference(source, ref i, out string? name))
+                {
+                    error = new ParseError("Expected a reference name after '@' (e.g. @owner/name).", start);
+                    return OperandScan.Failed;
+                }
+
+                tokens.Add(new Token(TokenKind.AtReference, start, name));
+                return OperandScan.Read;
+            }
+
+            return OperandScan.None;
+        }
+
+        /// <summary>Read the punctuation / operator token at <paramref name="start"/>; false (with an error) for an invalid character.</summary>
+        private static bool TryReadPunctuation(string source, int start, out TokenKind kind, out int length, out ParseError? error)
+        {
+            error = null;
+            char c = source[start];
+            char next = start + 1 < source.Length ? source[start + 1] : '\0';
+            length = 1;
+            if (SingleCharTokens.TryGetValue(c, out kind))
+            {
+                return true;
+            }
+
+            switch (c)
+            {
+                case '!':
+                    kind = next == '=' ? TokenKind.BangEqual : TokenKind.Bang;
+                    length = next == '=' ? 2 : 1;
+                    return true;
+                case '<':
+                    kind = next == '=' ? TokenKind.LessEqual : TokenKind.Less;
+                    length = next == '=' ? 2 : 1;
+                    return true;
+                case '>':
+                    kind = next == '=' ? TokenKind.GreaterEqual : TokenKind.Greater;
+                    length = next == '=' ? 2 : 1;
+                    return true;
+                case '=' when next == '=':
+                    kind = TokenKind.EqualEqual;
+                    length = 2;
+                    return true;
+                case '=':
+                    error = new ParseError("Assignment is not allowed in expressions; use '==' to compare.", start);
+                    return false;
+                case '&' when next == '&':
+                    kind = TokenKind.AndAnd;
+                    length = 2;
+                    return true;
+                case '|' when next == '|':
+                    kind = TokenKind.OrOr;
+                    length = 2;
+                    return true;
+                default:
+                    error = new ParseError($"Unexpected character '{c}'.", start);
+                    return false;
             }
         }
 

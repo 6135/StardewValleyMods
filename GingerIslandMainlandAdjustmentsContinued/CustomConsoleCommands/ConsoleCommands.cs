@@ -155,6 +155,22 @@ internal static class ConsoleCommands
                 return;
             }
         }
+        LogScheduleSource(npc, level);
+        if (npc.Schedule is null)
+        {
+            LogNulledSchedule(npc);
+            return;
+        }
+        LogScheduleEntries(npc, level);
+    }
+
+    /// <summary>
+    /// Logs which schedule (island or mainland) the NPC is using today.
+    /// </summary>
+    /// <param name="npc">NPC in question.</param>
+    /// <param name="level">Log level to display.</param>
+    private static void LogScheduleSource(NPC npc, LogLevel level)
+    {
         if (Game1.netWorldState.Value.IslandVisitors.Contains(npc.Name))
         {
             Globals.ModMonitor.Log('\t' + I18n.DisplaySchedule_ToIsland(npc.Name), level);
@@ -185,24 +201,37 @@ internal static class ConsoleCommands
                 Globals.ModMonitor.Log($"\t{npc.Name} claims to be using {npc.dayScheduleName.Value} but that was not found!", LogLevel.Error);
             }
         }
-        if (npc.Schedule is null)
+    }
+
+    /// <summary>
+    /// Logs diagnostics for an NPC whose schedule has been nulled.
+    /// </summary>
+    /// <param name="npc">NPC in question.</param>
+    private static void LogNulledSchedule(NPC npc)
+    {
+        Globals.ModMonitor.Log($"Something very odd has happened to the schedule of {npc.Name} - it appears to have been nulled since generation", LogLevel.Error);
+        if (!npc.CanSocialize)
         {
-            Globals.ModMonitor.Log($"Something very odd has happened to the schedule of {npc.Name} - it appears to have been nulled since generation", LogLevel.Error);
-            if (!npc.CanSocialize)
+            Dictionary<string, string>? antisocial;
+            try
             {
-                Dictionary<string, string>? antisocial;
-                try
-                {
-                    antisocial = Game1.content.Load<Dictionary<string, string>>(Antisocial);
-                }
-                catch (Exception)
-                {
-                    antisocial = new();
-                }
-                Globals.ModMonitor.Log($"\t{npc.Name} appears to be antisocial: they {(antisocial.ContainsKey(npc.Name) ? "are" : "aren't")} registered with AntisocialNPCs.", LogLevel.Info);
+                antisocial = Game1.content.Load<Dictionary<string, string>>(Antisocial);
             }
-            return;
+            catch (Exception)
+            {
+                antisocial = new();
+            }
+            Globals.ModMonitor.Log($"\t{npc.Name} appears to be antisocial: they {(antisocial.ContainsKey(npc.Name) ? "are" : "aren't")} registered with AntisocialNPCs.", LogLevel.Info);
         }
+    }
+
+    /// <summary>
+    /// Logs each entry of the NPC's parsed schedule.
+    /// </summary>
+    /// <param name="npc">NPC in question.</param>
+    /// <param name="level">Log level to display.</param>
+    private static void LogScheduleEntries(NPC npc, LogLevel level)
+    {
         List<int> keys = new(npc.Schedule.Keys);
         keys.Sort();
         StringBuilder sb = new StringBuilder(keys.Count * 100);

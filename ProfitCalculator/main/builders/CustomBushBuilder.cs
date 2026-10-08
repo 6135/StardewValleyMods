@@ -98,7 +98,7 @@ namespace ProfitCalculator.main.builders
                 double chance = drop.Chance;
                 int quantity = (int)averageStack;
                 // Drop.Quantity is an int, so a fractional average stack is folded into the chance to keep the expected value exact.
-                if (quantity != averageStack)
+                if (Math.Abs(averageStack - quantity) > 1e-9)
                 {
                     chance *= averageStack;
                     quantity = 1;

@@ -9,14 +9,14 @@
         "Action": "Include",
         "FromFile": "assets/sve_schedules.json",
         "When": {
-            "HasMod": "FlashShifter.StardewValleyExpandedCP",
+            "HasMod": "FlashShifter.StardewValleyExpandedCP"
         }
     },
     {
         "Action": "Include",
         "FromFile": "assets/immersive_sandy_schedules.json",
         "When": {
-            "HasMod": "beyondrecovery.immersivesandy",
+            "HasMod": "beyondrecovery.immersivesandy"
         }
     },
     {

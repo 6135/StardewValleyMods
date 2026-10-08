@@ -67,12 +67,7 @@ namespace ProfitCalculator.main.models
         /// <param name="dropInformation">Drop Information for the tapper outputs. Must contain at least one drop.</param>
         public WildTreeData(string treeId, GameWildTreeData treeData, string displayName, Item seed, DropInformation dropInformation)
             : base(
-                  0,
-                  0,
-                  1,
-                  1,
-                  0f,
-                  0f,
+                  PlantGrowth.SingleDrop(0, 0),
                   displayName,
                   treeData.IsStumpDuringWinter
                     ? new List<Season> { Season.Spring, Season.Summer, Season.Fall }
@@ -138,7 +133,7 @@ namespace ProfitCalculator.main.models
             public bool Matches(int revision, UtilsSeason plantingSeason, int plantingDay, int window, float timeMultiplier, bool fertilized)
             {
                 return Revision == revision && PlantingSeason == plantingSeason && PlantingDay == plantingDay && Window == window
-                    && TimeMultiplier == timeMultiplier && Fertilized == fertilized;
+                    && Math.Abs(TimeMultiplier - timeMultiplier) < float.Epsilon && Fertilized == fertilized;
             }
 
             /// <summary> Days after planting on which the tree matures and the tapper is placed, or -1 if it doesn't mature in the window. </summary>
@@ -224,7 +219,6 @@ namespace ProfitCalculator.main.models
             int window = simulation.Window;
             bool greenhouse = plantingSeason == UtilsSeason.Greenhouse;
             bool fertilized = simulation.Fertilized;
-            float timeMultiplier = simulation.TimeMultiplier;
 
             // growth: expected stages, one growth chance per growing day
             double growthChance = DailyGrowthChance(fertilized);
@@ -270,10 +264,10 @@ namespace ProfitCalculator.main.models
                     double remaining = mass;
                     if (!stump)
                     {
-                        remaining = PickOutput(simulation, picks, plantingSeason, plantingDay, t, season, dayOfMonth, previous, remaining, timeMultiplier);
+                        remaining = PickOutput(simulation, picks, t, season, dayOfMonth, previous, remaining);
                         if (previous.Length > 0 && remaining > Epsilon)
                         {
-                            remaining = PickOutput(simulation, picks, plantingSeason, plantingDay, t, season, dayOfMonth, "", remaining, timeMultiplier);
+                            remaining = PickOutput(simulation, picks, t, season, dayOfMonth, "", remaining);
                         }
                     }
                     if (remaining > Epsilon)
@@ -292,7 +286,7 @@ namespace ProfitCalculator.main.models
         /// is ready (if inside the window) and schedules the next pick then.
         /// </summary>
         /// <returns> The probability mass for which no entry was picked. </returns>
-        private double PickOutput(Simulation simulation, Dictionary<string, double>?[] picks, UtilsSeason plantingSeason, int plantingDay, int t, Season season, int dayOfMonth, string previous, double mass, float timeMultiplier)
+        private double PickOutput(Simulation simulation, Dictionary<string, double>?[] picks, int t, Season season, int dayOfMonth, string previous, double mass)
         {
             foreach (WildTreeTapItemData entry in TreeGameData.TapItems)
             {
@@ -328,7 +322,7 @@ namespace ProfitCalculator.main.models
                 mass -= taken;
 
                 float daysUntilReady = ApplyModifiers(entry.DaysUntilReady, entry.DaysUntilReadyModifiers, entry.DaysUntilReadyModifierMode, season, dayOfMonth);
-                int interval = (int)Math.Max(1.0, Math.Floor(daysUntilReady * timeMultiplier));
+                int interval = (int)Math.Max(1.0, Math.Floor(daysUntilReady * simulation.TimeMultiplier));
                 if (simulation.FirstInterval == 0)
                 {
                     simulation.FirstInterval = interval;
@@ -338,7 +332,7 @@ namespace ProfitCalculator.main.models
                 {
                     continue;
                 }
-                UtilsSeason readySeason = PlantingCalendar.UtilsSeasonAt(plantingSeason, plantingDay, readyDay);
+                UtilsSeason readySeason = PlantingCalendar.UtilsSeasonAt(simulation.PlantingSeason, simulation.PlantingDay, readyDay);
                 double stack = AverageStack(entry);
                 double share = taken / items.Count;
                 foreach (string item in items)
@@ -516,7 +510,7 @@ namespace ProfitCalculator.main.models
             }
             if (string.Equals(arg, "odd", StringComparison.OrdinalIgnoreCase))
             {
-                return dayOfMonth % 2 == 1;
+                return dayOfMonth % 2 != 0;
             }
             return false;
         }

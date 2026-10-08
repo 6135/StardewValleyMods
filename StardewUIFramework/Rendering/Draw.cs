@@ -126,18 +126,43 @@ namespace UIFramework.Rendering
         /// </summary>
         internal static void FitText(SpriteBatch b, string text, UIFont font, Rectangle rect, Color color, bool shadow, float scale, UIAlign horizontal)
         {
-            FitText(b, text, font, rect, color, shadow, scale, horizontal, bold: false);
+            if (TryFitLine(text, font, rect, scale, out FittedLine fitted))
+            {
+                TextInRect(b, fitted.Shown, font, fitted.Line, color, shadow, fitted.Scale, horizontal);
+            }
         }
 
         /// <summary>
-        /// <see cref="FitText(SpriteBatch, string, UIFont, Rectangle, Color, bool, float, UIAlign)"/> with an optional bold face
-        /// (<c>Utility.drawBoldText</c>). Returns the width the text was drawn with (0 when nothing was drawn).
+        /// <see cref="FitText(SpriteBatch, string, UIFont, Rectangle, Color, bool, float, UIAlign)"/> with a bold face
+        /// (<c>Utility.drawBoldText</c>, no shadow). Returns the width the text was drawn with (0 when nothing was drawn).
         /// </summary>
-        internal static float FitText(SpriteBatch b, string text, UIFont font, Rectangle rect, Color color, bool shadow, float scale, UIAlign horizontal, bool bold)
+        internal static float FitBoldText(SpriteBatch b, string text, UIFont font, Rectangle rect, Color color, float scale, UIAlign horizontal)
+        {
+            if (!TryFitLine(text, font, rect, scale, out FittedLine fitted))
+            {
+                return 0;
+            }
+
+            Rectangle line = fitted.Line;
+            float x = line.X + LayoutEngine.AlignOffset(horizontal == UIAlign.Stretch ? UIAlign.Start : horizontal, line.Width, (int)fitted.Size.X);
+            Utility.drawBoldText(b, fitted.Shown, GameTextMeasurer.GetFont(font), new Vector2((int)x, line.Y), color, fitted.Scale * Theme.FontScale);
+            return fitted.Size.X;
+        }
+
+        /// <summary>A single line fitted into a rectangle: the text shown, its scale and size, and the rectangle to draw it in.</summary>
+        private readonly record struct FittedLine(string Shown, float Scale, Vector2 Size, Rectangle Line);
+
+        /// <summary>
+        /// Shrink <paramref name="text"/> in 10 % steps down to 70 % of <paramref name="scale"/> until it fits
+        /// <paramref name="rect"/>, truncating with "..." when it still does not, centered vertically on the unshrunk line.
+        /// False when there is nothing to draw.
+        /// </summary>
+        private static bool TryFitLine(string text, UIFont font, Rectangle rect, float scale, out FittedLine fitted)
         {
             if (string.IsNullOrEmpty(text) || rect.Width <= 0)
             {
-                return 0;
+                fitted = default;
+                return false;
             }
 
             float fullHeight = UIServices.Text.Measure(font, text, scale).Y;
@@ -150,16 +175,8 @@ namespace UIFramework.Rendering
             string shown = UIServices.Text.Measure(font, text, fitScale).X > rect.Width ? Truncate(text, font, fitScale, rect.Width) : text;
             Vector2 shownSize = UIServices.Text.Measure(font, shown, fitScale);
             var line = new Rectangle(rect.X, rect.Y + (int)((fullHeight - shownSize.Y) / 2f), rect.Width, rect.Height);
-            if (bold)
-            {
-                float x = line.X + LayoutEngine.AlignOffset(horizontal == UIAlign.Stretch ? UIAlign.Start : horizontal, line.Width, (int)shownSize.X);
-                Utility.drawBoldText(b, shown, GameTextMeasurer.GetFont(font), new Vector2((int)x, line.Y), color, fitScale * Theme.FontScale);
-            }
-            else
-            {
-                TextInRect(b, shown, font, line, color, shadow, fitScale, horizontal);
-            }
-            return shownSize.X;
+            fitted = new FittedLine(shown, fitScale, shownSize, line);
+            return true;
         }
 
         /// <summary>

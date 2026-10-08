@@ -171,8 +171,6 @@ namespace UIFramework.Hosting
                 case Keys.U:
                     Unhide(menu);
                     return;
-                default:
-                    break;
             }
 
             UIElement? subject = Subject(menu);

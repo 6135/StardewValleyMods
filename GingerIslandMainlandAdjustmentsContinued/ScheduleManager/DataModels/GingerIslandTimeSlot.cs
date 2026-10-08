@@ -118,95 +118,13 @@ internal class GingerIslandTimeSlot
         // assign bartenders and drinkers.
         if (this.bartender is not null)
         {
-            {
-                string? varkey = GIScheduler.CurrentVisitingGroup?.Contains(this.bartender) == true
-                    ? $"Resort_Bartend_{GIScheduler.CurrentGroup}"
-                    : null;
-                this.AssignSchedulePoint(this.bartender, new SchedulePoint(
-                    random: this.random,
-                    npc: this.bartender,
-                    map: "IslandSouth",
-                    time: this.timeslot,
-                    point: BartendPoint,
-                    basekey: "Resort_Bartend",
-                    varKey: varkey));
-            }
-
-            foreach (NPC possibledrinker in this.visitors)
-            {
-                if (!this.assignments.ContainsKey(possibledrinker) && possibledrinker.Age != NPC.child
-                    && !dancers.Contains(possibledrinker) && possibledrinker != this.musician)
-                {
-                    SchedulePoint? schedulePoint = Drinking.TryAssign(
-                        random: this.random,
-                        character: possibledrinker,
-                        time: this.timeslot,
-                        usedPoints: this.usedPoints,
-                        lastAssignment: lastAssignment,
-                        animation_descriptions: animationDescriptions,
-                        groupName: GIScheduler.CurrentVisitingGroup?.Contains(possibledrinker) == true ? GIScheduler.CurrentGroup : null);
-                    if (schedulePoint is not null)
-                    {
-                        this.AssignSchedulePoint(possibledrinker, schedulePoint);
-                    }
-                }
-            }
+            this.AssignBartenderAndDrinkers(this.bartender, dancers, lastAssignment, animationDescriptions);
         }
 
         // assign musician and dancers
         if (this.musician is not null && !this.assignments.ContainsKey(this.musician))
         {
-            SchedulePoint? musicianPoint = Music.TryAssign(
-                random: this.random,
-                character: this.musician,
-                time: this.timeslot,
-                usedPoints: this.usedPoints,
-                lastAssignment: lastAssignment,
-                overrideChanceMap: static (NPC npc) => 0.8,
-                animation_descriptions: animationDescriptions,
-                groupName: GIScheduler.CurrentVisitingGroup?.Contains(this.musician) == true ? GIScheduler.CurrentGroup : null);
-            if (musicianPoint is not null)
-            {
-                Globals.ModMonitor.DebugOnlyLog($"Assigned musician:{this.musician.Name}", LogLevel.Debug);
-                this.AssignSchedulePoint(this.musician, musicianPoint);
-                Point musician_loc = musicianPoint.Point;
-                PossibleIslandActivity closeDancePoint = new(DanceDeltas.Select((Point pt) => new Point(musician_loc.X + pt.X, musician_loc.Y + pt.Y)).ToArray(),
-                    basechance: 0.7,
-                    animation: "beach_dance",
-                    animation_required: true);
-                foreach (NPC dancer in dancers)
-                {
-                    SchedulePoint? dancerPoint = closeDancePoint.TryAssign(
-                        random: this.random,
-                        character: dancer,
-                        time: this.timeslot,
-                        usedPoints: this.usedPoints,
-                        lastAssignment: lastAssignment,
-                        animation_descriptions: animationDescriptions,
-                        groupName: GIScheduler.CurrentVisitingGroup?.Contains(dancer) == true ? GIScheduler.CurrentGroup : null)
-                        ?? Dance.TryAssign(
-                            this.random,
-                            character: dancer,
-                            time: this.timeslot,
-                            usedPoints: this.usedPoints,
-                            lastAssignment: lastAssignment,
-                            animation_descriptions: animationDescriptions,
-                            groupName: GIScheduler.CurrentVisitingGroup?.Contains(dancer) == true ? GIScheduler.CurrentGroup : null);
-                    if (dancerPoint is not null)
-                    {
-                        Globals.ModMonitor.DebugOnlyLog($"Assigned dancer {dancer.Name}", LogLevel.Debug);
-                        this.AssignSchedulePoint(dancer, dancerPoint);
-                        dancer.currentScheduleDelay = 0f;
-                        this.musician.currentScheduleDelay = 0f;
-                    }
-                }
-            }
-#if DEBUG
-            else
-            {
-                Globals.ModMonitor.Log($"Musician {this.musician.Name} skipped for MusicianPoint", LogLevel.Trace);
-            }
-#endif
+            this.AssignMusicianAndDancers(this.musician, dancers, lastAssignment, animationDescriptions);
         }
 
         // consider assigning NPC groups?
@@ -218,65 +136,189 @@ internal class GingerIslandTimeSlot
             {
                 continue;
             }
-            foreach (PossibleIslandActivity possibleIslandActivity in PossibleActivities)
+            if (!this.TryAssignVisitor(visitor, lastAssignment, animationDescriptions))
             {
-                SchedulePoint? schedulePoint = possibleIslandActivity.TryAssign(
-                    random: this.random,
-                    character: visitor,
-                    time: this.timeslot,
-                    usedPoints: this.usedPoints,
-                    lastAssignment: lastAssignment,
-                    animation_descriptions: animationDescriptions,
-                    groupName: GIScheduler.CurrentVisitingGroup?.Contains(visitor) == true ? GIScheduler.CurrentGroup : null);
-                if (schedulePoint is not null)
-                {
-                    this.AssignSchedulePoint(visitor, schedulePoint);
-                    goto CONTINUELOOP;
-                }
+                Globals.ModMonitor.DebugOnlyLog($"Warning: No activity found for {visitor.Name} at {this.timeslot}", LogLevel.Warn);
             }
-
-            if (this.timeslot == 1400)
-            {
-                SchedulePoint? schedulePoint = IslandNorth.TryAssign(
-                    random: this.random,
-                    character: visitor,
-                    time: this.timeslot,
-                    usedPoints: this.usedPoints,
-                    lastAssignment: lastAssignment,
-                    animation_descriptions: animationDescriptions,
-                    groupName: GIScheduler.CurrentVisitingGroup?.Contains(visitor) == true ? GIScheduler.CurrentGroup : null);
-                if (schedulePoint is not null)
-                {
-                    this.AssignSchedulePoint(visitor, schedulePoint);
-                    goto CONTINUELOOP;
-                }
-            }
-
-            Globals.ModMonitor.DebugOnlyLog($"Now using fall back spot assignment for {visitor.Name} at {this.timeslot}", LogLevel.Warn);
-
-            // now iterate backwards through the list, forcibly assigning people to places....
-            for (int i = PossibleActivities.Length - 1; i >= 0; i--)
-            {
-                SchedulePoint? schedulePoint = PossibleActivities[i].TryAssign(
-                    random: this.random,
-                    character: visitor,
-                    time: this.timeslot,
-                    usedPoints: this.usedPoints,
-                    lastAssignment: lastAssignment,
-                    animation_descriptions: animationDescriptions,
-                    overrideChanceMap: (NPC npc) => 1.0,
-                    groupName: GIScheduler.CurrentVisitingGroup?.Contains(visitor) == true ? GIScheduler.CurrentGroup : null);
-                if (schedulePoint is not null)
-                {
-                    this.AssignSchedulePoint(visitor, schedulePoint);
-                    goto CONTINUELOOP;
-                }
-            }
-            Globals.ModMonitor.DebugOnlyLog($"Warning: No activity found for {visitor.Name} at {this.timeslot}", LogLevel.Warn);
-CONTINUELOOP:
-            ;
         }
         return this.animations;
+    }
+
+    /// <summary>
+    /// Gets the current group name if the NPC is part of the visiting group.
+    /// </summary>
+    /// <param name="npc">NPC in question.</param>
+    /// <returns>Group name, or null.</returns>
+    private static string? GroupNameFor(NPC npc)
+        => GIScheduler.CurrentVisitingGroup?.Contains(npc) == true ? GIScheduler.CurrentGroup : null;
+
+    /// <summary>
+    /// Assigns the bartender to the bar, then tries to assign drinkers.
+    /// </summary>
+    /// <param name="bartender">The bartender.</param>
+    /// <param name="dancers">Possible dancers, who are not drinkers.</param>
+    /// <param name="lastAssignment">The previous set of animations, to avoid repeating.</param>
+    /// <param name="animationDescriptions">The animation dictionary of the game.</param>
+    private void AssignBartenderAndDrinkers(NPC bartender, HashSet<NPC> dancers, Dictionary<NPC, string> lastAssignment, Dictionary<string, string> animationDescriptions)
+    {
+        string? varkey = GIScheduler.CurrentVisitingGroup?.Contains(bartender) == true
+            ? $"Resort_Bartend_{GIScheduler.CurrentGroup}"
+            : null;
+        this.AssignSchedulePoint(bartender, new SchedulePoint(
+            random: this.random,
+            npc: bartender,
+            map: "IslandSouth",
+            time: this.timeslot,
+            point: BartendPoint,
+            basekey: "Resort_Bartend",
+            varKey: varkey));
+
+        foreach (NPC possibledrinker in this.visitors)
+        {
+            if (!this.assignments.ContainsKey(possibledrinker) && possibledrinker.Age != NPC.child
+                && !dancers.Contains(possibledrinker) && possibledrinker != this.musician)
+            {
+                SchedulePoint? schedulePoint = Drinking.TryAssign(
+                    random: this.random,
+                    character: possibledrinker,
+                    time: this.timeslot,
+                    usedPoints: this.usedPoints,
+                    lastAssignment: lastAssignment,
+                    animation_descriptions: animationDescriptions,
+                    groupName: GroupNameFor(possibledrinker));
+                if (schedulePoint is not null)
+                {
+                    this.AssignSchedulePoint(possibledrinker, schedulePoint);
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// Tries to assign the musician, and if successful, dancers around them.
+    /// </summary>
+    /// <param name="musician">The musician.</param>
+    /// <param name="dancers">Possible dancers.</param>
+    /// <param name="lastAssignment">The previous set of animations, to avoid repeating.</param>
+    /// <param name="animationDescriptions">The animation dictionary of the game.</param>
+    private void AssignMusicianAndDancers(NPC musician, HashSet<NPC> dancers, Dictionary<NPC, string> lastAssignment, Dictionary<string, string> animationDescriptions)
+    {
+        SchedulePoint? musicianPoint = Music.TryAssign(
+            random: this.random,
+            character: musician,
+            time: this.timeslot,
+            usedPoints: this.usedPoints,
+            lastAssignment: lastAssignment,
+            overrideChanceMap: static (NPC npc) => 0.8,
+            animation_descriptions: animationDescriptions,
+            groupName: GroupNameFor(musician));
+        if (musicianPoint is null)
+        {
+#if DEBUG
+            Globals.ModMonitor.Log($"Musician {musician.Name} skipped for MusicianPoint", LogLevel.Trace);
+#endif
+            return;
+        }
+
+        Globals.ModMonitor.DebugOnlyLog($"Assigned musician:{musician.Name}", LogLevel.Debug);
+        this.AssignSchedulePoint(musician, musicianPoint);
+        Point musician_loc = musicianPoint.Point;
+        PossibleIslandActivity closeDancePoint = new(DanceDeltas.Select((Point pt) => new Point(musician_loc.X + pt.X, musician_loc.Y + pt.Y)).ToArray(),
+            basechance: 0.7,
+            animation: "beach_dance",
+            animation_required: true);
+        foreach (NPC dancer in dancers)
+        {
+            SchedulePoint? dancerPoint = closeDancePoint.TryAssign(
+                random: this.random,
+                character: dancer,
+                time: this.timeslot,
+                usedPoints: this.usedPoints,
+                lastAssignment: lastAssignment,
+                animation_descriptions: animationDescriptions,
+                groupName: GroupNameFor(dancer))
+                ?? Dance.TryAssign(
+                    this.random,
+                    character: dancer,
+                    time: this.timeslot,
+                    usedPoints: this.usedPoints,
+                    lastAssignment: lastAssignment,
+                    animation_descriptions: animationDescriptions,
+                    groupName: GroupNameFor(dancer));
+            if (dancerPoint is not null)
+            {
+                Globals.ModMonitor.DebugOnlyLog($"Assigned dancer {dancer.Name}", LogLevel.Debug);
+                this.AssignSchedulePoint(dancer, dancerPoint);
+                dancer.currentScheduleDelay = 0f;
+                musician.currentScheduleDelay = 0f;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Tries to assign a single visitor to an activity, falling back to forced assignment.
+    /// </summary>
+    /// <param name="visitor">The visitor.</param>
+    /// <param name="lastAssignment">The previous set of animations, to avoid repeating.</param>
+    /// <param name="animationDescriptions">The animation dictionary of the game.</param>
+    /// <returns>True if an activity was assigned.</returns>
+    private bool TryAssignVisitor(NPC visitor, Dictionary<NPC, string> lastAssignment, Dictionary<string, string> animationDescriptions)
+    {
+        foreach (PossibleIslandActivity possibleIslandActivity in PossibleActivities)
+        {
+            SchedulePoint? schedulePoint = possibleIslandActivity.TryAssign(
+                random: this.random,
+                character: visitor,
+                time: this.timeslot,
+                usedPoints: this.usedPoints,
+                lastAssignment: lastAssignment,
+                animation_descriptions: animationDescriptions,
+                groupName: GroupNameFor(visitor));
+            if (schedulePoint is not null)
+            {
+                this.AssignSchedulePoint(visitor, schedulePoint);
+                return true;
+            }
+        }
+
+        if (this.timeslot == 1400)
+        {
+            SchedulePoint? schedulePoint = IslandNorth.TryAssign(
+                random: this.random,
+                character: visitor,
+                time: this.timeslot,
+                usedPoints: this.usedPoints,
+                lastAssignment: lastAssignment,
+                animation_descriptions: animationDescriptions,
+                groupName: GroupNameFor(visitor));
+            if (schedulePoint is not null)
+            {
+                this.AssignSchedulePoint(visitor, schedulePoint);
+                return true;
+            }
+        }
+
+        Globals.ModMonitor.DebugOnlyLog($"Now using fall back spot assignment for {visitor.Name} at {this.timeslot}", LogLevel.Warn);
+
+        // now iterate backwards through the list, forcibly assigning people to places....
+        for (int i = PossibleActivities.Length - 1; i >= 0; i--)
+        {
+            SchedulePoint? schedulePoint = PossibleActivities[i].TryAssign(
+                random: this.random,
+                character: visitor,
+                time: this.timeslot,
+                usedPoints: this.usedPoints,
+                lastAssignment: lastAssignment,
+                animation_descriptions: animationDescriptions,
+                overrideChanceMap: (NPC npc) => 1.0,
+                groupName: GroupNameFor(visitor));
+            if (schedulePoint is not null)
+            {
+                this.AssignSchedulePoint(visitor, schedulePoint);
+                return true;
+            }
+        }
+        return false;
     }
 
     /// <summary>

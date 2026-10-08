@@ -106,58 +106,7 @@ namespace UIFramework.Data.Bridge
                 bool any = false;
                 foreach (JProperty property in root.Properties())
                 {
-                    switch (property.Name.ToLowerInvariant())
-                    {
-                        case "menus":
-                            any = true;
-                            AddEntries(layer.Menus, property.Value, owner, "Menus", messages);
-                            break;
-                        case "huds":
-                            any = true;
-                            AddEntries(layer.Huds, property.Value, owner, "Huds", messages);
-                            break;
-                        case "sprites":
-                            any = true;
-                            AddEntries(layer.Sprites, property.Value, owner, "Sprites", messages);
-                            break;
-                        case "composites":
-                            any = true;
-                            AddComposites(layer.Composites, property.Value, owner, messages);
-                            break;
-                        case "contributions":
-                            any = true;
-                            AddEntries(layer.Contributions, property.Value, owner, "Contributions", messages);
-                            break;
-                        case "owner":
-                            any = true;
-                            layer.Owners[owner] = property.Value.DeepClone();
-                            break;
-                        case "owners":
-                            any = true;
-                            if (property.Value is JObject owners)
-                            {
-                                foreach (JProperty entry in owners.Properties())
-                                {
-                                    if (entry.Name.Trim().Equals(owner, StringComparison.OrdinalIgnoreCase))
-                                    {
-                                        layer.Owners[owner] = entry.Value.DeepClone();
-                                    }
-                                    else
-                                    {
-                                        messages.Add($"Owners: '{entry.Name}' is not {owner}; a mod can only import its own settings.");
-                                    }
-                                }
-                            }
-
-                            break;
-                        default:
-                            if (property.Name.StartsWith('$'))
-                            {
-                                any = true; // "$schema"
-                            }
-
-                            break;
-                    }
+                    any |= ImportSection(layer, property, owner, messages);
                 }
 
                 if (!any)
@@ -174,6 +123,56 @@ namespace UIFramework.Data.Bridge
             Invalidate();
             error = string.Empty;
             return true;
+        }
+
+        /// <summary>Import one top-level section into <paramref name="layer"/>; false when it is not a known section (nor a <c>$</c> key).</summary>
+        private static bool ImportSection(Layer layer, JProperty property, string owner, List<string> messages)
+        {
+            switch (property.Name.ToLowerInvariant())
+            {
+                case "menus":
+                    AddEntries(layer.Menus, property.Value, owner, "Menus", messages);
+                    return true;
+                case "huds":
+                    AddEntries(layer.Huds, property.Value, owner, "Huds", messages);
+                    return true;
+                case "sprites":
+                    AddEntries(layer.Sprites, property.Value, owner, "Sprites", messages);
+                    return true;
+                case "composites":
+                    AddComposites(layer.Composites, property.Value, owner, messages);
+                    return true;
+                case "contributions":
+                    AddEntries(layer.Contributions, property.Value, owner, "Contributions", messages);
+                    return true;
+                case "owner":
+                    layer.Owners[owner] = property.Value.DeepClone();
+                    return true;
+                case "owners":
+                    if (property.Value is JObject owners)
+                    {
+                        ImportOwners(layer, owners, owner, messages);
+                    }
+
+                    return true;
+                default:
+                    return property.Name.StartsWith('$'); // "$schema"
+            }
+        }
+
+        private static void ImportOwners(Layer layer, JObject owners, string owner, List<string> messages)
+        {
+            foreach (JProperty entry in owners.Properties())
+            {
+                if (entry.Name.Trim().Equals(owner, StringComparison.OrdinalIgnoreCase))
+                {
+                    layer.Owners[owner] = entry.Value.DeepClone();
+                }
+                else
+                {
+                    messages.Add($"Owners: '{entry.Name}' is not {owner}; a mod can only import its own settings.");
+                }
+            }
         }
 
         private static void AddEntries(Dictionary<string, JToken> target, JToken token, string owner, string asset, List<string> messages)
@@ -425,7 +424,8 @@ namespace UIFramework.Data.Bridge
                     if (file.ChangedAt is { } at && (now - at).TotalMilliseconds >= DebounceMs)
                     {
                         file.ChangedAt = null;
-                        (due ??= new List<WatchedFile>()).Add(file);
+                        due ??= new List<WatchedFile>();
+                        due.Add(file);
                     }
                 }
             }

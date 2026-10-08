@@ -178,7 +178,7 @@ namespace UIFramework.Data.Expressions
             switch (Kind)
             {
                 case DataKind.Bool:
-                    return number != 0;
+                    return !Numbers.IsZero(number);
                 case DataKind.Number:
                     return !Numbers.Same(number, 0);
                 case DataKind.String:
@@ -213,7 +213,7 @@ namespace UIFramework.Data.Expressions
             switch (Kind)
             {
                 case DataKind.Bool:
-                    return number != 0 ? bool.TrueString : bool.FalseString;
+                    return !Numbers.IsZero(number) ? bool.TrueString : bool.FalseString;
                 case DataKind.Number:
                     return NumberToText(number);
                 case DataKind.String:
@@ -243,7 +243,7 @@ namespace UIFramework.Data.Expressions
         {
             return Kind switch
             {
-                DataKind.Bool => number != 0,
+                DataKind.Bool => !Numbers.IsZero(number),
                 DataKind.Number => number,
                 _ => reference
             };
@@ -254,7 +254,7 @@ namespace UIFramework.Data.Expressions
         {
             return Kind switch
             {
-                DataKind.Bool => ReactiveValue.FromFlag(number != 0),
+                DataKind.Bool => ReactiveValue.FromFlag(!Numbers.IsZero(number)),
                 DataKind.Number => ReactiveValue.FromNumber(number),
                 _ => ReactiveValue.FromText(AsString())
             };
@@ -297,7 +297,7 @@ namespace UIFramework.Data.Expressions
         /// <summary>Round-trip invariant text for a number (negative zero prints as <c>0</c>).</summary>
         internal static string NumberToText(double value)
         {
-            if (value == 0)
+            if (Numbers.IsZero(value))
             {
                 return "0";
             }

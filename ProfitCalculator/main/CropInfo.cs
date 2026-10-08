@@ -16,70 +16,70 @@ namespace ProfitCalculator.main
         public PlantData Crop { get; }
 
         /// <summary> The total profit. </summary>
-        public double TotalProfit { get; }
+        public double TotalProfit { get; init; }
 
         /// <summary> The profit per day. </summary>
-        public double ProfitPerDay { get; }
+        public double ProfitPerDay { get; init; }
 
         /// <summary> The total seed loss. </summary>
-        public double TotalSeedLoss { get; }
+        public double TotalSeedLoss { get; init; }
 
         /// <summary> The seed loss per day. </summary>
-        public double SeedLossPerDay { get; }
+        public double SeedLossPerDay { get; init; }
 
         /// <summary> The total fertilizer loss. </summary>
-        public double TotalFertilizerLoss { get; }
+        public double TotalFertilizerLoss { get; init; }
 
         /// <summary> The fertilizer loss per day. </summary>
-        public double FertilizerLossPerDay { get; }
+        public double FertilizerLossPerDay { get; init; }
 
         /// <summary> The produce type id (see <see cref="Utils.RawProduceType"/>). </summary>
         public string ProduceType { get; }
 
         /// <summary> The duration. </summary>
-        public int Duration { get; }
+        public int Duration { get; init; }
 
         /// <summary> The total harvests. </summary>
-        public int TotalHarvests { get; }
+        public int TotalHarvests { get; init; }
 
         /// <summary> The growth time. </summary>
-        public int GrowthTime { get; }
+        public int GrowthTime { get; init; }
 
         /// <summary> The regrowth time. </summary>
-        public int RegrowthTime { get; }
+        public int RegrowthTime { get; init; }
 
         /// <summary> The chance of normal quality. </summary>
-        public double ChanceOfNormalQuality { get; }
+        public double ChanceOfNormalQuality { get; init; }
 
         /// <summary> The chance of silver quality. </summary>
-        public double ChanceOfSilverQuality { get; }
+        public double ChanceOfSilverQuality { get; init; }
 
         /// <summary> The chance of gold quality. </summary>
-        public double ChanceOfGoldQuality { get; }
+        public double ChanceOfGoldQuality { get; init; }
 
         /// <summary> The chance of iridium quality. </summary>
-        public double ChanceOfIridiumQuality { get; }
+        public double ChanceOfIridiumQuality { get; init; }
 
         /// <summary> Display name of what is sold: "Raw" or the machine product's name. </summary>
         public string ProduceName { get; }
 
         /// <summary> Expected number of items sold over the run (machine products after dividing by the required input count). </summary>
-        public double ProduceCount { get; }
+        public double ProduceCount { get; init; }
 
         /// <summary> Input items the machine takes per batch; 1 when sold raw. </summary>
-        public int InputsPerProduct { get; }
+        public int InputsPerProduct { get; init; }
 
         /// <summary> Days the machine takes per batch; 0 when sold raw. </summary>
-        public double ProcessingDays { get; }
+        public double ProcessingDays { get; init; }
 
         /// <summary> Seeds needed over the run. </summary>
-        public int SeedsNeeded { get; }
+        public int SeedsNeeded { get; init; }
 
         /// <summary> Fertilizer needed over the run. </summary>
-        public int FertilizerNeeded { get; }
+        public int FertilizerNeeded { get; init; }
 
         /// <summary> The machine's main product; null when sold raw. </summary>
-        public Item? ProduceItem { get; }
+        public Item? ProduceItem { get; init; }
 
         /// <summary> The harvested item that goes into the machine (the crop's main drop). </summary>
         public Item InputItem { get; }
@@ -91,62 +91,21 @@ namespace ProfitCalculator.main
         public bool IsTreeView => Utils.IsTreeView(ProduceType);
 
         /// <summary> First day (counted from planting) on which the running profit covers the seed cost, or -1 if never / not applicable. See <see cref="PlantData.PaybackDay"/>. </summary>
-        public int PaybackDay { get; }
+        public int PaybackDay { get; init; }
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="CropInfo"/> class.
+        /// Initializes a new instance of the <see cref="CropInfo"/> class. The remaining values are set with an object
+        /// initializer; <see cref="TotalProfit"/> and <see cref="ProfitPerDay"/> are net of seed and fertilizer costs.
         /// </summary>
         /// <param name="crop"> The crop. </param>
-        /// <param name="totalProfit"> The total profit. Calculated from <c>totalProfit = totalProfit - (totalSeedLoss + totalFertilizerLoss)</c> </param>
-        /// <param name="profitPerDay"> The profit per day. </param>
-        /// <param name="totalSeedLoss"> The total seed loss. </param>
-        /// <param name="seedLossPerDay"> The seed loss per day. </param>
-        /// <param name="totalFertilizerLoss"> The total fertilizer loss. </param>
-        /// <param name="fertilizerLossPerDay"> The fertilizer loss per day. </param>
         /// <param name="produceType"> The produce type. </param>
-        /// <param name="duration"> The duration. </param>
-        /// <param name="totalHarvests"> The total harvests. </param>
-        /// <param name="growthTime"> The growth time. </param>
-        /// <param name="regrowthTime"> The regrowth time. </param>
-        /// <param name="chanceOfNormalQuality"> The chance of normal quality. </param>
-        /// <param name="chanceOfSilverQuality"> The chance of silver quality. </param>
-        /// <param name="chanceOfGoldQuality"> The chance of gold quality. </param>
-        /// <param name="chanceOfIridiumQuality"> The chance of iridium quality. </param>
         /// <param name="produceName"> Display name of what is sold. </param>
-        /// <param name="produceCount"> Expected number of items sold over the run. </param>
-        /// <param name="inputsPerProduct"> Input items the machine takes per batch. </param>
-        /// <param name="processingDays"> Days the machine takes per batch. </param>
-        /// <param name="seedsNeeded"> Seeds needed over the run. </param>
-        /// <param name="fertilizerNeeded"> Fertilizer needed over the run. </param>
-        /// <param name="produceItem"> The machine's main product, or null when sold raw. </param>
         /// <param name="inputItem"> The harvested item that goes into the machine. </param>
-        /// <param name="paybackDay"> First day the running profit covers the seed cost, or -1 if never / not applicable. </param>
-        public CropInfo(PlantData crop, double totalProfit, double profitPerDay, double totalSeedLoss, double seedLossPerDay, double totalFertilizerLoss, double fertilizerLossPerDay, string produceType, int duration, int totalHarvests, int growthTime, int regrowthTime, double chanceOfNormalQuality, double chanceOfSilverQuality, double chanceOfGoldQuality, double chanceOfIridiumQuality, string produceName, double produceCount, int inputsPerProduct, double processingDays, int seedsNeeded, int fertilizerNeeded, Item? produceItem, Item inputItem, int paybackDay = -1)
+        public CropInfo(PlantData crop, string produceType, string produceName, Item inputItem)
         {
-            PaybackDay = paybackDay;
             Crop = crop;
-            TotalProfit = totalProfit - totalSeedLoss - totalFertilizerLoss;
-            ProfitPerDay = profitPerDay - seedLossPerDay - fertilizerLossPerDay;
-            TotalSeedLoss = totalSeedLoss;
-            SeedLossPerDay = seedLossPerDay;
-            TotalFertilizerLoss = totalFertilizerLoss;
-            FertilizerLossPerDay = fertilizerLossPerDay;
             ProduceType = produceType;
-            Duration = duration;
-            TotalHarvests = totalHarvests;
-            GrowthTime = growthTime;
-            RegrowthTime = regrowthTime;
-            ChanceOfNormalQuality = chanceOfNormalQuality;
-            ChanceOfSilverQuality = chanceOfSilverQuality;
-            ChanceOfGoldQuality = chanceOfGoldQuality;
-            ChanceOfIridiumQuality = chanceOfIridiumQuality;
             ProduceName = produceName;
-            ProduceCount = produceCount;
-            InputsPerProduct = inputsPerProduct;
-            ProcessingDays = processingDays;
-            SeedsNeeded = seedsNeeded;
-            FertilizerNeeded = fertilizerNeeded;
-            ProduceItem = produceItem;
             InputItem = inputItem;
         }
 
