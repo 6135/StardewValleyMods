@@ -15,7 +15,7 @@ namespace GiantCropFertilizer.HarmonyPatches;
 internal static class HoeDirtDrawTranspiler
 {
     private static Color ReplaceColor(Color prev, HoeDirt dirt)
-        => ModEntry.HasGiantCropFertilizer(dirt.fertilizer.Value) ? Color.Purple : prev;
+        => FertilizerValues.HasGiantCropFertilizer(dirt.fertilizer.Value) ? Color.Purple : prev;
 
     private static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
     {

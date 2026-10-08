@@ -1,6 +1,8 @@
 using System.Reflection;
 using System.Reflection.Emit;
 
+using CapstoneProfessions.Framework;
+
 using HarmonyLib;
 
 namespace CapstoneProfessions.Patches;
@@ -39,15 +41,15 @@ internal static class TimelapsePatch
 
     private static int GetTenMinuteInterval()
     {
-        float mult = 1;
+        int holders = 0;
         foreach (Farmer player in Game1.getAllFarmers())
         {
             if (player.professions.Contains(ModEntry.ProfessionTime))
             {
-                mult += 0.2f;
+                holders++;
             }
         }
 
-        return (int)(Game1.realMilliSecondsPerGameTenMinutes * mult);
+        return ProfessionScaling.TimelapseInterval(Game1.realMilliSecondsPerGameTenMinutes, holders);
     }
 }

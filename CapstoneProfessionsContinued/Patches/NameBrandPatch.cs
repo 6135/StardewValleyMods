@@ -1,5 +1,7 @@
 using System.Reflection;
 
+using CapstoneProfessions.Framework;
+
 using HarmonyLib;
 
 using SObject = StardewValley.Object;
@@ -18,15 +20,15 @@ internal static class NameBrandPatch
 
     private static void Postfix(ref float __result)
     {
-        float mult = 1;
+        int holders = 0;
         foreach (Farmer player in Game1.getAllFarmers())
         {
             if (player.professions.Contains(ModEntry.ProfessionProfit))
             {
-                mult += 0.05f;
+                holders++;
             }
         }
 
-        __result *= mult;
+        __result *= ProfessionScaling.NameBrandMultiplier(holders);
     }
 }
