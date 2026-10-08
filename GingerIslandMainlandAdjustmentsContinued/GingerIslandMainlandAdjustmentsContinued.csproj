@@ -29,8 +29,12 @@
     <Using Alias="SObject" Include="StardewValley.Object" />
   </ItemGroup>
 
-  <ItemGroup>
+  <!-- the CP manifest has a literal version, so only require it to match for release (non-prerelease) builds -->
+  <ItemGroup Condition="!$(Version.Contains('-'))">
     <ContentPacks Include="%5BCP%5D Ginger Island Mainland Adjustments" Version="$(Version)" />
+  </ItemGroup>
+  <ItemGroup Condition="$(Version.Contains('-'))">
+    <ContentPacks Include="%5BCP%5D Ginger Island Mainland Adjustments" ValidateManifest="false" />
   </ItemGroup>
 
   <PropertyGroup>
