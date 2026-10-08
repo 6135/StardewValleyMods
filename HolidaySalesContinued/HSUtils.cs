@@ -12,11 +12,6 @@ namespace HolidaySales;
 /// </summary>
 internal static class HSUtils
 {
-    /// <summary>
-    /// The region assigned to maps named <c>Custom_X</c> with no further underscore.
-    /// </summary>
-    private const string CustomMapRegion = "CustomMapRegion";
-
     private static readonly MethodInfo IsFestivalDay = AccessTools.Method(typeof(Utility), nameof(Utility.isFestivalDay), Type.EmptyTypes)
         ?? throw new MissingMethodException(nameof(Utility), nameof(Utility.isFestivalDay));
 
@@ -100,20 +95,7 @@ internal static class HSUtils
                 string conditions = conditionsStr.Split('/', 2)[0].Trim();
 
                 ModEntry.ModMonitor.VerboseLog($"Testing {conditions} against {mapRegion}");
-                if (conditions == mapRegion)
-                {
-                    return true;
-                }
-                bool isCustom = conditions.StartsWith("Custom", StringComparison.Ordinal);
-                if (!isCustom && mapRegion == "Town")
-                {
-                    return true;
-                }
-                if (isCustom && mapRegion == CustomMapRegion)
-                {
-                    return conditions.IndexOf('_') == conditions.LastIndexOf('_');
-                }
-                return false;
+                return FestivalRegions.ConditionsMatchRegion(conditions, mapRegion);
             }
         }
         catch (ContentLoadException)
@@ -158,16 +140,6 @@ internal static class HSUtils
             }
         }
 
-        // fallback for mods that don't use their own location context: Custom_<Mod>_<Map>.
-        string name = mapname;
-        string defaultArea = "Town";
-        if (name.StartsWith("Custom_", StringComparison.Ordinal))
-        {
-            name = name["Custom_".Length..];
-            defaultArea = CustomMapRegion;
-        }
-        int index = name.IndexOf('_');
-        string region = index == -1 ? defaultArea : name[..index];
-        return region.Length == 0 ? "Town" : region;
+        return FestivalRegions.RegionFromMapName(mapname);
     }
 }
