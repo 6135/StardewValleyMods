@@ -7,8 +7,18 @@
 # each mod compiles standalone, must not be edited here, and are already analysed at
 # their source, so analysing the copies only reports the same findings twice and
 # inflates the duplication metric. Old code review notes are not shipped and are
-# superseded by the current review.
+# superseded by the current review. Lockfiles and generated sources are tool output, not
+# hand-written code (UIFrameworkDesigner/src/generated is produced by tools/DesignerMetadata).
 exclude_paths:
+  - '**/package-lock.json'
+  - '**/yarn.lock'
+  - '**/pnpm-lock.yaml'
+  - '**/packages.lock.json'
+  - '**/*.min.js'
+  - '**/*.min.css'
+  - '**/dist/**'
+  - '**/node_modules/**'
+  - '**/generated/**'
   - 'ProfitCalculator/apis/**'
   - 'UIFrameworkExample/Api/**'
   - '**/code-review*.md'

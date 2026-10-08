@@ -39,7 +39,7 @@ jobs:
     # installs .NET 6 (the game's runtime) and the game + SMAPI reference assemblies from
     # StardewModders/mod-reference-assemblies, in a game folder ModBuildConfig finds automatically
     - name: Add build environment
-      uses: Pathoschild/SMAPI-ModBuildWorkflow/add-build-environment@v1
+      uses: Pathoschild/SMAPI-ModBuildWorkflow/add-build-environment@0a8b012b28a8449d6a5a3678f7a88f99492bb63e # v1
 
     # the mods target .NET 6, but are written against the SDK used locally (newer C# language features)
     - name: Setup .NET SDK
@@ -57,7 +57,7 @@ jobs:
     # every other build gets preview versions like 2.0.1-alpha.202609222359
     - name: Set prerelease versions
       if: steps.release.outputs.is-release != 'true'
-      uses: Pathoschild/SMAPI-ModBuildWorkflow/set-prerelease-versions@v1
+      uses: Pathoschild/SMAPI-ModBuildWorkflow/set-prerelease-versions@0a8b012b28a8449d6a5a3678f7a88f99492bb63e # v1
 
     - name: Build Mods
       run: dotnet build "$SOLUTION" --configuration Release -p:EnableModDeploy=false -p:ModZipPath="$GITHUB_WORKSPACE/$ZIP_DIR"
@@ -65,7 +65,7 @@ jobs:
     # one artifact per mod, plus an attestation for release builds
     - name: Upload build
       id: upload
-      uses: Pathoschild/SMAPI-ModBuildWorkflow/upload-release-artifacts@v1
+      uses: Pathoschild/SMAPI-ModBuildWorkflow/upload-release-artifacts@0a8b012b28a8449d6a5a3678f7a88f99492bb63e # v1
       with:
         path: ${{ env.ZIP_DIR }}
         create_attestations: ${{ steps.release.outputs.is-release == 'true' }}
