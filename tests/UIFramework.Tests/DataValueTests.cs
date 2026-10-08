@@ -241,7 +241,9 @@ public class DataValueTests
     [Fact]
     public void StrictEquality_RequiresSameKind()
     {
-        Assert.True(DataValue.FromNumber(1) == DataValue.FromNumber(1));
+        DataValue one = DataValue.FromNumber(1);
+        DataValue otherOne = DataValue.FromNumber(1);
+        Assert.True(one == otherOne);
         Assert.True(DataValue.FromNumber(1) != DataValue.FromString("1"));
         Assert.Equal(DataValue.FromString("a").GetHashCode(), DataValue.FromString("a").GetHashCode());
         Assert.True(DataValue.Null == default);
