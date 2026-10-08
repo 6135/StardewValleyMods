@@ -39,6 +39,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{0AB3BF05
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ContentPacks.Tests", "tests\ContentPacks.Tests\ContentPacks.Tests.csproj", "{2024694E-C2A8-4A64-940A-13E54D4D0C04}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UIFramework.Tests", "tests\UIFramework.Tests\UIFramework.Tests.csproj", "{CFD39931-66AD-4C02-AC45-60618448340E}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -301,6 +303,22 @@ Global
 		{2024694E-C2A8-4A64-940A-13E54D4D0C04}.Release|x86.Build.0 = Release|Any CPU
 		{2024694E-C2A8-4A64-940A-13E54D4D0C04}.Release|x64.ActiveCfg = Release|Any CPU
 		{2024694E-C2A8-4A64-940A-13E54D4D0C04}.Release|x64.Build.0 = Release|Any CPU
+		{CFD39931-66AD-4C02-AC45-60618448340E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{CFD39931-66AD-4C02-AC45-60618448340E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{CFD39931-66AD-4C02-AC45-60618448340E}.Debug|Any CPY.ActiveCfg = Debug|Any CPU
+		{CFD39931-66AD-4C02-AC45-60618448340E}.Debug|Any CPY.Build.0 = Debug|Any CPU
+		{CFD39931-66AD-4C02-AC45-60618448340E}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{CFD39931-66AD-4C02-AC45-60618448340E}.Debug|x86.Build.0 = Debug|Any CPU
+		{CFD39931-66AD-4C02-AC45-60618448340E}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{CFD39931-66AD-4C02-AC45-60618448340E}.Debug|x64.Build.0 = Debug|Any CPU
+		{CFD39931-66AD-4C02-AC45-60618448340E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{CFD39931-66AD-4C02-AC45-60618448340E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{CFD39931-66AD-4C02-AC45-60618448340E}.Release|Any CPY.ActiveCfg = Release|Any CPU
+		{CFD39931-66AD-4C02-AC45-60618448340E}.Release|Any CPY.Build.0 = Release|Any CPU
+		{CFD39931-66AD-4C02-AC45-60618448340E}.Release|x86.ActiveCfg = Release|Any CPU
+		{CFD39931-66AD-4C02-AC45-60618448340E}.Release|x86.Build.0 = Release|Any CPU
+		{CFD39931-66AD-4C02-AC45-60618448340E}.Release|x64.ActiveCfg = Release|Any CPU
+		{CFD39931-66AD-4C02-AC45-60618448340E}.Release|x64.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -308,6 +326,7 @@ Global
 	GlobalSection(NestedProjects) = preSolution
 		{4C299069-FB51-4038-9326-E1BFB483252D} = {07C2787E-EAC7-C090-1BA3-A61EC2A24D84}
 		{2024694E-C2A8-4A64-940A-13E54D4D0C04} = {0AB3BF05-4346-4AA6-1389-037BE0695223}
+		{CFD39931-66AD-4C02-AC45-60618448340E} = {0AB3BF05-4346-4AA6-1389-037BE0695223}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {0B7149C4-4258-4655-B72C-A698AD5794FE}
