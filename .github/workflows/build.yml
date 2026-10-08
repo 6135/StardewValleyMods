@@ -20,6 +20,8 @@ env:
   SOLUTION: Stardew Mods.sln
   # ModBuildConfig puts every mod's release zip here.
   ZIP_DIR: _releases
+  # coverage upload is skipped when the secret is unavailable (e.g. fork PRs)
+  CODACY_PROJECT_TOKEN: ${{ secrets.CODACY_PROJECT_TOKEN }}
 
 jobs:
 
@@ -61,6 +63,16 @@ jobs:
 
     - name: Build Mods
       run: dotnet build "$SOLUTION" --configuration Release -p:EnableModDeploy=false -p:ModZipPath="$GITHUB_WORKSPACE/$ZIP_DIR"
+
+    - name: Test
+      run: dotnet test "$SOLUTION" --configuration Release --no-build --results-directory TestResults --collect "XPlat Code Coverage"
+
+    - name: Upload coverage
+      if: env.CODACY_PROJECT_TOKEN != ''
+      uses: codacy/codacy-coverage-reporter-action@89d6c85cfafaec52c72b6c5e8b2878d33104c699 # v1.3.0
+      with:
+        project-token: ${{ env.CODACY_PROJECT_TOKEN }}
+        coverage-reports: TestResults/**/coverage.cobertura.xml
 
     # one artifact per mod, plus an attestation for release builds
     - name: Upload build
