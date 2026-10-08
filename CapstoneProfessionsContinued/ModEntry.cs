@@ -2,11 +2,8 @@ using HarmonyLib;
 
 using Microsoft.Xna.Framework.Graphics;
 
-using SpaceCore.Events;
-
 using CapstoneProfessions.Framework;
 using StardewModdingAPI.Events;
-using StardewValley.Menus;
 
 namespace CapstoneProfessions;
 
@@ -36,13 +33,13 @@ internal sealed class ModEntry : Mod
         ClockTex = helper.ModContent.Load<Texture2D>("assets/clock.png");
 
         helper.Events.GameLoop.GameLaunched += this.OnGameLaunched;
-        SpaceEvents.ShowNightEndMenus += this.OnNightMenus;
 
         Harmony harmony = new(this.ModManifest.UniqueID);
         try
         {
             Patches.TimelapsePatch.Apply(harmony);
             Patches.NameBrandPatch.Apply(harmony);
+            Patches.NightEndMenusPatch.Apply(harmony);
         }
         catch (Exception ex)
         {
@@ -50,7 +47,7 @@ internal sealed class ModEntry : Mod
         }
     }
 
-    private static bool HasMaxedSkills()
+    internal static bool HasMaxedSkills()
     {
         // Base levels, so buffs don't count.
         Farmer p = Game1.player;
@@ -86,22 +83,5 @@ internal sealed class ModEntry : Mod
         {
             e.Player.professions.Add(ProfessionTime);
         }
-    }
-
-    private void OnNightMenus(object? sender, EventArgsShowNightEndMenus e)
-    {
-        if (!HasMaxedSkills() || Game1.player.professions.Contains(ProfessionTime) || Game1.player.professions.Contains(ProfessionProfit))
-        {
-            return;
-        }
-
-        this.Monitor.Log("Doing profession menu", LogLevel.Debug);
-
-        if (Game1.endOfNightMenus.Count == 0)
-        {
-            Game1.endOfNightMenus.Push(new SaveGameMenu());
-        }
-
-        Game1.endOfNightMenus.Push(new CapstoneProfessionMenu());
     }
 }
