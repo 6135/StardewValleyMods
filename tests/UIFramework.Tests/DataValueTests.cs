@@ -166,7 +166,7 @@ public class DataValueTests
     [Fact]
     public void JoinList_UsesSeparator()
     {
-        Assert.Equal(string.Empty, DataValue.JoinList(new DataValue[0], "-"));
+        Assert.Equal(string.Empty, DataValue.JoinList(System.Array.Empty<DataValue>(), "-"));
         Assert.Equal("a", DataValue.JoinList(new[] { DataValue.FromString("a") }, "-"));
         Assert.Equal("a-b-c", DataValue.JoinList(new[] { DataValue.FromString("a"), DataValue.FromString("b"), DataValue.FromString("c") }, "-"));
     }
