@@ -11,7 +11,8 @@
     <EnableModDeploy>false</EnableModDeploy>
     <EnableModZip>false</EnableModZip>
     <EnableHarmony>false</EnableHarmony>
-    <CopyModReferencesToBuildOutput>true</CopyModReferencesToBuildOutput>
+    <!-- copy the game/SMAPI assemblies next to the tests so coverlet can resolve them when instrumenting -->
+    <BundleExtraAssemblies>Game</BundleExtraAssemblies>
   </PropertyGroup>
 
   <ItemGroup>
