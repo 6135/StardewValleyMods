@@ -143,7 +143,7 @@ namespace ProfitCalculator.main
         /// <param name="calculator"> The calculator to configure. </param>
         public void ApplyTo(Calculator calculator)
         {
-            calculator.SetSettings(Day, Season, ProduceType, FertilizerQuality, PayForSeeds, PayForFertilizer, MaxMoney, UseBaseStats, CrossSeason, Math.Clamp(Years, MinYears, MaxYears), HeavyTapper, TreeFertilizer);
+            calculator.SetSettings(this);
         }
 
         /// <summary> Sets <paramref name="field"/> and raises <see cref="PropertyChanged"/> when the value changes. </summary>

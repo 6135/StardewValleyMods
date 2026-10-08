@@ -522,7 +522,8 @@ namespace UIFramework.Core
             if (DrawsInOverlay && OwnerMenu != null)
             {
                 // the whole self-draw (content, then OnDrawExtra) moves to the overlay pass so their order is kept
-                OwnerMenu.Overlay.RegisterElement(this, drawSelf ??= DrawSelf);
+                drawSelf ??= DrawSelf;
+                OwnerMenu.Overlay.RegisterElement(this, drawSelf);
             }
             else
             {
@@ -531,7 +532,8 @@ namespace UIFramework.Core
 
             if (OnDrawOverlay != null && OwnerMenu != null)
             {
-                OwnerMenu.Overlay.RegisterDraw(drawOverlay ??= DrawOverlayCallback);
+                drawOverlay ??= DrawOverlayCallback;
+                OwnerMenu.Overlay.RegisterDraw(drawOverlay);
             }
         }
 

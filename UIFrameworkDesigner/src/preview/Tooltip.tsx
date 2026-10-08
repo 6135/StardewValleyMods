@@ -62,6 +62,86 @@ export function ItemSprite({ id, art, size }: { id: string; art: GameArt | undef
   return <span className="pv-item-sprite" style={style} />;
 }
 
+/** What a block row needs: template / expression evaluation, the wrap width, the small font's line height, i18n and art. */
+interface BlockContext {
+  textOf(raw: string | undefined): string;
+  evaluate(expr: string): string | undefined;
+  wrap: number;
+  lineHeight: number;
+  i18n: Record<string, string> | undefined;
+  art: GameArt | undefined;
+}
+
+function textBlock(b: Block, i: number, ctx: BlockContext): ReactNode {
+  const content = ctx.textOf(b.text);
+  if (!content) return null;
+  const color = b.color !== undefined ? ctx.textOf(b.color).trim() : '';
+  const colorStyle: CSSProperties = color && typeof CSS !== 'undefined' && CSS.supports('color', color) ? { color } : {};
+  return <div key={i} className="pv-tip-text" style={{ ...fontStyle(b.type === 'title' ? 'dialogue' : 'small'), maxWidth: ctx.wrap, ...colorStyle }}>{renderText(content, ctx.i18n)}</div>;
+}
+
+function itemBlock(b: Block, i: number, { textOf, lineHeight, art, i18n }: BlockContext): ReactNode {
+  const id = textOf(b.item).trim();
+  return (
+    <div key={i} className="pv-tip-icon-row" style={fontStyle()}>
+      <ItemSprite id={id} art={art} size={lineHeight} />
+      {objectIndex(id) === undefined || !art?.objects ? <span className="pv-tip-icon" style={{ width: lineHeight, height: lineHeight }}>▣</span> : null}
+      <span>{renderText(itemDisplayName(id), i18n)}</span>
+    </div>
+  );
+}
+
+function moneyBlock(b: Block, i: number, { evaluate, lineHeight, i18n }: BlockContext): ReactNode {
+  const amount = Number(b.amount !== undefined ? evaluate(b.amount) : undefined);
+  return (
+    <div key={i} className="pv-tip-icon-row" style={fontStyle()}>
+      <span className="pv-tip-coin" style={{ width: lineHeight, height: lineHeight }} />
+      <span>{Number.isFinite(amount) ? String(Math.trunc(amount)) : renderText(chipTokens(b.amount ?? ''), i18n)}</span>
+    </div>
+  );
+}
+
+function iconBlock(b: Block, i: number, { textOf, art }: BlockContext): ReactNode {
+  const sprite = textOf(b.sprite).trim();
+  const itemId = sprite.slice(0, 5).toLowerCase() === 'item:' && sprite.length > 5 ? sprite.slice(5) : undefined;
+  return (
+    <div key={i} className="pv-tip-icon-row">
+      {itemId !== undefined && objectIndex(itemId) !== undefined && art?.objects
+        ? <ItemSprite id={itemId} art={art} size={64} />
+        : <span className="pv-tip-icon" title={sprite} style={{ width: 64, height: 64 }}>▣</span>}
+    </div>
+  );
+}
+
+/** A row per block type (null: nothing shown); unknown types show nothing. */
+const blockRenderers: Partial<Record<string, (b: Block, i: number, ctx: BlockContext) => ReactNode>> = {
+  title: textBlock,
+  line: textBlock,
+  item: itemBlock,
+  money: moneyBlock,
+  icon: iconBlock,
+  divider: (_b, i) => <div key={i} className="pv-tip-divider" />
+};
+
+/** TooltipRenderer.Place: 32 px right / below the cursor, nudged to stay on screen; centred without a cursor. */
+function placeTooltip(cursor: { x: number; y: number } | undefined, screen: { width: number; height: number }, w: number, h: number): { x: number; y: number } {
+  if (!cursor) {
+    return { x: Math.max(0, Math.round((screen.width - w) / 2)), y: Math.max(0, Math.round((screen.height - h) / 2)) };
+  }
+  let x = cursor.x + CursorOffset;
+  let y = cursor.y + CursorOffset;
+  if (x + w > screen.width) {
+    x = screen.width - w;
+    y += EdgeNudge;
+  }
+  if (y + h > screen.height) {
+    x += EdgeNudge;
+    if (x + w > screen.width) x = screen.width - w;
+    y = screen.height - h;
+  }
+  return { x: Math.max(0, x), y: Math.max(0, y) };
+}
+
 export interface TooltipBoxProps {
   /** A TooltipDefinition (resolveTooltip), or undefined to use the inline title / text. */
   definition: unknown;
@@ -94,98 +174,37 @@ export function TooltipBox(props: TooltipBoxProps): ReactNode {
   let wrap = Math.max(1, screen.width - (2 * Padding) - ViewportSlack);
   if (wrapLimit > 0) wrap = Math.min(wrap, wrapLimit);
 
-  const textOf = (raw: string | undefined): string => chipTokens(evaluateTemplateText(raw ?? '', state, functions));
-  const lineHeight = GAME_FONTS.small.lineSpacing;
+  const ctx: BlockContext = {
+    textOf: raw => chipTokens(evaluateTemplateText(raw ?? '', state, functions)),
+    evaluate: expr => evaluateExpression(expr, state, functions),
+    wrap, lineHeight: GAME_FONTS.small.lineSpacing, i18n, art
+  };
   const rows: ReactNode[] = [];
   blocks.forEach((b, i) => {
     let hidden = false;
     if (b.when !== undefined) {
-      const shown = evaluateExpression(b.when, state, functions);
+      const shown = ctx.evaluate(b.when);
       hidden = shown !== undefined && !truthy(shown);
       if (hidden && !showHidden) return;
     }
-    const before = rows.length;
-    const color = b.color !== undefined ? textOf(b.color).trim() : '';
-    const colorStyle: CSSProperties = color && typeof CSS !== 'undefined' && CSS.supports('color', color) ? { color } : {};
-    switch (b.type) {
-      case 'title':
-      case 'line': {
-        const content = textOf(b.text);
-        if (content) {
-          rows.push(<div key={i} className="pv-tip-text" style={{ ...fontStyle(b.type === 'title' ? 'dialogue' : 'small'), maxWidth: wrap, ...colorStyle }}>{renderText(content, i18n)}</div>);
-        }
-        break;
-      }
-      case 'item': {
-        const id = textOf(b.item).trim();
-        rows.push(
-          <div key={i} className="pv-tip-icon-row" style={fontStyle()}>
-            <ItemSprite id={id} art={art} size={lineHeight} />
-            {objectIndex(id) === undefined || !art?.objects ? <span className="pv-tip-icon" style={{ width: lineHeight, height: lineHeight }}>▣</span> : null}
-            <span>{renderText(itemDisplayName(id), i18n)}</span>
-          </div>
-        );
-        break;
-      }
-      case 'money': {
-        const amount = Number(b.amount !== undefined ? evaluateExpression(b.amount, state, functions) : undefined);
-        rows.push(
-          <div key={i} className="pv-tip-icon-row" style={fontStyle()}>
-            <span className="pv-tip-coin" style={{ width: lineHeight, height: lineHeight }} />
-            <span>{Number.isFinite(amount) ? String(Math.trunc(amount)) : renderText(chipTokens(b.amount ?? ''), i18n)}</span>
-          </div>
-        );
-        break;
-      }
-      case 'icon': {
-        const sprite = textOf(b.sprite).trim();
-        const item = /^item:(.+)$/i.exec(sprite);
-        rows.push(
-          <div key={i} className="pv-tip-icon-row">
-            {item && objectIndex(item[1]!) !== undefined && art?.objects
-              ? <ItemSprite id={item[1]!} art={art} size={64} />
-              : <span className="pv-tip-icon" title={sprite} style={{ width: 64, height: 64 }}>▣</span>}
-          </div>
-        );
-        break;
-      }
-      case 'divider':
-        rows.push(<div key={i} className="pv-tip-divider" />);
-        break;
-      default:
-        break;
-    }
+    const render = Object.prototype.hasOwnProperty.call(blockRenderers, b.type) ? blockRenderers[b.type] : undefined;
+    const row = render ? render(b, i, ctx) : null;
+    if (row === null) return;
     // a tooltip tab's block: its row wrapped to select its node
     const node = nodes?.[i];
-    if (node !== undefined && rows.length > before) {
+    if (node !== undefined) {
       const classes = ['pv-tip-block', ...(hidden ? ['pv-hidden'] : []), ...(node === selection ? ['pv-selected'] : []), ...(node === hovered ? ['pv-hover'] : [])];
-      rows[before] = <div key={i} data-node={node} className={classes.join(' ')}>{rows[before]}</div>;
+      rows.push(<div key={i} data-node={node} className={classes.join(' ')}>{row}</div>);
+    } else {
+      rows.push(row);
     }
   });
 
   useLayoutEffect(() => {
     const el = ref.current;
     if (!el) return;
-    // TooltipRenderer.Place
-    const w = el.offsetWidth;
-    const h = el.offsetHeight;
-    if (!cursor) {
-      const centre = { x: Math.max(0, Math.round((screen.width - w) / 2)), y: Math.max(0, Math.round((screen.height - h) / 2)) };
-      setAt(prev => (prev.x === centre.x && prev.y === centre.y ? prev : centre));
-      return;
-    }
-    let x = cursor.x + CursorOffset;
-    let y = cursor.y + CursorOffset;
-    if (x + w > screen.width) {
-      x = screen.width - w;
-      y += EdgeNudge;
-    }
-    if (y + h > screen.height) {
-      x += EdgeNudge;
-      if (x + w > screen.width) x = screen.width - w;
-      y = screen.height - h;
-    }
-    setAt(prev => (prev.x === Math.max(0, x) && prev.y === Math.max(0, y) ? prev : { x: Math.max(0, x), y: Math.max(0, y) }));
+    const next = placeTooltip(cursor, screen, el.offsetWidth, el.offsetHeight);
+    setAt(prev => (prev.x === next.x && prev.y === next.y ? prev : next));
   });
 
   if (rows.length === 0) {

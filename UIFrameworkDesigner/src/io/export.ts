@@ -164,6 +164,26 @@ interface Member {
   order: number;
 }
 
+/** The element's members in written order: by rank (the kept shorthand first), then the type's / model's member order. */
+function orderedMembers(type: string, values: Map<string, unknown>, shorthandKey: string | null): Member[] {
+  const typeMembers = typeInfo(type)?.members ?? [];
+  const elementMembers = modelMembers('ElementDefinition');
+  const members: Member[] = [];
+  let unknown = 0;
+  for (const [key, value] of values) {
+    const typeIndex = typeMembers.indexOf(key);
+    const modelIndex = elementMembers.indexOf(key);
+    members.push({
+      key,
+      value,
+      rank: key === shorthandKey ? 2 : rank(key),
+      order: typeIndex >= 0 ? typeIndex : modelIndex >= 0 ? 1000 + modelIndex : 10000 + unknown++
+    });
+  }
+
+  return members;
+}
+
 class Writer {
   constructor(
     private readonly nodes: Record<NodeId, DesignerNode>,
@@ -259,6 +279,13 @@ class Writer {
 
   private element(node: DesignerNode, at: string): JsonObject {
     this.nodeAt.set(at, node.id);
+    const values = this.elementValues(node, at);
+    const shorthandKey = node.type.length > 0 ? this.applyShorthand(node, values) : null;
+    return assemble(orderedMembers(node.type, values, shorthandKey));
+  }
+
+  /** The node's fields (defaults omitted when asked), extra members and child list, by member name. */
+  private elementValues(node: DesignerNode, at: string): Map<string, unknown> {
     const type = node.type;
     const values = new Map<string, unknown>();
     for (const [key, text] of Object.entries(node.fields)) {
@@ -282,54 +309,40 @@ class Writer {
       values.set(listMember, children);
     }
 
-    // shorthand: move the main value back into the shorthand member, and drop Type when the definition still reads as
-    // the same type (DataValidator.NormalizeType's order decides)
-    let shorthandKey: string | null = null;
+    return values;
+  }
+
+  /**
+   * Shorthand: moves the main value back into the shorthand member, and drops Type when the definition still reads as
+   * the same type (DataValidator.NormalizeType's order decides); returns the shorthand member kept, or null.
+   */
+  private applyShorthand(node: DesignerNode, values: Map<string, unknown>): string | null {
+    const type = node.type;
     const has = (m: string) => values.get(m) !== undefined && values.get(m) !== null;
-    if (type.length > 0) {
-      const valueShorthand = Object.entries(valueShorthands).find(([, v]) => v.type === type)?.[0];
-      let moved = false;
-      if (valueShorthand && (this.options.collapseShorthands || node.shorthand === valueShorthand)
-        && !has(valueShorthand) && typeof node.fields[valueShorthands[valueShorthand]!.main] === 'string'
-        && values.has(valueShorthands[valueShorthand]!.main)) {
-        const main = valueShorthands[valueShorthand]!.main;
-        values.set(valueShorthand, values.get(main));
-        values.delete(main);
-        moved = true;
-      }
-
-      const inferred = inferType(has);
-      const collapse = inferred !== null && inferred.type === type
-        && (node.shorthand === inferred.shorthand || (this.options.collapseShorthands && inferred.shorthand !== 'Children'));
-      if (collapse) {
-        shorthandKey = inferred.shorthand;
-      } else {
-        if (moved) {
-          const main = valueShorthands[valueShorthand!]!.main;
-          values.set(main, values.get(valueShorthand!));
-          values.delete(valueShorthand!);
-        }
-
-        values.set('Type', type);
-      }
+    const valueShorthand = Object.entries(valueShorthands).find(([, v]) => v.type === type)?.[0];
+    const main = valueShorthand !== undefined ? valueShorthands[valueShorthand]!.main : undefined;
+    let moved = false;
+    if (valueShorthand && main !== undefined && (this.options.collapseShorthands || node.shorthand === valueShorthand)
+      && !has(valueShorthand) && typeof node.fields[main] === 'string' && values.has(main)) {
+      values.set(valueShorthand, values.get(main));
+      values.delete(main);
+      moved = true;
     }
 
-    const typeMembers = typeInfo(type)?.members ?? [];
-    const elementMembers = modelMembers('ElementDefinition');
-    const members: Member[] = [];
-    let unknown = 0;
-    for (const [key, value] of values) {
-      const typeIndex = typeMembers.indexOf(key);
-      const modelIndex = elementMembers.indexOf(key);
-      members.push({
-        key,
-        value,
-        rank: key === shorthandKey ? 2 : rank(key),
-        order: typeIndex >= 0 ? typeIndex : modelIndex >= 0 ? 1000 + modelIndex : 10000 + unknown++
-      });
+    const inferred = inferType(has);
+    const collapse = inferred !== null && inferred.type === type
+      && (node.shorthand === inferred.shorthand || (this.options.collapseShorthands && inferred.shorthand !== 'Children'));
+    if (collapse) {
+      return inferred.shorthand;
     }
 
-    return assemble(members);
+    if (moved) {
+      values.set(main!, values.get(valueShorthand!));
+      values.delete(valueShorthand!);
+    }
+
+    values.set('Type', type);
+    return null;
   }
 
   /** A Form's Fields / a DataGrid's Columns from the node's sub-item children. */

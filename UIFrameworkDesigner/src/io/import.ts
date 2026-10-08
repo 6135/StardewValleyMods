@@ -1,27 +1,22 @@
 import { parse, printParseErrorCode, visit, type ParseError } from 'jsonc-parser';
-import type { DesignerDocument, DesignerNode, ImportCandidate, ImportResult, NodeId, Problem, TemplateDoc } from '../model/document';
+import type { DesignerDocument, ImportCandidate, ImportResult, Problem, TemplateDoc } from '../model/document';
 import { createNode, newNodeId } from '../model/factory';
-import { canonicalType, elementTypes, tooltipBlockTypes } from '../model/metadata';
-import { subItemsOf, type SubItemKind } from '../model/subItems';
+import { tooltipBlockTypes } from '../model/metadata';
 import {
   createWorkspace, DefaultOwner, menuTab, type OwnerDoc, type PatchMembers, type TooltipDoc, type Workspace, type WorkspaceTab
 } from '../model/workspace';
 import {
-  builtInTypes,
   canonicalMember,
   entryPath,
   fieldPath,
   getMember,
   indexPath,
-  inferType,
   isObject,
   scalarText,
-  suggest,
   templateMatcher,
-  typeKind,
-  valueShorthands,
   type JsonObject
 } from './dataFormat';
+import { convertChildren, type Context } from './importElements';
 
 // JSONC import (architecture.md §9.1, §14 phase 2): a CP content.json (every EditData patch of the Menus asset), an
 // ImportData file ({ "Menus": {...}, "Owner": {...} }), a bare Menus object or a standalone MenuDefinition ("From" file),
@@ -90,90 +85,97 @@ const PatchOwnMembers = ['action', 'target', 'entries'];
 /** EditData members that edit entries in other ways: such a patch is kept verbatim, not opened as tabs. */
 const PatchOtherEdits = ['targetfield', 'fields', 'moveentries', 'textoperations'];
 
+/** A Content Patcher content.json (`isCpContent`) or one EditData patch: owner templates first (instances of them are not unknown types), then the menus. */
+function collectPatches(root: JsonObject, isCpContent: boolean, changes: unknown[], found: Found, problems: Problem[], known: ReadonlyMap<string, ReadonlySet<string>>): void {
+  if (isCpContent) {
+    for (const [key, value] of Object.entries(root)) {
+      if (key !== 'Changes' && key !== DesignerMember) {
+        found.content[key] = value;
+      }
+    }
+  }
+
+  const ownerTemplates = copyTemplates(known);
+  changes.forEach(change => {
+    if (isEditData(change, OwnersAsset)) {
+      const entries = getMember(change, 'Entries');
+      if (isObject(entries)) {
+        for (const [owner, def] of Object.entries(entries)) {
+          addOwnerTemplates(ownerTemplates, owner, def);
+        }
+      }
+    }
+  });
+
+  changes.forEach((change, i) => {
+    const entries = isObject(change) ? getMember(change, 'Entries') : undefined;
+    const editable = isObject(change) && isObject(entries) && !Object.keys(change).some(k => PatchOtherEdits.includes(k.toLowerCase()));
+    const patch: PatchMembers = editable ? Object.fromEntries(Object.entries(change).filter(([k]) => !PatchOwnMembers.includes(k.toLowerCase()))) : {};
+    if (editable && isEditData(change, OwnersAsset)) {
+      for (const [owner, def] of Object.entries(entries)) {
+        addOwner(found, problems, owner, def, entryPath(owner), ownerTemplates, patch);
+      }
+    } else if (editable && isEditData(change, MenusAsset)) {
+      for (const [key, def] of Object.entries(entries)) {
+        if (isObject(def)) {
+          addCandidate(found, problems, `Changes[${i}] › Entries › ${key}`, key, def, ownerTemplates, false, patch);
+        }
+      }
+    } else {
+      found.otherChanges.push(change);
+    }
+  });
+}
+
+/** An ImportData file: keys without an owner belong to the importing mod. */
+function collectImportData(root: JsonObject, found: Found, problems: Problem[], known: ReadonlyMap<string, ReadonlySet<string>>): void {
+  const ownerTemplates = copyTemplates(known);
+  const ownerDef = getMember(root, 'Owner');
+  addOwnerTemplates(ownerTemplates, DefaultOwner, ownerDef);
+  const owners = getMember(root, 'Owners');
+  if (isObject(owners)) {
+    for (const [owner, def] of Object.entries(owners)) {
+      addOwnerTemplates(ownerTemplates, owner, def);
+    }
+  }
+
+  for (const [key, value] of Object.entries(root)) {
+    if (!['menus', 'owner', 'owners'].includes(key.toLowerCase()) && key !== DesignerMember) {
+      found.content[key] = value;
+    }
+  }
+
+  if (ownerDef !== undefined) {
+    addOwner(found, problems, DefaultOwner, ownerDef, 'Owner', ownerTemplates);
+  }
+
+  if (isObject(owners)) {
+    for (const [owner, def] of Object.entries(owners)) {
+      addOwner(found, problems, owner, def, fieldPath('Owners', owner), ownerTemplates);
+    }
+  }
+
+  const menus = getMember(root, 'Menus');
+  if (isObject(menus)) {
+    for (const [key, def] of Object.entries(menus)) {
+      if (!key.startsWith('$') && isObject(def)) {
+        addCandidate(found, problems, `Menus › ${key}`, key, def, ownerTemplates, true);
+      }
+    }
+  }
+}
+
 function collect(root: JsonObject, found: Found, problems: Problem[], known: ReadonlyMap<string, ReadonlySet<string>>): void {
   const changesMember = getMember(root, 'Changes');
   const changes = Array.isArray(changesMember) ? changesMember : isEditData(root, MenusAsset) ? [root] : null;
   if (changes !== null) {
-    // a Content Patcher content.json (or one EditData patch): owner templates first (instances of them are not unknown types), then the menus
-    if (Array.isArray(changesMember)) {
-      for (const [key, value] of Object.entries(root)) {
-        if (key !== 'Changes' && key !== DesignerMember) {
-          found.content[key] = value;
-        }
-      }
-    }
-
-    const ownerTemplates = copyTemplates(known);
-    changes.forEach(change => {
-      if (isEditData(change, OwnersAsset)) {
-        const entries = getMember(change, 'Entries');
-        if (isObject(entries)) {
-          for (const [owner, def] of Object.entries(entries)) {
-            addOwnerTemplates(ownerTemplates, owner, def);
-          }
-        }
-      }
-    });
-
-    changes.forEach((change, i) => {
-      const entries = isObject(change) ? getMember(change, 'Entries') : undefined;
-      const editable = isObject(change) && isObject(entries) && !Object.keys(change).some(k => PatchOtherEdits.includes(k.toLowerCase()));
-      const patch: PatchMembers = editable ? Object.fromEntries(Object.entries(change).filter(([k]) => !PatchOwnMembers.includes(k.toLowerCase()))) : {};
-      if (editable && isEditData(change, OwnersAsset)) {
-        for (const [owner, def] of Object.entries(entries)) {
-          addOwner(found, problems, owner, def, entryPath(owner), ownerTemplates, patch);
-        }
-      } else if (editable && isEditData(change, MenusAsset)) {
-        for (const [key, def] of Object.entries(entries)) {
-          if (isObject(def)) {
-            addCandidate(found, problems, `Changes[${i}] › Entries › ${key}`, key, def, ownerTemplates, false, patch);
-          }
-        }
-      } else {
-        found.otherChanges.push(change);
-      }
-    });
+    collectPatches(root, Array.isArray(changesMember), changes, found, problems, known);
     return;
   }
 
   const keys = Object.keys(root).filter(k => !k.startsWith('$'));
   if (keys.some(k => ImportDataMembers.includes(k.toLowerCase()))) {
-    // an ImportData file: keys without an owner belong to the importing mod
-    const ownerTemplates = copyTemplates(known);
-    const ownerDef = getMember(root, 'Owner');
-    addOwnerTemplates(ownerTemplates, DefaultOwner, ownerDef);
-    const owners = getMember(root, 'Owners');
-    if (isObject(owners)) {
-      for (const [owner, def] of Object.entries(owners)) {
-        addOwnerTemplates(ownerTemplates, owner, def);
-      }
-    }
-
-    for (const [key, value] of Object.entries(root)) {
-      if (!['menus', 'owner', 'owners'].includes(key.toLowerCase()) && key !== DesignerMember) {
-        found.content[key] = value;
-      }
-    }
-
-    if (ownerDef !== undefined) {
-      addOwner(found, problems, DefaultOwner, ownerDef, 'Owner', ownerTemplates);
-    }
-
-    if (isObject(owners)) {
-      for (const [owner, def] of Object.entries(owners)) {
-        addOwner(found, problems, owner, def, fieldPath('Owners', owner), ownerTemplates);
-      }
-    }
-
-    const menus = getMember(root, 'Menus');
-    if (isObject(menus)) {
-      for (const [key, def] of Object.entries(menus)) {
-        if (!key.startsWith('$') && isObject(def)) {
-          addCandidate(found, problems, `Menus › ${key}`, key, def, ownerTemplates, true);
-        }
-      }
-    }
-
+    collectImportData(root, found, problems, known);
     return;
   }
 
@@ -349,11 +351,6 @@ function convertTooltip(value: unknown, path: string, problems: Problem[]): Tool
 //  Menu
 // ---------------------------------------------------------------------------------------------------------------
 
-interface Context {
-  nodes: Record<NodeId, DesignerNode>;
-  problems: Problem[];
-  isTemplate: (name: string) => boolean;
-}
 
 /** Convert one MenuDefinition (the value of a Menus entry or a From file) into a document. */
 export function convertMenu(def: JsonObject, owner: string, menuId: string, ownerTemplates: Set<string>, problems: Problem[]): DesignerDocument {
@@ -448,137 +445,6 @@ function convertTemplate(def: JsonObject, path: string, ctx: Context): TemplateD
   }
 
   return template;
-}
-
-// ---------------------------------------------------------------------------------------------------------------
-//  Elements
-// ---------------------------------------------------------------------------------------------------------------
-
-function convertChildren(list: unknown[], parentPath: string, ctx: Context): NodeId[] {
-  return convertElements(list, fieldPath(parentPath, 'Children'), ctx);
-}
-
-/** The elements of a list member (`listPath[i]`); a single object (a Cell written as one element) is the list itself. */
-function convertElements(list: unknown, listPath: string, ctx: Context): NodeId[] {
-  if (isObject(list)) {
-    return [convertElement(list, listPath, ctx)];
-  }
-
-  const ids: NodeId[] = [];
-  (Array.isArray(list) ? list : []).forEach((item, i) => {
-    if (!isObject(item)) {
-      ctx.problems.push({ severity: 'warning', path: indexPath(listPath, i), message: 'empty element; it is skipped.' });
-      return;
-    }
-
-    ids.push(convertElement(item, indexPath(listPath, i, scalarText(getMember(item, 'Id'))), ctx));
-  });
-  return ids;
-}
-
-/** A Form's Fields / a DataGrid's Columns as sub-item nodes (model/subItems.ts). */
-function convertSubItems(list: unknown[], listPath: string, kind: SubItemKind, ctx: Context): NodeId[] {
-  const ids: NodeId[] = [];
-  list.forEach((item, i) => {
-    const path = indexPath(listPath, i, isObject(item) ? scalarText(getMember(item, 'Id')) : undefined);
-    const node = createNode(kind.type);
-    const text = scalarText(item);
-    if (text !== undefined && kind.valueMember !== undefined) {
-      node.fields[kind.valueMember] = text;
-      node.shorthand = kind.valueMember;
-    } else if (isObject(item)) {
-      for (const [key, value] of Object.entries(item)) {
-        const member = canonicalMember(kind.schema, key) ?? key;
-        const memberText = scalarText(value);
-        if (member === kind.elements && (isObject(value) || Array.isArray(value))) {
-          node.children = convertElements(value, fieldPath(path, member), ctx);
-          node.singleElement = isObject(value);
-        } else if (memberText !== undefined) {
-          node.fields[member] = memberText;
-        } else {
-          node.extra[member] = value;
-        }
-      }
-    } else {
-      ctx.problems.push({ severity: 'warning', path, message: `empty ${kind.title.toLowerCase()}; it is skipped.` });
-      return;
-    }
-
-    ctx.nodes[node.id] = node;
-    ids.push(node.id);
-  });
-  return ids;
-}
-
-function convertElement(raw: JsonObject, path: string, ctx: Context): NodeId {
-  // canonical member spellings (Newtonsoft matches them case-insensitively); unknown members keep theirs
-  const members = new Map<string, unknown>();
-  const written = new Map<string, string>();
-  for (const [key, value] of Object.entries(raw)) {
-    const member = canonicalMember('ElementDefinition', key) ?? key;
-    members.set(member, value);
-    written.set(member, key);
-  }
-
-  const has = (m: string) => members.get(m) !== undefined && members.get(m) !== null;
-  const node = createNode('');
-  ctx.nodes[node.id] = node;
-  let builtIn = true;
-
-  const typeValue = members.get('Type');
-  members.delete('Type');
-  if (has('Template') && (typeValue === undefined || typeValue === null)) {
-    node.type = 'Template';
-    node.shorthand = 'Template';
-  } else if (typeValue !== undefined && typeValue !== null) {
-    const written = (scalarText(typeValue) ?? JSON.stringify(typeValue)).trim();
-    const kind = typeKind(written, ctx.isTemplate);
-    node.type = kind === 'builtin' ? canonicalType(written)! : written;
-    builtIn = kind === 'builtin';
-    if (kind === 'unknown') {
-      const suggestion = suggest(written, builtInTypes());
-      ctx.problems.push(suggestion !== null
-        ? { severity: 'error', path: fieldPath(path, 'Type'), nodeId: node.id, field: 'Type', message: `unknown element type '${written}' (did you mean '${suggestion}'?); the element is skipped.` }
-        : { severity: 'warning', path: fieldPath(path, 'Type'), nodeId: node.id, field: 'Type', message: `'${written}' is not a built-in type, a template of this menu or its owner, or a dotted custom tag; unless a template of that name exists, the element is skipped.` });
-    }
-  } else {
-    const inferred = inferType(has);
-    if (inferred === null) {
-      ctx.problems.push({ severity: 'error', path, nodeId: node.id, message: 'the element has no Type (or shorthand such as "Label": "text"); it is skipped.' });
-    } else {
-      node.type = inferred.type;
-      node.shorthand = inferred.shorthand;
-      const value = valueShorthands[inferred.shorthand];
-      if (value && !has(value.main)) {
-        // { "Label": "Hi" } → Type Label, Text "Hi" (the value keeps its JSON form when it is not a scalar)
-        members.set(value.main, members.get(inferred.shorthand));
-        members.delete(inferred.shorthand);
-      }
-    }
-  }
-
-  // the child list: Children, or a Form's Fields / a DataGrid's Columns as sub-item nodes
-  const items = subItemsOf(node.type);
-  for (const [member, value] of members) {
-    if (member === (items?.member ?? 'Children') && Array.isArray(value)) {
-      node.children = items !== undefined ? convertSubItems(value, fieldPath(path, member), items, ctx) : convertChildren(value, path, ctx);
-      continue;
-    }
-
-    const text = scalarText(value);
-    // a template instance's / custom tag's extra fields are its arguments: plain values, edited like fields, under the
-    // name as written (the arguments are read case-insensitively)
-    const argument = !builtIn && !elementTypes.common.includes(member);
-    const known = !builtIn || canonicalMember('ElementDefinition', member) !== null;
-    const key = argument ? written.get(member)! : member;
-    if (text !== undefined && known) {
-      node.fields[key] = text;
-    } else {
-      node.extra[key] = value;
-    }
-  }
-
-  return node.id;
 }
 
 // ---------------------------------------------------------------------------------------------------------------

@@ -14,7 +14,7 @@ namespace UIFramework.Data.Actions
     /// Thrown when an action entry fails. Event handlers run inside the owner's <see cref="Core.ConsumerContext"/>
     /// guard, which logs it once against the owner and mutes that element's event, exactly like a faulting C# callback.
     /// </summary>
-    internal sealed class DataActionException : Exception
+    public sealed class DataActionException : Exception
     {
         internal DataActionException(string message) : base(message) { }
 

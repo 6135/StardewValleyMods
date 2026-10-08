@@ -2,20 +2,21 @@
 
 :root {
   --bg: #f4f2ee;
-  --surface: #ffffff;
+  --surface: #fff;
   --surface-2: #f8f7f4;
   --border: #dcd8d0;
   --text: #24221f;
   --muted: #6f6a62;
   --accent: #2f6f4f;
   --accent-soft: #dcefe4;
-  --accent-text: #ffffff;
+  --accent-text: #fff;
   --selection: #d6e8f7;
   --warn: #b26a00;
   --danger: #b3261e;
   --focus: #2c7be5;
-  --mono: ui-monospace, 'Cascadia Mono', Consolas, 'Liberation Mono', monospace;
-  --sans: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --mono: ui-monospace, 'Cascadia Mono', consolas, 'Liberation Mono', monospace;
+  --sans: system-ui, -apple-system, 'Segoe UI', roboto, sans-serif;
+
   color-scheme: light;
 }
 
@@ -34,6 +35,7 @@
     --warn: #e0a040;
     --danger: #f2827a;
     --focus: #6aa8ff;
+
     color-scheme: dark;
   }
 }

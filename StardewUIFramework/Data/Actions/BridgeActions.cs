@@ -99,42 +99,13 @@ namespace UIFramework.Data.Actions
             // ctx.<cmd>
             if (target.StartsWith("ctx.", StringComparison.Ordinal))
             {
-                string command = target.Substring(4);
-                ScreenExposures? exposures = menu != null ? ScopeRoots.Exposures?.Invoke(menu) : null;
-                if (exposures == null || !exposures.HasCommand(command))
-                {
-                    return $"the menu{(menu != null ? $" '{menu.Id}'" : string.Empty)} exposes no command '{command}'.";
-                }
-
-                exposures.Invoke(command);
-                HookRegistry.BumpData();
-                return null;
+                return RunMenuCommand(menu, target.Substring(4));
             }
 
             // #<elementId>.<cmd>
             if (target.StartsWith('#'))
             {
-                int dot = target.LastIndexOf('.');
-                if (dot <= 1 || dot == target.Length - 1)
-                {
-                    return $"'{target}' is not #<elementId>.<command>.";
-                }
-
-                string id = target.Substring(1, dot - 1);
-                string command = target.Substring(dot + 1);
-                if (menu?.Root.FindById(id) is not IUIComposite composite)
-                {
-                    return $"no composite '{id}' in {(menu != null ? $"menu '{menu.Id}'" : "an open menu")}.";
-                }
-
-                if (!composite.HasCommand(command))
-                {
-                    return $"composite '{id}' ({composite.CompositeName}) exposes no command '{command}'.";
-                }
-
-                composite.Invoke(command);
-                HookRegistry.BumpData();
-                return null;
+                return RunCompositeCommand(menu, target);
             }
 
             HookRegistry? hooks = UIServices.Hooks;
@@ -155,6 +126,46 @@ namespace UIFramework.Data.Actions
             }
 
             return hooks.RunCommand(HookRegistry.Qualify(target, owner), rest, scope, owner, out string error) ? null : error;
+        }
+
+        /// <summary>Runs <c>ctx.&lt;cmd&gt;</c>: a command the menu exposes.</summary>
+        private static string? RunMenuCommand(UIMenu? menu, string command)
+        {
+            ScreenExposures? exposures = menu != null ? ScopeRoots.Exposures?.Invoke(menu) : null;
+            if (exposures == null || !exposures.HasCommand(command))
+            {
+                return $"the menu{(menu != null ? $" '{menu.Id}'" : string.Empty)} exposes no command '{command}'.";
+            }
+
+            exposures.Invoke(command);
+            HookRegistry.BumpData();
+            return null;
+        }
+
+        /// <summary>Runs <c>#&lt;elementId&gt;.&lt;cmd&gt;</c>: a command a composite element exposes.</summary>
+        private static string? RunCompositeCommand(UIMenu? menu, string target)
+        {
+            int dot = target.LastIndexOf('.');
+            if (dot <= 1 || dot == target.Length - 1)
+            {
+                return $"'{target}' is not #<elementId>.<command>.";
+            }
+
+            string id = target.Substring(1, dot - 1);
+            string command = target.Substring(dot + 1);
+            if (menu?.Root.FindById(id) is not IUIComposite composite)
+            {
+                return $"no composite '{id}' in {(menu != null ? $"menu '{menu.Id}'" : "an open menu")}.";
+            }
+
+            if (!composite.HasCommand(command))
+            {
+                return $"composite '{id}' ({composite.CompositeName}) exposes no command '{command}'.";
+            }
+
+            composite.Invoke(command);
+            HookRegistry.BumpData();
+            return null;
         }
     }
 }

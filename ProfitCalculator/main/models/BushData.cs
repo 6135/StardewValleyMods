@@ -31,12 +31,7 @@ namespace ProfitCalculator.main.models
             List<Season> seasons
             )
             : base(
-                  ageToProduce,
-                  1,
-                  1,
-                  1,
-                  0f,
-                  0f,
+                  PlantGrowth.SingleDrop(ageToProduce, 1),
                   displayName,
                   seasons,
                   seed,

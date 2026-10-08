@@ -256,7 +256,7 @@ namespace UIFramework.Components
             {
                 UIElement child = Children[k];
                 float width = rowWidth[k];
-                if (!child.Visible || width == rowMeasuredAt[k] || (width >= rowNatural[k] && rowMeasuredAt[k] >= rowNatural[k]))
+                if (!child.Visible || width.Equals(rowMeasuredAt[k]) || (width >= rowNatural[k] && rowMeasuredAt[k] >= rowNatural[k]))
                 {
                     continue;
                 }
@@ -351,7 +351,7 @@ namespace UIFramework.Components
             }
 
             float room = Bounds.Width - (gap * Math.Max(0, visible - 1));
-            if (rowShared && (room == rowTotal || room == rowRoom))
+            if (rowShared && (room.Equals(rowTotal) || room.Equals(rowRoom)))
             {
                 return true;
             }
@@ -379,7 +379,8 @@ namespace UIFramework.Components
 
             float width = 0, height = 0;
             int lines = 0;
-            for (int first = 0; first < Children.Count;)
+            int first = 0;
+            while (first < Children.Count)
             {
                 first = NextLine(first, available.X, out float lineWidth, out float lineHeight, out bool any);
                 if (!any)
@@ -405,7 +406,8 @@ namespace UIFramework.Components
         {
             int gap = EffectiveSpacing;
             int top = Bounds.Y;
-            for (int first = 0; first < Children.Count;)
+            int first = 0;
+            while (first < Children.Count)
             {
                 int end = NextLine(first, Bounds.Width, out _, out float lineHeight, out bool any);
                 int y = Math.Min(top, Bounds.Bottom);

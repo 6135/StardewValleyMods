@@ -55,7 +55,7 @@ namespace UIFramework.Data.Expressions
     }
 
     /// <summary>The outcome of an evaluation. Errors never throw; they come back here with a null <see cref="Value"/>.</summary>
-    internal readonly struct ExpressionResult
+    internal readonly record struct ExpressionResult
     {
         internal ExpressionResult(DataValue value, bool isVolatile, string? error = null)
         {
@@ -255,7 +255,7 @@ namespace UIFramework.Data.Expressions
         /// <summary>Forget every stored result.</summary>
         internal void Clear() => Array.Clear(slots, 0, slots.Length);
 
-        private struct Slot
+        private record struct Slot
         {
             internal bool HasValue;
             internal IExpressionScope? Scope;

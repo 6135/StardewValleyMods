@@ -8,6 +8,10 @@ on:
     branches:
       - 'release/**'
 
+# least privilege by default; jobs that push grant themselves write access
+permissions:
+  contents: read
+
 jobs:
   publish:
     runs-on: ubuntu-latest

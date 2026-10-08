@@ -14,6 +14,10 @@ concurrency:
   group: designer-pages
   cancel-in-progress: true
 
+# least privilege by default; jobs that push grant themselves write access
+permissions:
+  contents: read
+
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest

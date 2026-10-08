@@ -74,6 +74,10 @@ function toProblem(menu: JsonObject, error: ErrorObject & { propertyName?: strin
   return field !== undefined ? { severity, path, pointer: ptr, field, message } : { severity, path, pointer: ptr, message };
 }
 
+function childAt(parent: unknown, key: string | number): unknown {
+  return Object.entries(parent as object).find(([k]) => k === String(key))?.[1];
+}
+
 /** `/Children/2/Spacing` → `Children[2](#id).Spacing` (ids read from the checked value, like DataPath.Index). */
 export function frameworkPath(root: unknown, ptr: string): string {
   let path = '';
@@ -82,10 +86,10 @@ export function frameworkPath(root: unknown, ptr: string): string {
     const segment = unescape(raw);
     if (Array.isArray(value)) {
       const index = Number(segment);
-      value = value[index];
+      value = childAt(value, index);
       path = indexPath(path, index, isObject(value) ? scalarText(value.Id) : undefined);
     } else {
-      value = isObject(value) ? value[segment] : undefined;
+      value = isObject(value) ? childAt(value, segment) : undefined;
       path = fieldPath(path, segment);
     }
   }

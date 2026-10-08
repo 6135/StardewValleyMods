@@ -15,12 +15,6 @@ namespace ProfitCalculator
     /// </summary>
     public class ProfitCalculatorApi : IProfitCalculatorApi
     {
-        /// <summary>
-        /// Initializes a new instance of the <see cref="ProfitCalculatorApi"/> class.
-        /// </summary>
-        public ProfitCalculatorApi()
-        { }
-
         /// <inheritdoc/>
         public bool AddCrop(string seedItemId, string harvestItemId, int growthDays, int regrowDays, string seasons)
         {

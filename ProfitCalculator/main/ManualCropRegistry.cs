@@ -21,12 +21,6 @@ namespace ProfitCalculator.main
         private readonly Dictionary<string, int> seedPrices = new();
 
         /// <summary>
-        /// Initializes a new, empty instance of the <see cref="ManualCropRegistry"/> class.
-        /// </summary>
-        public ManualCropRegistry()
-        { }
-
-        /// <summary>
         /// Adds or replaces a crop definition.
         /// </summary>
         /// <param name="seedItemId">Seed item id, qualified or not.</param>

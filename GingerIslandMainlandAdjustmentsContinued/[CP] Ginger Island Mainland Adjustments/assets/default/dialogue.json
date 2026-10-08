@@ -41,7 +41,7 @@
                 //Resort_Antisocial temporarily removed until I can figure out what about IslandSoutheast makes NPCs vanish... :(
                 "Resort_Antisocial": "Heya @, whatcha up to?#$b#Me? Just taking a break from all those people...#$b#Vacations are fun, but they're also tiring.",
                 "Resort_Antisocial_2": "Glad I'm wearing this shirt. Otherwise, I'd definitely be sunburning right about now.",
-                "Resort_Approach_RobinFamily": "@, I'll be headed to Ginger Island today with my family. I'm...not sure I'm looking forward to it.",
+                "Resort_Approach_RobinFamily": "@, I'll be headed to Ginger Island today with my family. I'm...not sure I'm looking forward to it."
             }
         },
         {
@@ -125,7 +125,7 @@
             "Entries": {
                 "Resort_Approach": "@, I'll be taking a vacation today! Care to join me?",
                 "Resort Pier": "Nothing like basking in the nice warm sun, surrounded by such beautiful waters.",
-                "Resort_IslandNorth": "Ah, this place stimulates the creative spirit! Nothing like a nice tropical mango to get the writing brain in gear.",
+                "Resort_IslandNorth": "Ah, this place stimulates the creative spirit! Nothing like a nice tropical mango to get the writing brain in gear."
             }
         },
         {
@@ -166,7 +166,7 @@
             "Action": "EditData",
             "Target": "Characters/Dialogue/Alex",
             "Entries":{
-                "winterResort_Approach": "Lookin' forward to basking in the sun on the Island today! Hey, @, you wanna come with?",
+                "winterResort_Approach": "Lookin' forward to basking in the sun on the Island today! Hey, @, you wanna come with?"
             }
         },
         {
@@ -187,7 +187,7 @@
             "Entries": {
                 "Resort_Pier": "Look at all the fish swimming in these waters!",
                 "Resort_Approach": "@, I'm gonna be headed to Ginger Island today! Got a nice vacation day from the bus company.",
-                "Resort_Bar_PamFamily": "@, have you tried the mango smoothies? They're excellent.#$b#And alcohol-free...not going to drink with Penny around....",
+                "Resort_Bar_PamFamily": "@, have you tried the mango smoothies? They're excellent.#$b#And alcohol-free...not going to drink with Penny around...."
             }
         },
         {

@@ -74,8 +74,8 @@ namespace UIFrameworkExample
         /// </summary>
         private void RegisterDataHooks(IStardewUIApi api, DemoMenu menu)
         {
-            // the gauge: "Value" is a data reference (menu.volume, config.x, model...), read and written by the component;
-            // C# callers pass the setter under "Value.set"
+            // the gauge reads and writes its "Value" data reference (menu volume, config entry or model field) itself;
+            // C# callers pass the setter under the key "Value.set" instead
             api.DefineComposite(VolumeGaugeName, (host, args) =>
             {
                 double fallback = 50;

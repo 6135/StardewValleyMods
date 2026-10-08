@@ -1,4 +1,5 @@
 using System;
+using UIFramework.Core;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 
@@ -104,12 +105,13 @@ namespace UIFramework.Data.Expressions
             context.steps = 0;
             context.IsVolatile = false;
             context.Scope = ExpressionScope.Empty;
-            (pool ??= new Stack<ExpressionContext>()).Push(context);
+            pool ??= new Stack<ExpressionContext>();
+            pool.Push(context);
         }
     }
 
     /// <summary>Internal control flow for evaluation errors; always caught by <see cref="Evaluator.Run"/>.</summary>
-    internal sealed class ExpressionException : Exception
+    public sealed class ExpressionException : Exception
     {
         internal ExpressionException(string message) : base(message)
         {
@@ -288,13 +290,13 @@ namespace UIFramework.Data.Expressions
                 case BinaryOperator.Divide:
                 {
                     double divisor = right.AsNumber();
-                    return divisor == 0 ? DataValue.Zero : DataValue.FromNumber(left.AsNumber() / divisor);
+                    return Numbers.IsZero(divisor) ? DataValue.Zero : DataValue.FromNumber(left.AsNumber() / divisor);
                 }
 
                 case BinaryOperator.Modulo:
                 {
                     double divisor = right.AsNumber();
-                    return divisor == 0 ? DataValue.Zero : DataValue.FromNumber(left.AsNumber() % divisor);
+                    return Numbers.IsZero(divisor) ? DataValue.Zero : DataValue.FromNumber(left.AsNumber() % divisor);
                 }
 
                 case BinaryOperator.Less:

@@ -5,7 +5,7 @@ using System.Text;
 namespace UIFramework.Data.Expressions
 {
     /// <summary>One step of a scope path: a member name (<c>.x</c>, and the root) or an index key (<c>[x]</c>).</summary>
-    internal readonly struct PathSegment
+    internal readonly record struct PathSegment
     {
         internal PathSegment(string key, bool isIndex)
         {

@@ -279,7 +279,7 @@ namespace UIFramework.Hosting
             }
 
             // vanilla behaviour: the menu button (E / Escape, gamepad B) closes, unless a text field is taking input;
-            // first it backs out of an open popup, the focused element or the cancel button
+            // it backs out of an open popup, the focused element or the cancel button first
             if (Menu.Focus.Focused?.WantsTextInput == true)
             {
                 return;

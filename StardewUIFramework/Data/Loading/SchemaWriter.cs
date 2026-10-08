@@ -230,108 +230,65 @@ namespace UIFramework.Data.Loading
             return result;
         }
 
+        /// <summary>The definitions of the members read through a list converter.</summary>
+        private static readonly Dictionary<Type, string> ConverterDefinitions = new()
+        {
+            [typeof(ActionListConverter)] = "ActionList",
+            [typeof(StringListConverter)] = "StringList",
+            [typeof(ColumnListConverter)] = "Columns",
+            [typeof(ElementListConverter)] = "ElementList"
+        };
+
+        /// <summary>The schemas of members whose values are a fixed set (or free-form), by (model, member name).</summary>
+        private static readonly Dictionary<(Type Model, string Member), Func<JObject>> MemberSchemas = new()
+        {
+            // a built-in type, a custom tag (the dotted global name of a C# or data composite) or a template name (v1.7)
+            [(typeof(ElementDefinition), nameof(ElementDefinition.Type))] = () => new JObject
+            {
+                ["anyOf"] = new JArray(
+                    new JObject { ["enum"] = new JArray(ElementTypes.All.Cast<object>().ToArray()) },
+                    new JObject { ["type"] = "string" })
+            },
+            [(typeof(ElementDefinition), nameof(ElementDefinition.Args))] = () => new JObject { ["type"] = "object", ["additionalProperties"] = new JObject() },
+            [(typeof(DecorationOp), nameof(DecorationOp.Op))] = () => new JObject { ["enum"] = new JArray(DecorationOps.All.Cast<object>().ToArray()) },
+            [(typeof(ParamDefinition), nameof(ParamDefinition.Type))] = () => new JObject { ["enum"] = new JArray("string", "number", "bool", "any") },
+            [(typeof(ParamDefinition), nameof(ParamDefinition.Default))] = () => new JObject(),
+            [(typeof(SourceDefinition), nameof(SourceDefinition.Type))] = () => new JObject { ["enum"] = new JArray(SourceKinds.All.Cast<object>().ToArray()) },
+            [(typeof(TooltipBlockDefinition), nameof(TooltipBlockDefinition.Type))] = () => new JObject { ["enum"] = new JArray(TooltipBlockKinds.All.Cast<object>().ToArray()) },
+            [(typeof(FormFieldDefinition), nameof(FormFieldDefinition.Kind))] = () => new JObject { ["enum"] = new JArray("Checkbox", "Number", "Integer", "Text", "Dropdown") }
+        };
+
+        /// <summary>The schemas of members by their CLR type.</summary>
+        private static readonly Dictionary<Type, Func<JObject>> TypeSchemas = new()
+        {
+            [typeof(SourceDefinition)] = () => new JObject { ["$ref"] = "#/definitions/Source" },
+            [typeof(TooltipDefinition)] = () => new JObject { ["$ref"] = "#/definitions/Tooltip" },
+            [typeof(List<JToken>)] = () => new JObject { ["type"] = "array" },
+            [typeof(string)] = () => new JObject { ["$ref"] = "#/definitions/Value" }
+        };
+
         private static JObject PropertySchema(Type model, PropertyInfo property)
         {
             JsonConverterAttribute? converter = property.GetCustomAttribute<JsonConverterAttribute>();
-            if (converter?.ConverterType == typeof(ActionListConverter))
+            if (converter != null && ConverterDefinitions.TryGetValue(converter.ConverterType, out string? definition))
             {
-                return new JObject { ["$ref"] = "#/definitions/ActionList" };
+                return new JObject { ["$ref"] = "#/definitions/" + definition };
             }
 
-            if (converter?.ConverterType == typeof(StringListConverter))
+            if (MemberSchemas.TryGetValue((model, property.Name), out Func<JObject>? memberSchema))
             {
-                return new JObject { ["$ref"] = "#/definitions/StringList" };
-            }
-
-            if (converter?.ConverterType == typeof(ColumnListConverter))
-            {
-                return new JObject { ["$ref"] = "#/definitions/Columns" };
-            }
-
-            if (converter?.ConverterType == typeof(ElementListConverter))
-            {
-                return new JObject { ["$ref"] = "#/definitions/ElementList" };
-            }
-
-            if (model == typeof(ElementDefinition) && property.Name == nameof(ElementDefinition.Type))
-            {
-                // a built-in type, a custom tag (the dotted global name of a C# or data composite) or a template name (v1.7)
-                return new JObject
-                {
-                    ["anyOf"] = new JArray(
-                        new JObject { ["enum"] = new JArray(ElementTypes.All.Cast<object>().ToArray()) },
-                        new JObject { ["type"] = "string" })
-                };
-            }
-
-            if (model == typeof(ElementDefinition) && property.Name == nameof(ElementDefinition.Args))
-            {
-                return new JObject { ["type"] = "object", ["additionalProperties"] = new JObject() };
-            }
-
-            if (model == typeof(DecorationOp) && property.Name == nameof(DecorationOp.Op))
-            {
-                return new JObject { ["enum"] = new JArray(DecorationOps.All.Cast<object>().ToArray()) };
-            }
-
-            if (model == typeof(ParamDefinition) && property.Name == nameof(ParamDefinition.Type))
-            {
-                return new JObject { ["enum"] = new JArray("string", "number", "bool", "any") };
-            }
-
-            if (model == typeof(ParamDefinition) && property.Name == nameof(ParamDefinition.Default))
-            {
-                return new JObject();
-            }
-
-            if (model == typeof(SourceDefinition) && property.Name == nameof(SourceDefinition.Type))
-            {
-                return new JObject { ["enum"] = new JArray(SourceKinds.All.Cast<object>().ToArray()) };
-            }
-
-            if (model == typeof(TooltipBlockDefinition) && property.Name == nameof(TooltipBlockDefinition.Type))
-            {
-                return new JObject { ["enum"] = new JArray(TooltipBlockKinds.All.Cast<object>().ToArray()) };
-            }
-
-            if (model == typeof(FormFieldDefinition) && property.Name == nameof(FormFieldDefinition.Kind))
-            {
-                return new JObject { ["enum"] = new JArray("Checkbox", "Number", "Integer", "Text", "Dropdown") };
+                return memberSchema();
             }
 
             Type type = property.PropertyType;
-            if (type == typeof(SourceDefinition))
+            if (TypeSchemas.TryGetValue(type, out Func<JObject>? typeSchema))
             {
-                return new JObject { ["$ref"] = "#/definitions/Source" };
-            }
-
-            if (type == typeof(TooltipDefinition))
-            {
-                return new JObject { ["$ref"] = "#/definitions/Tooltip" };
-            }
-
-            if (type == typeof(List<JToken>))
-            {
-                return new JObject { ["type"] = "array" };
-            }
-            if (type == typeof(string))
-            {
-                return new JObject { ["$ref"] = "#/definitions/Value" };
+                return typeSchema();
             }
 
             if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Dictionary<,>))
             {
-                Type value = type.GetGenericArguments()[1];
-                JObject item = property.GetCustomAttribute<JsonPropertyAttribute>()?.ItemConverterType == typeof(JsonTextConverter)
-                    ? new JObject { ["$ref"] = "#/definitions/StateValue" }
-                    : value == typeof(SourceDefinition)
-                    ? new JObject { ["$ref"] = "#/definitions/Source" }
-                    : value == typeof(string)
-                    ? new JObject { ["$ref"] = "#/definitions/Value" }
-                    : property.GetCustomAttribute<JsonPropertyAttribute>()?.ItemConverterType == typeof(ActionListConverter)
-                        ? new JObject { ["$ref"] = "#/definitions/ActionList" }
-                        : Models.Contains(value) ? new JObject { ["$ref"] = "#/definitions/" + value.Name } : new JObject();
-                return new JObject { ["type"] = "object", ["additionalProperties"] = item };
+                return new JObject { ["type"] = "object", ["additionalProperties"] = DictionaryItemSchema(property, type.GetGenericArguments()[1]) };
             }
 
             if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(List<>))
@@ -346,6 +303,33 @@ namespace UIFramework.Data.Loading
             }
 
             return new JObject();
+        }
+
+        /// <summary>The schema of a dictionary member's values (of type <paramref name="value"/>).</summary>
+        private static JObject DictionaryItemSchema(PropertyInfo property, Type value)
+        {
+            Type? itemConverter = property.GetCustomAttribute<JsonPropertyAttribute>()?.ItemConverterType;
+            if (itemConverter == typeof(JsonTextConverter))
+            {
+                return new JObject { ["$ref"] = "#/definitions/StateValue" };
+            }
+
+            if (value == typeof(SourceDefinition))
+            {
+                return new JObject { ["$ref"] = "#/definitions/Source" };
+            }
+
+            if (value == typeof(string))
+            {
+                return new JObject { ["$ref"] = "#/definitions/Value" };
+            }
+
+            if (itemConverter == typeof(ActionListConverter))
+            {
+                return new JObject { ["$ref"] = "#/definitions/ActionList" };
+            }
+
+            return Models.Contains(value) ? new JObject { ["$ref"] = "#/definitions/" + value.Name } : new JObject();
         }
 
         /// <summary>Member summaries from <c>UIFramework.xml</c> next to the DLL, keyed by XML doc id (empty when the file is missing).</summary>

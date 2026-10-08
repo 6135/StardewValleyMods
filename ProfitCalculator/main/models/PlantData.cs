@@ -18,12 +18,7 @@ namespace ProfitCalculator.main.models
     public abstract class PlantData
     {
         protected PlantData(
-            int days,
-            int regrowDays,
-            int minHarvests,
-            int maxHarvests,
-            float maxHarvestIncreasePerFarmingLevel,
-            double chanceForExtraCrops,
+            PlantGrowth growth,
             string displayName,
             List<Season> seasons,
             Item seed,
@@ -32,12 +27,12 @@ namespace ProfitCalculator.main.models
             DropInformation dropInformation
         )
         {
-            Days = days;
-            RegrowDays = regrowDays;
-            MinHarvests = minHarvests;
-            MaxHarvests = maxHarvests;
-            MaxHarvestIncreasePerFarmingLevel = maxHarvestIncreasePerFarmingLevel;
-            ChanceForExtraCrops = chanceForExtraCrops;
+            Days = growth.Days;
+            RegrowDays = growth.RegrowDays;
+            MinHarvests = growth.MinHarvests;
+            MaxHarvests = growth.MaxHarvests;
+            MaxHarvestIncreasePerFarmingLevel = growth.MaxHarvestIncreasePerFarmingLevel;
+            ChanceForExtraCrops = growth.ChanceForExtraCrops;
             DisplayName = displayName;
             Seasons = seasons;
             Seed = seed;
@@ -416,7 +411,7 @@ namespace ProfitCalculator.main.models
             uint day = Container.Instance.GetInstance<Calculator>(ModEntry.UniqueID)?.Day ?? 0;
             double totalProfit = TotalCropProfit();
 
-            if (totalProfit == 0)
+            if (Math.Abs(totalProfit) < double.Epsilon)
             {
                 return 0;
             }

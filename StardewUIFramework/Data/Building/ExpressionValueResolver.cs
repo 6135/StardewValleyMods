@@ -288,7 +288,8 @@ namespace UIFramework.Data.Building
                 return first;
             }
 
-            return (others ??= new ConditionalWeakTable<DataScope, ScopeSlot>()).GetValue(scope, _ => new ScopeSlot());
+            others ??= new ConditionalWeakTable<DataScope, ScopeSlot>();
+            return others.GetValue(scope, _ => new ScopeSlot());
         }
 
         private void Report(DataScope scope, string error)

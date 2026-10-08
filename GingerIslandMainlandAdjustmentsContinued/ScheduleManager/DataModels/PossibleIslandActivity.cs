@@ -6,7 +6,7 @@ namespace GingerIslandMainlandAdjustments.ScheduleManager.DataModels;
 /// <summary>
 /// Struct that holds information about a possible island activity.
 /// </summary>
-internal readonly struct PossibleIslandActivity
+internal readonly record struct PossibleIslandActivity
 {
     private readonly Point[] possiblepoints;
     private readonly string map;

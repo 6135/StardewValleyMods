@@ -18,12 +18,10 @@ export interface WidgetProps {
 
 /** Local text state that follows the committed value until edited; `flush` commits it ('' removes the field). */
 function useDraft(value: string | undefined, commit: (value: string | undefined) => void) {
-  const [draft, setDraft] = useState(value ?? '');
-  const [seen, setSeen] = useState(value);
-  if (seen !== value) {
-    setSeen(value);
-    setDraft(value ?? '');
-  }
+  // the edit is tied to the committed value it started from, so a changed value discards it
+  const [edit, setEdit] = useState<{ base: string | undefined; text: string } | null>(null);
+  const draft = edit !== null && edit.base === value ? edit.text : value ?? '';
+  const setDraft = (text: string) => setEdit({ base: value, text });
 
   const flush = (text = draft) => {
     const next = text === '' ? undefined : text;
@@ -31,7 +29,7 @@ function useDraft(value: string | undefined, commit: (value: string | undefined)
       commit(next);
     }
   };
-  const reset = () => setDraft(value ?? '');
+  const reset = () => setEdit(null);
   return { draft, setDraft, flush, reset };
 }
 
@@ -220,17 +218,17 @@ export function refListId(ref: RefKind): string {
 /** The editor for a shape in literal mode. */
 export function ShapeWidget({ shape, ...props }: WidgetProps & { shape: FieldShape }) {
   switch (shape.kind) {
-    case 'bool': return <BoolWidget {...props} />;
-    case 'int': return <NumberWidget {...props} auto={shape.auto} />;
-    case 'float': return <NumberWidget {...props} step={0.1} />;
-    case 'enum': return <EnumWidget {...props} shape={shape} />;
-    case 'margin': return <MarginWidget {...props} />;
-    case 'color': return <ColorWidget {...props} />;
-    case 'tracks': return <TracksWidget {...props} />;
-    case 'sprite': return <TextWidget {...props} mono list={refListId('sprite')} placeholder={props.placeholder ?? 'sprite:Owner/name, item:(O)24, asset:Path@x,y,w,h'} />;
-    case 'actions': return <TextWidget {...props} mono list={refListId('menu')} placeholder={props.placeholder ?? 'a trigger action, e.g. AddMoney 100'} />;
-    case 'ref': return <TextWidget {...props} mono list={refListId(shape.ref)} />;
-    case 'multiline': return <TextWidget {...props} multiline />;
-    case 'text': return <TextWidget {...props} />;
+    case 'bool': return <BoolWidget value={props.value} placeholder={props.placeholder} commit={props.commit} id={props.id} />;
+    case 'int': return <NumberWidget value={props.value} placeholder={props.placeholder} commit={props.commit} id={props.id} auto={shape.auto} />;
+    case 'float': return <NumberWidget value={props.value} placeholder={props.placeholder} commit={props.commit} id={props.id} step={0.1} />;
+    case 'enum': return <EnumWidget value={props.value} placeholder={props.placeholder} commit={props.commit} id={props.id} shape={shape} />;
+    case 'margin': return <MarginWidget value={props.value} placeholder={props.placeholder} commit={props.commit} id={props.id} />;
+    case 'color': return <ColorWidget value={props.value} placeholder={props.placeholder} commit={props.commit} id={props.id} />;
+    case 'tracks': return <TracksWidget value={props.value} placeholder={props.placeholder} commit={props.commit} id={props.id} />;
+    case 'sprite': return <TextWidget value={props.value} commit={props.commit} id={props.id} mono list={refListId('sprite')} placeholder={props.placeholder ?? 'sprite:Owner/name, item:(O)24, asset:Path@x,y,w,h'} />;
+    case 'actions': return <TextWidget value={props.value} commit={props.commit} id={props.id} mono list={refListId('menu')} placeholder={props.placeholder ?? 'a trigger action, e.g. AddMoney 100'} />;
+    case 'ref': return <TextWidget value={props.value} placeholder={props.placeholder} commit={props.commit} id={props.id} mono list={refListId(shape.ref)} />;
+    case 'multiline': return <TextWidget value={props.value} placeholder={props.placeholder} commit={props.commit} id={props.id} multiline />;
+    case 'text': return <TextWidget value={props.value} placeholder={props.placeholder} commit={props.commit} id={props.id} />;
   }
 }

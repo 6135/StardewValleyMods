@@ -145,37 +145,9 @@ namespace UIFramework.Data.Bridge
             {
                 result = (Func<double>)CurrentNumber;
             }
-            else if (type == typeof(Action<string>))
+            else if (type == typeof(Action<string>) || type == typeof(Action<double>) || type == typeof(Action))
             {
-                List<ActionDefinition>? list = reference == null ? ActionsOrNull() : null;
-                if (reference != null)
-                {
-                    result = (Action<string>)(v => Write(DataValue.FromString(v ?? string.Empty)));
-                }
-                else if (list != null)
-                {
-                    result = (Action<string>)(v => Run(list, v, DataValue.FromString(v)));
-                }
-            }
-            else if (type == typeof(Action<double>))
-            {
-                List<ActionDefinition>? list = reference == null ? ActionsOrNull() : null;
-                if (reference != null)
-                {
-                    result = (Action<double>)(v => Write(DataValue.FromNumber(v)));
-                }
-                else if (list != null)
-                {
-                    result = (Action<double>)(v => Run(list, null, DataValue.FromNumber(v)));
-                }
-            }
-            else if (type == typeof(Action))
-            {
-                List<ActionDefinition>? list = ActionsOrNull();
-                if (list != null)
-                {
-                    result = (Action)(() => Run(list, null, DataValue.Null));
-                }
+                result = ActionDelegate(type);
             }
             else if (type == typeof(object))
             {
@@ -187,6 +159,34 @@ namespace UIFramework.Data.Bridge
             }
 
             return result != null;
+        }
+
+        /// <summary>The <c>Action&lt;string&gt;</c>, <c>Action&lt;double&gt;</c> or <c>Action</c> form: a write-back for a reference, else the action list; null when it has neither.</summary>
+        private object? ActionDelegate(Type type)
+        {
+            if (type == typeof(Action))
+            {
+                List<ActionDefinition>? actionList = ActionsOrNull();
+                return actionList != null ? (Action)(() => Run(actionList, null, DataValue.Null)) : null;
+            }
+
+            List<ActionDefinition>? list = reference == null ? ActionsOrNull() : null;
+            if (type == typeof(Action<string>))
+            {
+                if (reference != null)
+                {
+                    return (Action<string>)(v => Write(DataValue.FromString(v ?? string.Empty)));
+                }
+
+                return list != null ? (Action<string>)(v => Run(list, v, DataValue.FromString(v))) : null;
+            }
+
+            if (reference != null)
+            {
+                return (Action<double>)(v => Write(DataValue.FromNumber(v)));
+            }
+
+            return list != null ? (Action<double>)(v => Run(list, null, DataValue.FromNumber(v))) : null;
         }
 
         private void Write(DataValue value)

@@ -82,7 +82,7 @@ namespace UIFramework.Core
         }
 
         /// <summary>A running phase; disposing records the elapsed time.</summary>
-        internal readonly struct Scope : IDisposable
+        internal readonly record struct Scope : IDisposable
         {
             private readonly MenuPerf? perf;
             private readonly MenuPerf? previous;
@@ -112,9 +112,11 @@ namespace UIFramework.Core
                     perf.EndFrame();
                 }
 
-                current = previous;
+                Restore(previous);
             }
         }
+
+        private static void Restore(MenuPerf? previous) => current = previous;
 
         /// <summary>Ring buffer of per-frame phase totals for one menu.</summary>
         internal sealed class MenuPerf

@@ -173,14 +173,15 @@ namespace UIFramework.Components
         /// </summary>
         private string NewRowId()
         {
-            for (int n = 0; ; n++)
+            int n = 0;
+            string id = $"{Id}.row{n}";
+            while (rows.Exists(r => r.Id == id))
             {
-                string id = $"{Id}.row{n}";
-                if (!rows.Exists(r => r.Id == id))
-                {
-                    return id;
-                }
+                n++;
+                id = $"{Id}.row{n}";
             }
+
+            return id;
         }
 
         /// <summary>

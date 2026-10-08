@@ -8,7 +8,7 @@ namespace GingerIslandMainlandAdjustments.Integrations;
 /// <summary>
 /// Class that holds the method that generates the CP tokens for this mod.
 /// </summary>
-internal class GenerateCPTokens
+internal static class GenerateCPTokens
 {
     /// <summary>
     /// Adds the CP tokens for this mod.

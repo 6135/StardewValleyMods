@@ -49,77 +49,103 @@ internal static class DialoguePatches
             {
                 return;
             }
-            if (__instance.currentLocation is IslandLocation && GIScheduler.CurrentAdventurers?.Contains(__instance) == true)
+            if (__instance.currentLocation is IslandLocation)
             {
-                if (Game1.timeOfDay < 1200 && __instance.Dialogue.ContainsKey(TOADVENTURE))
-                {
-                    __instance.ClearAndPushDialogue(TOADVENTURE);
-                    return;
-                }
-                else if (Game1.timeOfDay > 1700 && __instance.Dialogue.ContainsKey(FROMADVENTURE))
-                {
-                    __instance.ClearAndPushDialogue(FROMADVENTURE);
-                    return;
-                }
-            }
-            if (__instance.currentLocation is IslandEast && __instance.Dialogue.ContainsKey(ANTISOCIAL))
-            {
-                __instance.ClearAndPushDialogue(ANTISOCIAL);
-                return;
-            }
-            else if (__instance.currentLocation is IslandNorth && __instance.Dialogue.ContainsKey(ISLANDNORTH))
-            {
-                __instance.ClearAndPushDialogue(ISLANDNORTH);
-                return;
-            }
-            else if (__instance.currentLocation is IslandLocation)
-            {
+                PushIslandLocationDialogue(__instance);
                 return;
             }
 
-            string preface = __1 ? string.Empty : Game1.currentSeason;
-
-            string baseKey;
-
-            if (Game1.timeOfDay <= 1200)
-            {
-                baseKey = preface + "Resort_Approach";
-            }
-            else if (Game1.timeOfDay >= 1800)
-            {
-                baseKey = preface + "Resort_Left";
-                if (!__instance.currentLocation.IsOutdoors && __instance.currentLocation is not FishShop)
-                {
-                    baseKey = $"{baseKey}_{__instance.currentLocation.Name}"; // use specific INDOOR keys.
-                }
-            }
-            else
+            if (GetMainlandBaseKey(__instance, __1) is not string baseKey)
             {
                 return;
             }
-
-            // Handle group-specific dialogue.
-            if (GIScheduler.CurrentGroup is not null
-                && GIScheduler.CurrentVisitingGroup?.Contains(__instance) == true
-                && DialogueUtilities.TryGetIslandDialogue(__instance, $"{baseKey}_{GIScheduler.CurrentGroup}", __0))
-            {
-                __result = true;
-                return;
-            }
-
-            if (__instance.getSpouse() is Farmer spouse && spouse == Game1.player
-                && DialogueUtilities.TryGetIslandDialogue(__instance, baseKey + "_marriage", __0))
-            {
-                __result = true;
-                return;
-            }
-            __result = DialogueUtilities.TryGetIslandDialogue(__instance, baseKey, __0);
+            __result = TryGetMainlandDialogue(__instance, baseKey, __0);
             return;
         }
         catch (Exception ex)
         {
             Globals.ModMonitor.LogError($"checking for island dialogue for NPC {__instance.Name}", ex);
         }
+    }
+
+    /// <summary>
+    /// Pushes location-specific dialogue for an NPC currently on the island, if any exists.
+    /// </summary>
+    /// <param name="npc">NPC instance.</param>
+    private static void PushIslandLocationDialogue(NPC npc)
+    {
+        if (GIScheduler.CurrentAdventurers?.Contains(npc) == true)
+        {
+            if (Game1.timeOfDay < 1200 && npc.Dialogue.ContainsKey(TOADVENTURE))
+            {
+                npc.ClearAndPushDialogue(TOADVENTURE);
+                return;
+            }
+            else if (Game1.timeOfDay > 1700 && npc.Dialogue.ContainsKey(FROMADVENTURE))
+            {
+                npc.ClearAndPushDialogue(FROMADVENTURE);
+                return;
+            }
+        }
+        if (npc.currentLocation is IslandEast && npc.Dialogue.ContainsKey(ANTISOCIAL))
+        {
+            npc.ClearAndPushDialogue(ANTISOCIAL);
+        }
+        else if (npc.currentLocation is IslandNorth && npc.Dialogue.ContainsKey(ISLANDNORTH))
+        {
+            npc.ClearAndPushDialogue(ISLANDNORTH);
+        }
+    }
+
+    /// <summary>
+    /// Gets the base dialogue key for an island visitor on the mainland, based on time of day.
+    /// </summary>
+    /// <param name="npc">NPC instance.</param>
+    /// <param name="noSeasonPrefix">Whether or not to skip the season prefix.</param>
+    /// <returns>The base key, or null if no dialogue applies at this time.</returns>
+    private static string? GetMainlandBaseKey(NPC npc, bool noSeasonPrefix)
+    {
+        string preface = noSeasonPrefix ? string.Empty : Game1.currentSeason;
+
+        if (Game1.timeOfDay <= 1200)
+        {
+            return preface + "Resort_Approach";
+        }
+        if (Game1.timeOfDay >= 1800)
+        {
+            string baseKey = preface + "Resort_Left";
+            if (!npc.currentLocation.IsOutdoors && npc.currentLocation is not FishShop)
+            {
+                baseKey = $"{baseKey}_{npc.currentLocation.Name}"; // use specific INDOOR keys.
+            }
+            return baseKey;
+        }
+        return null;
+    }
+
+    /// <summary>
+    /// Tries the group, marriage, and plain variants of a mainland dialogue key, in that order.
+    /// </summary>
+    /// <param name="npc">NPC instance.</param>
+    /// <param name="baseKey">Base dialogue key.</param>
+    /// <param name="heartLevel">Heart level.</param>
+    /// <returns>Whether or not dialogue was found.</returns>
+    private static bool TryGetMainlandDialogue(NPC npc, string baseKey, int heartLevel)
+    {
+        // Handle group-specific dialogue.
+        if (GIScheduler.CurrentGroup is not null
+            && GIScheduler.CurrentVisitingGroup?.Contains(npc) == true
+            && DialogueUtilities.TryGetIslandDialogue(npc, $"{baseKey}_{GIScheduler.CurrentGroup}", heartLevel))
+        {
+            return true;
+        }
+
+        if (npc.getSpouse() is Farmer spouse && spouse == Game1.player
+            && DialogueUtilities.TryGetIslandDialogue(npc, baseKey + "_marriage", heartLevel))
+        {
+            return true;
+        }
+        return DialogueUtilities.TryGetIslandDialogue(npc, baseKey, heartLevel);
     }
 
     /// <summary>

@@ -10,7 +10,7 @@ using StardewValley.Locations;
 /// Holds patches against GameLocation to prevent trampling of objects on IslandWest.
 /// </summary>
 [HarmonyPatch(typeof(GameLocation))]
-internal class GameLocationPatches
+internal static class GameLocationPatches
 {
     /// <summary>
     /// Prefix to prevent trampling.

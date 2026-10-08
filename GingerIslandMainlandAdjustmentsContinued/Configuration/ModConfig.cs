@@ -11,7 +11,7 @@ public sealed class ModConfig
     /// <summary>
     /// Default day for Gus's visit.
     /// </summary>
-    public const DayOfWeek DEFAULT_GUS_VISIT_DAY = DayOfWeek.Tuesday;
+    private const DayOfWeek DEFAULT_GUS_VISIT_DAY = DayOfWeek.Tuesday;
 
     /// <summary>
     /// Gets or sets a value indicating whether EnforceGITiming is enabled.

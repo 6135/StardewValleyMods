@@ -252,9 +252,9 @@ namespace UIFramework.Data.Expressions
                     : new MemberNode(left, key, true, bracket.Position);
             }
 
-            Node index = ParseExpression(0);
+            Node indexNode = ParseExpression(0);
             Expect(TokenKind.RightBracket, "']'");
-            if (index is LiteralNode literal)
+            if (indexNode is LiteralNode literal)
             {
                 string key = literal.Value.AsString();
                 return left is PathNode staticPath
@@ -263,8 +263,8 @@ namespace UIFramework.Data.Expressions
             }
 
             return left is PathNode path
-                ? path.Append(new PathPart(index))
-                : new MemberNode(left, index, bracket.Position);
+                ? path.Append(new PathPart(indexNode))
+                : new MemberNode(left, indexNode, bracket.Position);
         }
 
         private Node[] ParseArguments()
@@ -415,7 +415,7 @@ namespace UIFramework.Data.Expressions
         }
 
         /// <summary>Internal control flow only; always caught in <see cref="TryParse"/>.</summary>
-        private sealed class ParseException : Exception
+        public sealed class ParseException : Exception
         {
             internal ParseException(string message, int position) : base(message)
             {

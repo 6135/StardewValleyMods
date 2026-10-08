@@ -78,70 +78,16 @@ namespace UIFramework.Data.Building
         private FormProperty? CreateFormField(BuildContext ctx, FormFieldDefinition def, int index, DataScope scope, DataPath path, WriteFlag writing, out StateAddress address)
         {
             PropertyApplier a = ctx.Applier;
-            string? id = def.Id?.Trim();
-            if (string.IsNullOrEmpty(id))
+            string id = FormFieldId(def, index);
+            address = FormFieldAddress(ctx, def, id, scope, path);
+            if (!TryFormFieldKind(ctx, def, path, out FormFieldKind fieldKind, out Type type, out DataValue fallback))
             {
-                id = def.Bind != null ? def.Bind.Trim().Split('.', '[', ']').LastOrDefault(p => p.Length > 0) : null;
-            }
-
-            if (string.IsNullOrEmpty(id))
-            {
-                id = "field" + index.ToString(CultureInfo.InvariantCulture);
-            }
-
-            address = new StateAddress(StateScope.Menu, scope.StateKey ?? scope.MenuKey, id);
-            if (def.Bind != null)
-            {
-                if (StateAddress.TryParse(def.Bind, scope, allowBare: true, out StateAddress bound, out string error))
-                {
-                    address = bound;
-                }
-                else
-                {
-                    ctx.Log.Error(path.Field("Bind"), $"{error} The field uses {address} instead.");
-                }
-            }
-
-            string kind = (def.Kind ?? (def.Choices is { Count: > 0 } ? "Dropdown" : "Text")).Trim().ToLowerInvariant();
-            FormFieldKind fieldKind;
-            Type type;
-            DataValue fallback;
-            switch (kind)
-            {
-                case "checkbox":
-                    (fieldKind, type, fallback) = (FormFieldKind.Bool, typeof(bool), DataValue.False);
-                    break;
-                case "number":
-                    (fieldKind, type, fallback) = (FormFieldKind.Number, typeof(double), DataValue.Zero);
-                    break;
-                case "integer":
-                    (fieldKind, type, fallback) = (FormFieldKind.Number, typeof(int), DataValue.Zero);
-                    break;
-                case "dropdown":
-                    (fieldKind, type, fallback) = (FormFieldKind.Choice, typeof(string), DataValue.FromString(def.Choices?.FirstOrDefault() ?? string.Empty));
-                    break;
-                case "text":
-                    (fieldKind, type, fallback) = (FormFieldKind.Text, typeof(string), DataValue.EmptyString);
-                    break;
-                default:
-                    ctx.Log.Error(path.Field("Kind"), $"'{def.Kind}' is not Checkbox, Number, Integer, Text or Dropdown; the field is skipped.");
-                    return null;
+                return null;
             }
 
             // the default (only used while the value does not exist)
             StateAddress target = address;
-            if (def.Value != null)
-            {
-                ValueSource<string>? initial = a.Source(def.Value, ValueParsers.Text, path.Field("Value"));
-                if (initial != null)
-                {
-                    store.SetDefault(target, () => StateAddress.Infer(initial.Get(scope)));
-                }
-            }
-            else if (!store.HasDefault(target))
-            {
-                store.SetDefault(target, () => fallback);
-            }
+            SetFormFieldDefault(a, def, target, fallback, scope, path);
 
             Func<object, object?> getter = fieldKind switch
             {
@@ -169,17 +115,106 @@ namespace UIFramework.Data.Building
                 Choices = def.Choices?.ToArray() ?? Array.Empty<string>()
             };
 
+            ApplyFormFieldOptions(ctx, property, def, scope, path);
+            return property;
+        }
+
+        /// <summary>The field's id: <c>Id</c>, else the last segment of <c>Bind</c>, else <c>field&lt;index&gt;</c>.</summary>
+        private static string FormFieldId(FormFieldDefinition def, int index)
+        {
+            string? id = def.Id?.Trim();
+            if (string.IsNullOrEmpty(id))
+            {
+                id = def.Bind != null ? def.Bind.Trim().Split('.', '[', ']').LastOrDefault(p => p.Length > 0) : null;
+            }
+
+            if (string.IsNullOrEmpty(id))
+            {
+                id = "field" + index.ToString(CultureInfo.InvariantCulture);
+            }
+
+            return id;
+        }
+
+        /// <summary>The state value the field edits: <c>Bind</c>, else the menu's state value named by the field id.</summary>
+        private static StateAddress FormFieldAddress(BuildContext ctx, FormFieldDefinition def, string id, DataScope scope, DataPath path)
+        {
+            var address = new StateAddress(StateScope.Menu, scope.StateKey ?? scope.MenuKey, id);
+            if (def.Bind != null)
+            {
+                if (StateAddress.TryParse(def.Bind, scope, allowBare: true, out StateAddress bound, out string error))
+                {
+                    address = bound;
+                }
+                else
+                {
+                    ctx.Log.Error(path.Field("Bind"), $"{error} The field uses {address} instead.");
+                }
+            }
+
+            return address;
+        }
+
+        /// <summary>The field's <c>Kind</c> as a form field kind, CLR type and default value; false (logged) for an unknown kind.</summary>
+        private static bool TryFormFieldKind(BuildContext ctx, FormFieldDefinition def, DataPath path, out FormFieldKind fieldKind, out Type type, out DataValue fallback)
+        {
+            string kind = (def.Kind ?? (def.Choices is { Count: > 0 } ? "Dropdown" : "Text")).Trim().ToLowerInvariant();
+            switch (kind)
+            {
+                case "checkbox":
+                    (fieldKind, type, fallback) = (FormFieldKind.Bool, typeof(bool), DataValue.False);
+                    return true;
+                case "number":
+                    (fieldKind, type, fallback) = (FormFieldKind.Number, typeof(double), DataValue.Zero);
+                    return true;
+                case "integer":
+                    (fieldKind, type, fallback) = (FormFieldKind.Number, typeof(int), DataValue.Zero);
+                    return true;
+                case "dropdown":
+                    (fieldKind, type, fallback) = (FormFieldKind.Choice, typeof(string), DataValue.FromString(def.Choices?.FirstOrDefault() ?? string.Empty));
+                    return true;
+                case "text":
+                    (fieldKind, type, fallback) = (FormFieldKind.Text, typeof(string), DataValue.EmptyString);
+                    return true;
+                default:
+                    ctx.Log.Error(path.Field("Kind"), $"'{def.Kind}' is not Checkbox, Number, Integer, Text or Dropdown; the field is skipped.");
+                    (fieldKind, type, fallback) = (default, typeof(string), DataValue.EmptyString);
+                    return false;
+            }
+        }
+
+        /// <summary>Register the field's default: <c>Value</c>, else the kind's fallback (unless the value already has a default).</summary>
+        private void SetFormFieldDefault(PropertyApplier a, FormFieldDefinition def, StateAddress target, DataValue fallback, DataScope scope, DataPath path)
+        {
+            if (def.Value != null)
+            {
+                ValueSource<string>? initial = a.Source(def.Value, ValueParsers.Text, path.Field("Value"));
+                if (initial != null)
+                {
+                    store.SetDefault(target, () => StateAddress.Infer(initial.Get(scope)));
+                }
+            }
+            else if (!store.HasDefault(target))
+            {
+                store.SetDefault(target, () => fallback);
+            }
+        }
+
+        /// <summary>The field's label, tooltip, number range, choices check and <c>Validate</c> expression.</summary>
+        private void ApplyFormFieldOptions(BuildContext ctx, FormProperty property, FormFieldDefinition def, DataScope scope, DataPath path)
+        {
+            PropertyApplier a = ctx.Applier;
+
             // the caption reads Label every frame, so a live label stays live
-            FormProperty captioned = property;
-            a.Apply(def.Label, ValueParsers.Text, scope, path.Field("Label"), v => captioned.Label = v);
+            a.Apply(def.Label, ValueParsers.Text, scope, path.Field("Label"), v => property.Label = v);
             if (def.Tooltip != null)
             {
                 property.Tooltip = a.Initial(def.Tooltip, ValueParsers.Text, string.Empty, scope, path.Field("Tooltip"));
             }
 
-            if (fieldKind == FormFieldKind.Number)
+            if (property.Kind == FormFieldKind.Number)
             {
-                (double typeMin, double typeMax) = type == typeof(int) ? (int.MinValue, int.MaxValue) : (-DataDefaults.NumberInput.Max, DataDefaults.NumberInput.Max);
+                (double typeMin, double typeMax) = property.Type == typeof(int) ? (int.MinValue, int.MaxValue) : (-DataDefaults.NumberInput.Max, DataDefaults.NumberInput.Max);
                 property.Min = a.Initial(def.Min, ValueParsers.Number, typeMin, scope, path.Field("Min"));
                 property.Max = a.Initial(def.Max, ValueParsers.Number, typeMax, scope, path.Field("Max"));
                 if (property.Max < property.Min)
@@ -188,7 +223,7 @@ namespace UIFramework.Data.Building
                 }
             }
 
-            if (fieldKind == FormFieldKind.Choice && property.Choices.Length == 0)
+            if (property.Kind == FormFieldKind.Choice && property.Choices.Length == 0)
             {
                 ctx.Log.Warn(path.Field("Choices"), "a Dropdown field needs Choices.");
             }
@@ -203,8 +238,6 @@ namespace UIFramework.Data.Building
                     return error != null ? null : ValidationMessage(result);
                 };
             }
-
-            return property;
         }
 
         /// <summary>Re-reads a form's controls when one of its state values changed from outside the form.</summary>
@@ -214,7 +247,7 @@ namespace UIFramework.Data.Building
             private readonly List<StateAddress> addresses;
             private readonly DataStateStore store;
             private readonly WriteFlag writing;
-            private DataValue[] last;
+            private readonly DataValue[] last;
 
             internal FormSync(IUIForm form, List<StateAddress> addresses, DataStateStore store, WriteFlag writing)
             {

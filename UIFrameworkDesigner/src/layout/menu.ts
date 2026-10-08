@@ -58,6 +58,45 @@ function emit(element: LElement, clip: Rect | null, depth: number, out: { boxes:
   }
 }
 
+/** UIMenu.AnchorX / AnchorY: the window's position for its anchor (explicit: the X / Y members), before clamping. */
+function anchorPosition(anchor: Anchor, explicit: { x: number; y: number }, vp: { x: number; y: number }, size: { x: number; y: number }, minY: number): { ax: number; ay: number } {
+  const ax = anchor === 'explicit' ? explicit.x
+    : anchor === 'topleft' || anchor === 'middleleft' || anchor === 'bottomleft' ? 0
+    : anchor === 'topright' || anchor === 'middleright' || anchor === 'bottomright' ? vp.x - size.x
+    : Math.trunc((vp.x - size.x) / 2);
+  const ay = anchor === 'explicit' ? explicit.y
+    : anchor === 'topleft' || anchor === 'topcenter' || anchor === 'topright' ? minY
+    : anchor === 'bottomleft' || anchor === 'bottomcenter' || anchor === 'bottomright' ? vp.y - size.y
+    : Math.trunc((vp.y - size.y) / 2);
+  return { ax, ay };
+}
+
+/** The title's area: the scroll banner above the box, or a dialogue-font line at the window top without a box. */
+function titleRect(titleText: string, window: Rect, drawBox: boolean, opts: LayoutOptions): Rect {
+  // SpriteText's width is approximated with the dialogue font
+  const textWidth = opts.measureText(titleText, 'dialogue', 1).width;
+  const centerX = window.x + Math.trunc(window.width / 2);
+  if (drawBox) {
+    // drawStringWithScrollCenteredAt(…, Math.Max(12, Bounds.Y - 68)): the scroll spans [y - 12, y + 60]
+    const sw = Math.min(textWidth, Math.max(0, window.width - (2 * TITLE_MARGIN) - TITLE_SCROLL_CAPS)) + TITLE_SCROLL_CAPS;
+    const ty = Math.max(12, window.y - 68) - 12;
+    return { x: Math.round(centerX - (sw / 2)), y: ty, width: Math.round(sw), height: 72 };
+  }
+  const tw = Math.min(textWidth, Math.max(0, window.width - (2 * TITLE_MARGIN)));
+  return { x: Math.round(centerX - (tw / 2)), y: window.y + 8, width: Math.round(tw), height: opts.measureText('', 'dialogue', 1).height };
+}
+
+/** UIMenu's fit-content, stretched viewport around the root stack, at the menu's saved scroll offset. */
+function menuViewport(ctx: ConstructorParameters<typeof LScrollView>[0], opts: LayoutOptions): LScrollView {
+  const viewport = new LScrollView(ctx, null, 0);
+  viewport.fitContent = true;
+  viewport.scrollKey = MENU_SCROLL_KEY;
+  viewport.scrollOffset = opts.scrollOffsets?.[MENU_SCROLL_KEY] ?? 0;
+  viewport.horizontalAlign = 'stretch';
+  viewport.verticalAlign = 'stretch';
+  return viewport;
+}
+
 /** Lays out the document's menu on a screen of opts.screenWidth × opts.screenHeight (UIMenu.Relayout). */
 export function layoutDocument(doc: DesignerDocument, opts: LayoutOptions): LayoutResult {
   const ctx = { measure: opts.measureText };
@@ -85,12 +124,7 @@ export function layoutDocument(doc: DesignerDocument, opts: LayoutOptions): Layo
   root.alignment = v.typed(menu.Alignment, scope, parseAlign, false) ?? parseAlign(defaultOf('menu', 'Alignment') ?? '') ?? 'start';
   root.horizontalAlign = 'stretch';
   root.verticalAlign = 'stretch';
-  const viewport = new LScrollView(ctx, null, 0);
-  viewport.fitContent = true;
-  viewport.scrollKey = MENU_SCROLL_KEY;
-  viewport.scrollOffset = opts.scrollOffsets?.[MENU_SCROLL_KEY] ?? 0;
-  viewport.horizontalAlign = 'stretch';
-  viewport.verticalAlign = 'stretch';
+  const viewport = menuViewport(ctx, opts);
   viewport.add(root);
   const rootSrc = fromNode(doc, doc.root);
   builder.buildChildren(root, rootSrc ? rootSrc.children() : [], scope);
@@ -113,14 +147,7 @@ export function layoutDocument(doc: DesignerDocument, opts: LayoutOptions): Layo
 
   // ResolvePosition (first layout: no settled position)
   const minY = banner > 0 ? Math.min(TITLE_RESERVE, Math.max(0, vp.y - h)) : 0;
-  const ax = anchor === 'explicit' ? x
-    : anchor === 'topleft' || anchor === 'middleleft' || anchor === 'bottomleft' ? 0
-    : anchor === 'topright' || anchor === 'middleright' || anchor === 'bottomright' ? vp.x - w
-    : Math.trunc((vp.x - w) / 2);
-  const ay = anchor === 'explicit' ? y
-    : anchor === 'topleft' || anchor === 'topcenter' || anchor === 'topright' ? minY
-    : anchor === 'bottomleft' || anchor === 'bottomcenter' || anchor === 'bottomright' ? vp.y - h
-    : Math.trunc((vp.y - h) / 2);
+  const { ax, ay } = anchorPosition(anchor, { x, y }, vp, { x: w, y: h }, minY);
   const px = Math.min(Math.max(ax, 0), Math.max(0, vp.x - w));
   const py = Math.min(Math.max(ay, minY), Math.max(minY, vp.y - h));
   const window: Rect = { x: px, y: py, width: w, height: h };
@@ -133,18 +160,7 @@ export function layoutDocument(doc: DesignerDocument, opts: LayoutOptions): Layo
   const result: LayoutResult = { window, content, drawBox, ...out, unresolved: builder.unresolved };
   if (titleText !== undefined && titleText.replace(CHIP_MARKS, '').length > 0) {
     result.titleText = titleText;
-    // SpriteText's width is approximated with the dialogue font
-    const textWidth = opts.measureText(titleText, 'dialogue', 1).width;
-    const centerX = px + Math.trunc(w / 2);
-    if (drawBox) {
-      // drawStringWithScrollCenteredAt(…, Math.Max(12, Bounds.Y - 68)): the scroll spans [y - 12, y + 60]
-      const sw = Math.min(textWidth, Math.max(0, w - (2 * TITLE_MARGIN) - TITLE_SCROLL_CAPS)) + TITLE_SCROLL_CAPS;
-      const ty = Math.max(12, py - 68) - 12;
-      result.title = { x: Math.round(centerX - (sw / 2)), y: ty, width: Math.round(sw), height: 72 };
-    } else {
-      const tw = Math.min(textWidth, Math.max(0, w - (2 * TITLE_MARGIN)));
-      result.title = { x: Math.round(centerX - (tw / 2)), y: py + 8, width: Math.round(tw), height: opts.measureText('', 'dialogue', 1).height };
-    }
+    result.title = titleRect(titleText, window, drawBox, opts);
   }
   return result;
 }

@@ -171,8 +171,6 @@ namespace UIFramework.Hosting
                 case Keys.U:
                     Unhide(menu);
                     return;
-                default:
-                    break;
             }
 
             UIElement? subject = Subject(menu);
@@ -211,8 +209,6 @@ namespace UIFramework.Hosting
                     break;
                 case Keys.V:
                     element.Visible = !element.Visible;
-                    break;
-                default:
                     break;
             }
         }
