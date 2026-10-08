@@ -1,0 +1,163 @@
+{
+  "summary": {
+    "enabledPatterns": {
+      "before": 1275,
+      "after": 2091
+    },
+    "enabledTools": {
+      "before": 12,
+      "after": 14
+    },
+    "issues": {
+      "before": 452,
+      "after": 610
+    },
+    "analysisRuntime": {
+      "before": 12835,
+      "after": 9853
+    }
+  },
+  "toolChanges": [
+    {
+      "toolId": "ESLint8",
+      "action": "disabled",
+      "reason": "Replaced by ESLint9 (current ESLint with React/hooks/a11y/security plugins)",
+      "patternsAffected": 178
+    },
+    {
+      "toolId": "ESLint9",
+      "action": "enabled",
+      "reason": "Replacement for ESLint8 covering the React 19 + TypeScript designer",
+      "patternsAffected": 465
+    },
+    {
+      "toolId": "Ruff",
+      "action": "enabled",
+      "reason": "Python tooling present",
+      "patternsAffected": 184
+    },
+    {
+      "toolId": "spectral",
+      "action": "enabled",
+      "reason": "YAML/JSON API & workflow linting",
+      "patternsAffected": 92
+    },
+    {
+      "toolId": "Checkov",
+      "action": "enabled",
+      "reason": "GitHub Actions IaC security",
+      "patternsAffected": 75
+    },
+    {
+      "toolId": "Agentlinter",
+      "action": "disabled",
+      "reason": "Had 0 patterns enabled; not selected by stack discovery",
+      "patternsAffected": 0
+    }
+  ],
+  "patternChanges": [
+    {
+      "patternId": "ESLint9_react_react-in-jsx-scope",
+      "toolId": "ESLint9",
+      "action": "disabled",
+      "reason": "React 19 automatic JSX runtime \u2014 React import not needed",
+      "delta": 0,
+      "parameters": []
+    },
+    {
+      "patternId": "ESLint9_react_jsx-* / @stylistic_jsx-* (11 formatting rules each)",
+      "toolId": "ESLint9",
+      "action": "disabled",
+      "reason": "Duplicated between react and @stylistic plugins and contradict project formatting (2-space JSX, unsorted props, etc.) \u2014 ~4,000 issues",
+      "delta": 0,
+      "parameters": []
+    },
+    {
+      "patternId": "ESLint9_react_jsx-no-bind, react-perf_jsx-no-new-{function,object,array}-as-prop",
+      "toolId": "ESLint9",
+      "action": "disabled",
+      "reason": "Convention mismatch: inline handlers/props used throughout",
+      "delta": 0,
+      "parameters": []
+    },
+    {
+      "patternId": "ESLint9_react_jsx-no-literals, prefer-read-only-props, require-default-props, no-multi-comp, jsx-props-no-spreading, boolean-prop-naming, jsx-filename-extension, react-redux_no-unused-prop-types, jsx-uses-react",
+      "toolId": "ESLint9",
+      "action": "disabled",
+      "reason": "Convention mismatch or wrong for TS/.tsx/React 19",
+      "delta": 0,
+      "parameters": []
+    },
+    {
+      "patternId": "ESLint9_no-unused-vars",
+      "toolId": "ESLint9",
+      "action": "disabled",
+      "reason": "Dedup: base rule misfires on TS types; @typescript-eslint/no-unused-vars kept (102 Cloud issues from base rule)",
+      "delta": 0,
+      "parameters": []
+    },
+    {
+      "patternId": "Stylelint_color-no-hex",
+      "toolId": "Stylelint",
+      "action": "disabled",
+      "reason": "Convention mismatch: project uses hex colors everywhere",
+      "delta": 0,
+      "parameters": []
+    },
+    {
+      "patternId": "Lizard_ccn-medium",
+      "toolId": "Lizard",
+      "action": "updated",
+      "reason": "Match codebase complexity profile",
+      "delta": 35,
+      "parameters": [
+        {
+          "id": "threshold",
+          "before": "15",
+          "after": "25"
+        }
+      ]
+    },
+    {
+      "patternId": "Lizard_nloc-medium",
+      "toolId": "Lizard",
+      "action": "updated",
+      "reason": "Match codebase function-length profile",
+      "delta": 23,
+      "parameters": [
+        {
+          "id": "threshold",
+          "before": "50",
+          "after": "80"
+        }
+      ]
+    }
+  ],
+  "securityCoverage": {
+    "deduplication": [
+      "ESLint9 security-node_detect-possible-timing-attacks disabled \u2014 covered by security_detect-possible-timing-attacks",
+      "ESLint9 security-node_non-literal-reg-expr disabled \u2014 covered by security_detect-non-literal-regexp"
+    ],
+    "newCoverage": [
+      "sonarjs_super-linear-regex (High, 10)",
+      "regexp_no-super-linear-move (High, 3)"
+    ],
+    "noisyButKept": [
+      "ESLint9 security_detect-object-injection (316 issues) \u2014 kept per guardrail; triage on Cloud"
+    ]
+  },
+  "keyImprovements": [
+    "Broad config cut from 5,650 to ~610 issues by removing ~4,000 duplicated/contradicting JSX formatting hits",
+    "ESLint8 replaced by ESLint9 with React-hooks, a11y and security plugins",
+    "Jackson removed: SMAPI's lenient JSON made all parse errors false positives",
+    "Lizard medium thresholds raised (CCN 25, NLOC 80) \u2014 136 fewer complexity hits, real outliers still flagged",
+    "markdownlint added with changelog/Nexus page exclusions"
+  ],
+  "localConfigTools": [],
+  "codacyYaml": null,
+  "importResults": null,
+  "cloudVerification": null,
+  "warnings": [
+    "Prospector, Pylint, Bandit (pip version unavailable), Trivy (tar extraction), Checkov and Ruff not run locally; Opengrep/Semgrep unsupported on win32; SonarC# and PSScriptAnalyzer cloud-only"
+  ]
+}
