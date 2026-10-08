@@ -19,8 +19,17 @@ internal static class DamageMonsterPatch
             return;
         }
 
-        float scale = 1f + (who.CombatLevel * ModEntry.Config.DamageScalePerLevel);
-        minDamage = (int)(minDamage * scale);
-        maxDamage = (int)(maxDamage * scale);
+        minDamage = ScaleDamage(minDamage, who.CombatLevel, ModEntry.Config.DamageScalePerLevel);
+        maxDamage = ScaleDamage(maxDamage, who.CombatLevel, ModEntry.Config.DamageScalePerLevel);
     }
+
+    /// <summary>
+    /// Scales a damage value by combat level, truncating toward zero.
+    /// </summary>
+    /// <param name="damage">The base damage.</param>
+    /// <param name="combatLevel">The player's combat level.</param>
+    /// <param name="scalePerLevel">The extra multiplier gained per level.</param>
+    /// <returns>The scaled damage.</returns>
+    internal static int ScaleDamage(int damage, int combatLevel, float scalePerLevel)
+        => (int)(damage * (1f + (combatLevel * scalePerLevel)));
 }
