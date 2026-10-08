@@ -42,7 +42,7 @@ internal static class TryGrowGiantCropPatch
                 {
                     if (location.terrainFeatures.TryGetValue(origin + new Vector2(x, y), out TerrainFeature? feature)
                         && feature is HoeDirt dirt
-                        && ModEntry.IsGiantCropFertilizer(dirt.fertilizer.Value))
+                        && ModEntry.HasGiantCropFertilizer(dirt.fertilizer.Value))
                     {
                         fertilized.Add(dirt);
                     }
@@ -73,7 +73,7 @@ internal static class TryGrowGiantCropPatch
         {
             foreach (HoeDirt dirt in __state)
             {
-                dirt.fertilizer.Value = null;
+                dirt.fertilizer.Value = ModEntry.RemoveGiantCropFertilizer(dirt.fertilizer.Value);
             }
         }
     }
