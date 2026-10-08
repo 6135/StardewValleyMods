@@ -38,7 +38,7 @@ public class FertilizerIdTests
     [InlineData(Id, true)]
     [InlineData(Qualified, true)]
     public void IsGiantCropFertilizer_MatchesBothForms(string? value, bool expected)
-        => Assert.Equal(expected, ModEntry.IsGiantCropFertilizer(value));
+        => Assert.Equal(expected, FertilizerValues.IsGiantCropFertilizer(value));
 
     [Theory]
     [InlineData(null, false)]
@@ -49,7 +49,7 @@ public class FertilizerIdTests
     [InlineData(Id + "|(O)370", true)]
     [InlineData("(O)369|(O)370", false)]
     public void HasGiantCropFertilizer_SearchesPipeSeparatedList(string? value, bool expected)
-        => Assert.Equal(expected, ModEntry.HasGiantCropFertilizer(value));
+        => Assert.Equal(expected, FertilizerValues.HasGiantCropFertilizer(value));
 
     [Theory]
     [InlineData(null, null)]
@@ -60,5 +60,5 @@ public class FertilizerIdTests
     [InlineData(Id + "|(O)369|(O)370", "(O)369|(O)370")]
     [InlineData("(O)369||(O)370", "(O)369|(O)370")]
     public void RemoveGiantCropFertilizer_KeepsOthers(string? value, string? expected)
-        => Assert.Equal(expected, ModEntry.RemoveGiantCropFertilizer(value));
+        => Assert.Equal(expected, FertilizerValues.RemoveGiantCropFertilizer(value));
 }

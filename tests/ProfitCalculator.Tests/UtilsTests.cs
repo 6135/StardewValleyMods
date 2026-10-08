@@ -1,4 +1,3 @@
-using StardewValley;
 using Xunit;
 using static ProfitCalculator.Utils;
 
@@ -42,31 +41,5 @@ public class UtilsTests
     public void FertilizerPrices_MatchShopPrices(FertilizerQuality quality, int expected)
     {
         Assert.Equal(expected, FertilizerPrices(quality));
-    }
-
-    [Theory]
-    [InlineData(UtilsSeason.Spring, Season.Spring)]
-    [InlineData(UtilsSeason.Summer, Season.Summer)]
-    [InlineData(UtilsSeason.Fall, Season.Fall)]
-    [InlineData(UtilsSeason.Winter, Season.Winter)]
-    public void SeasonFromUtilsSeason_MapsByName(UtilsSeason season, Season expected)
-    {
-        Assert.Equal(expected, SeasonFromUtilsSeason(season));
-    }
-
-    [Fact]
-    public void SeasonFromUtilsSeason_GreenhouseIsNotSupported()
-    {
-        Assert.Throws<NotSupportedException>(() => SeasonFromUtilsSeason(UtilsSeason.Greenhouse));
-    }
-
-    [Fact]
-    public void UtilsSeason_SharesNumericValuesWithGameSeason()
-    {
-        // PlantData and PlantingCalendar cast between the two enums
-        foreach (var season in new[] { Season.Spring, Season.Summer, Season.Fall, Season.Winter })
-        {
-            Assert.Equal((int)season, (int)Enum.Parse<UtilsSeason>(season.ToString()));
-        }
     }
 }

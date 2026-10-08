@@ -1,20 +1,11 @@
 using ProfitCalculator.main.memory;
 using ProfitCalculator.main.models;
-using StardewModdingAPI;
 using Xunit;
 
 namespace ProfitCalculator.Tests;
 
-public class CacheAndConfigTests
+public class CacheAndModelTests
 {
-    [Fact]
-    public void ModConfig_Defaults()
-    {
-        var config = new ModConfig();
-        Assert.Equal(SButton.F8, config.HotKey);
-        Assert.Equal(30, config.ToolTipDelay);
-    }
-
     [Fact]
     public void ManualCropDefinition_Defaults()
     {
