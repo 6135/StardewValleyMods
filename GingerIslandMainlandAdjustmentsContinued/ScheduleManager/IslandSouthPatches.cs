@@ -105,7 +105,6 @@ internal static class IslandSouthPatches
         {
             Globals.ModMonitor.LogError("adjusting CanVisitIslandToday", ex);
         }
-        return;
     }
 
     /// <summary>

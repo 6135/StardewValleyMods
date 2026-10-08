@@ -210,8 +210,6 @@ namespace UIFramework.Hosting
                 case Keys.V:
                     element.Visible = !element.Visible;
                     break;
-                default:
-                    break;
             }
         }
 

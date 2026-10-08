@@ -294,6 +294,16 @@ namespace UIFramework.Data.Expressions
         }
 
         /// <summary>The cached builder, cleared from the cache so nested evaluations (a scope rendering another template) get their own.</summary>
+        /// <summary>Clears <paramref name="builder"/> and keeps it for the next render unless it grew too large.</summary>
+        private static void ReturnSharedBuilder(StringBuilder builder)
+        {
+            builder.Clear();
+            if (builder.Capacity <= 4096)
+            {
+                sharedBuilder = builder;
+            }
+        }
+
         private static StringBuilder TakeSharedBuilder()
         {
             StringBuilder builder = sharedBuilder ?? new StringBuilder();
@@ -412,11 +422,7 @@ namespace UIFramework.Data.Expressions
             }
             finally
             {
-                builder.Clear();
-                if (builder.Capacity <= 4096)
-                {
-                    sharedBuilder = builder;
-                }
+                ReturnSharedBuilder(builder);
             }
         }
 
