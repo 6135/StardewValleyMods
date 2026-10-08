@@ -11,6 +11,10 @@
     {
       "UniqueID": "spacechase0.GenericModConfigMenu",
       "IsRequired": false
+    },
+    {
+      "UniqueID": "fox_white25.ultimate_fertilizer",
+      "IsRequired": false
     }
   ]
 }
