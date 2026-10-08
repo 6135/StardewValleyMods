@@ -99,7 +99,7 @@ public class ModelTests
         public string? Value { get; set; }
     }
 
-    [Fact(Skip = "JsonTextConverter calls JToken.ToString(Formatting), which the Newtonsoft build loaded by the test host lacks (MissingMethodException); it resolves in game via SMAPI's copy.")]
+    [Fact]
     public void JsonText_Converter()
     {
         Assert.Equal(@"[{""name"":""A""}]", Read<Texts>(@"{ ""Value"": [ { ""name"": ""A"" } ] }").Value);
