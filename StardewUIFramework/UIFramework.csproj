@@ -30,6 +30,7 @@
   <ItemGroup>
     <!-- tools/DesignerMetadata serializes the internal tables (element types, defaults, emitter calls) for the designer -->
     <InternalsVisibleTo Include="DesignerMetadata" />
+    <InternalsVisibleTo Include="UIFramework.Tests" />
   </ItemGroup>
 
   <ItemGroup>
