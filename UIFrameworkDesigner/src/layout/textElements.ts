@@ -29,7 +29,7 @@ function fitTextMinWidth(measure: TextMeasurer, text: string, font: FontName, sc
 /** GameTextMeasurer.LongestWord: the widest piece between spaces / line breaks. */
 function longestWord(measure: TextMeasurer, text: string, font: FontName, scale: number): number {
   let widest = 0;
-  for (const word of text.split(/[ \n\r]/)) {
+  for (const word of text.replaceAll('\r', ' ').replaceAll('\n', ' ').split(' ')) {
     if (stripMarks(word).length > 0) {
       widest = Math.max(widest, measure(word, font, scale).width);
     }

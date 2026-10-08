@@ -23,6 +23,11 @@ interface Token { kind: string; text: string; value?: Value }
 
 const escapes: Record<string, string> = { n: '\n', t: '\t', r: '\r' };
 
+/** Exactly four hex digits (a \uXXXX escape). */
+function isHex4(s: string): boolean {
+  return s.length === 4 && [...s].every((c) => '0123456789abcdefABCDEF'.includes(c));
+}
+
 /** A '…' / "…" literal opening at `start` with its \n \t \r \uXXXX escapes; `end` is the index after its closing quote. */
 function readString(source: string, start: number): { text: string; end: number } {
   const quote = source[start];
@@ -31,7 +36,7 @@ function readString(source: string, start: number): { text: string; end: number 
   for (; j < source.length && source[j] !== quote; j++) {
     if (source[j] === '\\' && j + 1 < source.length) {
       const e = source[++j]!;
-      if (e === 'u' && /^[0-9a-fA-F]{4}/.test(source.slice(j + 1, j + 5))) {
+      if (e === 'u' && isHex4(source.slice(j + 1, j + 5))) {
         text += String.fromCharCode(parseInt(source.slice(j + 1, j + 5), 16));
         j += 4;
       } else {
@@ -177,7 +182,8 @@ class Parser {
       case 'at': {
         if (this.peek().kind === '(') {
           const args = this.arguments().map(valueText);
-          const fn = this.functions[t.text.toLowerCase()];
+          const name = t.text.toLowerCase();
+          const fn = Object.prototype.hasOwnProperty.call(this.functions, name) ? this.functions[name] : undefined;
           const result = fn ? fn(args) : undefined;
           return result === undefined ? unknown() : result;
         }
