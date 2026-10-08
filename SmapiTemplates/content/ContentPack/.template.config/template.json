@@ -1,0 +1,17 @@
+{
+  "$schema": "http://json.schemastore.org/template",
+  "author": "Gui Costa",
+  "classifications": [ "Stardew Valley", "SMAPI", "Content Patcher" ],
+  "identity": "SmapiTemplates.ContentPack",
+  "name": "Content Patcher Pack (Stardew Valley 1.6)",
+  "shortName": "smapicp",
+  "description": "A Content Patcher content pack that adds an example item.",
+  "sourceName": "ContentPack",
+  "preferNameDirectory": true,
+  "tags": { "type": "project" },
+  "symbols": {
+    "Author": { "type": "parameter", "datatype": "text", "defaultValue": "YourName", "replaces": "AUTHOR_NAME" },
+    "ModDescription": { "type": "parameter", "datatype": "text", "defaultValue": "A Stardew Valley content pack.", "replaces": "MOD_DESCRIPTION" },
+    "NexusId": { "type": "parameter", "datatype": "text", "defaultValue": "???", "replaces": "NEXUS_ID" }
+  }
+}

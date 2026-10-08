@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <PackageType>Template</PackageType>
+    <PackageId>SmapiTemplates</PackageId>
+    <Version>2.0.0</Version>
+    <Title>SMAPI Mod Templates</Title>
+    <Authors>Gui Costa</Authors>
+    <Description>Project templates for Stardew Valley 1.6 SMAPI mods, Content Patcher packs and Item Extensions packs (Visual Studio 2022/2026, Rider, dotnet CLI).</Description>
+    <PackageTags>stardew;smapi;template</PackageTags>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <IncludeContentInPack>true</IncludeContentInPack>
+    <IncludeBuildOutput>false</IncludeBuildOutput>
+    <ContentTargetFolders>content</ContentTargetFolders>
+    <NoDefaultExcludes>true</NoDefaultExcludes>
+    <NoWarn>$(NoWarn);NU5128</NoWarn>
+  </PropertyGroup>
+  <ItemGroup>
+    <Content Include="content\**\*" Exclude="content\**\bin\**;content\**\obj\**" />
+    <Compile Remove="**\*" />
+  </ItemGroup>
+</Project>

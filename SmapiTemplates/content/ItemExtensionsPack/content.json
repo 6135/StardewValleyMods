@@ -1,0 +1,36 @@
+{
+  "Format": "2.8.0",
+  "Changes": [
+    {
+      "Action": "EditData",
+      "Target": "Data/Objects",
+      "Entries": {
+        "{{ModId}}_ExampleItem": {
+          "Name": "{{ModId}}_ExampleItem",
+          "DisplayName": "{{i18n:item.name}}",
+          "Description": "{{i18n:item.description}}",
+          "Type": "Basic",
+          "Category": 0,
+          "Price": 100,
+          "Texture": "Mods/{{ModId}}/ExampleItem",
+          "SpriteIndex": 0
+        }
+      }
+    },
+    {
+      "Action": "Load",
+      "Target": "Mods/{{ModId}}/ExampleItem",
+      "FromFile": "assets/ExampleItem.png"
+    },
+    {
+      // Item Extensions data for the item above. See the docs for all fields:
+      // https://github.com/misty-spring/StardewMods/tree/main/ItemExtensions/docs
+      "Action": "EditData",
+      "Target": "Mods/mistyspring.ItemExtensions/Data",
+      "Entries": {
+        "{{ModId}}_ExampleItem": {
+        }
+      }
+    }
+  ]
+}

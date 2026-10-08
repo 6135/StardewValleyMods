@@ -1,0 +1,19 @@
+{
+  "Name": "Capstone Professions Continued",
+  "Author": "spacechase0, 6135",
+  "Version": "%ProjectVersion%",
+  "Description": "Adds capstone professions once all skills are level 10: longer days or higher shipping prices. Continuation of spacechase0's Capstone Professions for Stardew Valley 1.6.",
+  "UniqueID": "6135.CapstoneProfessions",
+  "EntryDll": "CapstoneProfessionsContinued.dll",
+  "MinimumApiVersion": "4.0.0",
+  "Dependencies": [
+    {
+      "UniqueID": "spacechase0.SpaceCore",
+      "MinimumVersion": "1.20.0"
+    },
+    {
+      "UniqueID": "cantorsdust.AllProfessions",
+      "IsRequired": false
+    }
+  ]
+}

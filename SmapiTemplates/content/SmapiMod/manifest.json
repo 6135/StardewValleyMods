@@ -1,0 +1,10 @@
+{
+  "Name": "SmapiMod",
+  "Author": "AUTHOR_NAME",
+  "Version": "1.0.0",
+  "Description": "MOD_DESCRIPTION",
+  "UniqueID": "AUTHOR_NAME.SmapiMod",
+  "EntryDll": "SmapiMod.dll",
+  "MinimumApiVersion": "4.0.0",
+  "UpdateKeys": [ "Nexus:NEXUS_ID" ]
+}

@@ -1,0 +1,15 @@
+{
+  "Name": "Combat Level Damage Scaler Continued",
+  "Author": "spacechase0, 6135",
+  "Version": "%ProjectVersion%",
+  "Description": "Scales the damage you deal by your combat level. Continuation of spacechase0's Combat Level Damage Scaler for Stardew Valley 1.6.",
+  "UniqueID": "6135.CombatLevelDamageScaler",
+  "EntryDll": "CombatLevelDamageScalerContinued.dll",
+  "MinimumApiVersion": "4.0.0",
+  "Dependencies": [
+    {
+      "UniqueID": "spacechase0.GenericModConfigMenu",
+      "IsRequired": false
+    }
+  ]
+}

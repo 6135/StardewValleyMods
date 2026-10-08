@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.Build.NoTargets/3.7.56">
+  <!-- Content packs have no code; building copies the pack into the game's Mods folder. -->
+  <PropertyGroup>
+    <TargetFramework>net6.0</TargetFramework>
+    <GamePath Condition="'$(GamePath)' == ''">C:\Program Files (x86)\Steam\steamapps\common\Stardew Valley</GamePath>
+    <ModFolderName Condition="'$(ModFolderName)' == ''">[CP] $(MSBuildProjectName)</ModFolderName>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackFile Include="manifest.json;content.json;assets\**;i18n\**" />
+    <None Include="@(PackFile)" />
+  </ItemGroup>
+  <Target Name="DeployPack" AfterTargets="Build">
+    <Copy SourceFiles="@(PackFile)" DestinationFiles="@(PackFile->'$(GamePath)\Mods\$(ModFolderName)\%(RelativeDir)%(Filename)%(Extension)')" SkipUnchangedFiles="true" />
+  </Target>
+</Project>

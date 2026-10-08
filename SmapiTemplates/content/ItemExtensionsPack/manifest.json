@@ -1,0 +1,10 @@
+{
+  "Name": "ItemExtensionsPack",
+  "Author": "AUTHOR_NAME",
+  "Version": "1.0.0",
+  "Description": "MOD_DESCRIPTION",
+  "UniqueID": "AUTHOR_NAME.ItemExtensionsPack",
+  "UpdateKeys": [ "Nexus:NEXUS_ID" ],
+  "ContentPackFor": { "UniqueID": "Pathoschild.ContentPatcher" },
+  "Dependencies": [ { "UniqueID": "mistyspring.ItemExtensions" } ]
+}

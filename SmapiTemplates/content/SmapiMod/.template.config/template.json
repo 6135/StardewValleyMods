@@ -1,0 +1,17 @@
+{
+  "$schema": "http://json.schemastore.org/template",
+  "author": "Gui Costa",
+  "classifications": [ "Stardew Valley", "SMAPI", "Mod" ],
+  "identity": "SmapiTemplates.SmapiMod",
+  "name": "SMAPI Mod (Stardew Valley 1.6)",
+  "shortName": "smapimod",
+  "description": "A C# SMAPI mod with ModBuildConfig, manifest, config and i18n.",
+  "sourceName": "SmapiMod",
+  "preferNameDirectory": true,
+  "tags": { "language": "C#", "type": "project" },
+  "symbols": {
+    "Author": { "type": "parameter", "datatype": "text", "defaultValue": "YourName", "replaces": "AUTHOR_NAME", "description": "Mod author" },
+    "ModDescription": { "type": "parameter", "datatype": "text", "defaultValue": "A Stardew Valley mod.", "replaces": "MOD_DESCRIPTION", "description": "Manifest description" },
+    "NexusId": { "type": "parameter", "datatype": "text", "defaultValue": "???", "replaces": "NEXUS_ID", "description": "Nexus mod ID for update checks" }
+  }
+}

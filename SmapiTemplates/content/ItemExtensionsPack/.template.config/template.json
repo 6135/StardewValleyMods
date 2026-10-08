@@ -1,0 +1,17 @@
+{
+  "$schema": "http://json.schemastore.org/template",
+  "author": "Gui Costa",
+  "classifications": [ "Stardew Valley", "SMAPI", "Item Extensions" ],
+  "identity": "SmapiTemplates.ItemExtensionsPack",
+  "name": "Item Extensions Pack (Stardew Valley 1.6)",
+  "shortName": "smapiie",
+  "description": "A Content Patcher content pack using Item Extensions.",
+  "sourceName": "ItemExtensionsPack",
+  "preferNameDirectory": true,
+  "tags": { "type": "project" },
+  "symbols": {
+    "Author": { "type": "parameter", "datatype": "text", "defaultValue": "YourName", "replaces": "AUTHOR_NAME" },
+    "ModDescription": { "type": "parameter", "datatype": "text", "defaultValue": "A Stardew Valley content pack.", "replaces": "MOD_DESCRIPTION" },
+    "NexusId": { "type": "parameter", "datatype": "text", "defaultValue": "???", "replaces": "NEXUS_ID" }
+  }
+}
