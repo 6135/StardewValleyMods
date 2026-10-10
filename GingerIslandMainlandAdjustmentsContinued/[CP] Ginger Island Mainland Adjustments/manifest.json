@@ -2,7 +2,7 @@
     "Name": "[CP] Ginger Island Mainland Adjustments Continued",
     "Author": "atravita, 6135",
     "Description": "Adds going-to-Ginger Island + return-from-Ginger Island dialogue lines and GI Remainder schedules.",
-    "Version": "1.2.1",
+    "Version": "1.2.2",
     "UpdateKeys": [ "Nexus:53547" ],
     "UniqueID": "6135.GingerIslandMainlandAdjustmentsCP",
     "ContentPackFor": {
