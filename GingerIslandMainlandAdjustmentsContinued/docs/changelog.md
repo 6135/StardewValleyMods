@@ -4,6 +4,9 @@
 [← back to readme](../../README.md)
 
 
+#### Continued 1.2.2
+* Stopped logging a message for every NPC without a spring or default schedule (common for expansion NPCs). Restored schedules are still logged.
+
 #### Continued 1.2.1
 * Added the Nexus update key.
 
