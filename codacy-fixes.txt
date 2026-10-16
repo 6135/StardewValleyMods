@@ -1,6 +1,7 @@
 diff --git a/StardewUIFramework/architecture.md b/StardewUIFramework/architecture.md
 --- a/StardewUIFramework/architecture.md
 +++ b/StardewUIFramework/architecture.md
+
 @@ -9,1 +9,1 @@
 -- Framework mods (data/delegate style): https://stardewmodding.wiki.gg/wiki/Tutorial:_C_Sharp_-_Making_Framework_Mods
 +- Framework mods (data/delegate style): <https://stardewmodding.wiki.gg/wiki/Tutorial:_C_Sharp_-_Making_Framework_Mods>
