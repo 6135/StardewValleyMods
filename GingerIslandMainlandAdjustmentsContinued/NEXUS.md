@@ -31,6 +31,7 @@ Run the game once to create `config.json`, or use Generic Mod Config Menu.
 - **StageFarNpcsAtSaloon**: NPCs who live far away start the day at the Saloon.
 - **GroupChance** / **ExplorerChance**: chance a group visits the resort / explores the north of the island.
 - **GusDay** / **GusChance**: Gus's day and how likely he is to go that day (`None` to disable).
+- **RainVisitChance** / **WinterVisitChance**: chance anyone visits the island on a rainy day / in winter (1 = vanilla, 0 = never). Also works with the vanilla scheduler.
 - **AllowWilly**, **AllowSandy**, **AllowWizard** (Yes / No / If married) and **AllowGeorgeAndEvelyn**.
 - **WearIslandClothing**: whether visitors change into beachwear.
 - **RequireResortDialogue**: only NPCs with a `Resort` dialogue line can visit.

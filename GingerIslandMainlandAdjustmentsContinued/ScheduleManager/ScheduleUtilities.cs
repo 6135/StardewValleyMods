@@ -81,9 +81,124 @@ internal static class ScheduleUtilities
             return baseEntry;
         }
 
+        // No GIRemainder schedule: fall back to what the NPC would normally be doing from 6pm on.
+        if (!npc.isMarried() && TryGetRegularEveningSchedule(npc, date, out key, out string? evening))
+        {
+            Globals.ModMonitor.Log($"No GIRemainder schedule for {npc.Name}, using the evening part of their '{key}' schedule: {evening}");
+            return evening;
+        }
+
         Globals.ModMonitor.Log(I18n.NOGISCHEDULEFOUND(npc: npc.Name));
         key = null;
         return null;
+    }
+
+    /// <summary>
+    /// Gets the part of the NPC's regular schedule for the day that starts at 6pm.
+    /// </summary>
+    /// <param name="npc">The NPC.</param>
+    /// <param name="date">The date.</param>
+    /// <param name="key">The regular schedule key used.</param>
+    /// <param name="evening">The evening schedule, starting at 1800.</param>
+    /// <returns>True if one was found.</returns>
+    private static bool TryGetRegularEveningSchedule(NPC npc, SDate date, out string? key, [NotNullWhen(true)] out string? evening)
+    {
+        foreach (string candidate in GetRegularScheduleKeys(npc, date))
+        {
+            if (npc.TryGetScheduleEntry(candidate, out string? raw)
+                && ScheduleParsing.TryFindGOTOschedule(npc, date, raw, out string resolved))
+            {
+                key = candidate;
+                evening = ExtractEvening(resolved);
+                return evening is not null;
+            }
+        }
+        key = null;
+        evening = null;
+        return false;
+    }
+
+    /// <summary>
+    /// Yields regular schedule keys in the same order as vanilla's <see cref="NPC.TryLoadSchedule()"/> for unmarried NPCs.
+    /// </summary>
+    private static IEnumerable<string> GetRegularScheduleKeys(NPC npc, SDate date)
+    {
+        string season = date.SeasonKey;
+        string day = Game1.shortDayNameFromDayOfSeason(date.Day);
+        int hearts = Math.Max(0, Utility.GetAllPlayerFriendshipLevel(npc)) / 250;
+
+        foreach (string festival in Game1.netWorldState.Value.ActivePassiveFestivals)
+        {
+            yield return $"{festival}_{Utility.GetDayOfPassiveFestival(festival)}";
+            yield return festival;
+        }
+        yield return $"{season}_{date.Day}";
+        for (int heartLevel = hearts; heartLevel > 0; heartLevel--)
+        {
+            yield return $"{date.Day}_{heartLevel}";
+        }
+        yield return date.Day.ToString();
+        if (Game1.IsRainingHere(Game1.getLocationFromName(npc.DefaultMap)))
+        {
+            yield return "rain";
+        }
+        for (int heartLevel = hearts; heartLevel > 0; heartLevel -= 2)
+        {
+            yield return $"{season}_{day}_{heartLevel}";
+        }
+        yield return $"{season}_{day}";
+        for (int heartLevel = hearts; heartLevel > 0; heartLevel -= 2)
+        {
+            yield return $"{day}_{heartLevel}";
+        }
+        yield return day;
+        yield return season;
+        yield return $"spring_{day}";
+        yield return "spring";
+    }
+
+    /// <summary>
+    /// Keeps the schedule point the NPC would be at by 6pm plus everything after, starting at 1800.
+    /// </summary>
+    /// <param name="schedule">A resolved raw schedule.</param>
+    /// <returns>The evening schedule, or null if there is nothing to keep.</returns>
+    private static string? ExtractEvening(string schedule)
+    {
+        List<string> points = schedule.Split('/', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList();
+        if (points.Count > 0 && points[0].StartsWith("NOT ", StringComparison.Ordinal))
+        {
+            points.RemoveAt(0);
+        }
+
+        int start = -1;
+        for (int i = 0; i < points.Count; i++)
+        {
+            string time = points[i].Split(' ', 2)[0].TrimStart('a');
+            if (!int.TryParse(time, out int t))
+            {
+                continue;
+            }
+            if (t <= 1800)
+            {
+                start = i;
+            }
+            else
+            {
+                if (start < 0)
+                {
+                    start = i;
+                }
+                break;
+            }
+        }
+
+        int space = start < 0 ? -1 : points[start].IndexOf(' ');
+        if (space < 0)
+        {
+            return null;
+        }
+        points[start] = POST_GI_START_TIME + points[start][space..];
+        return string.Join('/', points.Skip(start));
     }
 
     /// <summary>

@@ -109,6 +109,28 @@ public sealed class ModConfig
         set => this.gusChance = Math.Clamp(value, 0f, 1f);
     }
 
+    private float rainVisitChance = 1f;
+
+    /// <summary>
+    /// Gets or sets the chance islanders visit at all when it's raining on the mainland.
+    /// </summary>
+    public float RainVisitChance
+    {
+        get => this.rainVisitChance;
+        set => this.rainVisitChance = Math.Clamp(value, 0f, 1f);
+    }
+
+    private float winterVisitChance = 1f;
+
+    /// <summary>
+    /// Gets or sets the chance islanders visit at all in winter.
+    /// </summary>
+    public float WinterVisitChance
+    {
+        get => this.winterVisitChance;
+        set => this.winterVisitChance = Math.Clamp(value, 0f, 1f);
+    }
+
     /// <summary>
     /// Gets or sets a value indicating whether Willy has access to the Resort.
     /// </summary>
