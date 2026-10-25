@@ -4,6 +4,13 @@
 [← back to readme](../../README.md)
 
 
+#### Continued 1.3.0
+* NPCs without a GIRemainder schedule now follow the evening part of their normal schedule for the day (e.g. Saloon night) instead of going straight to bed. Works for modded NPCs.
+* Added Rainy Day Visit Chance and Winter Visit Chance options to reduce or stop island visits in rain or winter.
+
+#### Continued 1.2.2
+* Stopped logging a message for every NPC without a spring or default schedule (common for expansion NPCs). Restored schedules are still logged.
+
 #### Continued 1.2.1
 * Added the Nexus update key.
 

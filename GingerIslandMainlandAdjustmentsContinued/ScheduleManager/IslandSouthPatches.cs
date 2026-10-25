@@ -45,6 +45,12 @@ internal static class IslandSouthPatches
     [HarmonyPatch(nameof(IslandSouth.SetupIslandSchedules))]
     private static bool OverRideSetUpIslandSchedules()
     {
+        if (!AreVisitsAllowedToday())
+        {
+            Game1.netWorldState.Value.IslandVisitors.Clear();
+            Globals.ModMonitor.Log("Skipping Ginger Island visits today (rain/winter visit chance).");
+            return false;
+        }
         if (Globals.Config.UseThisScheduler)
         {
             try
@@ -65,6 +71,24 @@ internal static class IslandSouthPatches
     /// </summary>
     /// <param name="npc">the NPC to check.</param>
     /// <param name="__result">True if the NPC can go to the island, false otherwise.</param>
+    /// <summary>
+    /// Rolls the rain and winter visit chances for today.
+    /// </summary>
+    /// <returns>Whether islanders may visit today.</returns>
+    private static bool AreVisitsAllowedToday()
+    {
+        double chance = 1;
+        if (Game1.IsRainingHere(Game1.getLocationFromName("Town")))
+        {
+            chance *= Globals.Config.RainVisitChance;
+        }
+        if (Game1.IsWinter)
+        {
+            chance *= Globals.Config.WinterVisitChance;
+        }
+        return chance >= 1 || Extensions.GetSeededRandom(7, "atravita.GingerIslandMainlandAdjustments.Weather").NextBool(chance);
+    }
+
     [HarmonyPostfix]
     [HarmonyPriority(Priority.Last)]
     [HarmonyPatch(nameof(IslandSouth.CanVisitIslandToday))]

@@ -96,6 +96,16 @@ internal static class GenerateGMCM
             getValue: static () => Globals.Config.GusChance,
             setValue: static value => Globals.Config.GusChance = value,
             tooltip: I18n.Config_GusChance_Description);
+        AddChanceOption(
+            name: I18n.Config_RainVisitChance_Title,
+            getValue: static () => Globals.Config.RainVisitChance,
+            setValue: static value => Globals.Config.RainVisitChance = value,
+            tooltip: I18n.Config_RainVisitChance_Description);
+        AddChanceOption(
+            name: I18n.Config_WinterVisitChance_Title,
+            getValue: static () => Globals.Config.WinterVisitChance,
+            setValue: static value => Globals.Config.WinterVisitChance = value,
+            tooltip: I18n.Config_WinterVisitChance_Description);
 
         AddExclusionOption(nameof(ModConfig.AllowWilly), static () => Globals.Config.AllowWilly, static value => Globals.Config.AllowWilly = value);
         AddExclusionOption(nameof(ModConfig.AllowSandy), static () => Globals.Config.AllowSandy, static value => Globals.Config.AllowSandy = value);
